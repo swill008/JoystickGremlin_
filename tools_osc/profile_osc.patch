@@ -1,0 +1,63 @@
+--- a/gremlin/profile.py
++++ b/gremlin/profile.py
+@@ -31,6 +31,7 @@ from gremlin import (
+     signal,
+ )
+ from gremlin.logical_device import LogicalDevice
++from gremlin.osc import OscDevice
+ from gremlin.tree import TreeNode
+ from gremlin.types import (
+     AxisButtonDirection,
+@@ -572,6 +573,7 @@ class Profile:
+         self.scripts = ScriptManager(self)
+         self.fpath: Path | None = None
+         LogicalDevice().reset()
++        OscDevice().reset()
+ 
+     def from_xml(self, fpath: Path) -> None:
+         """Reads the content of an XML file and initializes the profile.
+@@ -595,6 +597,7 @@ class Profile:
+         self.fpath = fpath
+         self.settings.from_xml(root)
+         self._logical_devices_from_xml(root)
++        self._osc_devices_from_xml(root)
+         self.library.from_xml(root)
+         self.device_database.from_xml(root)
+         self.modes.from_xml(root)
+@@ -626,6 +629,7 @@ class Profile:
+         # Managed content.
+         root.append(self.settings.to_xml())
+         root.append(self._logical_devices_to_xml())
++        root.append(self._osc_devices_to_xml())
+         root.append(self.library.to_xml())
+         root.append(self.modes.to_xml())
+         root.append(self.scripts.to_xml())
+@@ -804,6 +808,26 @@ class Profile:
+             input_node.append(create_subelement_node("input-id", input.id))
+             input_node.append(create_subelement_node("label", input.label))
+             node.append(input_node)
+         return node
++
++    def _osc_devices_from_xml(self, root_node: ElementTree.Element) -> None:
++        osc = OscDevice()
++        osc.reset()
++        for node in root_node.findall("./osc-device/input"):
++            osc.create(
++                read_subelement(node, "input-type"),
++                label=read_subelement(node, "label"),
++                input_id=read_subelement(node, "input-id"),
++            )
++
++    def _osc_devices_to_xml(self) -> ElementTree.Element:
++        node = ElementTree.Element("osc-device")
++        for label in OscDevice().labels_of_type():
++            item = OscDevice()[label]
++            input_node = ElementTree.Element("input")
++            input_node.append(create_subelement_node("input-type", item.type))
++            input_node.append(create_subelement_node("input-id", item.id))
++            input_node.append(create_subelement_node("label", item.label))
++            node.append(input_node)
++        return node
+ 
+ 
+ class InputItem:
