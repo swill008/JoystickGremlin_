@@ -34,7 +34,16 @@ class OscAddressModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
         QtCore.QAbstractListModel.__init__(self, parent)
         BaseMetaConfigOptionWidget.__init__(self)
         self._config = Configuration()
-        self._addresses = local_ipv4_addresses()
+        self._addresses = self._addresses_with_saved()
+
+    def _addresses_with_saved(self) -> list[str]:
+        addresses = local_ipv4_addresses()
+        current = str(
+            self._config.value(OSC_SECTION, OSC_GROUP, self.config_name) or ""
+        ).strip()
+        if current and current not in addresses:
+            addresses.insert(0, current)
+        return addresses
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._addresses)
@@ -52,7 +61,7 @@ class OscAddressModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
     @QtCore.Slot()
     def refresh(self) -> None:
         self.beginResetModel()
-        self._addresses = local_ipv4_addresses()
+        self._addresses = self._addresses_with_saved()
         self.endResetModel()
         self.currentIndexChanged.emit()
 
