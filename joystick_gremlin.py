@@ -310,10 +310,10 @@ def register_config_options() -> None:
         "global",
         "osc",
         "port",
-        PropertyType.Int,
-        9000,
-        "UDP port for incoming OSC (Companion Stream Deck default for Path B).",
-        {"min": 1, "max": 65535},
+        PropertyType.String,
+        "8000",
+        "UDP port Gremlin listens on. Must match Companion Target Port.",
+        {},
         True,
     )
 
