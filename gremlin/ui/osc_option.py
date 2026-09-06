@@ -10,6 +10,9 @@ from gremlin.osc import OSC_GROUP, OSC_SECTION, local_ipv4_addresses
 from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
 import gremlin.ui.type_aliases as ta
 
+QML_IMPORT_NAME = "Gremlin.Config"
+QML_IMPORT_MAJOR_VERSION = 1
+
 
 class OscAddressModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
     """Dropdown of this PC's IPv4 addresses plus a refresh action."""
