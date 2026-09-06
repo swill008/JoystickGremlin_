@@ -10,7 +10,7 @@ from PySide6 import QtCore
 import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.error import GremlinError
-from gremlin.osc import OscDevice
+from gremlin.osc import OSC_DEVICE_UUID, OscDevice
 from gremlin.profile import InputItem
 from gremlin.signal import signal
 from gremlin.types import InputType
@@ -23,9 +23,27 @@ from gremlin.ui.device import (
     _generate_action_sequence_descriptor,
 )
 
-# Re-register under the same QML module as other device models.
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
+
+
+class OscInputIdentifier(InputIdentifier):
+    """InputIdentifier that does not query DILL for the virtual OSC device."""
+
+    @QtCore.Property(str, notify=InputIdentifier.changed)
+    def label(self) -> str:
+        if not self.isValid:
+            return "No input"
+        return (
+            f"OSC - {InputType.to_string(self.input_type).capitalize()} "
+            f"{self.input_id}"
+        )
+
+    @property
+    def linear_index(self) -> int:
+        if not self.isValid:
+            raise GremlinError("Cannot compute linear index of invalid input")
+        return max(int(self.input_id) - 1, 0)
 
 
 @ta.QmlElement
@@ -149,12 +167,12 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     @QtCore.Slot(int, result=InputIdentifier)
     def inputIdentifier(self, index: int) -> InputIdentifier:
         if index < 0:
-            return InputIdentifier(parent=self)
-        input = self._index_to_input(index)
-        identifier = InputIdentifier(parent=self)
+            return OscInputIdentifier(parent=self)
+        item = self._index_to_input(index)
+        identifier = OscInputIdentifier(parent=self)
         identifier.device_guid = self._osc.device_guid
-        identifier.input_type = input.type
-        identifier.input_id = input.id
+        identifier.input_type = item.type
+        identifier.input_id = item.id
         return identifier
 
     def _index_to_input(self, index: int):
