@@ -1,31 +1,17 @@
 # OSC sidecar (R15)
 
-Proof-of-concept only. Not the GremlinEX OSC device tab.
+Path B is locked. See [PATH_B.md](PATH_B.md).
 
-## What it does
+This folder is the temporary sidecar until the OSC tab exists in R15.
+The in-process listener lives at `gremlin/osc.py` (does **not** write vJoy).
 
-- UDP OSC listen on **9000** (avoids Companion on 8010 / 8000)
+## Sidecar (still needed until the tab ships)
+
+- UDP OSC listen on **9000**
 - `/streamdeck/1` with `1` / `0` presses vJoy device **1** button **1**
-
-## Setup
+- Installed R15 profile must be **off** while `osc_listener.py` holds vJoy 1
 
 ```
 python -m pip install python-osc pyvjoy
-```
-
-Installed Joystick Gremlin R15 profile must be **off** while this script runs.
-
-```
 python osc_listener.py
 ```
-
-Other window:
-
-```
-python osc_send_test.py
-```
-
-## End goal
-
-An OSC device tab inside R15 (like GremlinEX), mapped in the profile UI.
-This folder stays until that exists.
