@@ -58,6 +58,18 @@ def parse_port(value: Any) -> int:
     return DEFAULT_PORT
 
 
+def guess_input_type(args: tuple[Any, ...]) -> InputType:
+    if not args:
+        return InputType.JoystickButton
+    try:
+        value = float(args[0])
+    except (TypeError, ValueError):
+        return InputType.JoystickButton
+    if value in (0.0, 1.0) or abs(value) > 1.0:
+        return InputType.JoystickButton
+    return InputType.JoystickAxis
+
+
 class OscDevice(metaclass=SingletonMetaclass):
     """User-defined OSC addresses that act like joystick inputs."""
 
@@ -204,11 +216,42 @@ class OscRuntime(QtCore.QObject):
     """Starts the OSC listener while a profile is active and injects Events."""
 
     incoming = QtCore.Signal(str, object)
+    learned = QtCore.Signal(str, object)
+    listenChanged = QtCore.Signal()
 
     def __init__(self) -> None:
         super().__init__()
         self._listener: OscListener | None = None
+        self._learn = False
         self.incoming.connect(self._on_main)
+
+    def is_listening(self) -> bool:
+        return self._learn
+
+    def listen_once(self) -> bool:
+        """Capture the next OSC packet so the UI can bind it as an input."""
+        from gremlin.signal import signal as ui_signal
+
+        self.start()
+        if self._listener is None:
+            self._learn = False
+            self.listenChanged.emit()
+            ui_signal.showError.emit(
+                "Could not start OSC listener.",
+                "Enable OSC in Options and check host/port.",
+            )
+            return False
+        self._learn = True
+        self.listenChanged.emit()
+        log.info("OSC listen-once waiting for next packet")
+        return True
+
+    def cancel_listen(self) -> None:
+        if not self._learn:
+            return
+        self._learn = False
+        self.listenChanged.emit()
+        log.info("OSC listen-once cancelled")
 
     def start(self) -> None:
         self.stop()
@@ -245,6 +288,8 @@ class OscRuntime(QtCore.QObject):
             self._listener = None
 
     def stop(self) -> None:
+        self._learn = False
+        self.listenChanged.emit()
         if self._listener is None:
             return
         self._listener.stop()
@@ -257,12 +302,18 @@ class OscRuntime(QtCore.QObject):
         from gremlin.event_handler import Event, EventListener
         from gremlin.mode_manager import ModeManager
 
+        payload = args if isinstance(args, tuple) else ()
+        if self._learn:
+            self._learn = False
+            self.listenChanged.emit()
+            log.info("OSC listen captured %s %s", address, payload)
+            self.learned.emit(address, payload)
+
         item = OscDevice().find_address(address)
         if item is None:
             log.debug("OSC ignored unmatched address %s %s", address, args)
             return
         log.debug("OSC %s %s -> %s %s", address, args, item.type.name, item.id)
-        payload = args if isinstance(args, tuple) else ()
         mode = ModeManager().current.name
         if item.type == InputType.JoystickButton:
             pressed = is_pressed(payload)
