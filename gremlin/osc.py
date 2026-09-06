@@ -12,7 +12,7 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin.common import SingletonMetaclass
+from gremlin.common import SingletonDecorator, SingletonMetaclass
 from gremlin.error import GremlinError
 from gremlin.types import InputType
 
@@ -188,7 +188,8 @@ class OscListener:
             self.callback(address, args)
 
 
-class OscRuntime(QtCore.QObject, metaclass=SingletonMetaclass):
+@SingletonDecorator
+class OscRuntime(QtCore.QObject):
     """Starts the OSC listener while a profile is active and injects Events."""
 
     incoming = QtCore.Signal(str, object)
