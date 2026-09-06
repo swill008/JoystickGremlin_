@@ -64,6 +64,7 @@ import gremlin.ui.backend
 import gremlin.ui.option
 import gremlin.ui.tools
 import gremlin.ui.util
+import gremlin.osc
 import gremlin.ui.osc_device_model  # noqa: F401
 
 # ruff: enable[E402]
@@ -129,6 +130,7 @@ def shutdown_cleanup() -> None:
 
     gremlin.audio_player.AudioPlayer().stop()
     gremlin.tts.TTSManager().stop()
+    gremlin.osc.OscRuntime().stop()
 
 
 def register_config_options() -> None:
@@ -283,6 +285,36 @@ def register_config_options() -> None:
         "List of executable and profile combinations for automatic loading.",
         {},
         False,
+    )
+    cfg.register(
+        "global",
+        "osc",
+        "enabled",
+        PropertyType.Bool,
+        True,
+        "Listen for OSC packets while a profile is active.",
+        {},
+        True,
+    )
+    cfg.register(
+        "global",
+        "osc",
+        "host",
+        PropertyType.String,
+        "127.0.0.1",
+        "IP address the OSC listener binds to. Use 0.0.0.0 to accept LAN packets.",
+        {},
+        True,
+    )
+    cfg.register(
+        "global",
+        "osc",
+        "port",
+        PropertyType.Int,
+        9000,
+        "UDP port for incoming OSC (Companion Stream Deck default for Path B).",
+        {"min": 1, "max": 65535},
+        True,
     )
 
 
