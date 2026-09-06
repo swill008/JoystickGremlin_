@@ -53,3 +53,29 @@ from gremlin.util import (
 
 if TYPE_CHECKING:
     from gremlin.base_classes import AbstractActionData
+
+
+class AbstractVirtualButton(metaclass=ABCMeta):
+    """Base class of all virtual buttons."""
+
+    def __init__(self) -> None:
+        """Creates a new instance."""
+        pass
+
+    @abstractmethod
+    def from_xml(self, node: ElementTree.Element) -> None:
+        """Populates the virtual button based on the node's data.
+
+        Args:
+            node: the XML node containing data for this instance
+        """
+        pass
+
+    @abstractmethod
+    def to_xml(self) -> ElementTree.Element:
+        """Returns an XML node representing the data of this instance.
+
+        Returns:
+            XML node containing the instance's data
+        """
+        pass
