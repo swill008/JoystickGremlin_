@@ -1,8 +1,18 @@
 // -*- coding: utf-8; -*-
 // SPDX-License-Identifier: GPL-3.0-only
 
+var _openWindows = {}
+
 function createComponent(componentSpec)
 {
+    let existing = _openWindows[componentSpec]
+    if (existing) {
+        existing.show()
+        existing.raise()
+        existing.requestActivate()
+        return
+    }
+
     let component = Qt.createComponent(componentSpec);
     if(component.status == Component.Error) {
         console.log(component.errorString())
@@ -10,6 +20,12 @@ function createComponent(componentSpec)
     else if((component.status == Component.Ready))
     {
         let window = component.createObject(_root, {"x": 100, "y": 300});
+        window.closing.connect(function() {
+            if (_openWindows[componentSpec] === window) {
+                delete _openWindows[componentSpec]
+            }
+        })
+        _openWindows[componentSpec] = window
         window.show();
     }
 }
@@ -56,8 +72,6 @@ function hintColor(type) {
 }
 
 function determineHintIcon(userFeedback) {
-    // Extract the highest severity feedback type from the list of user
-    // feedback entries.
     let highestSeverity = 0;
     for (let i = 0; i < userFeedback.length; i++) {
         if (userFeedback[i]["type"] > highestSeverity) {
@@ -68,8 +82,6 @@ function determineHintIcon(userFeedback) {
 }
 
 function determineHintColor(userFeedback) {
-    // Extract the highest severity feedback type from the list of user
-    // feedback entries.
     let highestSeverity = 0;
     for (let i = 0; i < userFeedback.length; i++) {
         if (userFeedback[i]["type"] > highestSeverity) {
