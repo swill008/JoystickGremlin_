@@ -193,7 +193,7 @@ def register_config_options() -> None:
     )
     cfg.register(
         osc_sec, osc_grp, "port", PropertyType.String, "8001",
-        "Input port Gremlin listens on. Must match Companion Target Port.", {}, True,
+        "Input port Gremlin listens on. Must match Companion Target Port.", {}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "output-host", PropertyType.Selection, "127.0.0.1",
@@ -203,7 +203,7 @@ def register_config_options() -> None:
     cfg.register(
         osc_sec, osc_grp, "output-port", PropertyType.String, "8000",
         "Output port for OSC feedback.",
-        {}, True,
+        {}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "pad-args", PropertyType.Bool, False,
