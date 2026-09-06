@@ -98,7 +98,7 @@ class OscOutputHostModel(OscAddressModel):
 
 @ta.QmlElement
 class OscAutoreleaseModel(QtCore.QObject, BaseMetaConfigOptionWidget):
-    """Autorelease delay in ms with EX preset buttons."""
+    """Autorelease delay in ms with preset buttons."""
 
     delayChanged = QtCore.Signal()
 
@@ -139,13 +139,13 @@ MetaConfigOption().register(
     OSC_SECTION,
     OSC_GROUP,
     "output-address",
-    "Output IP for OSC feedback to Companion. Refresh rescans addresses.",
+    "Output IP for OSC feedback to Companion.",
     OscOutputHostModel,
 )
 MetaConfigOption().register(
     OSC_SECTION,
     OSC_GROUP,
     "delay-presets",
-    "Default Autorelease Delay. Presets match EX: 1/10s, 1/4s, 1/2s, 3/4s, 1s.",
+    "Default Autorelease Delay in milliseconds.",
     OscAutoreleaseModel,
 )
