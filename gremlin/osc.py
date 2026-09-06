@@ -24,6 +24,8 @@ OSC_DEVICE_UUID = uuid.UUID(OSC_DEVICE_GUID)
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
+DEFAULT_OUTPUT_PORT = 8000
+DEFAULT_AUTORELEASE_MS = 250
 
 MessageCallback = Callable[[str, tuple[Any, ...]], None]
 
@@ -79,15 +81,24 @@ def axis_value(args: tuple[Any, ...]) -> float:
     return max(-1.0, min(1.0, value))
 
 
-def parse_port(value: Any) -> int:
+def parse_port(value: Any, default: int = DEFAULT_PORT) -> int:
     text = str(value or "").replace(",", "").strip()
     try:
         port = int(text)
     except ValueError:
-        return DEFAULT_PORT
+        return default
     if 1 <= port <= 65535:
         return port
-    return DEFAULT_PORT
+    return default
+
+
+def parse_delay_ms(value: Any) -> int:
+    text = str(value or "").replace(",", "").strip()
+    try:
+        delay = int(float(text))
+    except ValueError:
+        return DEFAULT_AUTORELEASE_MS
+    return max(0, min(delay, 10000))
 
 
 def guess_input_type(args: tuple[Any, ...]) -> InputType:
@@ -255,6 +266,11 @@ class OscRuntime(QtCore.QObject):
         super().__init__()
         self._listener: OscListener | None = None
         self._learn = False
+        self._pad_args = False
+        self._autorelease = True
+        self._autorelease_ms = DEFAULT_AUTORELEASE_MS
+        self._output_host = DEFAULT_HOST
+        self._output_port = DEFAULT_OUTPUT_PORT
         self.incoming.connect(self._on_main)
 
     def is_listening(self) -> bool:
@@ -285,10 +301,8 @@ class OscRuntime(QtCore.QObject):
         self.listenChanged.emit()
         log.info("OSC listen-once cancelled")
 
-    def start(self) -> None:
-        self.stop()
+    def _read_options(self) -> tuple[bool, str, int]:
         from gremlin.config import Configuration
-        from gremlin.signal import signal as ui_signal
 
         cfg = Configuration()
         enabled = True
@@ -300,12 +314,43 @@ class OscRuntime(QtCore.QObject):
             host = str(cfg.value("global", "osc", "host") or host).strip()
         if cfg.exists("global", "osc", "port"):
             port = parse_port(cfg.value("global", "osc", "port"))
+        if cfg.exists("global", "osc", "output-host"):
+            self._output_host = str(
+                cfg.value("global", "osc", "output-host") or DEFAULT_HOST
+            ).strip()
+        if cfg.exists("global", "osc", "output-port"):
+            self._output_port = parse_port(
+                cfg.value("global", "osc", "output-port"), DEFAULT_OUTPUT_PORT
+            )
+        if cfg.exists("global", "osc", "pad-args"):
+            self._pad_args = bool(cfg.value("global", "osc", "pad-args"))
+        if cfg.exists("global", "osc", "autorelease-no-arg"):
+            self._autorelease = bool(cfg.value("global", "osc", "autorelease-no-arg"))
+        if cfg.exists("global", "osc", "autorelease-delay"):
+            self._autorelease_ms = parse_delay_ms(
+                cfg.value("global", "osc", "autorelease-delay")
+            )
+        return enabled, host, port
+
+    def start(self) -> None:
+        self.stop()
+        from gremlin.signal import signal as ui_signal
+
+        enabled, host, port = self._read_options()
         if not enabled:
             log.info("OSC listener disabled in options")
             return
         try:
             self._listener = OscListener(host, port, self._from_thread)
             self._listener.start()
+            log.info(
+                "OSC output target %s:%s pad=%s autorelease=%s delay=%sms",
+                self._output_host,
+                self._output_port,
+                self._pad_args,
+                self._autorelease,
+                self._autorelease_ms,
+            )
         except ImportError:
             ui_signal.showError.emit(
                 "OSC requires python-osc.",
@@ -330,11 +375,31 @@ class OscRuntime(QtCore.QObject):
     def _from_thread(self, address: str, args: tuple[Any, ...]) -> None:
         self.incoming.emit(address, args)
 
-    def _on_main(self, address: str, args: object) -> None:
+    def _emit_button(self, item: OscDevice.Input, pressed: bool, mode: str) -> None:
         from gremlin.event_handler import Event, EventListener
+
+        item.value = pressed
+        EventListener().joystick_event.emit(
+            Event(
+                event_type=InputType.JoystickButton,
+                identifier=item.id,
+                device_guid=OSC_DEVICE_UUID,
+                mode=mode,
+                is_pressed=pressed,
+            )
+        )
+
+    def _release_button(self, input_id: int, mode: str) -> None:
+        item = OscDevice().find_by_id(InputType.JoystickButton, input_id)
+        if item is None:
+            return
+        self._emit_button(item, False, mode)
+
+    def _on_main(self, address: str, args: object) -> None:
         from gremlin.mode_manager import ModeManager
 
         payload = args if isinstance(args, tuple) else ()
+        had_args = len(payload) > 0
         if self._learn:
             self._learn = False
             self.listenChanged.emit()
@@ -345,21 +410,23 @@ class OscRuntime(QtCore.QObject):
         if item is None:
             log.debug("OSC ignored unmatched address %s %s", address, args)
             return
+        if not had_args and self._pad_args:
+            payload = (1.0,)
         log.debug("OSC %s %s -> %s %s", address, args, item.type.name, item.id)
         mode = ModeManager().current.name
         if item.type == InputType.JoystickButton:
             pressed = is_pressed(payload)
-            item.value = pressed
-            EventListener().joystick_event.emit(
-                Event(
-                    event_type=InputType.JoystickButton,
-                    identifier=item.id,
-                    device_guid=OSC_DEVICE_UUID,
-                    mode=mode,
-                    is_pressed=pressed,
+            self._emit_button(item, pressed, mode)
+            if pressed and not had_args and self._autorelease:
+                QtCore.QTimer.singleShot(
+                    self._autorelease_ms,
+                    lambda iid=item.id, current=mode: self._release_button(
+                        iid, current
+                    ),
                 )
-            )
         elif item.type == InputType.JoystickAxis:
+            from gremlin.event_handler import Event, EventListener
+
             value = axis_value(payload)
             item.value = value
             EventListener().joystick_event.emit(
