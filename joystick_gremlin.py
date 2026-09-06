@@ -54,6 +54,7 @@ import gremlin.ui.action_image_generator
 import gremlin.ui.backend
 import gremlin.ui.option
 import gremlin.ui.osc_option  # noqa: F401
+import gremlin.ui.log_option  # noqa: F401
 import gremlin.ui.tools
 import gremlin.ui.util
 import gremlin.osc
@@ -105,6 +106,42 @@ def shutdown_cleanup() -> None:
     gremlin.osc.OscRuntime().stop()
 
 
+def _raise_existing_window() -> None:
+    try:
+        user32 = ctypes.windll.user32
+        found = []
+
+        @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
+        def _enum(hwnd: int, _: int) -> bool:
+            if not user32.IsWindowVisible(hwnd):
+                return True
+            length = user32.GetWindowTextLengthW(hwnd) + 1
+            buf = ctypes.create_unicode_buffer(length)
+            user32.GetWindowTextW(hwnd, buf, length)
+            if buf.value.startswith("Joystick Gremlin"):
+                found.append(hwnd)
+            return True
+
+        user32.EnumWindows(_enum, 0)
+        if found:
+            hwnd = found[0]
+            user32.ShowWindow(hwnd, 9)
+            user32.SetForegroundWindow(hwnd)
+    except Exception:
+        pass
+
+
+def acquire_single_instance() -> QtCore.QLockFile | None:
+    lock = QtCore.QLockFile(
+        os.path.join(gremlin.util.userprofile_path(), "gremlin.lock")
+    )
+    lock.setStaleLockTime(30000)
+    if lock.tryLock(100):
+        return lock
+    _raise_existing_window()
+    return None
+
+
 def register_config_options() -> None:
     cfg = gremlin.config.Configuration()
     osc_ips = gremlin.osc.local_ipv4_addresses()
@@ -148,6 +185,10 @@ def register_config_options() -> None:
     cfg.register(
         "global", "general", "dark-mode", PropertyType.Bool, False,
         "Use the dark mode UI.", {}, True,
+    )
+    cfg.register(
+        "global", "general", "log-level", PropertyType.String, "Warning",
+        "Diagnostic log level written to the user-profile log files.", {}, False,
     )
     cfg.register(
         "global", "general", "refresh-axis-on-activation", PropertyType.Bool, True,
@@ -230,17 +271,17 @@ def register_config_options() -> None:
 
 def configure_loggers() -> None:
     configure_logger({
-        "name": "system", "level": logging.DEBUG,
+        "name": "system", "level": logging.WARNING,
         "logfile": os.path.join(gremlin.util.userprofile_path(), "system.log"),
         "format": "%(asctime)s %(levelname)10s %(message)s", "mode": "rotate",
     })
     configure_logger({
-        "name": "user", "level": logging.DEBUG,
+        "name": "user", "level": logging.WARNING,
         "logfile": os.path.join(gremlin.util.userprofile_path(), "user.log"),
         "format": "%(asctime)s %(message)s", "mode": "rotate",
     })
     configure_logger({
-        "name": "event", "level": logging.DEBUG,
+        "name": "event", "level": logging.WARNING,
         "logfile": os.path.join(gremlin.util.userprofile_path(), "event.log"),
         "format": "%(asctime)s,%(levelname)s,%(message)s", "mode": "session",
     })
@@ -290,6 +331,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         configure_loggers()
         self.syslog = logging.getLogger("system")
         register_config_options()
+        gremlin.ui.log_option.apply_log_level()
 
         executable_name = os.path.split(sys.executable)[-1]
         if executable_name == "joystick_gremlin.exe":
@@ -419,7 +461,11 @@ class JoystickGremlinApp(QtWidgets.QApplication):
 
 
 def main() -> int:
+    lock = acquire_single_instance()
+    if lock is None:
+        return 0
     app = JoystickGremlinApp(sys.argv)
+    app._instance_lock = lock
     app.exec()
     logging.getLogger("system").info("Terminating Gremlin")
     return 0
