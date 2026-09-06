@@ -22,6 +22,9 @@ log = logging.getLogger("system")
 OSC_DEVICE_GUID = "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
 OSC_DEVICE_UUID = uuid.UUID(OSC_DEVICE_GUID)
 
+OSC_SECTION = "osc"
+OSC_GROUP = "connection"
+
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 DEFAULT_OUTPUT_PORT = 8000
@@ -31,7 +34,6 @@ MessageCallback = Callable[[str, tuple[Any, ...]], None]
 
 
 def local_ipv4_addresses() -> list[str]:
-    """This machine's IPv4 addresses, plus loopback and all-interfaces."""
     found: list[str] = []
 
     def add(ip: str) -> None:
@@ -59,6 +61,14 @@ def default_bind_host() -> str:
         if ip not in ("127.0.0.1", "0.0.0.0"):
             return ip
     return DEFAULT_HOST
+
+
+def osc_option(cfg: Any, name: str) -> Any:
+    if cfg.exists(OSC_SECTION, OSC_GROUP, name):
+        return cfg.value(OSC_SECTION, OSC_GROUP, name)
+    if cfg.exists("global", "osc", name):
+        return cfg.value("global", "osc", name)
+    return None
 
 
 def is_pressed(args: tuple[Any, ...]) -> bool:
@@ -114,8 +124,6 @@ def guess_input_type(args: tuple[Any, ...]) -> InputType:
 
 
 class OscDevice(metaclass=SingletonMetaclass):
-    """User-defined OSC addresses that act like joystick inputs."""
-
     device_guid = OSC_DEVICE_UUID
 
     class Input:
@@ -206,8 +214,6 @@ class OscDevice(metaclass=SingletonMetaclass):
 
 
 class OscListener:
-    """UDP OSC server on a background thread."""
-
     def __init__(
         self,
         host: str = DEFAULT_HOST,
@@ -256,8 +262,6 @@ class OscListener:
 
 @SingletonDecorator
 class OscRuntime(QtCore.QObject):
-    """Starts the OSC listener while a profile is active and injects Events."""
-
     incoming = QtCore.Signal(str, object)
     learned = QtCore.Signal(str, object)
     listenChanged = QtCore.Signal()
@@ -277,7 +281,6 @@ class OscRuntime(QtCore.QObject):
         return self._learn
 
     def listen_once(self) -> bool:
-        """Capture the next OSC packet so the UI can bind it as an input."""
         from gremlin.signal import signal as ui_signal
 
         self.start()
@@ -308,28 +311,30 @@ class OscRuntime(QtCore.QObject):
         enabled = True
         host = default_bind_host()
         port = DEFAULT_PORT
-        if cfg.exists("global", "osc", "enabled"):
-            enabled = bool(cfg.value("global", "osc", "enabled"))
-        if cfg.exists("global", "osc", "host"):
-            host = str(cfg.value("global", "osc", "host") or host).strip()
-        if cfg.exists("global", "osc", "port"):
-            port = parse_port(cfg.value("global", "osc", "port"))
-        if cfg.exists("global", "osc", "output-host"):
-            self._output_host = str(
-                cfg.value("global", "osc", "output-host") or DEFAULT_HOST
-            ).strip()
-        if cfg.exists("global", "osc", "output-port"):
-            self._output_port = parse_port(
-                cfg.value("global", "osc", "output-port"), DEFAULT_OUTPUT_PORT
-            )
-        if cfg.exists("global", "osc", "pad-args"):
-            self._pad_args = bool(cfg.value("global", "osc", "pad-args"))
-        if cfg.exists("global", "osc", "autorelease-no-arg"):
-            self._autorelease = bool(cfg.value("global", "osc", "autorelease-no-arg"))
-        if cfg.exists("global", "osc", "autorelease-delay"):
-            self._autorelease_ms = parse_delay_ms(
-                cfg.value("global", "osc", "autorelease-delay")
-            )
+        raw = osc_option(cfg, "enabled")
+        if raw is not None:
+            enabled = bool(raw)
+        raw = osc_option(cfg, "host")
+        if raw is not None:
+            host = str(raw or host).strip()
+        raw = osc_option(cfg, "port")
+        if raw is not None:
+            port = parse_port(raw)
+        raw = osc_option(cfg, "output-host")
+        if raw is not None:
+            self._output_host = str(raw or DEFAULT_HOST).strip()
+        raw = osc_option(cfg, "output-port")
+        if raw is not None:
+            self._output_port = parse_port(raw, DEFAULT_OUTPUT_PORT)
+        raw = osc_option(cfg, "pad-args")
+        if raw is not None:
+            self._pad_args = bool(raw)
+        raw = osc_option(cfg, "autorelease-no-arg")
+        if raw is not None:
+            self._autorelease = bool(raw)
+        raw = osc_option(cfg, "autorelease-delay")
+        if raw is not None:
+            self._autorelease_ms = parse_delay_ms(raw)
         return enabled, host, port
 
     def start(self) -> None:
