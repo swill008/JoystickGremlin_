@@ -53,6 +53,7 @@ import gremlin.types
 import gremlin.ui.action_image_generator
 import gremlin.ui.backend
 import gremlin.ui.option
+import gremlin.ui.osc_option  # noqa: F401
 import gremlin.ui.tools
 import gremlin.ui.util
 import gremlin.osc
@@ -186,9 +187,8 @@ def register_config_options() -> None:
     cfg.register(
         osc_sec, osc_grp, "host", PropertyType.Selection,
         gremlin.osc.default_bind_host(),
-        "Input IP Gremlin binds to. Pick this PC's LAN address, "
-        "127.0.0.1 for local only, or 0.0.0.0 for all interfaces.",
-        {"valid_options": osc_ips}, True,
+        "Input IP Gremlin binds to.",
+        {"valid_options": osc_ips}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "port", PropertyType.String, "8001",
@@ -196,8 +196,8 @@ def register_config_options() -> None:
     )
     cfg.register(
         osc_sec, osc_grp, "output-host", PropertyType.Selection, "127.0.0.1",
-        "Output IP for OSC feedback to Companion (EX Output IP).",
-        {"valid_options": osc_ips}, True,
+        "Output IP for OSC feedback to Companion.",
+        {"valid_options": osc_ips}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "output-port", PropertyType.String, "8000",
