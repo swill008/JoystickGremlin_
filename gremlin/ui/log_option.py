@@ -18,12 +18,13 @@ LOG_SECTION = "global"
 LOG_GROUP = "general"
 LOG_NAME = "log-level"
 
-LEVEL_NAMES = ("Off", "Info", "Warning", "Error")
+LEVEL_NAMES = ("Off", "ALL", "Info", "Warning", "Error")
 DEFAULT_LEVEL = "Warning"
 LOGGER_NAMES = ("system", "user", "event")
 
 _LEVEL_MAP = {
     "Off": logging.CRITICAL + 1,
+    "ALL": logging.DEBUG,
     "Info": logging.INFO,
     "Warning": logging.WARNING,
     "Error": logging.ERROR,
@@ -31,11 +32,12 @@ _LEVEL_MAP = {
 
 
 def normalize_level(value: object) -> str:
-    text = str(value or DEFAULT_LEVEL).strip().title()
+    raw = str(value or DEFAULT_LEVEL).strip()
+    if raw.lower() in ("debug", "all"):
+        return "ALL"
+    text = raw.title()
     if text == "Warn":
         text = "Warning"
-    if text == "Debug":
-        text = "Info"
     if text not in LEVEL_NAMES:
         return DEFAULT_LEVEL
     return text

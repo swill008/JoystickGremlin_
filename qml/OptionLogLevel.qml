@@ -11,7 +11,7 @@ Item {
     id: _root
 
     implicitHeight: _row.implicitHeight
-    implicitWidth: 360
+    implicitWidth: 420
 
     LogLevelModel {
         id: _model
@@ -24,7 +24,7 @@ Item {
         spacing: 6
 
         Repeater {
-            model: ["Off", "Info", "Warning", "Error"]
+            model: ["Off", "ALL", "Info", "Warning", "Error"]
 
             Button {
                 text: modelData
