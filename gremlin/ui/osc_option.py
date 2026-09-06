@@ -65,6 +65,28 @@ class OscAddressModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
         self.endResetModel()
         self.currentIndexChanged.emit()
 
+    def _normalize_host(self, host: str) -> str:
+        return str(host or "").strip()
+
+    def _commit_host(self, host: str) -> None:
+        host = self._normalize_host(host)
+        if not host:
+            return
+        current = self._normalize_host(
+            str(self._config.value(OSC_SECTION, OSC_GROUP, self.config_name) or "")
+        )
+        if host != current:
+            self._config.set(OSC_SECTION, OSC_GROUP, self.config_name, host)
+        if host not in self._addresses:
+            self.beginResetModel()
+            self._addresses = [host] + [item for item in self._addresses if item != host]
+            self.endResetModel()
+        self.currentIndexChanged.emit()
+
+    @QtCore.Slot(str)
+    def setHost(self, host: str) -> None:
+        self._commit_host(host)
+
     def _get_current_index(self) -> int:
         current = str(
             self._config.value(OSC_SECTION, OSC_GROUP, self.config_name) or ""
@@ -77,10 +99,7 @@ class OscAddressModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
     def _set_current_index(self, index: int) -> None:
         if not (0 <= index < len(self._addresses)):
             return
-        self._config.set(
-            OSC_SECTION, OSC_GROUP, self.config_name, self._addresses[index]
-        )
-        self.currentIndexChanged.emit()
+        self._commit_host(self._addresses[index])
 
     currentIndex = QtCore.Property(
         int,
@@ -141,14 +160,14 @@ MetaConfigOption().register(
     OSC_SECTION,
     OSC_GROUP,
     "input-host",
-    "Input IP Gremlin binds to. Refresh rescans this PC's addresses.",
+    "Input IP Gremlin binds to. Pick a scanned address or type one.",
     OscInputHostModel,
 )
 MetaConfigOption().register(
     OSC_SECTION,
     OSC_GROUP,
     "output-address",
-    "Output IP for OSC feedback to Companion.",
+    "Output IP for OSC feedback to Companion. Pick a scanned address or type one.",
     OscOutputHostModel,
 )
 MetaConfigOption().register(
