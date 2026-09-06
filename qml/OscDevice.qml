@@ -90,6 +90,16 @@ Item {
             }
         }
 
+        Connections {
+            target: _inputList.model
+
+            function onListenBound(index) {
+                _inputList.currentIndex = index
+                inputIndex = index
+                inputIdentifier = _inputList.model.inputIdentifier(index)
+            }
+        }
+
         RowLayout {
             Layout.minimumWidth: 100
             Layout.preferredHeight: 50
@@ -101,6 +111,20 @@ Item {
                 Layout.leftMargin: 5
 
                 model: ["Button", "Axis"]
+            }
+
+            Button {
+                Layout.preferredHeight: _input_type.height
+
+                text: _inputList.model.listening ? "Listening…" : "Listen"
+
+                onClicked: () => {
+                    if (_inputList.model.listening) {
+                        _inputList.model.cancelListen()
+                    } else {
+                        _inputList.model.listenForInput()
+                    }
+                }
             }
 
             Button {
