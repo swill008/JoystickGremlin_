@@ -304,6 +304,20 @@ class OscRuntime(QtCore.QObject):
         self.listenChanged.emit()
         log.info("OSC listen-once cancelled")
 
+    def _refresh_behavior(self) -> None:
+        from gremlin.config import Configuration
+
+        cfg = Configuration()
+        raw = osc_option(cfg, "pad-args")
+        if raw is not None:
+            self._pad_args = bool(raw)
+        raw = osc_option(cfg, "autorelease-no-arg")
+        if raw is not None:
+            self._autorelease = bool(raw)
+        raw = osc_option(cfg, "autorelease-delay")
+        if raw is not None:
+            self._autorelease_ms = parse_delay_ms(raw)
+
     def _read_options(self) -> tuple[bool, str, int]:
         from gremlin.config import Configuration
 
@@ -326,15 +340,7 @@ class OscRuntime(QtCore.QObject):
         raw = osc_option(cfg, "output-port")
         if raw is not None:
             self._output_port = parse_port(raw, DEFAULT_OUTPUT_PORT)
-        raw = osc_option(cfg, "pad-args")
-        if raw is not None:
-            self._pad_args = bool(raw)
-        raw = osc_option(cfg, "autorelease-no-arg")
-        if raw is not None:
-            self._autorelease = bool(raw)
-        raw = osc_option(cfg, "autorelease-delay")
-        if raw is not None:
-            self._autorelease_ms = parse_delay_ms(raw)
+        self._refresh_behavior()
         return enabled, host, port
 
     def start(self) -> None:
@@ -403,6 +409,7 @@ class OscRuntime(QtCore.QObject):
     def _on_main(self, address: str, args: object) -> None:
         from gremlin.mode_manager import ModeManager
 
+        self._refresh_behavior()
         payload = args if isinstance(args, tuple) else ()
         had_args = len(payload) > 0
         if self._learn:
