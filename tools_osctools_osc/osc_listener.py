@@ -1,15 +1,22 @@
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
+import pyvjoy
 
 HOST = "0.0.0.0"
 PORT = 9000
+VJOY_ID = 1
+BUTTON = 1
 
-def on_any(address, *args):
-    print(f"{address}  {args}")
+joy = pyvjoy.VJoyDevice(VJOY_ID)
+
+def on_streamdeck(address, *args):
+    pressed = bool(args and args[0])
+    joy.set_button(BUTTON, int(pressed))
+    print(f"{address} {args} -> vJoy{VJOY_ID} btn{BUTTON} {'DOWN' if pressed else 'UP'}")
 
 if __name__ == "__main__":
     disp = Dispatcher()
-    disp.set_default_handler(on_any)
-    print(f"OSC listener on {HOST}:{PORT}")
-    print("Leave this window open. Ctrl+C to stop.")
+    disp.map("/streamdeck/1", on_streamdeck)
+    print(f"OSC {HOST}:{PORT} -> vJoy {VJOY_ID} button {BUTTON}")
+    print("Gremlin profile OFF. Ctrl+C to stop.")
     BlockingOSCUDPServer((HOST, PORT), disp).serve_forever()
