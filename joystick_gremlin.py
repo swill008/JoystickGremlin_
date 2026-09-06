@@ -135,6 +135,7 @@ def shutdown_cleanup() -> None:
 
 def register_config_options() -> None:
     cfg = gremlin.config.Configuration()
+    osc_ips = gremlin.osc.local_ipv4_addresses()
 
     cfg.register(
         "global",
@@ -302,9 +303,9 @@ def register_config_options() -> None:
         "host",
         PropertyType.Selection,
         gremlin.osc.default_bind_host(),
-        "IP this PC listens on. Choose the LAN address Companion targets, "
+        "Input IP Gremlin binds to. Pick this PC's LAN address, "
         "127.0.0.1 for local only, or 0.0.0.0 for all interfaces.",
-        {"valid_options": gremlin.osc.local_ipv4_addresses()},
+        {"valid_options": osc_ips},
         True,
     )
     cfg.register(
@@ -312,8 +313,58 @@ def register_config_options() -> None:
         "osc",
         "port",
         PropertyType.String,
+        "8001",
+        "Input port Gremlin listens on. Must match Companion Target Port.",
+        {},
+        True,
+    )
+    cfg.register(
+        "global",
+        "osc",
+        "output-host",
+        PropertyType.Selection,
+        "127.0.0.1",
+        "Output IP for OSC feedback to Companion (EX Output IP).",
+        {"valid_options": osc_ips},
+        True,
+    )
+    cfg.register(
+        "global",
+        "osc",
+        "output-port",
+        PropertyType.String,
         "8000",
-        "UDP port Gremlin listens on. Must match Companion Target Port.",
+        "Output port for OSC feedback (EX Output port / Companion Source Port).",
+        {},
+        True,
+    )
+    cfg.register(
+        "global",
+        "osc",
+        "pad-args",
+        PropertyType.Bool,
+        False,
+        "Pad zero argument commands. Treat an address-only packet as value 1.0.",
+        {},
+        True,
+    )
+    cfg.register(
+        "global",
+        "osc",
+        "autorelease-no-arg",
+        PropertyType.Bool,
+        True,
+        "Autorelease on no arg messages. Press then release after the delay.",
+        {},
+        True,
+    )
+    cfg.register(
+        "global",
+        "osc",
+        "autorelease-delay",
+        PropertyType.String,
+        "250",
+        "Default Autorelease Delay in milliseconds (EX 1/10s=100, 1/4s=250).",
         {},
         True,
     )
