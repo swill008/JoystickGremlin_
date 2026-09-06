@@ -33,6 +33,7 @@ from gremlin import (
 from gremlin.base_classes import Value
 from gremlin.config import Configuration
 from gremlin.input_refresh import RefreshPhysicalInputs
+from gremlin.osc import OscRuntime
 from gremlin.types import (
     ActionProperty,
     AxisButtonDirection,
@@ -398,6 +399,7 @@ class CodeRunner:
             self._running = True
 
             sendinput.MouseController().start()
+            OscRuntime().start()
             self._refresh_axes()
         except ImportError as e:
             signal.display_error(
@@ -424,6 +426,7 @@ class CodeRunner:
         user_script.periodic_registry.clear()
 
         # Stop all manager classes.
+        OscRuntime().stop()
         macro.MacroManager().stop()
         sendinput.MouseController().stop()
         audio_player.AudioPlayer().stop()
