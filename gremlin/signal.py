@@ -34,6 +34,8 @@ class Signal(QtCore.QObject):
 
     logicalDeviceModified = QtCore.Signal()
 
+    oscDeviceModified = QtCore.Signal()
+
     configChanged = QtCore.Signal()
 
     showError = QtCore.Signal(str, str)
