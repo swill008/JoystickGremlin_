@@ -11,7 +11,7 @@ Item {
     id: _root
 
     implicitHeight: _row.implicitHeight
-    implicitWidth: 280
+    implicitWidth: 420
 
     OscInputHostModel {
         id: _model
@@ -52,6 +52,21 @@ Item {
             ToolTip.visible: hovered
             ToolTip.text: "Rescan this PC's IP addresses"
             onClicked: () => { _model.refresh() }
+        }
+
+        Label {
+            text: "Port"
+        }
+
+        TextField {
+            id: _port
+
+            Layout.preferredWidth: 72
+            text: _model.port
+            selectByMouse: true
+            inputMethodHints: Qt.ImhDigitsOnly
+            onEditingFinished: () => { _model.setPort(text) }
+            onAccepted: () => { _model.setPort(text) }
         }
     }
 }

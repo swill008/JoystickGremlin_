@@ -7,9 +7,12 @@ from PySide6 import QtCore
 
 from gremlin.config import Configuration
 from gremlin.osc import (
+    DEFAULT_OUTPUT_PORT,
+    DEFAULT_PORT,
     OSC_GROUP,
     OSC_SECTION,
     parse_delay_ms,
+    parse_port,
     local_ipv4_addresses,
 )
 from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
@@ -26,8 +29,11 @@ class OscAddressModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
     }
     currentIndexChanged = QtCore.Signal()
+    portChanged = QtCore.Signal()
 
     config_name = "host"
+    port_name = "port"
+    port_default = DEFAULT_PORT
     qml_file = "qml:OptionOscInputHost.qml"
 
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -101,11 +107,34 @@ class OscAddressModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
             return
         self._commit_host(self._addresses[index])
 
+    def _get_port(self) -> str:
+        raw = self._config.value(OSC_SECTION, OSC_GROUP, self.port_name)
+        return str(parse_port(raw, self.port_default))
+
+    def _set_port(self, value: str) -> None:
+        port = str(parse_port(value, self.port_default))
+        current = str(
+            self._config.value(OSC_SECTION, OSC_GROUP, self.port_name) or ""
+        ).strip()
+        if port != current:
+            self._config.set(OSC_SECTION, OSC_GROUP, self.port_name, port)
+        self.portChanged.emit()
+
+    @QtCore.Slot(str)
+    def setPort(self, value: str) -> None:
+        self._set_port(value)
+
     currentIndex = QtCore.Property(
         int,
         fget=_get_current_index,
         fset=_set_current_index,
         notify=currentIndexChanged,
+    )
+    port = QtCore.Property(
+        str,
+        fget=_get_port,
+        fset=_set_port,
+        notify=portChanged,
     )
 
     def _qml_path(self) -> str:
@@ -115,12 +144,16 @@ class OscAddressModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
 @ta.QmlElement
 class OscInputHostModel(OscAddressModel):
     config_name = "host"
+    port_name = "port"
+    port_default = 8001
     qml_file = "qml:OptionOscInputHost.qml"
 
 
 @ta.QmlElement
 class OscOutputHostModel(OscAddressModel):
     config_name = "output-host"
+    port_name = "output-port"
+    port_default = DEFAULT_OUTPUT_PORT
     qml_file = "qml:OptionOscOutputHost.qml"
 
 
@@ -160,14 +193,14 @@ MetaConfigOption().register(
     OSC_SECTION,
     OSC_GROUP,
     "input-host",
-    "Input IP Gremlin binds to. Pick a scanned address or type one.",
+    "Input IP and port Gremlin binds to. Pick a scanned address or type one.",
     OscInputHostModel,
 )
 MetaConfigOption().register(
     OSC_SECTION,
     OSC_GROUP,
     "output-address",
-    "Output IP for OSC feedback to Companion. Pick a scanned address or type one.",
+    "Output IP and port for OSC feedback to Companion.",
     OscOutputHostModel,
 )
 MetaConfigOption().register(
