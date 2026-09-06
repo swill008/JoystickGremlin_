@@ -35,6 +35,7 @@ from gremlin.input_cache import (
     Joystick,
     Keyboard,
 )
+from gremlin.osc import OSC_DEVICE_UUID
 from gremlin.types import (
     HatDirection,
     InputType,
@@ -98,6 +99,12 @@ class Event:
         Returns:
             Textual representation of the event's input
         """
+        if self.device_guid == OSC_DEVICE_UUID:
+            return (
+                "OSC - "
+                + common.input_to_ui_string(self.event_type, self.identifier)
+            )
+
         # Retrieve the device instance belonging to this event
         device = None
         for dev in device_initialization.joystick_devices():
