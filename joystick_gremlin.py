@@ -58,6 +58,7 @@ import gremlin.ui.tools
 import gremlin.ui.util
 import gremlin.osc
 import gremlin.ui.osc_device_model  # noqa: F401
+import gremlin.osc_persist  # noqa: F401
 
 
 def configure_logger(config: dict[str, Any]) -> None:
