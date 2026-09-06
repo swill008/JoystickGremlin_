@@ -22,7 +22,7 @@ OSC_DEVICE_GUID = "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
 OSC_DEVICE_UUID = uuid.UUID(OSC_DEVICE_GUID)
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 9000
+DEFAULT_PORT = 8000
 
 MessageCallback = Callable[[str, tuple[Any, ...]], None]
 
@@ -45,6 +45,17 @@ def axis_value(args: tuple[Any, ...]) -> float:
     except (TypeError, ValueError):
         return 0.0
     return max(-1.0, min(1.0, value))
+
+
+def parse_port(value: Any) -> int:
+    text = str(value or "").replace(",", "").strip()
+    try:
+        port = int(text)
+    except ValueError:
+        return DEFAULT_PORT
+    if 1 <= port <= 65535:
+        return port
+    return DEFAULT_PORT
 
 
 class OscDevice(metaclass=SingletonMetaclass):
@@ -211,9 +222,9 @@ class OscRuntime(QtCore.QObject):
         if cfg.exists("global", "osc", "enabled"):
             enabled = bool(cfg.value("global", "osc", "enabled"))
         if cfg.exists("global", "osc", "host"):
-            host = str(cfg.value("global", "osc", "host") or DEFAULT_HOST)
+            host = str(cfg.value("global", "osc", "host") or DEFAULT_HOST).strip()
         if cfg.exists("global", "osc", "port"):
-            port = int(cfg.value("global", "osc", "port") or DEFAULT_PORT)
+            port = parse_port(cfg.value("global", "osc", "port"))
         if not enabled:
             log.info("OSC listener disabled in options")
             return
