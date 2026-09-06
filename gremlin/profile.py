@@ -79,3 +79,20 @@ class AbstractVirtualButton(metaclass=ABCMeta):
             XML node containing the instance's data
         """
         pass
+
+
+class VirtualAxisButton(AbstractVirtualButton):
+    """Virtual button which turns an axis range into a button."""
+
+    def __init__(self, lower_limit: float = -0.1, upper_limit: float = 0.1) -> None:
+        """Creates a new instance.
+
+        Args:
+            lower_limit: the lower limit of the virtual button
+            upper_limit: the upper limit of the virtual button
+        """
+        super().__init__()
+
+        self.lower_limit = lower_limit
+        self.upper_limit = upper_limit
+        self.direction = AxisButtonDirection.Anywhere
