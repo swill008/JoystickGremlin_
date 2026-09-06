@@ -3,14 +3,14 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.error import GremlinError
-from gremlin.osc import OSC_DEVICE_UUID, OscDevice
+from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime, guess_input_type
 from gremlin.profile import InputItem
 from gremlin.signal import signal
 from gremlin.types import InputType
@@ -53,6 +53,9 @@ class OscInputIdentifier(InputIdentifier):
 class OscDeviceManagementModel(QtCore.QAbstractListModel):
     """Model for the OSC virtual input device tab."""
 
+    listenChanged = QtCore.Signal()
+    listenBound = QtCore.Signal(int)
+
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"label"),
@@ -70,6 +73,9 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         super().__init__(parent)
         self._osc = OscDevice()
         self._mode: str = "Default"
+        runtime = OscRuntime()
+        runtime.learned.connect(self._on_learned)
+        runtime.listenChanged.connect(self.listenChanged)
         signal.profileChanged.connect(self._profile_changed_cb)
         signal.inputItemChanged.connect(self.refreshInput)
         signal.oscDeviceModified.connect(self._full_refresh)
@@ -83,6 +89,35 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
             self.createIndex(0, 0), self.createIndex(self.rowCount(), 0)
         )
         signal.oscDeviceModified.emit()
+
+    @QtCore.Slot()
+    def listenForInput(self) -> None:
+        OscRuntime().listen_once()
+
+    @QtCore.Slot()
+    def cancelListen(self) -> None:
+        OscRuntime().cancel_listen()
+
+    def _on_learned(self, address: str, args: object) -> None:
+        payload = args if isinstance(args, tuple) else ()
+        existing = self._osc.find_address(address)
+        if existing is None:
+            self.beginInsertRows(QtCore.QModelIndex(), self.rowCount(), self.rowCount())
+            self._osc.create(guess_input_type(payload), label=address)
+            self.endInsertRows()
+            signal.oscDeviceModified.emit()
+        try:
+            index = self._label_to_index(address)
+        except ValueError:
+            index = self.rowCount() - 1
+        self.listenBound.emit(index)
+        signal.showNotification.emit(
+            f"Bound OSC input {address}",
+            "Map it to vJoy on the right, then activate the profile.",
+        )
+
+    def _get_listening(self) -> bool:
+        return OscRuntime().is_listening()
 
     @QtCore.Slot(str, str)
     def changeName(self, old_label: str, new_label: str) -> None:
@@ -182,9 +217,10 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         return self._osc[self._osc.labels_of_type()[index]]
 
     def _label_to_index(self, label: str) -> int:
-        return self._osc.labels_of_type().index(label)
+        return self._osc.labels_of_type().index(label.casefold())
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
 
     guid = QtCore.Property(str, fget=_get_guid)
+    listening = QtCore.Property(bool, fget=_get_listening, notify=listenChanged)
