@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+import socket
 import threading
 import uuid
 from collections.abc import Callable
@@ -25,6 +26,37 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 
 MessageCallback = Callable[[str, tuple[Any, ...]], None]
+
+
+def local_ipv4_addresses() -> list[str]:
+    """This machine's IPv4 addresses, plus loopback and all-interfaces."""
+    found: list[str] = []
+
+    def add(ip: str) -> None:
+        if ip and ip not in found:
+            found.append(ip)
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            add(sock.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            add(info[4][0])
+    except OSError:
+        pass
+    add("127.0.0.1")
+    add("0.0.0.0")
+    return found
+
+
+def default_bind_host() -> str:
+    for ip in local_ipv4_addresses():
+        if ip not in ("127.0.0.1", "0.0.0.0"):
+            return ip
+    return DEFAULT_HOST
 
 
 def is_pressed(args: tuple[Any, ...]) -> bool:
@@ -260,12 +292,12 @@ class OscRuntime(QtCore.QObject):
 
         cfg = Configuration()
         enabled = True
-        host = DEFAULT_HOST
+        host = default_bind_host()
         port = DEFAULT_PORT
         if cfg.exists("global", "osc", "enabled"):
             enabled = bool(cfg.value("global", "osc", "enabled"))
         if cfg.exists("global", "osc", "host"):
-            host = str(cfg.value("global", "osc", "host") or DEFAULT_HOST).strip()
+            host = str(cfg.value("global", "osc", "host") or host).strip()
         if cfg.exists("global", "osc", "port"):
             port = parse_port(cfg.value("global", "osc", "port"))
         if not enabled:
