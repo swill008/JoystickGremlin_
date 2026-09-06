@@ -130,9 +130,22 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         except GremlinError:
             pass
 
+    def _drop_profile_mappings(self, input_type: InputType, input_id: int) -> None:
+        profile = shared_state.current_profile
+        if profile is None:
+            return
+        items = profile.inputs.get(OSC_DEVICE_UUID, [])
+        profile.inputs[OSC_DEVICE_UUID] = [
+            item
+            for item in items
+            if not (item.input_type == input_type and item.input_id == input_id)
+        ]
+
     @QtCore.Slot(str)
     def deleteInput(self, label: str) -> None:
         item_index = self._label_to_index(label)
+        doomed = self._osc[label]
+        self._drop_profile_mappings(doomed.type, doomed.id)
         self.beginRemoveRows(QtCore.QModelIndex(), item_index, item_index)
         self._osc.delete(label)
         self.endRemoveRows()
