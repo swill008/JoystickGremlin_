@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: GPL-3.0-only
-"""OSC virtual device + UDP listener for Path B.
-
-Does not write vJoy. Inputs are buttons/axes keyed by OSC address.
-"""
+"""OSC virtual device, UDP listener, and event inject for Path B."""
 
 from __future__ import annotations
 
@@ -12,6 +9,8 @@ import threading
 import uuid
 from collections.abc import Callable
 from typing import Any
+
+from PySide6 import QtCore
 
 from gremlin.common import SingletonMetaclass
 from gremlin.error import GremlinError
@@ -29,7 +28,6 @@ MessageCallback = Callable[[str, tuple[Any, ...]], None]
 
 
 def is_pressed(args: tuple[Any, ...]) -> bool:
-    """EX button rule: first numeric arg != 0 is press."""
     if not args:
         return True
     value = args[0]
@@ -43,9 +41,10 @@ def axis_value(args: tuple[Any, ...]) -> float:
     if not args:
         return 0.0
     try:
-        return float(args[0])
+        value = float(args[0])
     except (TypeError, ValueError):
         return 0.0
+    return max(-1.0, min(1.0, value))
 
 
 class OscDevice(metaclass=SingletonMetaclass):
@@ -86,12 +85,12 @@ class OscDevice(metaclass=SingletonMetaclass):
         if label is None:
             prefix = "/osc/axis" if input_type == InputType.JoystickAxis else "/osc/button"
             label = f"{prefix}/{input_id}"
-        label = label.casefold()
+        label = str(label).casefold()
         if label in self._inputs:
             raise GremlinError(f"OSC address '{label}' already exists")
-        item = OscDevice.Input(label, input_id, input_type)
+        item = OscDevice.Input(label, int(input_id), input_type)
         self._inputs[label] = item
-        self._by_id[(input_type, input_id)] = label
+        self._by_id[(input_type, int(input_id))] = label
         return item
 
     def set_label(self, old_label: str, new_label: str) -> None:
@@ -116,12 +115,11 @@ class OscDevice(metaclass=SingletonMetaclass):
     def labels_of_type(self, type_list: list[InputType] | None = None) -> list[str]:
         if not type_list:
             type_list = [InputType.JoystickAxis, InputType.JoystickButton]
-        labels = [
+        return [
             item.label
             for item in sorted(self._inputs.values(), key=lambda x: (x.type.name, x.id))
             if item.type in type_list
         ]
-        return labels
 
     def find_address(self, address: str) -> OscDevice.Input | None:
         return self._inputs.get((address or "").casefold())
@@ -151,13 +149,8 @@ class OscListener:
     def start(self) -> None:
         if self._server is not None:
             return
-        try:
-            from pythonosc.dispatcher import Dispatcher
-            from pythonosc.osc_server import ThreadingOSCUDPServer
-        except ImportError as exc:
-            raise RuntimeError(
-                "python-osc is required. pip install python-osc"
-            ) from exc
+        from pythonosc.dispatcher import Dispatcher
+        from pythonosc.osc_server import ThreadingOSCUDPServer
 
         dispatcher = Dispatcher()
         dispatcher.set_default_handler(self._on_message)
@@ -185,3 +178,92 @@ class OscListener:
             return
         if self.callback is not None:
             self.callback(address, args)
+
+
+class OscRuntime(QtCore.QObject, metaclass=SingletonMetaclass):
+    """Starts the OSC listener while a profile is active and injects Events."""
+
+    incoming = QtCore.Signal(str, object)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._listener: OscListener | None = None
+        self.incoming.connect(self._on_main)
+
+    def start(self) -> None:
+        self.stop()
+        from gremlin.config import Configuration
+        from gremlin.signal import signal as ui_signal
+
+        cfg = Configuration()
+        enabled = True
+        host = DEFAULT_HOST
+        port = DEFAULT_PORT
+        if cfg.exists("global", "osc", "enabled"):
+            enabled = bool(cfg.value("global", "osc", "enabled"))
+        if cfg.exists("global", "osc", "host"):
+            host = str(cfg.value("global", "osc", "host") or DEFAULT_HOST)
+        if cfg.exists("global", "osc", "port"):
+            port = int(cfg.value("global", "osc", "port") or DEFAULT_PORT)
+        if not enabled:
+            log.info("OSC listener disabled in options")
+            return
+        try:
+            self._listener = OscListener(host, port, self._from_thread)
+            self._listener.start()
+        except ImportError:
+            ui_signal.showError.emit(
+                "OSC requires python-osc.",
+                "In the repo folder run: poetry add python-osc",
+            )
+            self._listener = None
+        except OSError as exc:
+            ui_signal.showError.emit(
+                f"Could not bind OSC on {host}:{port}.",
+                str(exc),
+            )
+            self._listener = None
+
+    def stop(self) -> None:
+        if self._listener is None:
+            return
+        self._listener.stop()
+        self._listener = None
+
+    def _from_thread(self, address: str, args: tuple[Any, ...]) -> None:
+        self.incoming.emit(address, args)
+
+    def _on_main(self, address: str, args: object) -> None:
+        from gremlin.event_handler import Event, EventListener
+        from gremlin.mode_manager import ModeManager
+
+        item = OscDevice().find_address(address)
+        if item is None:
+            return
+        payload = args if isinstance(args, tuple) else ()
+        mode = ModeManager().current.name
+        if item.type == InputType.JoystickButton:
+            pressed = is_pressed(payload)
+            item.value = pressed
+            EventListener().joystick_event.emit(
+                Event(
+                    event_type=InputType.JoystickButton,
+                    identifier=item.id,
+                    device_guid=OSC_DEVICE_UUID,
+                    mode=mode,
+                    is_pressed=pressed,
+                )
+            )
+        elif item.type == InputType.JoystickAxis:
+            value = axis_value(payload)
+            item.value = value
+            EventListener().joystick_event.emit(
+                Event(
+                    event_type=InputType.JoystickAxis,
+                    identifier=item.id,
+                    device_guid=OSC_DEVICE_UUID,
+                    mode=mode,
+                    value=value,
+                    raw_value=value,
+                )
+            )
