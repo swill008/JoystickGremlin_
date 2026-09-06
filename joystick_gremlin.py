@@ -300,10 +300,11 @@ def register_config_options() -> None:
         "global",
         "osc",
         "host",
-        PropertyType.String,
-        "127.0.0.1",
-        "IP address the OSC listener binds to. Use 0.0.0.0 to accept LAN packets.",
-        {},
+        PropertyType.Selection,
+        gremlin.osc.default_bind_host(),
+        "IP this PC listens on. Choose the LAN address Companion targets, "
+        "127.0.0.1 for local only, or 0.0.0.0 for all interfaces.",
+        {"valid_options": gremlin.osc.local_ipv4_addresses()},
         True,
     )
     cfg.register(
