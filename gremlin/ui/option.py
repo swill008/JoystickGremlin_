@@ -27,6 +27,13 @@ from gremlin.types import PropertyType
 QML_IMPORT_NAME = "Gremlin.Config"
 QML_IMPORT_MAJOR_VERSION = 1
 
+SECTION_DISPLAY_NAMES = {
+    "global": "Global",
+    "action": "Action",
+    "profile": "Profile",
+    "osc": "OSC Connection",
+}
+
 
 @ta.QmlElement
 class ConfigSectionModel(QtCore.QAbstractListModel):
@@ -58,7 +65,8 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
 
         match cast(str, self.roles[role]):
             case "name":
-                return sections[index.row()]
+                raw = sections[index.row()]
+                return SECTION_DISPLAY_NAMES.get(raw, raw)
             case "groupModel":
                 return ConfigGroupModel(sections[index.row()])
 
@@ -72,6 +80,10 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
                     return 0
                 case "action":
                     return 1
+                case "profile":
+                    return 2
+                case "osc":
+                    return 3
                 case _:
                     return 99
 
@@ -174,11 +186,9 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
             if role_name == "name":
                 name = re.sub(r"^[0-9]+-", "", name)
                 return re.sub(r"[_-]+", " ", name).capitalize()
-            # Separate handling of config and meta option entries.
             if self._config.exists(self._section_name, self._group_name, name):
                 key = [self._section_name, self._group_name, entries[index.row()]]
                 value = self._config.get(*key, role_name)
-                # Convert path values to strings.
                 if role_name == "value":
                     if self._config.data_type(*key) == PropertyType.Path:
                         value = str(value)
@@ -222,7 +232,6 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
 
             self._config.set(*key, value)
             self.dataChanged.emit(index, index, {role})
-            # Enable other UI elements to react to configuration changes.
             signal.configChanged.emit()
             return True
         return False
@@ -464,11 +473,6 @@ class MetaConfigOption(metaclass=SingletonMetaclass):
         self._options = {}
 
     def count(self) -> int:
-        """Returns the number of registered options.
-
-        Returns:
-            Number of registered options.
-        """
         return len(self._options)
 
     def register(
@@ -479,20 +483,6 @@ class MetaConfigOption(metaclass=SingletonMetaclass):
         description: str,
         qml_widget: type[BaseMetaConfigOptionWidget],
     ) -> None:
-        """Registers an option that does not directly contain a value.
-
-        This allows register option items of a more complex nature that have a
-        dedicated QML UI widget to them which handles the UI configuring the
-        content and also the logic to persist the data to the Configuration
-        class.
-
-        Args:
-            section: overall section this option is associated with
-            group: grouping into which the option belongs
-            name: name by which the new option is shown
-            description: description of the parameter's purpose
-            qml_widget: QML widget class to use for this option
-        """
         key = (section, group, name)
         if key in self._options:
             logging.getLogger("system").warning(
@@ -503,36 +493,14 @@ class MetaConfigOption(metaclass=SingletonMetaclass):
         self._options[key] = {"description": description, "qml_widget": qml_widget}
 
     def sections(self) -> list[str]:
-        """Returns the list of sections for which options have been registered.
-
-        Returns:
-            List of section names.
-        """
         return list(set(section for section, _, _ in self._options.keys()))
 
     def groups(self, section: str) -> list[str]:
-        """Returns the groups associated with the given section.
-
-        Args:
-            section: name of the section for which to find groups
-
-        Returns:
-            List of group names.
-        """
         return list(
             set(group for sec, group, _ in self._options.keys() if sec == section)
         )
 
     def entries(self, section: str, group: str) -> list[str]:
-        """Returns the entries associated with the given section and group.
-
-        Args:
-            section: name of the section for which to find entries
-            group: name of the group for which to find entries
-
-        Returns:
-            List of entry names.
-        """
         return list(
             name
             for sec, grp, name in self._options.keys()
@@ -542,48 +510,17 @@ class MetaConfigOption(metaclass=SingletonMetaclass):
     def qml_widget(
         self, section: str, group: str, name: str
     ) -> type[BaseMetaConfigOptionWidget]:
-        """Returns the QML widget class associated with the given option.
-
-        Args:
-            section: name of the section for which to find the option
-            group: name of the group for which to find the option
-            name: name of the option
-
-        Returns:
-            Class type of the QML widget to be used.
-        """
         return cast(
             type[BaseMetaConfigOptionWidget],
             self._retrieve_value(section, group, name, "qml_widget"),
         )
 
     def description(self, section: str, group: str, name: str) -> str | None:
-        """Returns the description associated with the given option.
-
-        Args:
-            section: name of the section for which to find the option
-            group: name of the group for which to find the option
-            name: name of the option
-
-        Returns:
-            Description string or None if not found.
-        """
         return cast(str, self._retrieve_value(section, group, name, "description"))
 
     def _retrieve_value(
         self, section: str, group: str, name: str, entry: str
     ) -> str | type[BaseMetaConfigOptionWidget]:
-        """Retrieves an entry from storage.
-
-        Args:
-            section: name of the section
-            group: name of the group
-            name: name of the option
-            entry: which entry to retrieve
-
-        Returns:
-            Value of the requested entry.
-        """
         key = (section, group, name)
         if key not in self._options:
             raise GremlinError(f"No option with key {key} exists.")
