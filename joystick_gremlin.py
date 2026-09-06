@@ -128,9 +128,11 @@ def register_config_options() -> None:
         gremlin.util.get_code_version(), "Last known version of Gremlin.", {},
     )
     cfg.register(
-        "global", "general", "check-for-updates", PropertyType.Bool, True,
+        "global", "general", "check-for-updates", PropertyType.Bool, False,
         "Check for new Gremlin versions online upon start.", {}, True,
     )
+    if cfg.exists("global", "general", "check-for-updates"):
+        cfg.set("global", "general", "check-for-updates", False)
     cfg.register(
         "global", "general", "plugin-directory", PropertyType.Path, "",
         "Directory containing additional action plugins", {"is_folder": True}, True,
