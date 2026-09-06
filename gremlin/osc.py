@@ -124,6 +124,14 @@ class OscDevice(metaclass=SingletonMetaclass):
     def find_address(self, address: str) -> OscDevice.Input | None:
         return self._inputs.get((address or "").casefold())
 
+    def find_by_id(
+        self, input_type: InputType, input_id: int
+    ) -> OscDevice.Input | None:
+        label = self._by_id.get((input_type, int(input_id)))
+        if label is None:
+            return None
+        return self._inputs.get(label)
+
     def __getitem__(self, label: str) -> OscDevice.Input:
         label = label.casefold()
         if label not in self._inputs:
@@ -239,7 +247,9 @@ class OscRuntime(QtCore.QObject, metaclass=SingletonMetaclass):
 
         item = OscDevice().find_address(address)
         if item is None:
+            log.debug("OSC ignored unmatched address %s %s", address, args)
             return
+        log.debug("OSC %s %s -> %s %s", address, args, item.type.name, item.id)
         payload = args if isinstance(args, tuple) else ()
         mode = ModeManager().current.name
         if item.type == InputType.JoystickButton:
