@@ -1,17 +1,25 @@
-# OSC sidecar (R15)
+# OSC tools (Path B)
 
-Path B is locked. See [PATH_B.md](PATH_B.md).
+The sidecar is retired. Joystick Gremlin listens in-process.
 
-This folder is the temporary sidecar until the OSC tab exists in R15.
-The in-process listener lives at `gremlin/osc.py` (does **not** write vJoy).
+- Tab: **OSC** next to Logical Device
+- Listener: `gremlin/osc.py` (`OscRuntime`) binds UDP while a profile is **active**
+- Default bind: `127.0.0.1:9000` (Options → Global → Osc)
+- Incoming `/streamdeck/1` matches an OSC input with that address and fires the mapped actions (Map to vJoy, etc.)
+- This process does **not** write vJoy itself
 
-## Sidecar (still needed until the tab ships)
+## Companion
 
-- UDP OSC listen on **9000**
-- `/streamdeck/1` with `1` / `0` presses vJoy device **1** button **1**
-- Installed R15 profile must be **off** while `osc_listener.py` holds vJoy 1
+Send OSC to `127.0.0.1:9000` with address `/streamdeck/1` and value `1` / `0`.
+
+## Packet test without a Stream Deck
+
+With Gremlin running from source and the profile **active**:
 
 ```
-python -m pip install python-osc pyvjoy
-python osc_listener.py
+poetry run python tools_osc/osc_send_test.py
 ```
+
+That sends `/streamdeck/1` 1 then 0. If that input is mapped to vJoy, the button should press and release.
+
+Do not run `osc_listener.py` at the same time as Gremlin — both want port 9000, and the old sidecar stole vJoy.

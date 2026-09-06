@@ -1,34 +1,17 @@
-"""OSC sidecar for Joystick Gremlin R15.
+"""Retired sidecar.
 
-Listens on UDP 9000 (Companion/EX often occupy 8000/8001).
-Maps /streamdeck/1 value 1/0 to vJoy device 1 button 1.
+Path B listens inside Joystick Gremlin (`gremlin.osc.OscRuntime`) on the
+configured host/port (default 127.0.0.1:9000) while a profile is active.
 
-Run with the installed R15 profile OFF so this process can acquire vJoy.
+This file used to write vJoy directly. Do not run it alongside Gremlin:
+it will fight for port 9000 and steal vJoy device 1.
+
+To send a test packet instead:
+
+    poetry run python tools_osc/osc_send_test.py
 """
-from pythonosc.dispatcher import Dispatcher
-from pythonosc.osc_server import BlockingOSCUDPServer
-import pyvjoy
 
-HOST = "0.0.0.0"
-PORT = 9000
-VJOY_ID = 1
-BUTTON = 1
-
-joy = pyvjoy.VJoyDevice(VJOY_ID)
-
-
-def on_streamdeck(address, *args):
-    pressed = bool(args and args[0])
-    joy.set_button(BUTTON, int(pressed))
-    print(
-        f"{address} {args} -> vJoy{VJOY_ID} btn{BUTTON} "
-        f"{'DOWN' if pressed else 'UP'}"
-    )
-
-
-if __name__ == "__main__":
-    disp = Dispatcher()
-    disp.map("/streamdeck/1", on_streamdeck)
-    print(f"OSC {HOST}:{PORT} -> vJoy {VJOY_ID} button {BUTTON}")
-    print("Gremlin profile OFF. Ctrl+C to stop.")
-    BlockingOSCUDPServer((HOST, PORT), disp).serve_forever()
+raise SystemExit(
+    "Sidecar retired. Activate a Gremlin profile to listen on UDP 9000, "
+    "or run tools_osc/osc_send_test.py to send a /streamdeck/1 pulse."
+)

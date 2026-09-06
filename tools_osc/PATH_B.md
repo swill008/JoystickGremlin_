@@ -14,33 +14,26 @@ New tab **OSC** next to **Logical Device**. Left list is user-defined OSC addres
 
 OSC is an **input device**. vJoy stays an **output action**. That is how EX works.
 
-## EX runtime (what we copy)
+## Runtime
 
 ```
-UDP packet  → OscInterface  → match address  → Event as Button or Axis
+UDP packet  → OscListener  → OscRuntime  → match address  → Event as Button or Axis
         → profile actions  → vJoy
 ```
 
 Button: first numeric arg != 0 = press, 0 = release.
 Axis: first numeric arg is the axis value.
 
-## R15 hooks we reuse
+Listener starts in `CodeRunner.start()` and stops in `CodeRunner.stop()`.
+Addresses persist in the profile as `<osc-device>` / `<input>`.
 
-| R15 piece | Role for OSC |
-|---|---|
-| `qml/DeviceList.qml` | Add OSC tab like Keyboard / Logical Device |
-| `qml/LogicalDevice.qml` | Template for left list + Add |
-| `qml/Main.qml` | `currentTab === "osc"` shows OSC list; right pane already generic |
-| `gremlin/logical_device.py` | Pattern for a fake device with a fixed GUID |
-| existing Map to vJoy action | Output. Do not write vJoy inside the OSC listener |
+## Slices
 
-## Build slices
-
-1. **This folder** — sidecar + `gremlin/osc.py` listener (in-process ready).
-2. **OSC device model** — GUID, address list, Button/Axis mode, profile XML.
-3. **QML tab** — DeviceList + OscDevice.qml cloned from LogicalDevice.
-4. **Event inject** — incoming OSC → R15 Event as joystick button/axis.
-5. **Options** — enable, bind IP, port (default 9000).
-6. Retire sidecar `osc_listener.py` writing vJoy directly.
+1. Listener module — done (`gremlin/osc.py`)
+2. OSC device model + profile XML — done
+3. QML tab — done
+4. Event inject — done
+5. Options (enable / host / port) — done
+6. Sidecar retired — done
 
 Do not paste `gremlin/ui/osc_device.py` from EX. Different UI toolkit and event types.
