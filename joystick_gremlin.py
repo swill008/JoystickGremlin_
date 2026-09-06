@@ -216,8 +216,8 @@ def register_config_options() -> None:
     )
     cfg.register(
         osc_sec, osc_grp, "autorelease-delay", PropertyType.String, "250",
-        "Default Autorelease Delay in milliseconds (EX 1/10s=100, 1/4s=250).",
-        {}, True,
+        "Default Autorelease Delay in milliseconds.",
+        {}, False,
     )
     for name in (
         "enabled", "host", "port", "output-host", "output-port",
