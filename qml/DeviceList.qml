@@ -98,5 +98,25 @@ Item {
                 text: _logicalButton.text
             }
         }
+
+        JGTabButton {
+            id: _oscButton
+
+            text: "OSC"
+            width: _metricOsc.width + 50
+            checked: uiState.currentTab === "osc"
+
+            onClicked: () => {
+                uiState.setCurrentTab("osc")
+                uiState.setCurrentDevice("a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70")
+            }
+
+            TextMetrics {
+                id: _metricOsc
+
+                font: _oscButton.font
+                text: _oscButton.text
+            }
+        }
     }
 }
