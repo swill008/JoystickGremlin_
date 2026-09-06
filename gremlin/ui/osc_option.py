@@ -6,7 +6,12 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 from gremlin.config import Configuration
-from gremlin.osc import OSC_GROUP, OSC_SECTION, local_ipv4_addresses
+from gremlin.osc import (
+    OSC_GROUP,
+    OSC_SECTION,
+    parse_delay_ms,
+    local_ipv4_addresses,
+)
 from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
 import gremlin.ui.type_aliases as ta
 
@@ -91,6 +96,38 @@ class OscOutputHostModel(OscAddressModel):
     qml_file = "qml:OptionOscOutputHost.qml"
 
 
+@ta.QmlElement
+class OscAutoreleaseModel(QtCore.QObject, BaseMetaConfigOptionWidget):
+    """Autorelease delay in ms with EX preset buttons."""
+
+    delayChanged = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        QtCore.QObject.__init__(self, parent)
+        BaseMetaConfigOptionWidget.__init__(self)
+        self._config = Configuration()
+
+    def _get_delay(self) -> str:
+        raw = self._config.value(OSC_SECTION, OSC_GROUP, "autorelease-delay")
+        return str(parse_delay_ms(raw))
+
+    def _set_delay(self, value: str) -> None:
+        delay = parse_delay_ms(value)
+        self._config.set(OSC_SECTION, OSC_GROUP, "autorelease-delay", str(delay))
+        self.delayChanged.emit()
+
+    @QtCore.Slot(int)
+    def setPreset(self, milliseconds: int) -> None:
+        self._set_delay(str(milliseconds))
+
+    delayMs = QtCore.Property(
+        str, fget=_get_delay, fset=_set_delay, notify=delayChanged
+    )
+
+    def _qml_path(self) -> str:
+        return "file:///" + QtCore.QFile("qml:OptionOscAutorelease.qml").fileName()
+
+
 MetaConfigOption().register(
     OSC_SECTION,
     OSC_GROUP,
@@ -104,4 +141,11 @@ MetaConfigOption().register(
     "output-address",
     "Output IP for OSC feedback to Companion. Refresh rescans addresses.",
     OscOutputHostModel,
+)
+MetaConfigOption().register(
+    OSC_SECTION,
+    OSC_GROUP,
+    "delay-presets",
+    "Default Autorelease Delay. Presets match EX: 1/10s, 1/4s, 1/2s, 3/4s, 1s.",
+    OscAutoreleaseModel,
 )
