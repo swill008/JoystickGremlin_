@@ -34,6 +34,9 @@ class OscInputIdentifier(InputIdentifier):
     def label(self) -> str:
         if not self.isValid:
             return "No input"
+        item = OscDevice().find_by_id(self.input_type, int(self.input_id))
+        if item is not None:
+            return f"OSC - {item.label}"
         return (
             f"OSC - {InputType.to_string(self.input_type).capitalize()} "
             f"{self.input_id}"

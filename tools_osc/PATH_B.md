@@ -34,6 +34,4 @@ Addresses persist in the profile as `<osc-device>` / `<input>`.
 3. QML tab — done
 4. Event inject — done
 5. Options (enable / host / port) — done
-6. Sidecar retired — done
-
-Do not paste `gremlin/ui/osc_device.py` from EX. Different UI toolkit and event types.
+6. Sidecar retired for in-app use — `tools_osc/osc_listener.py` remains as a standalone tester only

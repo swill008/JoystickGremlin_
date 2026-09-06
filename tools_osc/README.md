@@ -1,25 +1,34 @@
-# OSC tools (Path B)
+# Path B OSC (Stream Deck via Companion)
 
-The sidecar is retired. Joystick Gremlin listens in-process.
+This folder is the standalone tester used before the in-app tab existed.
 
-- Tab: **OSC** next to Logical Device
-- Listener: `gremlin/osc.py` (`OscRuntime`) binds UDP while a profile is **active**
-- Default bind: `127.0.0.1:9000` (Options → Global → Osc)
-- Incoming `/streamdeck/1` matches an OSC input with that address and fires the mapped actions (Map to vJoy, etc.)
-- This process does **not** write vJoy itself
+For daily use, run Joystick Gremlin **from this clone / this branch**, not the installed R15 exe.
 
-## Companion
+## Run Gremlin from source
 
-Send OSC to `127.0.0.1:9000` with address `/streamdeck/1` and value `1` / `0`.
-
-## Packet test without a Stream Deck
-
-With Gremlin running from source and the profile **active**:
+In the repo root (not this folder):
 
 ```
-poetry run python tools_osc/osc_send_test.py
+python -m pip install python-osc
+python joystick_gremlin.py
 ```
 
-That sends `/streamdeck/1` 1 then 0. If that input is mapped to vJoy, the button should press and release.
+You should see an **OSC** tab next to **Logical Device**.
 
-Do not run `osc_listener.py` at the same time as Gremlin — both want port 9000, and the old sidecar stole vJoy.
+## Map a Stream Deck key
+
+1. OSC tab → type Button → Add.
+2. Rename the new input to the Companion address, e.g. `/streamdeck/1`.
+3. On the right, add **Map to vJoy** the same way you would for a joystick button.
+4. Tools → Options → osc: host `127.0.0.1`, port `9000`, enabled on.
+5. Activate the profile (power icon). Companion must send to `127.0.0.1:9000`.
+6. Keep Gremlin profile ON. Do not also run `osc_listener.py` on port 9000 at the same time.
+
+## Standalone tester (profile OFF)
+
+```
+python osc_listener.py
+python osc_send_test.py
+```
+
+That path talks to vJoy directly and will fight Gremlin if both own the same vJoy device.
