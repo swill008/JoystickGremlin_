@@ -79,7 +79,7 @@ def configure_logger(config: dict[str, Any]) -> None:
     if config["mode"] != "session":
         logger.debug("-" * 80)
         logger.debug(time.strftime("%Y-%m-%d %H:%M"))
-        logger.debug(f"Starting Joystick Gremlin {gremlin.util.get_code_release()}")
+        logger.debug(f"Starting Joystick Gremlin {gremlin.util.get_code_release()}-OSC")
         logger.debug("-" * 80)
 
 
@@ -379,7 +379,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
         self.setWindowIcon(QtGui.QIcon(gremlin.util.resource_path("gfx/icon.png")))
         self.setApplicationDisplayName(
-            f"Joystick Gremlin {gremlin.util.get_code_release()}"
+            f"Joystick Gremlin {gremlin.util.get_code_release()}-OSC"
         )
         self.setOrganizationName("H2IK")
         self.setOrganizationDomain("https://whitemagic.github.io/JoystickGremlin/")
