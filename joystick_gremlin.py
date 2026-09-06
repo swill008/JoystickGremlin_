@@ -201,7 +201,7 @@ def register_config_options() -> None:
     )
     cfg.register(
         osc_sec, osc_grp, "output-port", PropertyType.String, "8000",
-        "Output port for OSC feedback (EX Output port / Companion Source Port).",
+        "Output port for OSC feedback.",
         {}, True,
     )
     cfg.register(
