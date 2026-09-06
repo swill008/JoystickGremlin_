@@ -334,24 +334,6 @@ ApplicationWindow {
                     text: qsTr("Select mode to edit")
                     delay: 500
                 }
-
-                // TODO: Complete this to have modes show hierarchy information
-                // delegate: ItemDelegate {
-                //     required property var model
-                //     required property int index
-                //     required property string name
-                //     required property int depth
-                //
-                //     width: _modeSelector.width
-                //     contentItem: JGText {
-                //         text: "  ".repeat(depth) + name
-                //
-                //         font: _modeSelector.font
-                //         elide: Text.ElideRight
-                //         verticalAlignment: Text.AlignVCenter
-                //     }
-                //     highlighted: _modeSelector.highlightedIndex === index
-                // }
             }
         }
     }
@@ -410,10 +392,10 @@ ApplicationWindow {
         function onModeChanged() {
             _deviceModel.setMode(uiState.currentMode)
             _logicalDeviceList.device.setMode(uiState.currentMode)
+            _oscDeviceList.device.setMode(uiState.currentMode)
             _modeSelector.currentIndex = _modeSelector.find(uiState.currentMode)
         }
         function onTabChanged() {
-            // Deal with the settings and scripts tab.
             _scriptButton.checked = uiState.currentTab === "scripts"
             _profileSettingsButton.checked = uiState.currentTab === "settings"
         }
@@ -422,14 +404,11 @@ ApplicationWindow {
         target: backend
 
         function onProfileChanged() {
-            // Not used at the moment.
         }
     }
     Connections {
         target: signal
 
-        // Re-apply UI config (e.g. dark mode) live, so toggling it in the
-        // options takes effect immediately instead of needing a restart.
         function onConfigChanged() {
             Style.isDarkMode = backend.useDarkMode
         }
@@ -454,7 +433,6 @@ ApplicationWindow {
         }
     }
 
-    // Main window content.
     ColumnLayout {
         id: _columnLayout
 
@@ -465,7 +443,6 @@ ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
 
-            // Horizontal list of "tabs" listing all detected devices.
             DeviceList {
                 id: _deviceList
 
@@ -532,19 +509,15 @@ ApplicationWindow {
             }
         }
 
-        // Main UI which contains the active device's inputs on the left and
-        // actions assigned to the currently selected input on the right.
         SplitView {
             id: _splitView
 
-            // Ensure the widget covers the entire remaining area in the window.
             Layout.fillHeight: true
             Layout.fillWidth: true
 
             clip: true
             orientation: Qt.Horizontal
 
-            // List of the currently selected device's inputs.
             DeviceInputList {
                 id: _deviceInputList
 
@@ -554,14 +527,23 @@ ApplicationWindow {
                 device: _deviceModel
             }
 
-            // List of logical device inputs.
             LogicalDevice {
                 id: _logicalDeviceList
 
                 visible: uiState.currentTab === "logical"
                 SplitView.minimumWidth: 400
 
-                // Trigger a model update on the InputConfiguration.
+                onInputIdentifierChanged: () => {
+                    uiState.setCurrentInput(inputIdentifier, inputIndex)
+                }
+            }
+
+            OscDevice {
+                id: _oscDeviceList
+
+                visible: uiState.currentTab === "osc"
+                SplitView.minimumWidth: 400
+
                 onInputIdentifierChanged: () => {
                     uiState.setCurrentInput(inputIdentifier, inputIndex)
                 }
@@ -574,7 +556,6 @@ ApplicationWindow {
                 SplitView.minimumWidth: 400
             }
 
-            // List of the actions associated with the currently selected input.
             InputConfiguration {
                 id: _inputConfigurationPanel
 
@@ -598,7 +579,6 @@ ApplicationWindow {
 
             Layout.fillHeight: true
             Layout.fillWidth: true
-            // Without this the height bugs out.
             Layout.verticalStretchFactor: 10
 
             visible: uiState.currentTab === "scripts"
