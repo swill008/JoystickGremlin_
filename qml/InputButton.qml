@@ -17,7 +17,7 @@ Button {
     property string defaultName: name
     property var liveState: null
     property int liveStamp: liveState && liveState.stamp !== undefined ? liveState.stamp : 0
-    property string inputKind: liveState && index !== undefined ? liveState.kindAt(index) : ""
+    property string inputKind: liveStamp >= 0 && liveState && index !== undefined ? liveState.kindAt(index) : ""
     property real liveValue: liveStamp >= 0 && liveState && index !== undefined ? liveState.valueAt(index) : 0
 
     readonly property bool _buttonActive: inputKind === "button" && liveValue > 0.5
