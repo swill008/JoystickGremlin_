@@ -6,7 +6,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import dill
-from gremlin import device_initialization, shared_state
+from gremlin import device_initialization, event_handler, shared_state
 from gremlin.signal import signal
 import gremlin.ui.type_aliases as ta
 from gremlin.ui import input_pairing as pairing
@@ -41,6 +41,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
         self._rows: list[dict] = []
         self.reload()
         signal.profileChanged.connect(self.reload)
+        event_handler.EventListener().device_change_event.connect(self.reload)
 
     @QtCore.Slot()
     def reload(self) -> None:
