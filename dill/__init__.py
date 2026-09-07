@@ -13,19 +13,20 @@ import uuid
 from enum import Enum
 from typing import Callable
 
-from gremlin.win_dll import load_native_dll as _load_native_dll
-
 
 class DILLError(Exception):
     """Exception raised when an error occurs within the DILL module."""
 
     def __init__(self, value: str) -> None:
+        """Creates a new error instance with the given message.
+
+        Args:
+            value: the error message to use
+        """
         super().__init__(value)
 
 
 class _GUID(ctypes.Structure):
-    """Strcture mapping C information into a set of Python readable values."""
-
     _fields_ = [
         ("Data1", ctypes.c_ulong),
         ("Data2", ctypes.c_ushort),
@@ -279,32 +280,27 @@ class DeviceSummary:
 C_EVENT_CALLBACK = ctypes.CFUNCTYPE(None, _JoystickInputData)
 C_DEVICE_CHANGE_CALLBACK = ctypes.CFUNCTYPE(None, _DeviceSummary, ctypes.c_uint8)
 
-
-def _resolve_dill_path() -> str:
-    candidates = []
-    here = os.path.dirname(os.path.abspath(__file__))
-    candidates.append(os.path.join(here, "dill.dll"))
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-        candidates.append(os.path.join(sys._MEIPASS, "dill.dll"))
-        candidates.append(os.path.join(sys._MEIPASS, "dill", "dill.dll"))
-        candidates.append(os.path.join(os.path.dirname(sys.executable), "dill.dll"))
-    candidates.append(os.path.abspath("dill.dll"))
-    for path in candidates:
-        if path and os.path.isfile(path):
-            return os.path.abspath(path)
-    raise DILLError("Unable to locate dill.dll library")
-
-
-_dll_path = _resolve_dill_path()
-_di_listener_dll = _load_native_dll(_dll_path)
+_dll_path = os.path.join(os.path.dirname(__file__), "dill.dll")
+if "_MEIPASS" in sys.__dict__:
+    _dll_path = os.path.join(sys._MEIPASS, "dill.dll")
+_di_listener_dll = ctypes.cdll.LoadLibrary(_dll_path)
 
 _di_listener_dll.get_device_information_by_index.argtypes = [ctypes.c_uint]
 _di_listener_dll.get_device_information_by_index.restype = _DeviceSummary
 
 
 class DILL:
-    _dll_path = _dll_path
-    _dll = _di_listener_dll
+    _dev_path = os.path.join(os.path.dirname(__file__), "dill.dll")
+    if os.path.isfile("dill.dll"):
+        _dll_path = "dill.dll"
+    elif "_MEIPASS" in sys.__dict__:
+        _dll_path = os.path.join(sys._MEIPASS, "dill.dll")
+    elif os.path.isfile(_dev_path):
+        _dll_path = _dev_path
+    else:
+        raise DILLError("Unable to locate dill.dll library")
+
+    _dll = ctypes.cdll.LoadLibrary(_dll_path)
     _dill_initialized = False
     device_change_callback_fn = None
     input_event_callback_fn = None
