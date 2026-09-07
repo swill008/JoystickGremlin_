@@ -49,8 +49,12 @@ Item {
                 return
             }
             let tmp = uiState.currentInputIndex
-            _inputList.currentIndex = -1
-            _inputList.currentIndex = tmp
+            if (tmp < 0) {
+                return
+            }
+            if (_inputList.currentIndex !== tmp) {
+                _inputList.currentIndex = tmp
+            }
         }
     }
 
@@ -58,6 +62,9 @@ Item {
         target: signal
 
         function onSetInputIndex(index) {
+            if (index < 0) {
+                return
+            }
             _inputList.currentIndex = index
         }
     }
@@ -109,7 +116,7 @@ Item {
         }
 
         function syncSelection() {
-            if (!uiState || !device) {
+            if (!uiState || !device || currentIndex < 0) {
                 return
             }
             var ident = device.inputIdentifier(currentIndex)
