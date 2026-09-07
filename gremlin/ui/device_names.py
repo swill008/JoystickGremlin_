@@ -21,6 +21,8 @@ SECTION = "devices"
 GROUP = "display"
 NAME = "aliases"
 
+_CACHE: dict[str, str] | None = None
+
 
 def _ensure() -> Configuration:
     cfg = Configuration()
@@ -39,6 +41,9 @@ def _ensure() -> Configuration:
 
 
 def _load() -> dict[str, str]:
+    global _CACHE
+    if _CACHE is not None:
+        return _CACHE
     raw = _ensure().value(SECTION, GROUP, NAME) or []
     names: dict[str, str] = {}
     for entry in raw:
@@ -47,10 +52,13 @@ def _load() -> dict[str, str]:
             value = str(entry[1]).strip()
             if key:
                 names[key] = value
+    _CACHE = names
     return names
 
 
 def _save(names: dict[str, str]) -> None:
+    global _CACHE
+    _CACHE = dict(names)
     rows = [[key, value] for key, value in names.items() if value]
     _ensure().set(SECTION, GROUP, NAME, rows)
 
@@ -61,7 +69,7 @@ def display_name(key: str, default: str) -> str:
 
 
 def set_alias(key: str, value: str) -> None:
-    names = _load()
+    names = dict(_load())
     key = str(key).strip()
     text = str(value or "").strip()
     if text:
