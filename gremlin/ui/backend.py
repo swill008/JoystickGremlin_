@@ -169,7 +169,6 @@ class Backend(QtCore.QObject):
         shared_state.current_profile = self.profile
         self._last_error = ""
         self._action_state = {}
-        self._ignore_device_change = False
         self.runner = code_runner.CodeRunner()
         self.ui_state = UIState(self)
         self.process_monitor = process_monitor.ProcessMonitor()
@@ -192,8 +191,7 @@ class Backend(QtCore.QObject):
 
     def _highlight_input(self, event: event_handler.Event) -> None:
         if (
-            self.runner.is_running()
-            or not self.config.value("global", "general", "input-highlighting")
+            not self.config.value("global", "general", "input-highlighting")
             or shared_state.suspend_input_highlighting()
         ):
             return
@@ -215,12 +213,7 @@ class Backend(QtCore.QObject):
         signal.reloadUi.emit()
         signal.profileChanged.emit()
 
-    def _clear_device_change_guard(self) -> None:
-        self._ignore_device_change = False
-
     def _device_change(self) -> None:
-        if self._ignore_device_change:
-            return
         behavior = self.config.value("global", "general", "device-change-behavior")
         match behavior:
             case "Disable":
@@ -300,18 +293,14 @@ class Backend(QtCore.QObject):
         self.activate_gremlin(not self.runner.is_running())
 
     def activate_gremlin(self, activate: bool) -> None:
-        self._ignore_device_change = True
-        try:
-            if activate:
-                shared_state.set_suspend_input_highlighting(True)
-                self.runner.start(self.profile, self.profile.modes.first_mode)
-            else:
-                self.runner.stop()
-                if self.config.value("global", "general", "input-highlighting"):
-                    shared_state.set_suspend_input_highlighting(False)
-            self.activityChanged.emit()
-        finally:
-            QtCore.QTimer.singleShot(750, self._clear_device_change_guard)
+        if activate:
+            shared_state.set_suspend_input_highlighting(True)
+            self.runner.start(self.profile, self.profile.modes.first_mode)
+        else:
+            self.runner.stop()
+            if self.config.value("global", "general", "input-highlighting"):
+                shared_state.set_suspend_input_highlighting(False)
+        self.activityChanged.emit()
 
     def minimize(self) -> None:
         root_window = self.engine.rootObjects()[0]
@@ -357,8 +346,6 @@ class Backend(QtCore.QObject):
 
     @QtCore.Slot()
     def resumeInputHighlighting(self) -> None:
-        if self.runner.is_running():
-            return
         shared_state.set_suspend_input_highlighting(False)
 
     @QtCore.Slot(str, int, result=bool)
