@@ -92,7 +92,6 @@ Window {
             }
         }
 
-        // Dynamic scrollview that contains dynamically generated widgets.
         ScrollView  {
             id: _dynamicScroll
 
@@ -113,7 +112,6 @@ Window {
         }
     }
 
-    // Display the collapsible visualization toggles for a single device.
     Component {
         id: _deviceDelegate
 
@@ -126,13 +124,10 @@ Window {
 
             readonly property string shownName: _inputViewer.displayName(guid, name)
 
-            // Variable holding references to the widgets visualizing device
-            // input states.
             property var widget_btn_hat
             property var widget_axis_temp
             property var widget_axis_cur
 
-            // Device header.
             RowLayout {
                 IconButton {
                     id: _foldButton
@@ -142,20 +137,32 @@ Window {
                     text: checked ? bsi.icons.folded : bsi.icons.unfolded
                 }
 
-                Label {
+                Item {
                     Layout.fillWidth: true
-                    text: shownName
-                    color: Style.foreground
-                    font.pointSize: 12
-                    font.family: "Segoe UI"
+                    implicitHeight: _nameLabel.implicitHeight
 
-                    ToolTip.visible: hovered
-                    ToolTip.delay: 400
-                    ToolTip.text: name
+                    Label {
+                        id: _nameLabel
+                        anchors.fill: parent
+                        text: shownName
+                        color: Style.foreground
+                        font.pointSize: 12
+                        font.family: "Segoe UI"
+                        elide: Text.ElideRight
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
+
+                        ToolTip.visible: containsMouse
+                        ToolTip.delay: 250
+                        ToolTip.text: name
+                    }
                 }
             }
 
-            // Per device visualization toggles.
             ColumnLayout {
                 visible: _foldButton.checked
 
