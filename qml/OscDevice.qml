@@ -17,6 +17,8 @@ Item {
     property InputIdentifier inputIdentifier
     property alias device: _inputList.model
 
+    DeviceNames { id: _names }
+
     TextInputDialog {
         id: _textInput
 
@@ -83,7 +85,13 @@ Item {
                 height: 50
 
                 selected: model.index === _inputList.currentIndex
+                nameKey: "osc:" + label
                 onClicked: () => { _inputList.currentIndex = model.index }
+                onRenameRequested: {
+                    _textInput.text = _names.display(nameKey, name)
+                    _textInput.callback = (value) => { _names.setAlias(nameKey, value) }
+                    _textInput.visible = true
+                }
 
                 editButton: IconButton {
                     text: bsi.icons.edit
