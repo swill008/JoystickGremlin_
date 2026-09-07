@@ -16,8 +16,10 @@ ColumnLayout {
     required property string groupName
     required property ConfigEntryModel entryModel
 
-    Layout.fillWidth: true
-    Layout.rightMargin: 20
+    width: parent ? parent.width - 20 : implicitWidth
+    anchors.left: parent ? parent.left : undefined
+    anchors.right: parent ? parent.right : undefined
+    anchors.rightMargin: 20
 
     JGText {
         Layout.fillWidth: true
