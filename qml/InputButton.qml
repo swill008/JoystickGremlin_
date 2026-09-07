@@ -21,13 +21,6 @@ Button {
     property int _descriptionWidth: 0
     property int _actionWidth: 0
     property bool _actionTruncated: false
-    property int _nameTick: 0
-
-    DeviceNames {
-        id: _names
-
-        onChanged: _control._nameTick++
-    }
 
     Connections {
         target: _control
@@ -54,11 +47,6 @@ Button {
         interval: 50
         repeat: false
         onTriggered: updateWidths()
-    }
-
-    function displayName() {
-        let key = nameKey.length > 0 ? nameKey : defaultName
-        return _names.display(key, defaultName)
     }
 
     function updateWidths() {
@@ -118,7 +106,7 @@ Button {
     contentItem: Item {
         JGText {
             id: _inputLabel
-            text: _control._nameTick, _control.displayName()
+            text: name
             font.weight: 600
 
             width: Math.min(implicitWidth, parent.width - 30)
