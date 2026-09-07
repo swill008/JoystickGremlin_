@@ -27,10 +27,18 @@ Item {
             model: ["Off", "ALL", "Info", "Warning", "Error"]
 
             Button {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 78
+                Layout.minimumWidth: 64
+
                 text: modelData
-                checked: _model.level === modelData
+                checked: _model && _model.level === modelData
                 checkable: true
-                onClicked: () => { _model.setLevel(modelData) }
+                onClicked: () => {
+                    if (_model) {
+                        _model.setLevel(modelData)
+                    }
+                }
             }
         }
     }
