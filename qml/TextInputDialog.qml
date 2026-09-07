@@ -48,16 +48,9 @@ Popup {
         _input.forceActiveFocus()
     }
 
-    onClosed: {
-        if (!_committed) {
-            lastAccepted = ""
-        }
-        _committed = false
-    }
-
     onTextChanged: {
-        _clearedOnClick = false
         if (opened) {
+            _clearedOnClick = false
             _input.text = seedText()
         }
     }
