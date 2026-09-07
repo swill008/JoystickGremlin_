@@ -7,12 +7,21 @@ from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
+import gremlin.ui.type_aliases as ta
 from gremlin.profile import InputItem
 from gremlin.signal import signal
 from gremlin import shared_state
-from gremlin.ui.device import Device, KeyboardManagerModel
+from gremlin.ui.device import (
+    Device,
+    KeyboardManagerModel,
+    LogicalDeviceManagementModel,
+    QML_IMPORT_MAJOR_VERSION,
+    QML_IMPORT_NAME,
+)
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
-from gremlin.ui.device import LogicalDeviceManagementModel
+
+assert QML_IMPORT_NAME == "Gremlin.Device"
+assert QML_IMPORT_MAJOR_VERSION == 1
 
 _orig_init = InputItem.__init__
 _orig_from_xml = InputItem.from_xml
@@ -56,61 +65,53 @@ def _set_item_name(item, name: str, index: int) -> None:
     signal.inputItemChanged.emit(index)
 
 
-@QtCore.Slot(int, str)
-def device_set_action_name(self, index: int, name: str) -> None:
-    info = self._convert_index(index)
+def apply_action_name(model: object, index: int, name: str) -> None:
     profile = shared_state.current_profile
-    if profile is None or self._device is None:
+    if profile is None or index < 0:
         return
-    item = profile.get_input_item(
-        self._device.device_guid.uuid, info[0], info[1], self._mode, True
-    )
-    _set_item_name(item, name, index)
-    self.refreshInput(index)
-
-
-@QtCore.Slot(int, str)
-def osc_set_action_name(self, index: int, name: str) -> None:
-    info = self._index_to_input(index)
-    profile = shared_state.current_profile
-    if profile is None:
+    item = None
+    if isinstance(model, Device):
+        if model._device is None:
+            return
+        info = model._convert_index(index)
+        item = profile.get_input_item(
+            model._device.device_guid.uuid, info[0], info[1], model._mode, True
+        )
+        _set_item_name(item, name, index)
+        model.refreshInput(index)
         return
-    item = profile.get_input_item(
-        self._osc.device_guid, info.type, info.id, self._mode, True
-    )
-    _set_item_name(item, name, index)
-    self.refreshInput(index)
-
-
-@QtCore.Slot(int, str)
-def logical_set_action_name(self, index: int, name: str) -> None:
-    label = self._logical.labels_of_type()[index]
-    info = self._logical[label]
-    profile = shared_state.current_profile
-    if profile is None:
+    if isinstance(model, OscDeviceManagementModel):
+        info = model._index_to_input(index)
+        item = profile.get_input_item(
+            model._osc.device_guid, info.type, info.id, model._mode, True
+        )
+        _set_item_name(item, name, index)
+        model.refreshInput(index)
         return
-    item = profile.get_input_item(
-        self._logical.device_guid, info.type, info.id, self._mode, True
-    )
-    _set_item_name(item, name, index)
-    self.refreshInput(index)
-
-
-@QtCore.Slot(int, str)
-def keyboard_set_action_name(self, index: int, name: str) -> None:
-    identifier = self.inputIdentifier(index)
-    profile = shared_state.current_profile
-    if profile is None or identifier is None:
+    if isinstance(model, LogicalDeviceManagementModel):
+        label = model._logical.labels_of_type()[index]
+        info = model._logical[label]
+        item = profile.get_input_item(
+            model._logical.device_guid, info.type, info.id, model._mode, True
+        )
+        _set_item_name(item, name, index)
+        model.refreshInput(index)
         return
-    item = profile.get_input_item(
-        identifier.device_guid,
-        identifier.input_type,
-        identifier.input_id,
-        getattr(self, "_mode", "Default"),
-        True,
-    )
-    _set_item_name(item, name, index)
-    self.dataChanged.emit(self.createIndex(index, 0), self.createIndex(index, 0))
+    if isinstance(model, KeyboardManagerModel):
+        identifier = model.inputIdentifier(index)
+        if identifier is None:
+            return
+        item = profile.get_input_item(
+            identifier.device_guid,
+            identifier.input_type,
+            identifier.input_id,
+            getattr(model, "_mode", "Default"),
+            True,
+        )
+        _set_item_name(item, name, index)
+        model.dataChanged.emit(
+            model.createIndex(index, 0), model.createIndex(index, 0)
+        )
 
 
 def _patch_description(original, resolve_item):
@@ -124,6 +125,7 @@ def _patch_description(original, resolve_item):
                 item = None
             return _description_from_item(item)
         return original(self, index, role)
+
     return data
 
 
@@ -166,14 +168,17 @@ def _keyboard_item(self, row: int):
     )
 
 
-InputItem.__init__ = _init
+@InputItem.__init__ = _init
 InputItem.from_xml = _from_xml
 InputItem.to_xml = _to_xml
 Device.data = _patch_description(_device_data, _device_item)
-Device.setActionName = device_set_action_name
 OscDeviceManagementModel.data = _patch_description(_osc_data, _osc_item)
-OscDeviceManagementModel.setActionName = osc_set_action_name
 LogicalDeviceManagementModel.data = _patch_description(_logical_data, _logical_item)
-LogicalDeviceManagementModel.setActionName = logical_set_action_name
 KeyboardManagerModel.data = _patch_description(_keyboard_data, _keyboard_item)
-KeyboardManagerModel.setActionName = keyboard_set_action_name
+
+
+@ta.QmlElement
+class ActionNames(QtCore.QObject):
+    @QtCore.Slot("QVariant", int, str)
+    def setOnModel(self, model: object, index: int, name: str) -> None:
+        apply_action_name(model, index, name)
