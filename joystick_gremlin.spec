@@ -22,10 +22,9 @@ datas.extend(action_plugins_files)
 binaries = [
     ("vjoy/vJoyInterface.dll", "."),
     ("dill/dill.dll", "."),
+    ("dill/dill.dll", "dill"),
 ]
 
-# List all action plugin code files by their import name as pyinstaller
-# doesn't pick them all up automatically.
 hidden_imports = [
     "action_plugins",
     "action_plugins.chain",
@@ -91,8 +90,6 @@ a = Analysis(
     optimize=0,
 )
 
-# Implementation of a library exclusion system to remove huge and unneded
-# Qt libraries.
 to_keep = []
 to_exclude = [
     "opengl32sw.dll",
@@ -159,20 +156,25 @@ to_exclude = [
     "Qt63DQuickScene2D.dll",
     "Qt63DQuickScene3D.dll",
     "Qt63DRender.dll",
+    "VCRUNTIME140.dll",
+    "VCRUNTIME140_1.dll",
+    "MSVCP140.dll",
+    "MSVCP140_1.dll",
+    "MSVCP140_2.dll",
+    "MSVCP140_atomic_wait.dll",
+    "MSVCP140_codecvt_ids.dll",
+    "CONCRT140.dll",
 ]
 directory_excludes = [
     "Pythonwin",
     "PySide6\\translations",
 ]
 
-# Only keep binaries we actually want, exlucindg a bunch of Qt libraries.
 for (dest, source, kind) in a.binaries:
     skip_file = False
-    # Skip directories we want to exclude entirely.
     for directory in directory_excludes:
         if dest.startswith(directory):
             skip_file = True
-    # Only add files not on the exclude list.
     if not skip_file and os.path.split(dest)[1] not in to_exclude:
         to_keep.append((dest, source, kind))
 a.binaries = to_keep
@@ -180,11 +182,9 @@ a.binaries = to_keep
 datas_to_keep = []
 for (dest, source, kind) in a.datas:
     skip_file = False
-    # Skip directories we want to exclude entirely.
     for directory in directory_excludes:
         if dest.startswith(directory):
             skip_file = True
-    # Only add files not on the exclude list.
     if not skip_file:
         datas_to_keep.append((dest, source, kind))
 a.datas = datas_to_keep
