@@ -25,6 +25,8 @@ Popup {
     padding: 16
     width: 720
 
+    OscSettingsInfo { id: _oscInfo }
+
     background: Rectangle {
         color: Style.background
         border.color: Style.accent
@@ -71,6 +73,14 @@ Popup {
             lastParameters = parameters
             lastSource = address
         }
+    }
+
+    DismissibleDialog {
+        id: _listenSettings
+
+        titleText: "Listening for OSC"
+        confirmText: "OK"
+        messageText: ""
     }
 
     contentItem: ColumnLayout {
@@ -165,6 +175,8 @@ Popup {
                     if (deviceModel.listening) {
                         deviceModel.cancelListen()
                     } else {
+                        _listenSettings.messageText = _oscInfo.summary()
+                        _listenSettings.open()
                         deviceModel.listenForCommand()
                     }
                 }
