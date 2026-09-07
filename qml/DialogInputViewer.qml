@@ -23,6 +23,15 @@ Window {
 
     title: "Input Viewer"
 
+    DeviceNames { id: _names }
+
+    function displayName(guid, hardwareName) {
+        if (!_names) {
+            return hardwareName
+        }
+        return _names.display(guid, hardwareName)
+    }
+
     Connections {
         target: _inputViewer
 
@@ -115,6 +124,8 @@ Window {
             required property string name
             required property string guid
 
+            readonly property string shownName: _inputViewer.displayName(guid, name)
+
             // Variable holding references to the widgets visualizing device
             // input states.
             property var widget_btn_hat
@@ -134,7 +145,11 @@ Window {
                 JGText {
                     Layout.fillWidth: true
 
-                    text: name
+                    text: shownName
+
+                    ToolTip.visible: hovered && shownName !== name
+                    ToolTip.delay: 400
+                    ToolTip.text: name
                 }
             }
 
@@ -152,7 +167,7 @@ Window {
                             widget_axis_temp = create_widget(
                                 "AxesStateSeries.qml",
                                 guid,
-                                name
+                                shownName
                             )
                         } else {
                             widget_axis_temp.destroy()
@@ -167,7 +182,7 @@ Window {
                             widget_axis_cur = create_widget(
                                 "AxesStateCurrent.qml",
                                 guid,
-                                name
+                                shownName
                             )
                         } else {
                             widget_axis_cur.destroy()
@@ -182,7 +197,7 @@ Window {
                             widget_btn_hat = create_widget(
                                 "ButtonState.qml",
                                 guid,
-                                name
+                                shownName
                             )
                         } else {
                             widget_btn_hat.destroy()
