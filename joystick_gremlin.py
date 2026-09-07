@@ -78,7 +78,6 @@ def configure_logger(config: dict[str, Any]) -> None:
     formatter = logging.Formatter(config["format"], "%Y-%m-%d %H:%M:%S")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-
     if config["mode"] != "session":
         logger.debug("-" * 80)
         logger.debug(time.strftime("%Y-%m-%d %H:%M"))
@@ -197,20 +196,67 @@ def _lock_owner_pid() -> int | None:
     return None
 
 
+def _this_process_tree() -> set[int]:
+    tree = {os.getpid()}
+    try:
+        tree.add(os.getppid())
+    except Exception:
+        pass
+    try:
+        class PROCESSENTRY32(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", ctypes.c_ulong),
+                ("cntUsage", ctypes.c_ulong),
+                ("th32ProcessID", ctypes.c_ulong),
+                ("th32DefaultHeapID", ctypes.c_void_p),
+                ("th32ModuleID", ctypes.c_ulong),
+                ("cntThreads", ctypes.c_ulong),
+                ("th32ParentProcessID", ctypes.c_ulong),
+                ("pcPriClassBase", ctypes.c_long),
+                ("dwFlags", ctypes.c_ulong),
+                ("szExeFile", ctypes.c_wchar * 260),
+            ]
+
+        kernel32 = ctypes.windll.kernel32
+        snapshot = kernel32.CreateToolhelp32Snapshot(2, 0)
+        if snapshot == ctypes.c_void_p(-1).value:
+            return tree
+        entry = PROCESSENTRY32()
+        entry.dwSize = ctypes.sizeof(PROCESSENTRY32)
+        parents: dict[int, int] = {}
+        if kernel32.Process32FirstW(snapshot, ctypes.byref(entry)):
+            while True:
+                parents[int(entry.th32ProcessID)] = int(entry.th32ParentProcessID)
+                if not kernel32.Process32NextW(snapshot, ctypes.byref(entry)):
+                    break
+        kernel32.CloseHandle(snapshot)
+        pid = os.getpid()
+        for _ in range(8):
+            parent = parents.get(pid)
+            if not parent or parent in tree or parent <= 4:
+                break
+            tree.add(parent)
+            pid = parent
+    except Exception:
+        pass
+    return tree
+
+
 def _other_gremlin_pids() -> list[int]:
+    protected = _this_process_tree()
     pids = _window_process_ids() | _command_line_process_ids()
     owner = _lock_owner_pid()
     if owner:
         pids.add(owner)
-    pids.discard(os.getpid())
-    return sorted(pid for pid in pids if pid > 0)
+    return sorted(pid for pid in pids if pid > 0 and pid not in protected)
 
 
 def _terminate_other_gremlin(pids: list[int]) -> None:
+    protected = _this_process_tree()
     kernel32 = ctypes.windll.kernel32
     process_terminate = 0x0001
     for pid in pids:
-        if pid == os.getpid():
+        if pid in protected:
             continue
         handle = kernel32.OpenProcess(process_terminate, False, pid)
         if handle:
@@ -219,7 +265,7 @@ def _terminate_other_gremlin(pids: list[int]) -> None:
             continue
         try:
             subprocess.run(
-                ["taskkill", "/PID", str(pid), "/F"],
+                ["taskkill", "/PID", str(pid), "/F", "/T"],
                 capture_output=True,
                 timeout=3,
                 creationflags=0x08000000,
@@ -251,7 +297,8 @@ def _confirm_second_instance(
         f"{extra}{hung_hint}\n\n"
         "Only one copy can own vJoy.\n\n"
         "Yes = Close the other process(es) and start this copy.\n"
-        "No = Leave the other process(es) running and do not start this copy."
+        "No = Start this copy anyway. The other process(es) stay running.\n"
+        "         vJoy mapping in this copy may not respond."
     )
     result = ctypes.windll.user32.MessageBoxW(
         None,
@@ -259,7 +306,7 @@ def _confirm_second_instance(
         "Joystick Gremlin",
         0x34,
     )
-    return "close_others" if result == 6 else "quit"
+    return "close_others" if result == 6 else "continue"
 
 
 def acquire_instance_lock() -> QtCore.QLockFile | None:
@@ -468,10 +515,6 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.syslog = logging.getLogger("system")
         register_config_options()
         gremlin.ui.log_option.apply_log_level()
-
-        executable_name = os.path.split(sys.executable)[-1]
-        if executable_name == "joystick_gremlin.exe":
-            sys.excepthook = exception_hook
         sys.excepthook = exception_hook
 
         dill.DILL.init()
@@ -602,10 +645,9 @@ def main() -> int:
     pids = _other_gremlin_pids()
     if lock is None or windows or pids:
         choice = _confirm_second_instance(lock is None, windows, pids)
-        if choice != "close_others":
-            return 0
-        _terminate_other_gremlin(pids)
-        lock = acquire_instance_lock()
+        if choice == "close_others":
+            _terminate_other_gremlin(pids)
+            lock = acquire_instance_lock()
     app = JoystickGremlinApp(sys.argv)
     app._instance_lock = lock
     app.exec()
