@@ -19,8 +19,6 @@ Popup {
     padding: 16
     width: 420
 
-    VJoyStatus { id: _status }
-
     background: Rectangle {
         color: Style.background
         border.color: Style.accent
@@ -28,11 +26,17 @@ Popup {
         radius: 4
     }
 
-    onOpened: _status.refresh()
+    onOpened: {
+        if (_status) {
+            _status.refresh()
+        }
+    }
 
     contentItem: ColumnLayout {
         spacing: 12
-        width: parent.width
+        width: parent ? parent.width : 420
+
+        VJoyStatus { id: _status }
 
         Label {
             text: "Device tabs"
@@ -58,13 +62,17 @@ Popup {
             CheckBox {
                 required property var modelData
                 text: modelData.label
-                checked: _status.pinStamp >= 0 && _status.isExtraPinned(modelData.key)
-                onToggled: _status.setExtraPinned(modelData.key, checked)
+                checked: _status && _status.pinStamp >= 0 && _status.isExtraPinned(modelData.key)
+                onToggled: {
+                    if (_status) {
+                        _status.setExtraPinned(modelData.key, checked)
+                    }
+                }
             }
         }
 
         Label {
-            text: "vJoy  ·  " + _status.activeCount + " of 16 installed and activated"
+            text: "vJoy  ·  " + (_status ? _status.activeCount : 0) + " of 16 installed and activated"
             font.bold: true
         }
 
@@ -80,15 +88,19 @@ Popup {
                 RowLayout {
                     required property int index
                     readonly property int deviceId: index + 1
-                    readonly property bool active: _status.activeCount >= 0 && _status.isActive(deviceId)
-                    readonly property bool pinned: _status.pinStamp >= 0 && _status.isPinned(deviceId)
+                    readonly property bool active: _status && _status.isActive(deviceId)
+                    readonly property bool pinned: _status && _status.isPinned(deviceId)
                     Layout.fillWidth: true
                     spacing: 4
 
                     CheckBox {
                         checked: parent.pinned
                         enabled: parent.active
-                        onToggled: _status.setPinned(parent.deviceId, checked)
+                        onToggled: {
+                            if (_status) {
+                                _status.setPinned(parent.deviceId, checked)
+                            }
+                        }
                     }
 
                     Rectangle {
