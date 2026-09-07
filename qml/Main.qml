@@ -113,7 +113,7 @@ ApplicationWindow {
         id: _newProfileDialog
 
         titleText: "New Profile"
-        messageText: "Creating a new profile will replace the current profile. Unsaved mappings will be lost.\n\nOptions and OSC host/port are not wiped."
+        messageText: "Creating a new profile will replace the current profile. Unsaved mappings will be lost.\n\nProgram Options and OSC setting will Persist"
         confirmText: "Create new profile"
         cancelText: "Cancel"
         destructive: true
