@@ -331,34 +331,11 @@ ApplicationWindow {
                 }
             }
 
-            ToolButton {
-                implicitWidth: 56
-                implicitHeight: 40
-                onClicked: _vjoyStatusPopup.open()
+            JGToolButton {
+                text: "\uF3F8"
+                tooltip: qsTr("Device tabs")
 
-                contentItem: Row {
-                    spacing: 2
-                    anchors.centerIn: parent
-
-                    Label {
-                        text: "V"
-                        font.bold: true
-                        font.pixelSize: 16
-                        color: Style.foreground
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    Label {
-                        text: "\uF448"
-                        font.family: "bootstrap-icons"
-                        font.pixelSize: 18
-                        color: Style.foreground
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
-
-                ToolTip.visible: hovered
-                ToolTip.delay: 500
-                ToolTip.text: qsTr("vJoy device status")
+                onClicked: () => { _vjoyStatusPopup.open() }
             }
 
             LayoutHorizontalSpacer {}
