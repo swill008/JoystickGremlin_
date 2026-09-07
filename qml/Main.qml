@@ -36,12 +36,6 @@ ApplicationWindow {
         _windowPlacement.restore(_root)
     }
 
-    onXChanged: _windowPlacement.scheduleSave(_root)
-    onYChanged: _windowPlacement.scheduleSave(_root)
-    onWidthChanged: _windowPlacement.scheduleSave(_root)
-    onHeightChanged: _windowPlacement.scheduleSave(_root)
-    onVisibilityChanged: _windowPlacement.scheduleSave(_root)
-
     Universal.theme: Style.theme
     color: Style.background
 
