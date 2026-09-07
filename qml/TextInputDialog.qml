@@ -5,19 +5,20 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal
 import QtQuick.Layouts
-import QtQuick.Window
 
 import Gremlin.Style
 
-Window {
+Popup {
     id: _root
 
-    minimumWidth: 200
-    minimumHeight: 60
-
-    color: Style.background
-    Universal.theme: Style.theme
-    flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    modal: true
+    focus: true
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    padding: 10
+    width: 320
+    height: 56
 
     signal accepted(string value)
     property string text : "New text"
@@ -26,8 +27,6 @@ Window {
     property bool _clearedOnClick: false
     property bool _committed: false
 
-    title: "Text Input Field"
-
     function seedText() {
         if (_root.text && _root.text.length > 0) {
             return _root.text
@@ -35,42 +34,41 @@ Window {
         return lastAccepted
     }
 
-    onVisibleChanged: {
-        if (visible) {
-            _committed = false
-            _clearedOnClick = false
-            _input.text = seedText()
-            Qt.callLater(function() {
-                if (_root.visible) {
-                    _input.forceActiveFocus()
-                }
-            })
-        } else if (!_committed) {
-            lastAccepted = ""
-        }
+    background: Rectangle {
+        color: Style.background
+        border.color: Style.accent
+        border.width: 1
+        radius: 4
     }
 
-    onActiveChanged: {
-        if (visible && !active && !_committed) {
-            visible = false
+    onOpened: {
+        _committed = false
+        _clearedOnClick = false
+        _input.text = seedText()
+        _input.forceActiveFocus()
+    }
+
+    onClosed: {
+        if (!_committed) {
+            lastAccepted = ""
         }
+        _committed = false
     }
 
     onTextChanged: {
         _clearedOnClick = false
-        if (visible) {
+        if (opened) {
             _input.text = seedText()
         }
     }
 
-    RowLayout {
-        anchors.fill: parent
+    contentItem: RowLayout {
+        spacing: 8
 
         JGTextField {
             id: _input
 
             Layout.fillWidth: true
-            Layout.leftMargin: 5
             focus: true
 
             TapHandler {
@@ -83,10 +81,6 @@ Window {
                 }
             }
 
-            Keys.onEscapePressed: {
-                _root._committed = false
-                _root.visible = false
-            }
             Keys.onReturnPressed: _button.click()
             Keys.onEnterPressed: _button.click()
 
@@ -100,16 +94,14 @@ Window {
         Button {
             id: _button
 
-            Layout.rightMargin: 10
-
             text: "Ok"
 
             onClicked: () => {
                 _root.lastAccepted = _input.text
                 _root._committed = true
                 _root.accepted(_input.text)
+                _root.close()
             }
         }
     }
-
 }
