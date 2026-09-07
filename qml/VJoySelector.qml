@@ -23,10 +23,15 @@ Item {
     implicitWidth: _content.implicitWidth
 
     function initialize(vjoy_id, input_type, input_id) {
-        _vjoy.setInitialState(vjoy_id, input_type, input_id)
+        if (_vjoy) {
+            _vjoy.setInitialState(vjoy_id, input_type, input_id)
+        }
     }
 
     function updateState() {
+        if (!_vjoy || !_deviceLoader.item || !_inputLoader.item) {
+            return
+        }
         _vjoy.setState(_deviceLoader.item.currentText, _inputLoader.item.currentText)
     }
 
@@ -41,8 +46,12 @@ Item {
         }
 
         onCurrentValuesChanged: (vjoy_name, input_name) => {
-            _deviceLoader.item.currentIndex = _deviceLoader.item.find(vjoy_name)
-            _inputLoader.item.currentIndex  = _inputLoader.item.find(input_name)
+            if (_deviceLoader.item) {
+                _deviceLoader.item.currentIndex = _deviceLoader.item.find(vjoy_name)
+            }
+            if (_inputLoader.item) {
+                _inputLoader.item.currentIndex  = _inputLoader.item.find(input_name)
+            }
         }
     }
 
@@ -73,7 +82,7 @@ Item {
 
             onLoaded: {
                 item.width = Qt.binding(() => _deviceLoader.width)
-                item.model = Qt.binding(() => _vjoy.vjoyDevices)
+                item.model = Qt.binding(() => _vjoy ? _vjoy.vjoyDevices : [])
                 item.popup.contentItem.showScrollBar = false
             }
         }
@@ -88,14 +97,14 @@ Item {
 
             onLoaded: {
                 item.width = Qt.binding(() => _inputLoader.width)
-                item.model = Qt.binding(() => _vjoy.inputChoices)
+                item.model = Qt.binding(() => _vjoy ? _vjoy.inputChoices : [])
             }
         }
 
         HorizontalDivider {}
 
         Label {
-            visible: !_vjoy.hasValidVJoyDevices
+            visible: _vjoy && !_vjoy.hasValidVJoyDevices
 
             text: "No vJoy devices available."
             color: Style.error
