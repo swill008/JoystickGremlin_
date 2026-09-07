@@ -25,7 +25,7 @@ Window {
 
     readonly property string oscGuid: "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
 
-    PairDeviceModel { id: _pairs }
+    ViewerDeviceModel { id: _devices }
 
     function pairTitle(guid, name) {
         var key = String(guid || "").toLowerCase().replace(/[{}]/g, "")
@@ -45,8 +45,8 @@ Window {
 
     Component.onCompleted: () => {
         backend.pauseInputHighlighting()
-        if (_pairs) {
-            _pairs.reload()
+        if (_devices) {
+            _devices.reload()
         }
     }
 
@@ -63,21 +63,43 @@ Window {
         ColumnLayout {
             id: _stateDisplay
             width: Math.max(_dynamicScroll.availableWidth, 760)
-            spacing: 12
+            spacing: 8
 
             Repeater {
-                model: _pairs
-                delegate: InputViewerCard {
+                model: _devices
+                delegate: Loader {
                     required property string guid
                     required property string name
                     required property string pairLabel
+                    required property bool mapped
 
                     Layout.fillWidth: true
-                    deviceGuid: guid
-                    title: _inputViewer.pairTitle(guid, name)
-                    pairLabel: pairLabel
+                    sourceComponent: mapped ? _pairComp : _unmappedComp
+
+                    property string _guid: guid
+                    property string _name: _inputViewer.pairTitle(guid, name)
+                    property string _pair: pairLabel
                 }
             }
+        }
+    }
+
+    Component {
+        id: _pairComp
+        InputViewerCard {
+            deviceGuid: parent._guid
+            title: parent._name
+            pairLabel: parent._pair
+            Layout.fillWidth: true
+        }
+    }
+
+    Component {
+        id: _unmappedComp
+        UnmappedCard {
+            deviceGuid: parent._guid
+            title: parent._name
+            Layout.fillWidth: true
         }
     }
 }
