@@ -141,6 +141,7 @@ Button {
     contentItem: Item {
         Rectangle {
             id: _led
+            visible: !_axisActive
             width: 10
             height: 10
             radius: 5
@@ -161,8 +162,8 @@ Button {
             elide: Text.ElideRight
 
             anchors.top: parent.top
-            anchors.left: _led.right
-            anchors.leftMargin: 8
+            anchors.left: _axisActive ? parent.left : _led.right
+            anchors.leftMargin: _axisActive ? 0 : 8
         }
 
         Loader {
@@ -221,8 +222,8 @@ Button {
             width: _descriptionWidth
             elide: Text.ElideRight
 
-            anchors.left: _led.right
-            anchors.leftMargin: 8
+            anchors.left: _axisActive ? parent.left : _led.right
+            anchors.leftMargin: _axisActive ? 0 : 8
             anchors.bottom: parent.bottom
             anchors.bottomMargin: _axisActive ? 6 : 0
         }
