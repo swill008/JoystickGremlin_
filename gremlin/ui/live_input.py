@@ -16,6 +16,10 @@ QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
 
+def _norm_guid(value: object) -> str:
+    return str(value or "").strip().strip("{}").lower()
+
+
 @ta.QmlElement
 class DeviceLiveState(QtCore.QObject):
     """Live axis/button/hat values for the current physical device tab."""
@@ -27,6 +31,7 @@ class DeviceLiveState(QtCore.QObject):
         super().__init__(parent)
         self._device = None
         self._device_uuid = None
+        self._guid = ""
         self._kinds: list[str] = []
         self._values: list[float] = []
         self._axis_rows: dict[int, int] = {}
@@ -39,11 +44,12 @@ class DeviceLiveState(QtCore.QObject):
         event_handler.EventListener().joystick_event.connect(self._on_event)
 
     def _get_guid(self) -> str:
-        return str(self._device.device_guid) if self._device is not None else ""
+        return self._guid
 
     def _clear(self) -> None:
         self._device = None
         self._device_uuid = None
+        self._guid = ""
         self._kinds = []
         self._values = []
         self._axis_rows = {}
@@ -51,16 +57,18 @@ class DeviceLiveState(QtCore.QObject):
         self._bump()
 
     def _set_guid(self, guid: str) -> None:
-        if not guid or guid == "Unknown":
+        incoming = _norm_guid(guid)
+        if not incoming or incoming in ("unknown", str(dill.UUID_Invalid).lower()):
             self._clear()
             return
-        if self._device is not None and guid == str(self._device.device_guid):
+        if self._guid == incoming and self._device is not None:
             return
         try:
             self._device = dill.DILL.get_device_information_by_guid(
                 dill.GUID.from_str(guid)
             )
-            self._device_uuid = uuid.UUID(guid)
+            self._device_uuid = uuid.UUID(incoming)
+            self._guid = incoming
         except Exception:
             self._clear()
             return
@@ -70,10 +78,11 @@ class DeviceLiveState(QtCore.QObject):
         for i in range(self._device.axis_count):
             self._kinds.append("axis")
             self._values.append(0.0)
-            axis_id = int(self._device.axis_map[i].axis_index)
+            try:
+                axis_id = int(self._device.axis_map[i].axis_index)
+            except Exception:
+                axis_id = i + 1
             self._axis_rows[axis_id] = i
-            self._axis_rows[i] = i
-            self._axis_rows[i + 1] = i
         lookup = getattr(self._device, "axis_lookup", None) or {}
         for axis_id, position in lookup.items():
             try:
@@ -108,13 +117,7 @@ class DeviceLiveState(QtCore.QObject):
             key = int(identifier)
         except (TypeError, ValueError):
             return None
-        if key in self._axis_rows:
-            return self._axis_rows[key]
-        if self._device is None:
-            return None
-        if 0 <= key < self._device.axis_count:
-            return key
-        return None
+        return self._axis_rows.get(key)
 
     def _axis_value(self, event: event_handler.Event) -> float | None:
         raw = event.value
@@ -135,7 +138,7 @@ class DeviceLiveState(QtCore.QObject):
     def _on_event(self, event: event_handler.Event) -> None:
         if self._device is None or self._device_uuid is None:
             return
-        if event.device_guid != self._device_uuid:
+        if _norm_guid(event.device_guid) != self._guid:
             return
         if event.event_type == InputType.JoystickAxis:
             row = self._axis_row(event.identifier)
