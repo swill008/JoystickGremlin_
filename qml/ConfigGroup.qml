@@ -16,9 +16,8 @@ ColumnLayout {
     required property string groupName
     required property ConfigEntryModel entryModel
 
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.rightMargin: 20
+    Layout.fillWidth: true
+    Layout.rightMargin: 20
 
     JGText {
         Layout.fillWidth: true
@@ -42,12 +41,10 @@ ColumnLayout {
         Layout.preferredHeight: 5
     }
 
-    // Delegate rendering individual configuration option styles.
     DelegateChooser {
         id: _entryDelegateChooser
         role: "data_type"
 
-        // On/off options.
         DelegateChoice {
             roleValue: "bool"
 
@@ -68,7 +65,6 @@ ColumnLayout {
                 }
             }
         }
-        // Floating point value inputs.
         DelegateChoice {
             roleValue: "float"
 
@@ -89,7 +85,6 @@ ColumnLayout {
                 }
             }
         }
-        // Integer value inputs.
         DelegateChoice {
             roleValue: "int"
 
@@ -110,7 +105,6 @@ ColumnLayout {
                 }
             }
         }
-        // Path selection
         DelegateChoice {
             roleValue: "path"
 
@@ -171,7 +165,6 @@ ColumnLayout {
                 }
             }
         }
-        // Textual inputs.
         DelegateChoice {
             roleValue: "string"
 
@@ -200,7 +193,6 @@ ColumnLayout {
                 }
             }
         }
-        // Drop down menu selection.
         DelegateChoice {
             roleValue: "selection"
 
@@ -222,7 +214,6 @@ ColumnLayout {
                 }
             }
         }
-        // Meta Option dynamic loading.
         DelegateChoice {
             roleValue: "meta_option"
 
