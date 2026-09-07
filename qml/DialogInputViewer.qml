@@ -81,8 +81,6 @@ Window {
         padding: 8
         closePolicy: Popup.NoAutoClose
         parent: Overlay.overlay
-        x: 24
-        y: 24
 
         background: Rectangle {
             color: Style.background
@@ -111,7 +109,7 @@ Window {
             Layout.fillHeight: true
 
             ColumnLayout {
-                anchors.fill: parent
+                width: 250
 
                 Repeater {
                     model: _deviceData
@@ -151,12 +149,15 @@ Window {
             required property string guid
 
             readonly property string shownName: _inputViewer.displayName(guid, name)
+            Layout.fillWidth: true
 
             property var widget_btn_hat
             property var widget_axis_temp
             property var widget_axis_cur
 
             RowLayout {
+                Layout.fillWidth: true
+
                 IconButton {
                     id: _foldButton
 
@@ -165,32 +166,25 @@ Window {
                     text: checked ? bsi.icons.folded : bsi.icons.unfolded
                 }
 
-                Item {
+                Label {
+                    id: _nameLabel
                     Layout.fillWidth: true
-                    implicitHeight: Math.max(_nameLabel.implicitHeight, 20)
+                    Layout.minimumWidth: 160
+                    text: shownName
+                    color: Style.foreground
+                    font.pointSize: 12
+                    font.family: "Segoe UI"
+                    elide: Text.ElideRight
 
-                    Label {
-                        id: _nameLabel
-                        anchors.fill: parent
-                        text: shownName
-                        color: Style.foreground
-                        font.pointSize: 12
-                        font.family: "Segoe UI"
-                        elide: Text.ElideRight
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.NoButton
-                        onEntered: {
-                            _inputViewer.hardwareTip = name
-                            var pos = mapToItem(Overlay.overlay, 12, height + 4)
-                            _hardwareTip.x = pos.x
-                            _hardwareTip.y = pos.y
-                        }
-                        onExited: {
-                            if (_inputViewer.hardwareTip === name) {
+                    HoverHandler {
+                        id: _hover
+                        onHoveredChanged: {
+                            if (hovered) {
+                                _inputViewer.hardwareTip = name
+                                var pos = _nameLabel.mapToItem(Overlay.overlay, 8, _nameLabel.height + 4)
+                                _hardwareTip.x = pos.x
+                                _hardwareTip.y = pos.y
+                            } else if (_inputViewer.hardwareTip === name) {
                                 _inputViewer.hardwareTip = ""
                             }
                         }
@@ -200,7 +194,7 @@ Window {
 
             ColumnLayout {
                 visible: _foldButton.checked
-
+                Layout.fillWidth: true
                 Layout.leftMargin: _foldButton.width
 
                 Switch {
