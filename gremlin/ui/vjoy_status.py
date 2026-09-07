@@ -6,9 +6,10 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
+from gremlin import device_initialization
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
-from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
+from gremlin.ui.device import DeviceListModel, QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from vjoy import vjoy
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
@@ -87,6 +88,16 @@ def _save_extra(extras: set[str]) -> None:
         list(EXTRA_DEFAULT),
         "Keyboard, Logical, and OSC tabs shown in the main bar.",
     ).set(SECTION, GROUP, EXTRA_NAME, sorted(extras))
+
+
+def _reload_all_devices(self) -> None:
+    self.beginResetModel()
+    self._device_types = "all"
+    self._devices = device_initialization.joystick_devices()
+    self.endResetModel()
+
+
+DeviceListModel._reload_devices = _reload_all_devices
 
 
 @ta.QmlElement
