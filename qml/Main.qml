@@ -19,7 +19,7 @@ import "helpers.js" as Helpers
 
 ApplicationWindow {
 
-    title: backend.windowTitle
+    title: backend ? backend.windowTitle : "Joystick Gremlin"
     minimumWidth: 1300
     minimumHeight: 700
     width: 1400
@@ -28,7 +28,9 @@ ApplicationWindow {
     id: _root
 
     Component.onCompleted: () => {
-        Style.isDarkMode = backend.useDarkMode
+        if (backend) {
+            Style.isDarkMode = backend.useDarkMode
+        }
     }
 
     Universal.theme: Style.theme
@@ -39,6 +41,9 @@ ApplicationWindow {
     }
 
     function saveCurrentProfile() {
+        if (!backend) {
+            return
+        }
         var fpath = backend.profilePath()
         if (fpath === "") {
             _saveProfileFileDialog.open()
@@ -88,6 +93,9 @@ ApplicationWindow {
         onButtonClicked: (button, role) => {
             switch (button) {
                 case MessageDialog.Save:
+                    if (!backend) {
+                        break
+                    }
                     var fpath = backend.profilePath()
                     if(fpath === "") {
                         _saveProfileFileDialog.quitAfterSave = true
@@ -118,7 +126,11 @@ ApplicationWindow {
         cancelText: "Cancel"
         destructive: true
 
-        onConfirmed: backend.newProfile()
+        onConfirmed: {
+            if (backend) {
+                backend.newProfile()
+            }
+        }
     }
 
     DismissibleDialog {
@@ -143,6 +155,9 @@ ApplicationWindow {
         nameFilters: ["Profile files (*.xml)"]
 
         onAccepted: () => {
+            if (!backend) {
+                return
+            }
             var ok = backend.saveProfile(currentFile)
             if (quitAfterSave) {
                 quitAfterSave = false
@@ -167,7 +182,9 @@ ApplicationWindow {
         nameFilters: ["Profile files (*.xml)"]
 
         onAccepted: () => {
-            backend.loadProfile(currentFile)
+            if (backend) {
+                backend.loadProfile(currentFile)
+            }
         }
     }
 
@@ -193,10 +210,14 @@ ApplicationWindow {
                 title: qsTr("Recent")
 
                 Repeater {
-                    model: backend.recentProfiles
+                    model: backend ? backend.recentProfiles : []
                     delegate: MenuItem {
                         text: modelData
-                        onTriggered: () => { backend.loadProfile(modelData) }
+                        onTriggered: () => {
+                            if (backend) {
+                                backend.loadProfile(modelData)
+                            }
+                        }
                     }
                 }
             }
@@ -211,7 +232,7 @@ ApplicationWindow {
             MenuItem {
                 text: qsTr("Exit")
                 onTriggered: () => {
-                    if (backend.profileContainsUnsavedChanges) {
+                    if (backend && backend.profileContainsUnsavedChanges) {
                         _saveBeforeQuitDialog.open()
                     } else {
                         Qt.quit()
@@ -307,10 +328,14 @@ ApplicationWindow {
             }
             JGToolButton {
                 text: "\uF448"
-                color: backend.gremlinActive ? Style.accent : Style.foreground
+                color: backend && backend.gremlinActive ? Style.accent : Style.foreground
                 tooltip: qsTr("Toggle Gremlin")
 
-                onClicked: () => { backend.toggleActiveState() }
+                onClicked: () => {
+                    if (backend) {
+                        backend.toggleActiveState()
+                    }
+                }
             }
 
             JGToolButton {
@@ -356,10 +381,16 @@ ApplicationWindow {
                 textRole: "name"
                 valueRole: "name"
 
-                onActivated: () => { uiState.setCurrentMode(currentText) }
+                onActivated: () => {
+                    if (uiState) {
+                        uiState.setCurrentMode(currentText)
+                    }
+                }
 
                 Component.onCompleted: () => {
-                    currentIndex = find(uiState.currentMode)
+                    if (uiState) {
+                        currentIndex = find(uiState.currentMode)
+                    }
                 }
 
                 ToolTip {
@@ -386,10 +417,10 @@ ApplicationWindow {
 
                 text: "<B>Status: </B>" +
                     Helpers.selectText(
-                        backend.gremlinActive, "Active", "Not Running"
+                        backend && backend.gremlinActive, "Active", "Not Running"
                     ) +
                     Helpers.selectText(
-                        backend.gremlinActive & backend.gremlinPaused, " (Paused)", ""
+                        backend && backend.gremlinActive && backend.gremlinPaused, " (Paused)", ""
                     )
             }
 
@@ -397,7 +428,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 padding: 5
 
-                text: "<B>Executing mode: </B>" + backend.currentMode
+                text: "<B>Executing mode: </B>" + (backend ? backend.currentMode : "")
             }
         }
     }
@@ -411,7 +442,7 @@ ApplicationWindow {
     Device {
         id: _deviceModel
 
-        guid: uiState.currentDevice
+        guid: uiState ? uiState.currentDevice : ""
     }
 
     BootstrapIcons {
@@ -423,12 +454,18 @@ ApplicationWindow {
         target: uiState
 
         function onModeChanged() {
+            if (!uiState) {
+                return
+            }
             _deviceModel.setMode(uiState.currentMode)
             _logicalDeviceList.device.setMode(uiState.currentMode)
             _oscDeviceList.device.setMode(uiState.currentMode)
             _modeSelector.currentIndex = _modeSelector.find(uiState.currentMode)
         }
         function onTabChanged() {
+            if (!uiState) {
+                return
+            }
             _scriptButton.checked = uiState.currentTab === "scripts"
             _profileSettingsButton.checked = uiState.currentTab === "settings"
         }
@@ -443,7 +480,9 @@ ApplicationWindow {
         target: signal
 
         function onConfigChanged() {
-            Style.isDarkMode = backend.useDarkMode
+            if (backend) {
+                Style.isDarkMode = backend.useDarkMode
+            }
         }
 
         function onShowError(message, details) {
@@ -460,7 +499,7 @@ ApplicationWindow {
     }
 
     onClosing: (close) => {
-        if (backend.profileContainsUnsavedChanges) {
+        if (backend && backend.profileContainsUnsavedChanges) {
             _saveBeforeQuitDialog.open()
             close.accepted = false
         }
@@ -513,7 +552,11 @@ ApplicationWindow {
                     width: _metricScripts.width + 50
                     checked: false
 
-                    onClicked: () => { uiState.setCurrentTab("scripts") }
+                    onClicked: () => {
+                        if (uiState) {
+                            uiState.setCurrentTab("scripts")
+                        }
+                    }
 
                     TextMetrics {
                         id: _metricScripts
@@ -530,7 +573,11 @@ ApplicationWindow {
                     width: _metricProfileSettings.width + 50
                     checked: false
 
-                    onClicked: () => { uiState.setCurrentTab("settings") }
+                    onClicked: () => {
+                        if (uiState) {
+                            uiState.setCurrentTab("settings")
+                        }
+                    }
 
                     TextMetrics {
                         id: _metricProfileSettings
@@ -554,7 +601,7 @@ ApplicationWindow {
             DeviceInputList {
                 id: _deviceInputList
 
-                visible: uiState.currentTab === "physical"
+                visible: uiState && uiState.currentTab === "physical"
                 SplitView.minimumWidth: 400
 
                 device: _deviceModel
@@ -563,42 +610,48 @@ ApplicationWindow {
             LogicalDevice {
                 id: _logicalDeviceList
 
-                visible: uiState.currentTab === "logical"
+                visible: uiState && uiState.currentTab === "logical"
                 SplitView.minimumWidth: 400
 
                 onInputIdentifierChanged: () => {
-                    uiState.setCurrentInput(inputIdentifier, inputIndex)
+                    if (uiState) {
+                        uiState.setCurrentInput(inputIdentifier, inputIndex)
+                    }
                 }
             }
 
             OscDevice {
                 id: _oscDeviceList
 
-                visible: uiState.currentTab === "osc"
+                visible: uiState && uiState.currentTab === "osc"
                 SplitView.minimumWidth: 400
 
                 onInputIdentifierChanged: () => {
-                    uiState.setCurrentInput(inputIdentifier, inputIndex)
+                    if (uiState) {
+                        uiState.setCurrentInput(inputIdentifier, inputIndex)
+                    }
                 }
             }
 
             KeyboardInputList {
                 id: _keyboardInputList
 
-                visible: uiState.currentTab === "keyboard"
+                visible: uiState && uiState.currentTab === "keyboard"
                 SplitView.minimumWidth: 400
             }
 
             InputConfiguration {
                 id: _inputConfigurationPanel
 
-                visible: !["scripts", "settings"].includes(uiState.currentTab)
+                visible: uiState && !["scripts", "settings"].includes(uiState.currentTab)
 
                 Component.onCompleted: () => {
-                    inputItemModel = backend.getInputItem(
-                        uiState.currentInput,
-                        uiState.currentInputIndex
-                    )
+                    if (backend && uiState) {
+                        inputItemModel = backend.getInputItem(
+                            uiState.currentInput,
+                            uiState.currentInputIndex
+                        )
+                    }
                 }
 
                 SplitView.fillWidth: true
@@ -614,9 +667,9 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.verticalStretchFactor: 10
 
-            visible: uiState.currentTab === "scripts"
+            visible: uiState && uiState.currentTab === "scripts"
 
-            scriptListModel: backend.scriptListModel
+            scriptListModel: backend ? backend.scriptListModel : null
         }
 
         ProfileSettings {
@@ -626,7 +679,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.verticalStretchFactor: 10
 
-            visible: uiState.currentTab === "settings"
+            visible: uiState && uiState.currentTab === "settings"
 
             settingsModel: ProfileSettingsModel {}
         }
