@@ -26,6 +26,7 @@ Popup {
     width: 720
 
     OscSettingsInfo { id: _oscInfo }
+    OscBulkCapture { id: _bulk }
 
     background: Rectangle {
         color: Style.background
@@ -180,7 +181,20 @@ Popup {
                     } else {
                         _listenSettings.messageText = _oscInfo.summary()
                         _listenSettings.open()
-                        deviceModel.listenForCommand()
+                        if (_bulkCapture.checked) {
+                            _bulk.start(deviceModel, _root.selectedMode())
+                        } else {
+                            deviceModel.listenForCommand()
+                        }
+                    }
+                }
+            }
+            CheckBox {
+                id: _bulkCapture
+                text: "Bulk capture"
+                onCheckedChanged: {
+                    if (!checked && deviceModel && deviceModel.listening) {
+                        deviceModel.cancelListen()
                     }
                 }
             }
