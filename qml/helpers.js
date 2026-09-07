@@ -30,6 +30,16 @@ function createComponent(componentSpec)
     }
 }
 
+function toggleComponent(componentSpec)
+{
+    let existing = _openWindows[componentSpec]
+    if (existing) {
+        existing.close()
+        return
+    }
+    createComponent(componentSpec)
+}
+
 function capitalize(value)
 {
     return value.replace(/\b\w/g, l => l.toUpperCase())
