@@ -438,10 +438,49 @@ class DeviceSummary:
 C_EVENT_CALLBACK = ctypes.CFUNCTYPE(None, _JoystickInputData)
 C_DEVICE_CHANGE_CALLBACK = ctypes.CFUNCTYPE(None, _DeviceSummary, ctypes.c_uint8)
 
-_dll_path = os.path.join(os.path.dirname(__file__), "dill.dll")
-if "_MEIPASS" in sys.__dict__:
-    _dll_path = os.path.join(sys._MEIPASS, "dill.dll")
-_di_listener_dll = ctypes.cdll.LoadLibrary(_dll_path)
+
+def _resolve_dill_path() -> str:
+    candidates = []
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates.append(os.path.join(here, "dill.dll"))
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        candidates.append(os.path.join(sys._MEIPASS, "dill.dll"))
+        candidates.append(os.path.join(sys._MEIPASS, "dill", "dill.dll"))
+        candidates.append(os.path.join(os.path.dirname(sys.executable), "dill.dll"))
+    candidates.append(os.path.abspath("dill.dll"))
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return os.path.abspath(path)
+    raise DILLError("Unable to locate dill.dll library")
+
+
+def _load_native_dll(path: str):
+    """Load a DLL without PyInstaller's ctypes hook (avoids WinError 1114)."""
+    path = os.path.abspath(path)
+    directory = os.path.dirname(path)
+    if hasattr(os, "add_dll_directory"):
+        try:
+            os.add_dll_directory(directory)
+        except OSError:
+            pass
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.LoadLibraryExW.restype = ctypes.c_void_p
+    kernel32.LoadLibraryExW.argtypes = [
+        ctypes.c_wchar_p,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+    ]
+    handle = kernel32.LoadLibraryExW(path, None, 0x00000008)
+    if not handle:
+        raise ctypes.WinError(ctypes.get_last_error())
+    dll = ctypes.CDLL.__new__(ctypes.CDLL)
+    dll._name = path
+    dll._handle = handle
+    return dll
+
+
+_dll_path = _resolve_dill_path()
+_di_listener_dll = _load_native_dll(_dll_path)
 
 _di_listener_dll.get_device_information_by_index.argtypes = [ctypes.c_uint]
 _di_listener_dll.get_device_information_by_index.restype = _DeviceSummary
@@ -450,28 +489,13 @@ _di_listener_dll.get_device_information_by_index.restype = _DeviceSummary
 class DILL:
     """Exposes functions of the DILL library in an easy to use manner."""
 
-    # Attempt to find the correct location of the dll for development
-    # and installed use cases.
-    _dev_path = os.path.join(os.path.dirname(__file__), "dill.dll")
-    if os.path.isfile("dill.dll"):
-        _dll_path = "dill.dll"
-    elif "_MEIPASS" in sys.__dict__:
-        _dll_path = os.path.join(sys._MEIPASS, "dill.dll")
-    elif os.path.isfile(_dev_path):
-        _dll_path = _dev_path
-    else:
-        raise DILLError("Unable to locate dill.dll library")
-
-    _dll = ctypes.cdll.LoadLibrary(_dll_path)
-    # Should only be initialized once in a process's lifetime.
+    _dll_path = _dll_path
+    _dll = _di_listener_dll
     _dill_initialized = False
 
-    # Storage for the callback functions
     device_change_callback_fn = None
     input_event_callback_fn = None
 
-    # Declare argument and return types for all the functions
-    # exposed by the dll
     api_functions = {
         "init": {"arguments": [], "returns": None},
         "set_input_event_callback": {"arguments": [C_EVENT_CALLBACK], "returns": None},
