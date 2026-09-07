@@ -22,6 +22,7 @@ KEY_MAX = "window-maximized"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
+MARGIN = 24
 
 
 def _ensure() -> Configuration:
@@ -34,29 +35,18 @@ def _ensure() -> Configuration:
         (KEY_MAX, PropertyType.Bool, False),
     )
     for name, data_type, initial in specs:
-        if not cfg.exists(SECTION, GROUP, name):
-            cfg.register(
-                SECTION,
-                GROUP,
-                name,
-                data_type,
-                initial,
-                "Saved main window placement.",
-                {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {},
-                False,
-            )
-        else:
-            props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
-            cfg.register(
-                SECTION,
-                GROUP,
-                name,
-                data_type,
-                cfg.value(SECTION, GROUP, name),
-                "Saved main window placement.",
-                props,
-                False,
-            )
+        props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
+        value = cfg.value(SECTION, GROUP, name) if cfg.exists(SECTION, GROUP, name) else initial
+        cfg.register(
+            SECTION,
+            GROUP,
+            name,
+            data_type,
+            value,
+            "Saved main window placement.",
+            props,
+            False,
+        )
     return cfg
 
 
@@ -71,14 +61,13 @@ def _screen_at(point: QtCore.QPoint) -> QtGui.QScreen | None:
     app = QtGui.QGuiApplication.instance()
     if app is None:
         return None
-    screen = app.screenAt(point)
-    if screen is not None:
-        return screen
-    return app.primaryScreen()
+    return app.screenAt(point) or app.primaryScreen()
 
 
 def _fit_to_screen(rect: QtCore.QRect, screen: QtGui.QScreen) -> QtCore.QRect:
-    avail = screen.availableGeometry()
+    avail = screen.availableGeometry().adjusted(MARGIN, MARGIN, -MARGIN, -MARGIN)
+    if avail.width() < 900 or avail.height() < 600:
+        avail = screen.availableGeometry()
     width = min(max(rect.width(), 900), avail.width())
     height = min(max(rect.height(), 600), avail.height())
     x = min(max(rect.x(), avail.x()), avail.x() + avail.width() - width)
@@ -97,8 +86,7 @@ def _target_screen(saved: QtCore.QRect) -> QtGui.QScreen | None:
     for screen in _available_screens():
         if _intersects_enough(saved, screen):
             return screen
-    cursor = QtGui.QCursor.pos()
-    return _screen_at(cursor)
+    return _screen_at(QtGui.QCursor.pos())
 
 
 def restore_window(window: QtGui.QWindow) -> None:
@@ -115,14 +103,14 @@ def restore_window(window: QtGui.QWindow) -> None:
     if not _intersects_enough(saved, screen):
         avail = screen.availableGeometry()
         saved = QtCore.QRect(
-            avail.x() + max(0, (avail.width() - DEFAULT_W) // 2),
-            avail.y() + max(0, (avail.height() - DEFAULT_H) // 2),
+            avail.x() + max(MARGIN, (avail.width() - DEFAULT_W) // 2),
+            avail.y() + max(MARGIN, (avail.height() - DEFAULT_H) // 2),
             DEFAULT_W,
             DEFAULT_H,
         )
     fitted = _fit_to_screen(saved, screen)
-    window.setPosition(fitted.topLeft())
-    window.resize(fitted.size())
+    window.setVisibility(QtGui.QWindow.Visibility.Windowed)
+    window.setGeometry(fitted)
     if cfg.value(SECTION, GROUP, KEY_MAX):
         window.setVisibility(QtGui.QWindow.Visibility.Maximized)
 
@@ -144,15 +132,6 @@ class WindowPlacement(QtCore.QObject):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         _ensure()
-        self._timer = QtCore.QTimer(self)
-        self._timer.setSingleShot(True)
-        self._timer.setInterval(400)
-        self._window = None
-        self._timer.timeout.connect(self._flush)
-
-    def _flush(self) -> None:
-        if self._window is not None:
-            save_window(self._window)
 
     @QtCore.Slot(QtCore.QObject)
     def restore(self, window: QtCore.QObject) -> None:
@@ -165,10 +144,3 @@ class WindowPlacement(QtCore.QObject):
         if window is None:
             return
         save_window(window)
-
-    @QtCore.Slot(QtCore.QObject)
-    def scheduleSave(self, window: QtCore.QObject) -> None:
-        if window is None:
-            return
-        self._window = window
-        self._timer.start()
