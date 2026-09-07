@@ -1,5 +1,4 @@
 # -*- coding: utf-8; -*-
-
 # SPDX-License-Identifier: GPL-3.0-only
 
 from __future__ import annotations
@@ -105,14 +104,11 @@ class VirtualAxisButton(VirtualButton):
             newly_initialized = True
             self._last_value = event.value
         else:
-            # Check if we moved over the activation region between two
-            # consecutive measurements
             if self._last_value < self._lower_limit and value > self._upper_limit:
                 forced_activation = True
             elif self._last_value > self._upper_limit and value < self._lower_limit:
                 forced_activation = True
 
-            # Determine direction in which the axis is moving
             if self._last_value < value:
                 direction = AxisButtonDirection.Below
             elif self._last_value > event.value:
@@ -120,8 +116,6 @@ class VirtualAxisButton(VirtualButton):
 
         self._last_value = event.value
 
-        # If the input moved across the activation an activation will be
-        # emitted as a single pulse.
         states = []
         if forced_activation:
             self._fsm.perform("press")
@@ -180,17 +174,10 @@ class CallbackObject:
     c_next_virtual_identifier = 1
 
     def __init__(self, binding: profile.InputItemBinding) -> None:
-        """Creates a new callback instance for a specific input item.
-
-        Args:
-            action: actions bound to a single input item
-        """
         self._binding = binding
         self._functor = None
         self._virtual_identifier = 0
 
-        # Differentiate between bindings utilizing virtual buttons and those
-        # that react to raw physical inputs
         if self._binding.virtual_button is not None:
             self._virtual_identifier = CallbackObject.c_next_virtual_identifier
             CallbackObject.c_next_virtual_identifier += 1
@@ -200,12 +187,6 @@ class CallbackObject:
 
     @property
     def always_execute(self) -> bool:
-        """Returns True if the callback should be executed even when Gremlin
-        is paused.
-
-        Returns:
-            True if the callback is to be always executed
-        """
         actions = self._binding.root_action.get_actions()[0]
         values = [ActionProperty.AlwaysExecute in a.properties for a in actions]
         return any(values)
@@ -214,29 +195,19 @@ class CallbackObject:
         values = self._generate_values(event)
         for i, value in enumerate(values):
             self._functor(event, value)
-
-            # Pause between the execution of subsequent bindings
             if i < len(values) - 1:
                 time.sleep(0.01)
 
     def _physical_event_setup(self) -> None:
-        """Configures the callback object for traditional physical events."""
         self._functor = self._binding.root_action.functor(self._binding.root_action)
 
     def _virtual_event_setup(self) -> None:
-        """Configures the callback object for virtual button handling.
-
-        This creates callbacks that emit virtual button events in reaction to
-        the input items physical events. The actions bound to the input item
-        in turn will trigger in response to the emitted virtual events.
-        """
         if self._binding.input_item.mode is None:
             logging.getLogger("system").warning(
                 "Virtual button configured for input item with no mode, ignoring."
             )
             return
 
-        # Create template virtual event
         virtual_event = event_handler.Event(
             event_type=InputType.VirtualButton,
             identifier=self._virtual_identifier,
@@ -246,7 +217,6 @@ class CallbackObject:
             raw_value=False,
         )
 
-        # Create virtual button instance and virtual event generator
         vb_instance = self._binding.virtual_button
         if isinstance(vb_instance, profile.VirtualAxisButton):
             self._functor = VirtualButtonFunctor(
@@ -259,7 +229,8 @@ class CallbackObject:
             )
         elif isinstance(vb_instance, profile.VirtualHatButton):
             self._functor = VirtualButtonFunctor(
-                VirtualHatButton(vb_instance.directions), virtual_event
+                VirtualHatButton(vb_instance.directions),
+                virtual_event,
             )
         else:
             raise error.GremlinError(
@@ -267,11 +238,6 @@ class CallbackObject:
                 + "button is configured."
             )
 
-        # Create new callback entries for the virtual button event to execute
-        # the actions. This requires the creation of "fake" InputItem and
-        # InputItemBinding instances to create another CallbackObject to
-        # handle the virtual button events.
-        # Create virtual InputItem instance
         virt_item = profile.InputItem(self._binding.input_item.library)
         virt_item.device_id = dill.UUID_Virtual
         virt_item.input_type = InputType.VirtualButton
@@ -280,14 +246,11 @@ class CallbackObject:
         virt_item.action_sequences = [self._binding]
         virt_item.is_active = self._binding.input_item.is_active
 
-        # Create virtual InputItemBinding instance
         virt_binding = profile.InputItemBinding(virt_item)
         virt_binding.root_action = self._binding.root_action
         virt_binding.behavior = InputType.JoystickButton
         virt_binding.virtual_button = None
 
-        # Create callback reacting to the virtual button event using the new
-        # virtual binding that mirrors the original physical one
         eh = event_handler.EventHandler()
         eh.add_callback(
             dill.UUID_Virtual,
@@ -315,7 +278,6 @@ class CodeRunner:
     """Runs the actual profile code."""
 
     def __init__(self) -> None:
-        """Creates a new code runner instance."""
         self.event_handler = event_handler.EventHandler()
         self.event_handler.add_plugin(user_script.JoystickPlugin())
         self.event_handler.add_plugin(user_script.VJoyPlugin())
@@ -325,43 +287,26 @@ class CodeRunner:
         self._running = False
 
     def is_running(self) -> bool:
-        """Returns whether the code runner is executing code.
-
-        Returns:
-            True if code is being executed, False otherwise
-        """
         return self._running
 
     def start(self, profile: profile.Profile, start_mode: str) -> None:
-        """Starts listening to events and loads all existing callbacks.
-
-        Args:
-            profile: the profile to use when generating all the callbacks
-            start_mode: the mode in which to start Gremlin
-        """
         self._profile = profile
         self._reset_state()
 
-        # Check if we want to override the start mode as determined by the
-        # heuristic.
         settings = self._profile.settings
         if settings.startup_mode is not None:
             if settings.startup_mode in self._profile.modes.mode_names():
                 start_mode = settings.startup_mode
 
-        # Set default macro action delay.
         macro.MacroManager().default_delay = settings.macro_default_delay
+        syslog = logging.getLogger("system")
 
         try:
-            # Process actions defined in user plugins.
             self._setup_user_scripts()
 
-            # Add a fake keyboard action which does nothing to the callbacks
-            # in every mode in order to have empty modes be "present".
             for mode_name in self._profile.modes.mode_names():
                 self.event_handler.add_callback(0, mode_name, None, lambda x: x)
 
-            # Create callbacks fom the user scripts and other code.
             callback_count = 0
             for dev_id, modes in user_script.callback_registry.registry.items():
                 for mode, events in modes.items():
@@ -372,21 +317,22 @@ class CodeRunner:
                             )
                             callback_count += 1
 
-            # Process action sequences defined via the UI.
-            self._setup_profile()
+            sequence_count = self._setup_profile()
+            syslog.warning(
+                "Gremlin start: %s UI sequences, %s script callbacks, mode=%s",
+                sequence_count,
+                callback_count,
+                start_mode,
+            )
 
-            # Use inheritance to build duplicate parent actions in children
-            # if the child mode does not override the parent's action.
             self.event_handler.build_event_lookup(self._profile.modes.mode_list())
 
-            # Connect signals.
             evt_listener = event_handler.EventListener()
             evt_listener.keyboard_event.connect(self.event_handler.process_event)
             evt_listener.joystick_event.connect(self.event_handler.process_event)
             evt_listener.virtual_event.connect(self.event_handler.process_event)
             evt_listener.gremlin_active = True
 
-            # Start various manager-style classes.
             user_script.periodic_registry.start()
             macro.MacroManager().start()
             audio_player.AudioPlayer().start()
@@ -405,10 +351,11 @@ class CodeRunner:
             signal.display_error(
                 "Unable to launch due to a missing user plugin.", str(e)
             )
+        except Exception:
+            syslog.exception("Gremlin start failed")
+            raise
 
     def stop(self) -> None:
-        """Stops listening to events and unloads all callbacks."""
-        # Disconnect all signals.
         if self._running:
             evt_lst = event_handler.EventListener()
             evt_lst.keyboard_event.disconnect(self.event_handler.process_event)
@@ -417,51 +364,41 @@ class CodeRunner:
             evt_lst.gremlin_active = False
         self._running = False
 
-        # Empty callback registry.
         user_script.callback_registry.clear()
         self.event_handler.clear()
 
-        # Stop periodic events and clear registry.
         user_script.periodic_registry.stop()
         user_script.periodic_registry.clear()
 
-        # Stop all manager classes.
         OscRuntime().stop()
         macro.MacroManager().stop()
         sendinput.MouseController().stop()
         audio_player.AudioPlayer().stop()
         tts.TTSManager().stop()
 
-        # Remove all claims on VJoy devices.
         VJoyProxy.reset()
 
     def _reset_state(self) -> None:
-        """Resets all states to their default values."""
         self.event_handler._active_mode = self._profile.modes.first_mode
         self.event_handler._previous_mode = self._profile.modes.first_mode
         user_script.callback_registry.clear()
         event_helpers.ButtonReleaseActions().reset()
 
     def _refresh_axes(self) -> None:
-        # Store state of all vJoy axes before we do anything.
         vjoy_state = {}
         for vjoy_dev in device_initialization.vjoy_devices():
             vjoy_state[vjoy_dev.vjoy_id] = {}
             cache_dev = input_cache.Joystick()[vjoy_dev.device_guid.uuid]
             for entry in vjoy_dev.axis_map:
-                # The axis_map may have empty entries, which need to be ignored.
                 if entry.axis_index == 0:
                     continue
                 vjoy_state[vjoy_dev.vjoy_id][entry.axis_index] = cache_dev.axis(
                     entry.axis_index
                 ).value
 
-        # Refresh physical input states.
         if Configuration().value("global", "general", "refresh-axis-on-activation"):
             RefreshPhysicalInputs.refresh_axes()
 
-        # Set vJoy axis default values unless the axis changed its value due
-        # to an axis refresh.
         for vid, data in self._profile.settings.vjoy_initial_values.items():
             vjoy_proxy = VJoyProxy()[vid]
             for aid, value in data.items():
@@ -469,45 +406,44 @@ class CodeRunner:
                     vjoy_proxy.axis(linear_index=aid).value = value
 
     def _setup_user_scripts(self) -> None:
-        """Handles loading and configuring of user scripts."""
-        # Retrieve the list of current paths searched by Python.
         system_paths = [os.path.normcase(os.path.abspath(p)) for p in sys.path]
 
         user_script.periodic_registry.clear()
-        # Update system path for the user scripts.
         for script in self._profile.scripts.scripts:
             if not script.is_configured:
                 continue
 
-            # Perform system path mangling for import statements.
             script_folder = str(script.path.parent)
             if script_folder not in system_paths:
                 system_paths.append(script_folder)
 
-            # Ensure script has up to date variable content.
             script.reload()
 
-        # Update the system path list searched by Python in order to locate the
-        # plugins properly.
         sys.path = system_paths
 
-    def _setup_profile(self) -> None:
-        # Collect action sequences from physical inputs and logical device
-        # input entries.
+    def _setup_profile(self) -> int:
         item_list = sum(self._profile.inputs.values(), [])
         action_sequences = sum([e.action_sequences for e in item_list], [])
+        syslog = logging.getLogger("system")
 
-        # Create executable unit for each action.
         for action in action_sequences:
-            # Event on which to trigger this action.
             event = event_handler.Event(
                 event_type=action.input_item.input_type,
                 device_guid=action.input_item.device_id,
                 identifier=action.input_item.input_id,
                 mode=action.input_item.mode,
             )
-
-            # Generate executable unit for the linked library item.
             self.event_handler.add_callback(
                 event.device_guid, action.input_item.mode, event, CallbackObject(action)
             )
+
+        if action_sequences:
+            sample = action_sequences[0].input_item
+            syslog.warning(
+                "First sequence device=%s type=%s id=%s mode=%s",
+                sample.device_id,
+                sample.input_type,
+                sample.input_id,
+                sample.mode,
+            )
+        return len(action_sequences)
