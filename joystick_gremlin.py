@@ -287,7 +287,6 @@ def _terminate_other_gremlin(pids: list[int]) -> None:
 def _confirm_second_instance(
     lock_held: bool, windows: list[str], pids: list[int]
 ) -> str:
-    already = max(len(pids), 1 if lock_held or windows else 0)
     pid_text = ", ".join(str(pid) for pid in pids) if pids else "unknown"
     extra = ""
     if windows:
@@ -298,9 +297,8 @@ def _confirm_second_instance(
     if pids and not windows:
         hung_hint = "\nA Gremlin process is running with no visible window. It may be hung."
     text = (
-        f"Joystick Gremlin already running: {already}\n"
-        f"Process IDs: {pid_text}\n"
-        f"This launch would be another copy."
+        "Another Joystick Gremlin window is already running.\n"
+        f"Process IDs: {pid_text}"
         f"{extra}{hung_hint}\n\n"
         "Only one copy can own vJoy.\n\n"
         "Yes = Close the other process(es) and start this copy.\n"
