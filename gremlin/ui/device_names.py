@@ -1,0 +1,81 @@
+# -*- coding: utf-8; -*-
+# SPDX-License-Identifier: GPL-3.0-only
+
+from __future__ import annotations
+
+from PySide6 import QtCore
+
+import gremlin.ui.type_aliases as ta
+from gremlin.config import Configuration
+from gremlin.types import PropertyType
+from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
+
+assert QML_IMPORT_NAME == "Gremlin.Device"
+assert QML_IMPORT_MAJOR_VERSION == 1
+
+SECTION = "devices"
+GROUP = "display"
+NAME = "aliases"
+
+
+def _ensure() -> Configuration:
+    cfg = Configuration()
+    if not cfg.exists(SECTION, GROUP, NAME):
+        cfg.register(
+            SECTION,
+            GROUP,
+            NAME,
+            PropertyType.List,
+            [],
+            "Friendly display names for devices and inputs.",
+            {},
+            False,
+        )
+    return cfg
+
+
+def _load() -> dict[str, str]:
+    raw = _ensure().value(SECTION, GROUP, NAME) or []
+    names: dict[str, str] = {}
+    for entry in raw:
+        if isinstance(entry, list) and len(entry) >= 2:
+            key = str(entry[0]).strip()
+            value = str(entry[1]).strip()
+            if key:
+                names[key] = value
+    return names
+
+
+def _save(names: dict[str, str]) -> None:
+    rows = [[key, value] for key, value in names.items() if value]
+    _ensure().set(SECTION, GROUP, NAME, rows)
+
+
+def display_name(key: str, default: str) -> str:
+    alias = _load().get(str(key).strip(), "").strip()
+    return alias or default
+
+
+def set_alias(key: str, value: str) -> None:
+    names = _load()
+    key = str(key).strip()
+    text = str(value or "").strip()
+    if text:
+        names[key] = text
+    else:
+        names.pop(key, None)
+    _save(names)
+
+
+@ta.QmlElement
+class DeviceNames(QtCore.QObject):
+    changed = QtCore.Signal()
+
+    @QtCore.Slot(str, str, result=str)
+    def display(self, key: str, default: str) -> str:
+        return display_name(key, default)
+
+    @QtCore.Slot(str, str)
+    def setAlias(self, key: str, value: str) -> None:
+        set_alias(key, value)
+        self.changed.emit()
