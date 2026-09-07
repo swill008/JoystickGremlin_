@@ -13,6 +13,10 @@ import Gremlin.Style
 Item {
     id: _root
 
+    readonly property bool editorLocked: backend && backend.gremlinActive
+    enabled: !editorLocked
+    opacity: editorLocked ? 0.55 : 1.0
+
     property int inputIndex
     property InputIdentifier inputIdentifier
     property alias device: _inputList.model
@@ -28,6 +32,9 @@ Item {
         property var callback: null
 
         onAccepted: (value) => {
+            if (editorLocked) {
+                return
+            }
             callback(value)
             visible = false
         }
@@ -53,10 +60,18 @@ Item {
             delegate: InputButton {
                 width: _inputList.width - 20
                 height: 50
+                enabled: !editorLocked
 
                 selected: model.index === _inputList.currentIndex
-                onClicked: () => { _inputList.currentIndex = model.index }
+                onClicked: () => {
+                    if (!editorLocked) {
+                        _inputList.currentIndex = model.index
+                    }
+                }
                 onRenameRequested: {
+                    if (editorLocked) {
+                        return
+                    }
                     _textInput.text = description
                     _textInput.callback = (value) => {
                         _actionNames.setOnModel(_inputList.model, index, value)
@@ -68,8 +83,12 @@ Item {
                     text: bsi.icons.edit
                     font.pixelSize: 12
                     width: 15
+                    enabled: !editorLocked
 
                     onClicked: () => {
+                        if (editorLocked) {
+                            return
+                        }
                         _textInput.text = label
                         _textInput.callback = (value) => {
                             _inputList.model.changeName(label, value)
@@ -82,8 +101,13 @@ Item {
                     text: bsi.icons.remove
                     font.pixelSize: 12
                     width: 15
+                    enabled: !editorLocked
 
-                    onClicked: () => { _inputList.model.deleteInput(label) }
+                    onClicked: () => {
+                        if (!editorLocked) {
+                            _inputList.model.deleteInput(label)
+                        }
+                    }
                 }
             }
 
@@ -93,6 +117,9 @@ Item {
             }
 
             onCurrentIndexChanged: () => {
+                if (editorLocked) {
+                    return
+                }
                 inputIndex = currentIndex
                 inputIdentifier = model.inputIdentifier(currentIndex)
             }
@@ -101,6 +128,7 @@ Item {
         RowLayout {
             Layout.minimumWidth: 100
             Layout.preferredHeight: 50
+            enabled: !editorLocked
 
             ComboBox {
                 id: _input_type
@@ -114,12 +142,15 @@ Item {
             Button {
                 Layout.preferredHeight: _input_type.height
                 Layout.rightMargin: 5
+                enabled: !editorLocked
 
                 text: bsi.icons.add
                 font.family: "bootstrap-icons"
 
                 onClicked: () => {
-                    _inputList.model.createInput(_input_type.currentValue)
+                    if (!editorLocked) {
+                        _inputList.model.createInput(_input_type.currentValue)
+                    }
                 }
             }
         }
