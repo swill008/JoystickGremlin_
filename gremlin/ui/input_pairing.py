@@ -7,9 +7,11 @@ import uuid
 
 from PySide6 import QtCore
 
-from gremlin import shared_state
+import dill
+from gremlin import device_initialization, event_handler, shared_state
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
+from gremlin.ui.device_names import display_name
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -28,7 +30,7 @@ AXIS_LABELS = {
 
 def _guid(value: object) -> uuid.UUID | None:
     try:
-        return uuid.UUID(str(value).strip().strip("{}"))
+        return uuid.UUID(str(value or "").strip().strip("{}"))
     except Exception:
         return None
 
@@ -36,16 +38,17 @@ def _guid(value: object) -> uuid.UUID | None:
 def _walk_actions(action) -> list:
     found = [action]
     getter = getattr(action, "get_actions", None)
-    if callable(getter):
-        try:
-            buckets = getter()
-        except Exception:
-            buckets = []
-        if isinstance(buckets, (list, tuple)):
-            for bucket in buckets:
-                if isinstance(bucket, (list, tuple)):
-                    for child in bucket:
-                        found.extend(_walk_actions(child))
+    if not callable(getter):
+        return found
+    try:
+        buckets = getter()
+    except Exception:
+        return found
+    if isinstance(buckets, (list, tuple)):
+        for bucket in buckets:
+            if isinstance(bucket, (list, tuple)):
+                for child in bucket:
+                    found.extend(_walk_actions(child))
     return found
 
 
@@ -83,6 +86,267 @@ def _items_for_guid(guid: str):
     return profile.inputs.get(uid, []) or []
 
 
+def _vjoy_guid(vjoy_id: int) -> str:
+    try:
+        for device in device_initialization.vjoy_devices():
+            if int(getattr(device, "vjoy_id", -1)) == int(vjoy_id):
+                return str(device.device_guid)
+    except Exception:
+        return ""
+    return ""
+
+
+def _device_name(guid: str) -> str:
+    uid = _guid(guid)
+    hardware = str(guid)
+    try:
+        if uid is not None:
+            hardware = dill.DILL.get_device_name(dill.GUID.from_uuid(uid)) or hardware
+    except Exception:
+        pass
+    return display_name(guid, hardware)
+
+
+def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
+    rows: list[dict] = []
+    seen: set[tuple] = set()
+    for item in _items_for_guid(guid):
+        if getattr(item, "input_type", None) != input_type:
+            continue
+        try:
+            identifier = int(item.input_id)
+        except Exception:
+            continue
+        for vjoy_id, vtype, vinput in _maps_for_item(item):
+            key = (identifier, vjoy_id, vinput)
+            if key in seen:
+                continue
+            seen.add(key)
+            if input_type == InputType.JoystickAxis:
+                src = AXIS_LABELS.get(identifier, f"A{identifier}")
+            elif input_type == InputType.JoystickHat:
+                src = f"H{identifier}"
+            else:
+                src = str(identifier)
+            if vtype == InputType.JoystickAxis:
+                dest = AXIS_LABELS.get(int(vinput), f"A{vinput}")
+            elif vtype == InputType.JoystickHat:
+                dest = f"H{vinput}"
+            else:
+                dest = f"B{vinput}"
+            rows.append(
+                {
+                    "identifier": identifier,
+                    "label": src,
+                    "vjoyId": int(vjoy_id),
+                    "vjoyInput": int(vinput),
+                    "vjoyLabel": f"vJoy {vjoy_id} {dest}",
+                    "vjoyGuid": _vjoy_guid(vjoy_id),
+                }
+            )
+    rows.sort(key=lambda row: (row["identifier"], row["vjoyId"], row["vjoyInput"]))
+    return rows
+
+
+class _MappedModel(QtCore.QAbstractListModel):
+    roles = {
+        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"identifier"),
+        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"label"),
+        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"vjoyId"),
+        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(b"vjoyInput"),
+        QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"vjoyLabel"),
+        QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"vjoyGuid"),
+    }
+
+    guidChanged = QtCore.Signal()
+
+    def __init__(self, input_type: InputType, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        self._input_type = input_type
+        self._guid = ""
+        self._rows: list[dict] = []
+
+    def _reload(self) -> None:
+        self.beginResetModel()
+        self._rows = _mapped_rows(self._guid, self._input_type) if self._guid else []
+        self.endResetModel()
+
+    def _get_guid(self) -> str:
+        return self._guid
+
+    def _set_guid(self, guid: str) -> None:
+        text = str(guid or "")
+        if text == self._guid:
+            return
+        self._guid = text
+        self._reload()
+        self.guidChanged.emit()
+
+    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
+        return len(self._rows)
+
+    def data(self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < len(self._rows)):
+            return None
+        row = self._rows[index.row()]
+        key = bytes(self.roles.get(role, b"")).decode()
+        return row.get(key)
+
+    def roleNames(self) -> dict[int, QtCore.QByteArray]:
+        return self.roles
+
+    guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
+
+
+@ta.QmlElement
+class MappedAxisModel(_MappedModel):
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(InputType.JoystickAxis, parent)
+
+
+@ta.QmlElement
+class MappedButtonModel(_MappedModel):
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(InputType.JoystickButton, parent)
+
+
+@ta.QmlElement
+class PairDeviceModel(QtCore.QAbstractListModel):
+    roles = {
+        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"guid"),
+        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"name"),
+        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"pairLabel"),
+    }
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        self._rows: list[dict] = []
+        self.reload()
+
+    @QtCore.Slot()
+    def reload(self) -> None:
+        self.beginResetModel()
+        self._rows = []
+        profile = shared_state.current_profile
+        if profile is not None:
+            for device_id, items in (profile.inputs or {}).items():
+                if not any(_maps_for_item(item) for item in items or []):
+                    continue
+                guid = str(device_id)
+                targets = sorted(
+                    {
+                        vid
+                        for item in items or []
+                        for vid, _, _ in _maps_for_item(item)
+                    }
+                )
+                self._rows.append(
+                    {
+                        "guid": guid,
+                        "name": _device_name(guid),
+                        "pairLabel": ", ".join(f"vJoy Device {vid}" for vid in targets),
+                    }
+                )
+        self._rows.sort(key=lambda row: row["name"].lower())
+        self.endResetModel()
+
+    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
+        return len(self._rows)
+
+    def data(self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < len(self._rows)):
+            return None
+        row = self._rows[index.row()]
+        key = bytes(self.roles.get(role, b"")).decode()
+        return row.get(key)
+
+    def roleNames(self) -> dict[int, QtCore.QByteArray]:
+        return self.roles
+
+
+@ta.QmlElement
+class PairLiveState(QtCore.QObject):
+    stampChanged = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        self._guid = ""
+        self._uid = None
+        self._hw_axis: dict[int, float] = {}
+        self._hw_button: dict[int, float] = {}
+        self._vj_axis: dict[tuple[str, int], float] = {}
+        self._vj_button: dict[tuple[str, int], float] = {}
+        self._stamp = 0
+        event_handler.EventListener().joystick_event.connect(self._on_event)
+
+    def _bump(self) -> None:
+        self._stamp += 1
+        self.stampChanged.emit()
+
+    def _get_guid(self) -> str:
+        return self._guid
+
+    def _set_guid(self, guid: str) -> None:
+        self._guid = str(guid or "")
+        self._uid = _guid(self._guid)
+        self._hw_axis.clear()
+        self._hw_button.clear()
+        self._bump()
+
+    def _norm(self, value: object) -> str:
+        return str(value or "").strip().strip("{}").lower()
+
+    def _on_event(self, event: event_handler.Event) -> None:
+        ev = self._norm(event.device_guid)
+        if self._uid is not None and ev == self._norm(self._uid):
+            if event.event_type == InputType.JoystickAxis:
+                try:
+                    self._hw_axis[int(event.identifier)] = float(event.value)
+                    self._bump()
+                except Exception:
+                    return
+            elif event.event_type == InputType.JoystickButton:
+                try:
+                    self._hw_button[int(event.identifier)] = 1.0 if event.is_pressed else 0.0
+                    self._bump()
+                except Exception:
+                    return
+            return
+        if event.event_type == InputType.JoystickAxis:
+            try:
+                self._vj_axis[(ev, int(event.identifier))] = float(event.value)
+                self._bump()
+            except Exception:
+                return
+        elif event.event_type == InputType.JoystickButton:
+            try:
+                self._vj_button[(ev, int(event.identifier))] = (
+                    1.0 if event.is_pressed else 0.0
+                )
+                self._bump()
+            except Exception:
+                return
+
+    @QtCore.Slot(int, result=float)
+    def axisValue(self, identifier: int) -> float:
+        return float(self._hw_axis.get(int(identifier), 0.0))
+
+    @QtCore.Slot(int, result=float)
+    def buttonValue(self, identifier: int) -> float:
+        return float(self._hw_button.get(int(identifier), 0.0))
+
+    @QtCore.Slot(str, int, result=float)
+    def vjoyAxisValue(self, vjoy_guid: str, identifier: int) -> float:
+        return float(self._vj_axis.get((self._norm(vjoy_guid), int(identifier)), 0.0))
+
+    @QtCore.Slot(str, int, result=float)
+    def vjoyButtonValue(self, vjoy_guid: str, identifier: int) -> float:
+        return float(self._vj_button.get((self._norm(vjoy_guid), int(identifier)), 0.0))
+
+    guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid)
+    stamp = QtCore.Property(int, fget=lambda self: self._stamp, notify=stampChanged)
+
+
 @ta.QmlElement
 class InputPairing(QtCore.QObject):
     changed = QtCore.Signal()
@@ -97,32 +361,3 @@ class InputPairing(QtCore.QObject):
         if not ids:
             return ""
         return ", ".join(f"vJoy Device {vid}" for vid in ids)
-
-    @QtCore.Slot(str, int, result=str)
-    def pairedAxisLabel(self, guid: str, identifier: int) -> str:
-        return self._label_for(guid, InputType.JoystickAxis, identifier, "A")
-
-    @QtCore.Slot(str, int, result=str)
-    def pairedButtonLabel(self, guid: str, identifier: int) -> str:
-        return self._label_for(guid, InputType.JoystickButton, identifier, "B")
-
-    def _label_for(self, guid: str, input_type: InputType, identifier: int, prefix: str) -> str:
-        for item in _items_for_guid(guid):
-            if getattr(item, "input_type", None) != input_type:
-                continue
-            if int(getattr(item, "input_id", -1)) != int(identifier):
-                continue
-            maps = _maps_for_item(item)
-            if not maps:
-                return ""
-            vid, vtype, vid_in = maps[0]
-            kind = prefix
-            if vtype == InputType.JoystickAxis:
-                kind = AXIS_LABELS.get(int(vid_in), f"A{vid_in}")
-                return f"vJoy {vid}  {kind}"
-            if vtype == InputType.JoystickButton:
-                kind = f"B{vid_in}"
-            elif vtype == InputType.JoystickHat:
-                kind = f"H{vid_in}"
-            return f"vJoy {vid}  {kind}"
-        return ""
