@@ -38,13 +38,19 @@ Item {
         }
     }
 
-    // Widget content
+    DismissibleDialog {
+        id: _selectInputDialog
+
+        titleText: "Select an input"
+        messageText: "Select an input first before adding an action sequence."
+        confirmText: "OK"
+    }
+
     ColumnLayout {
         id: _content
 
         anchors.fill: parent
 
-        // Show all actions associated with this input
         JGListView {
             id: _listView
 
@@ -52,13 +58,10 @@ Item {
             Layout.fillWidth: true
             scrollbarAlwaysVisible: true
 
-            // Content to visualize
             model: _root.inputItemModel
             delegate: _entryDelegate
         }
 
-        // ListView delegate definition rendering individual bindings
-        // via ActionTree instances
         Component {
             id: _entryDelegate
 
@@ -75,9 +78,6 @@ Item {
                 InputItemBinding {
                     id: _binding
 
-                    // Have to set the width here as Layout fields don't exist
-                    // and we have to fill the view itself which will resize
-                    // based on the layout
                     implicitWidth: view.width
 
                     inputBinding: modelData
@@ -86,8 +86,6 @@ Item {
             }
         }
 
-        // Button to add a new action configuration to the currently
-        // active input
         Rectangle {
             id: _newActionButton
 
@@ -102,6 +100,10 @@ Item {
                 text: "New Action Sequence"
 
                 onClicked: {
+                    if (!_root.inputItemModel) {
+                        _selectInputDialog.open()
+                        return
+                    }
                     _root.inputItemModel.newActionSequence()
                 }
             }
