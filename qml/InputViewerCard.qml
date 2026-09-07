@@ -189,74 +189,86 @@ ColumnLayout {
                 font.pointSize: 10
             }
 
-            Flow {
+            Rectangle {
                 Layout.fillWidth: true
-                spacing: 3
+                implicitHeight: _btnFlow.implicitHeight + 16
+                color: "transparent"
+                border.color: Style.medColor
+                border.width: 1
+                radius: 6
 
-                Repeater {
-                    model: _buttons
+                Flow {
+                    id: _btnFlow
+                    width: parent.width - 16
+                    x: 8
+                    y: 8
+                    spacing: 8
 
-                    delegate: Rectangle {
-                        required property int identifier
-                        required property string label
-                        required property string vjoyLabel
-                        required property string vjoyGuid
-                        required property int vjoyInput
+                    Repeater {
+                        model: _buttons
 
-                        property bool hwOn: hwButton(identifier) > 0.5
-                        property bool vjOn: vjButton(vjoyGuid, vjoyInput) > 0.5
+                        delegate: Rectangle {
+                            required property int identifier
+                            required property string label
+                            required property string vjoyLabel
+                            required property string vjoyGuid
+                            required property int vjoyInput
 
-                        width: 40
-                        height: 18
-                        radius: 3
-                        color: Style.background
-                        border.color: (hwOn || vjOn) ? "#22C55E" : Style.medColor
-                        border.width: 1
-                        clip: true
+                            property bool hwOn: hwButton(identifier) > 0.5
+                            property bool vjOn: vjButton(vjoyGuid, vjoyInput) > 0.5
 
-                        Row {
-                            anchors.fill: parent
+                            width: 40
+                            height: 18
+                            radius: 3
+                            color: Style.background
+                            border.color: (hwOn || vjOn) ? "#22C55E" : Style.medColor
+                            border.width: 1
+                            clip: true
 
-                            Rectangle {
-                                width: parent.width / 2
-                                height: parent.height
-                                color: hwOn ? "#22C55E" : "transparent"
+                            Row {
+                                anchors.fill: parent
 
-                                Label {
-                                    anchors.centerIn: parent
-                                    text: label
-                                    color: hwOn ? "#052e16" : Style.foreground
-                                    font.pointSize: 8
+                                Rectangle {
+                                    width: parent.width / 2
+                                    height: parent.height
+                                    color: hwOn ? "#22C55E" : "transparent"
+
+                                    Label {
+                                        anchors.centerIn: parent
+                                        text: label
+                                        color: hwOn ? "#052e16" : Style.foreground
+                                        font.pointSize: 8
+                                    }
+
+                                    HoverHandler { id: _hwHover }
+                                    ToolTip.visible: _hwHover.hovered
+                                    ToolTip.delay: 200
+                                    ToolTip.text: "Hardware " + label
                                 }
 
-                                HoverHandler { id: _hwHover }
-                                ToolTip.visible: _hwHover.hovered
-                                ToolTip.delay: 200
-                                ToolTip.text: "Hardware " + label
-                            }
-
-                            Rectangle {
-                                width: 1
-                                height: parent.height
-                                color: Style.medColor
-                            }
-
-                            Rectangle {
-                                width: parent.width / 2 - 1
-                                height: parent.height
-                                color: vjOn ? "#38BDF8" : "transparent"
-
-                                Label {
-                                    anchors.centerIn: parent
-                                    text: String(vjoyInput)
-                                    color: vjOn ? "#0b1220" : Style.foreground
-                                    font.pointSize: 8
+                                Rectangle {
+                                    width: 1
+                                    height: parent.height
+                                    color: Style.medColor
                                 }
 
-                                HoverHandler { id: _vjHover }
-                                ToolTip.visible: _vjHover.hovered
-                                ToolTip.delay: 200
-                                ToolTip.text: vjoyLabel
+                                Rectangle {
+                                    width: parent.width / 2 - 1
+                                    height: parent.height
+                                    color: vjOn ? "#38BDF8" : "transparent"
+
+                                    Label {
+                                        anchors.centerIn: parent
+                                        text: String(vjoyInput)
+                                        color: vjOn ? "#0b1220" : Style.foreground
+                                        font.pointSize: 8
+                                    }
+
+                                    HoverHandler { id: _vjHover }
+                                    ToolTip.visible: _vjHover.hovered
+                                    ToolTip.delay: 200
+                                    ToolTip.text: vjoyLabel
+                                }
                             }
                         }
                     }
