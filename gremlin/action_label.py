@@ -69,7 +69,6 @@ def apply_action_name(model: object, index: int, name: str) -> None:
     profile = shared_state.current_profile
     if profile is None or index < 0:
         return
-    item = None
     if isinstance(model, Device):
         if model._device is None:
             return
@@ -168,7 +167,7 @@ def _keyboard_item(self, row: int):
     )
 
 
-@InputItem.__init__ = _init
+InputItem.__init__ = _init
 InputItem.from_xml = _from_xml
 InputItem.to_xml = _to_xml
 Device.data = _patch_description(_device_data, _device_item)
