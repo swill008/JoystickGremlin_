@@ -35,6 +35,7 @@ Item {
 
         visible: false
         width: 320
+        clearOnClick: false
 
         property string nameKey: ""
         property string fallback: ""
