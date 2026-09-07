@@ -23,6 +23,7 @@ Button {
     readonly property bool _buttonActive: inputKind === "button" && liveValue > 0.5
     readonly property bool _hatActive: inputKind === "hat" && liveValue > 0.5
     readonly property bool _axisActive: inputKind === "axis"
+    readonly property bool _ledOn: _buttonActive || _hatActive
 
     signal renameRequested()
 
@@ -107,9 +108,9 @@ Button {
 
     background: Rectangle {
         border.color: hovered ? Style.accent : selected ? Style.accent : Style.backgroundShade
-        border.width: _buttonActive || _hatActive ? 2 : 1
+        border.width: _ledOn ? 2 : 1
         color: {
-            if (_buttonActive || _hatActive) {
+            if (_ledOn) {
                 return Qt.rgba(0.133, 0.773, 0.369, selected ? 0.55 : 0.38)
             }
             if (selected) {
@@ -138,6 +139,19 @@ Button {
     }
 
     contentItem: Item {
+        Rectangle {
+            id: _led
+            width: 10
+            height: 10
+            radius: 5
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.topMargin: 4
+            color: _ledOn ? "#22C55E" : Style.lowColor
+            border.width: 1
+            border.color: _ledOn ? "#16A34A" : Style.medColor
+        }
+
         JGText {
             id: _inputLabel
             text: name
@@ -147,21 +161,8 @@ Button {
             elide: Text.ElideRight
 
             anchors.top: parent.top
-            anchors.left: parent.left
-        }
-
-        Rectangle {
-            visible: inputKind === "button" || inputKind === "hat"
-            width: 10
-            height: 10
-            radius: 5
-            anchors.top: parent.top
-            anchors.topMargin: 4
-            anchors.left: _inputLabel.right
+            anchors.left: _led.right
             anchors.leftMargin: 8
-            color: (_buttonActive || _hatActive) ? "#22C55E" : Style.lowColor
-            border.width: 1
-            border.color: (_buttonActive || _hatActive) ? "#16A34A" : Style.medColor
         }
 
         Loader {
@@ -169,7 +170,7 @@ Button {
 
             anchors.top: parent.top
             anchors.left: _inputLabel.right
-            anchors.leftMargin: (inputKind === "button" || inputKind === "hat") ? 22 : 0
+            anchors.leftMargin: 4
         }
 
         Loader {
@@ -220,7 +221,8 @@ Button {
             width: _descriptionWidth
             elide: Text.ElideRight
 
-            anchors.left: parent.left
+            anchors.left: _led.right
+            anchors.leftMargin: 8
             anchors.bottom: parent.bottom
             anchors.bottomMargin: _axisActive ? 6 : 0
         }
