@@ -72,11 +72,11 @@ Item {
         if (!_root.isVjoyTab(deviceName, vjoyId)) {
             return true
         }
-        return _vjoy && _vjoy.isPinned(Number(vjoyId))
+        return !!(_vjoy && _vjoy.isPinned(Number(vjoyId)))
     }
 
     function extraVisible(key) {
-        return !_vjoy || _vjoy.isExtraPinned(key)
+        return !!(_vjoy && _vjoy.isExtraPinned(key))
     }
 
     function displayName(key, fallback) {
@@ -107,7 +107,7 @@ Item {
             JGTabButton {
                 id: _button
 
-                visible: _root.showDeviceTab(name, vjoy_id)
+                visible: _root._vjoyTick >= 0 && _root.showDeviceTab(name, vjoy_id)
                 text: _root.displayName(model.guid, name)
                 width: visible ? _metric.width + 50 : 0
                 checked: uiState && uiState.currentTab === "physical" &&
@@ -145,7 +145,7 @@ Item {
         JGTabButton {
             id: _keyboardButton
 
-            visible: _root.extraVisible("keyboard")
+            visible: _root._vjoyTick >= 0 && _root.extraVisible("keyboard")
             text: _root.displayName("keyboard", "Keyboard")
             width: visible ? _metricKeyboard.width + 50 : 0
             checked: uiState && uiState.currentTab === "keyboard"
@@ -181,7 +181,7 @@ Item {
         JGTabButton {
             id: _logicalButton
 
-            visible: _root.extraVisible("logical")
+            visible: _root._vjoyTick >= 0 && _root.extraVisible("logical")
             text: _root.displayName("logical", "Logical Device")
             width: visible ? _metricIO.width + 50 : 0
             checked: uiState && uiState.currentTab === "logical"
@@ -217,7 +217,7 @@ Item {
         JGTabButton {
             id: _oscButton
 
-            visible: _root.extraVisible("osc")
+            visible: _root._vjoyTick >= 0 && _root.extraVisible("osc")
             text: _root.displayName("osc", "OSC")
             width: visible ? _metricOsc.width + 50 : 0
             checked: uiState && uiState.currentTab === "osc"
