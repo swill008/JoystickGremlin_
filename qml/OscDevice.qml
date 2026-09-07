@@ -13,6 +13,10 @@ import Gremlin.Style
 Item {
     id: _root
 
+    readonly property bool editorLocked: backend && backend.gremlinActive
+    enabled: !editorLocked
+    opacity: editorLocked ? 0.55 : 1.0
+
     property int inputIndex
     property InputIdentifier inputIdentifier
     property alias device: _inputList.model
@@ -28,6 +32,9 @@ Item {
         property var callback: null
 
         onAccepted: (value) => {
+            if (editorLocked) {
+                return
+            }
             callback(value)
             visible = false
         }
@@ -42,14 +49,20 @@ Item {
         cancelText: "Cancel"
         destructive: true
 
-        onConfirmed: _inputList.model.clearAllInputs()
+        onConfirmed: {
+            if (!editorLocked) {
+                _inputList.model.clearAllInputs()
+            }
+        }
     }
 
     OscImportDialog {
         id: _importDialog
 
         onAccepted: (text) => {
-            _inputList.model.importInputs(text)
+            if (!editorLocked) {
+                _inputList.model.importInputs(text)
+            }
         }
     }
 
@@ -59,7 +72,9 @@ Item {
         deviceModel: _inputList.model
 
         onAccepted: (cmd, mode) => {
-            _inputList.model.createMappedInput(mode, cmd)
+            if (!editorLocked) {
+                _inputList.model.createMappedInput(mode, cmd)
+            }
         }
     }
 
@@ -83,10 +98,18 @@ Item {
             delegate: InputButton {
                 width: _inputList.width - 20
                 height: 50
+                enabled: !editorLocked
 
                 selected: model.index === _inputList.currentIndex
-                onClicked: () => { _inputList.currentIndex = model.index }
+                onClicked: () => {
+                    if (!editorLocked) {
+                        _inputList.currentIndex = model.index
+                    }
+                }
                 onRenameRequested: {
+                    if (editorLocked) {
+                        return
+                    }
                     let current = _actionNames.getOnModel(_inputList.model, index)
                     _textInput.text = current.length ? current : ""
                     _textInput.callback = (value) => {
@@ -99,8 +122,12 @@ Item {
                     text: bsi.icons.edit
                     font.pixelSize: 12
                     width: 15
+                    enabled: !editorLocked
 
                     onClicked: () => {
+                        if (editorLocked) {
+                            return
+                        }
                         _textInput.text = label
                         _textInput.callback = (value) => {
                             _inputList.model.changeName(label, value)
@@ -113,8 +140,13 @@ Item {
                     text: bsi.icons.remove
                     font.pixelSize: 12
                     width: 15
+                    enabled: !editorLocked
 
-                    onClicked: () => { _inputList.model.deleteInput(label) }
+                    onClicked: () => {
+                        if (!editorLocked) {
+                            _inputList.model.deleteInput(label)
+                        }
+                    }
                 }
             }
 
@@ -124,6 +156,9 @@ Item {
             }
 
             onCurrentIndexChanged: () => {
+                if (editorLocked) {
+                    return
+                }
                 inputIndex = currentIndex
                 inputIdentifier = model.inputIdentifier(currentIndex)
             }
@@ -133,6 +168,9 @@ Item {
             target: _inputList.model
 
             function onListenBound(index) {
+                if (editorLocked) {
+                    return
+                }
                 _inputList.currentIndex = index
                 inputIndex = index
                 inputIdentifier = _inputList.model.inputIdentifier(index)
@@ -144,6 +182,7 @@ Item {
             Layout.preferredHeight: 44
             Layout.leftMargin: 10
             Layout.rightMargin: 10
+            enabled: !editorLocked
 
             Button {
                 text: "Clear"
