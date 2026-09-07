@@ -1,0 +1,56 @@
+name: Release EXE installer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: R15-OSC-Optimization
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up Poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "latest"
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Build executable
+        run: poetry run pyinstaller -y --clean joystick_gremlin.spec
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Compile installer
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\joystick_gremlin.iss
+
+      - name: Stamp date
+        run: |
+          $CURRENT_DATE = Get-Date -Format yyyy_MM_dd
+          echo "CURRENT_DATE=$CURRENT_DATE" >> $env:GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: r15-osc-${{ env.CURRENT_DATE }}
+          name: Joystick Gremlin R15-OSC ${{ env.CURRENT_DATE }}
+          body: |
+            Windows installer for the R15-OSC-Optimization branch.
+
+            Requires vJoy already installed.
+            Unsigned build — SmartScreen may warn on first run.
+          files: dist/JoystickGremlin-R15-OSC-Setup.exe
+          token: ${{ secrets.GITHUB_TOKEN }}
