@@ -14,7 +14,6 @@ ColumnLayout {
 
     property string deviceGuid: ""
     property string title: ""
-
     spacing: 0
 
     DeviceLiveState {
@@ -23,10 +22,11 @@ ColumnLayout {
     }
 
     property int liveStamp: _live ? _live.stamp : 0
+    property bool hasLive: liveStamp >= 0 && _live && _live.kindAt(0) !== ""
 
     Rectangle {
         Layout.fillWidth: true
-        implicitHeight: _inner.implicitHeight + 12
+        implicitHeight: _inner.implicitHeight + 16
         color: "#101215"
         border.color: Style.medColor
         border.width: 1
@@ -65,14 +65,22 @@ ColumnLayout {
             ColumnLayout {
                 visible: _fold.checked
                 Layout.fillWidth: true
+                Layout.preferredHeight: hasLive ? implicitHeight : 22
                 spacing: 4
+
+                JGText {
+                    visible: !hasLive
+                    text: "No live joystick data for this device"
+                    opacity: 0.5
+                    font.pointSize: 10
+                }
 
                 Repeater {
                     model: 16
 
                     delegate: RowLayout {
                         required property int index
-                        visible: _live && _live.kindAt(index) === "axis"
+                        visible: hasLive && _live.kindAt(index) === "axis"
                         Layout.fillWidth: true
                         spacing: 8
 
@@ -97,12 +105,11 @@ ColumnLayout {
                                 color: "#64748B"
                             }
                         }
-
-                        property int _tick: liveStamp
                     }
                 }
 
                 Flow {
+                    visible: hasLive
                     Layout.fillWidth: true
                     spacing: 4
 
@@ -122,13 +129,7 @@ ColumnLayout {
 
                             Label {
                                 anchors.centerIn: parent
-                                text: {
-                                    var n = 0
-                                    for (var i = 0; i < index; i++) {
-                                        if (_live.kindAt(i) === "button") n++
-                                    }
-                                    return String(n + 1)
-                                }
+                                text: String(index + 1)
                                 color: Style.foreground
                                 font.pointSize: 8
                                 opacity: 0.8
