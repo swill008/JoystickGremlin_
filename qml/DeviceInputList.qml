@@ -22,6 +22,7 @@ Item {
     DeviceLiveState {
         id: _liveState
         guid: device ? device.guid : ""
+        locked: editorLocked
     }
 
     HighlightSpeedModel {
