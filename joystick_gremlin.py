@@ -188,8 +188,6 @@ def _lock_owner_pid() -> int | None:
     lock = QtCore.QLockFile(
         os.path.join(gremlin.util.userprofile_path(), "gremlin.lock")
     )
-    pid = ctypes.c_long()
-    hostname = QtCore.QStringConverter  # placeholder to keep imports used? no
     try:
         owner_pid, _host, _app = lock.lockInfo()
         if owner_pid:
@@ -208,11 +206,33 @@ def _other_gremlin_pids() -> list[int]:
     return sorted(pid for pid in pids if pid > 0)
 
 
+def _terminate_other_gremlin(pids: list[int]) -> None:
+    kernel32 = ctypes.windll.kernel32
+    process_terminate = 0x0001
+    for pid in pids:
+        if pid == os.getpid():
+            continue
+        handle = kernel32.OpenProcess(process_terminate, False, pid)
+        if handle:
+            kernel32.TerminateProcess(handle, 1)
+            kernel32.CloseHandle(handle)
+            continue
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(pid), "/F"],
+                capture_output=True,
+                timeout=3,
+                creationflags=0x08000000,
+            )
+        except Exception:
+            pass
+    time.sleep(0.4)
+
+
 def _confirm_second_instance(
     lock_held: bool, windows: list[str], pids: list[int]
-) -> bool:
+) -> str:
     already = len(pids)
-    total = already + 1
     pid_text = ", ".join(str(pid) for pid in pids) if pids else "unknown"
     extra = ""
     if windows:
@@ -220,18 +240,18 @@ def _confirm_second_instance(
     elif lock_held and not pids:
         extra = "\nAnother Optimization build is using the Gremlin lock file."
     hung_hint = ""
-    if already > len({title for title in windows}):
+    if already > len(set(windows)):
         hung_hint = "\nMore processes than windows were found. A copy may be hung in the background."
     elif already and not windows:
         hung_hint = "\nA Gremlin process is running with no visible window. It may be hung."
     text = (
         f"Joystick Gremlin processes already running: {already}\n"
         f"Process IDs: {pid_text}\n"
-        f"This launch would be copy {total}."
+        f"This launch would be copy {already + 1}."
         f"{extra}{hung_hint}\n\n"
-        "Only one copy can own vJoy. A second Active copy will not move vJoy "
-        "if the first copy already claimed the device.\n\n"
-        "Continue and open another copy anyway?"
+        "Only one copy can own vJoy.\n\n"
+        "Yes = Close the other process(es) and start this copy.\n"
+        "No = Leave the other process(es) running and do not start this copy."
     )
     result = ctypes.windll.user32.MessageBoxW(
         None,
@@ -239,7 +259,7 @@ def _confirm_second_instance(
         "Joystick Gremlin",
         0x34,
     )
-    return result == 6
+    return "close_others" if result == 6 else "quit"
 
 
 def acquire_instance_lock() -> QtCore.QLockFile | None:
@@ -581,8 +601,11 @@ def main() -> int:
     windows = _gremlin_window_titles()
     pids = _other_gremlin_pids()
     if lock is None or windows or pids:
-        if not _confirm_second_instance(lock is None, windows, pids):
+        choice = _confirm_second_instance(lock is None, windows, pids)
+        if choice != "close_others":
             return 0
+        _terminate_other_gremlin(pids)
+        lock = acquire_instance_lock()
     app = JoystickGremlinApp(sys.argv)
     app._instance_lock = lock
     app.exec()
