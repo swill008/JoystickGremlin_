@@ -191,7 +191,7 @@ ColumnLayout {
 
             Flow {
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: 3
 
                 Repeater {
                     model: _buttons
@@ -206,22 +206,52 @@ ColumnLayout {
                         property bool hwOn: hwButton(identifier) > 0.5
                         property bool vjOn: vjButton(vjoyGuid, vjoyInput) > 0.5
 
-                        width: 34
-                        height: 22
-                        radius: 4
-                        color: (hwOn || vjOn) ? "#166534" : Style.background
+                        width: 40
+                        height: 18
+                        radius: 3
+                        color: Style.background
                         border.color: (hwOn || vjOn) ? "#22C55E" : Style.medColor
                         border.width: 1
+                        clip: true
 
-                        Label {
-                            anchors.centerIn: parent
-                            text: label
-                            color: Style.foreground
-                            font.pointSize: 9
+                        Row {
+                            anchors.fill: parent
+
+                            Rectangle {
+                                width: parent.width / 2
+                                height: parent.height
+                                color: hwOn ? "#22C55E" : "transparent"
+
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: label
+                                    color: hwOn ? "#052e16" : Style.foreground
+                                    font.pointSize: 8
+                                }
+                            }
+
+                            Rectangle {
+                                width: 1
+                                height: parent.height
+                                color: Style.medColor
+                            }
+
+                            Rectangle {
+                                width: parent.width / 2 - 1
+                                height: parent.height
+                                color: vjOn ? "#38BDF8" : "transparent"
+
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: String(vjoyInput)
+                                    color: vjOn ? "#0b1220" : Style.foreground
+                                    font.pointSize: 8
+                                }
+                            }
                         }
 
                         ToolTip.visible: _hover.hovered
-                        ToolTip.text: vjoyLabel
+                        ToolTip.text: label + " / " + vjoyLabel
                         HoverHandler { id: _hover }
                     }
                 }
