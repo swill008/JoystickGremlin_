@@ -11,7 +11,6 @@ import dill
 from gremlin import device_initialization, event_handler, shared_state
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
-from gremlin.ui.device_names import display_name
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -104,7 +103,7 @@ def _device_name(guid: str) -> str:
             hardware = dill.DILL.get_device_name(dill.GUID.from_uuid(uid)) or hardware
     except Exception:
         pass
-    return display_name(guid, hardware)
+    return hardware
 
 
 def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
@@ -343,8 +342,11 @@ class PairLiveState(QtCore.QObject):
     def vjoyButtonValue(self, vjoy_guid: str, identifier: int) -> float:
         return float(self._vj_button.get((self._norm(vjoy_guid), int(identifier)), 0.0))
 
+    def _get_stamp(self) -> int:
+        return self._stamp
+
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid)
-    stamp = QtCore.Property(int, fget=lambda self: self._stamp, notify=stampChanged)
+    stamp = QtCore.Property(int, fget=_get_stamp, notify=stampChanged)
 
 
 @ta.QmlElement
