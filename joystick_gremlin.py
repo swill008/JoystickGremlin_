@@ -1,5 +1,4 @@
 # -*- coding: utf-8; -*-
-
 # SPDX-License-Identifier: GPL-3.0-only
 
 from __future__ import annotations
@@ -110,10 +109,10 @@ def shutdown_cleanup() -> None:
     gremlin.osc.OscRuntime().stop()
 
 
-def _raise_existing_window() -> None:
+def _gremlin_window_titles() -> list[str]:
+    titles: list[str] = []
     try:
         user32 = ctypes.windll.user32
-        found = []
 
         @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
         def _enum(hwnd: int, _: int) -> bool:
@@ -122,27 +121,46 @@ def _raise_existing_window() -> None:
             length = user32.GetWindowTextLengthW(hwnd) + 1
             buf = ctypes.create_unicode_buffer(length)
             user32.GetWindowTextW(hwnd, buf, length)
-            if buf.value.startswith("Joystick Gremlin"):
-                found.append(hwnd)
+            title = buf.value
+            if title and "Joystick Gremlin" in title:
+                titles.append(title)
             return True
 
         user32.EnumWindows(_enum, 0)
-        if found:
-            hwnd = found[0]
-            user32.ShowWindow(hwnd, 9)
-            user32.SetForegroundWindow(hwnd)
     except Exception:
         pass
+    return titles
 
 
-def acquire_single_instance() -> QtCore.QLockFile | None:
+def _confirm_second_instance(lock_held: bool, windows: list[str]) -> bool:
+    extra = ""
+    if windows:
+        extra = "\n\nOpen window:\n- " + "\n- ".join(windows[:4])
+    elif lock_held:
+        extra = "\n\nAnother Optimization build is already using the Gremlin lock file."
+    text = (
+        "Another Joystick Gremlin window is already running."
+        + extra
+        + "\n\nOnly one copy can own vJoy. The second copy can look Active "
+        "while mapping does nothing if the first copy already claimed the device.\n\n"
+        "Continue and open another copy anyway?"
+    )
+    result = ctypes.windll.user32.MessageBoxW(
+        None,
+        text,
+        "Joystick Gremlin",
+        0x34,
+    )
+    return result == 6
+
+
+def acquire_instance_lock() -> QtCore.QLockFile | None:
     lock = QtCore.QLockFile(
         os.path.join(gremlin.util.userprofile_path(), "gremlin.lock")
     )
     lock.setStaleLockTime(30000)
     if lock.tryLock(100):
         return lock
-    _raise_existing_window()
     return None
 
 
@@ -471,9 +489,11 @@ class JoystickGremlinApp(QtWidgets.QApplication):
 
 
 def main() -> int:
-    lock = acquire_single_instance()
-    if lock is None:
-        return 0
+    lock = acquire_instance_lock()
+    windows = _gremlin_window_titles()
+    if lock is None or windows:
+        if not _confirm_second_instance(lock is None, windows):
+            return 0
     app = JoystickGremlinApp(sys.argv)
     app._instance_lock = lock
     app.exec()
