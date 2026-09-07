@@ -46,8 +46,9 @@ jobs:
           tag_name: r15-osc-${{ env.CURRENT_DATE }}
           name: Joystick Gremlin R15-OSC ${{ env.CURRENT_DATE }}
           body: |
-            Portable package, same style as official Joystick Gremlin R15.
+            fixed live updating of vJoy Mapping
 
+            Portable zip, same style as official Joystick Gremlin R15.
             Unzip anywhere (Documents, Desktop, etc). Do not put it in Program Files.
             Run joystick_gremlin.exe from the unzipped folder.
 
