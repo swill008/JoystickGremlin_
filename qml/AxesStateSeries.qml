@@ -64,7 +64,7 @@ Item {
     }
 
     Timer {
-        interval: 10
+        interval: 33
         running: _validGuid(deviceGuid)
         repeat: true
         onTriggered: () => {
