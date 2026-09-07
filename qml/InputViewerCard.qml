@@ -228,6 +228,11 @@ ColumnLayout {
                                     color: hwOn ? "#052e16" : Style.foreground
                                     font.pointSize: 8
                                 }
+
+                                HoverHandler { id: _hwHover }
+                                ToolTip.visible: _hwHover.hovered
+                                ToolTip.delay: 200
+                                ToolTip.text: "Hardware " + label
                             }
 
                             Rectangle {
@@ -247,12 +252,13 @@ ColumnLayout {
                                     color: vjOn ? "#0b1220" : Style.foreground
                                     font.pointSize: 8
                                 }
+
+                                HoverHandler { id: _vjHover }
+                                ToolTip.visible: _vjHover.hovered
+                                ToolTip.delay: 200
+                                ToolTip.text: vjoyLabel
                             }
                         }
-
-                        ToolTip.visible: _hover.hovered
-                        ToolTip.text: label + " / " + vjoyLabel
-                        HoverHandler { id: _hover }
                     }
                 }
             }
