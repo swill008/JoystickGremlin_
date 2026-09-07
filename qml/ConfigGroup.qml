@@ -65,12 +65,6 @@ ColumnLayout {
                         Layout.minimumWidth: visible ? 180 : 0
                     }
 
-                    OptionHighlightScope {
-                        visible: name === "Input highlighting"
-                        Layout.preferredWidth: visible ? 220 : 0
-                        Layout.minimumWidth: visible ? 160 : 0
-                    }
-
                     Switch {
                         Layout.alignment: Qt.AlignRight
 
@@ -238,7 +232,7 @@ ColumnLayout {
             OptionEntryCard {
                 Layout.fillWidth: true
 
-                title: name
+                title: name === "Input highlight source" ? "Highlight source" : name
                 explanation: description
 
                 DynamicItemLoader {
