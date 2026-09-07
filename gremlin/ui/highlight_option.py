@@ -15,14 +15,11 @@ QML_IMPORT_MAJOR_VERSION = 1
 SECTION = "global"
 GROUP = "general"
 NAME = "input-highlight-speed"
+SCOPE_NAME = "input-highlight-scope"
 SPEEDS = ("Slow", "Medium", "Fast")
+SCOPES = ("This tab", "Any device")
 DEFAULT = "Slow"
-
-_THRESHOLDS = {
-    "Slow": 0.33,
-    "Medium": 0.15,
-    "Fast": 0.06,
-}
+DEFAULT_SCOPE = "This tab"
 
 
 def normalize_speed(value: object) -> str:
@@ -32,20 +29,24 @@ def normalize_speed(value: object) -> str:
     return text
 
 
-def highlight_threshold(value: object | None = None) -> float:
-    if value is None:
-        cfg = Configuration()
-        if cfg.exists(SECTION, GROUP, NAME):
-            value = cfg.value(SECTION, GROUP, NAME)
-    return _THRESHOLDS[normalize_speed(value)]
+def normalize_scope(value: object) -> str:
+    text = str(value or DEFAULT_SCOPE).strip()
+    lowered = text.lower()
+    if lowered in ("any device", "any", "follow", "switch"):
+        return "Any device"
+    if lowered in ("this tab", "this", "match", "active tab"):
+        return "This tab"
+    if text in SCOPES:
+        return text
+    return DEFAULT_SCOPE
 
 
-def accept_first_axis(value: object | None = None) -> bool:
+def highlight_follows_any_device(value: object | None = None) -> bool:
     if value is None:
         cfg = Configuration()
-        if cfg.exists(SECTION, GROUP, NAME):
-            value = cfg.value(SECTION, GROUP, NAME)
-    return normalize_speed(value) != "Slow"
+        if cfg.exists(SECTION, GROUP, SCOPE_NAME):
+            value = cfg.value(SECTION, GROUP, SCOPE_NAME)
+    return normalize_scope(value) == "Any device"
 
 
 def ensure_registered() -> None:
@@ -58,6 +59,17 @@ def ensure_registered() -> None:
             PropertyType.String,
             DEFAULT,
             "How quickly the UI jumps to an input that was used.",
+            {},
+            False,
+        )
+    if not cfg.exists(SECTION, GROUP, SCOPE_NAME):
+        cfg.register(
+            SECTION,
+            GROUP,
+            SCOPE_NAME,
+            PropertyType.String,
+            DEFAULT_SCOPE,
+            "Whether highlighting stays on the active device tab or follows any device.",
             {},
             False,
         )
@@ -90,3 +102,32 @@ class HighlightSpeedModel(QtCore.QObject):
         self._set_speed(value)
 
     speed = QtCore.Property(str, fget=_get_speed, fset=_set_speed, notify=speedChanged)
+
+
+@ta.QmlElement
+class HighlightScopeModel(QtCore.QObject):
+    scopeChanged = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        ensure_registered()
+        self._config = Configuration()
+
+    def _get_scope(self) -> str:
+        if self._config.exists(SECTION, GROUP, SCOPE_NAME):
+            return normalize_scope(self._config.value(SECTION, GROUP, SCOPE_NAME))
+        return DEFAULT_SCOPE
+
+    def _set_scope(self, value: str) -> None:
+        ensure_registered()
+        scope = normalize_scope(value)
+        current = self._get_scope()
+        if scope != current:
+            self._config.set(SECTION, GROUP, SCOPE_NAME, scope)
+        self.scopeChanged.emit()
+
+    @QtCore.Slot(str)
+    def setScope(self, value: str) -> None:
+        self._set_scope(value)
+
+    scope = QtCore.Property(str, fget=_get_scope, fset=_set_scope, notify=scopeChanged)
