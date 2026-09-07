@@ -11,6 +11,10 @@ import Gremlin.Device
 import Gremlin.Style
 
 Item {
+    readonly property bool editorLocked: backend && backend.gremlinActive
+    enabled: !editorLocked
+    opacity: editorLocked ? 0.55 : 1.0
+
     ActionNames { id: _actionNames }
 
     TextInputDialog {
@@ -22,6 +26,9 @@ Item {
         property int rowIndex: -1
 
         onAccepted: (value) => {
+            if (editorLocked) {
+                return
+            }
             _actionNames.setOnModel(_inputList.model, rowIndex, value)
             visible = false
         }
@@ -47,10 +54,18 @@ Item {
             delegate: InputButton {
                 width: _inputList.width - 20
                 height: 50
+                enabled: !editorLocked
 
                 selected: model.index === _inputList.currentIndex
-                onClicked: () => { _inputList.currentIndex = model.index }
+                onClicked: () => {
+                    if (!editorLocked) {
+                        _inputList.currentIndex = model.index
+                    }
+                }
                 onRenameRequested: {
+                    if (editorLocked) {
+                        return
+                    }
                     _renameDialog.rowIndex = model.index
                     _renameDialog.text = description
                     _renameDialog.visible = true
@@ -60,8 +75,13 @@ Item {
                     text: bsi.icons.remove
                     font.pixelSize: 12
                     width: 15
+                    enabled: !editorLocked
 
-                    onClicked: () => { _inputList.model.deleteInput(model.index) }
+                    onClicked: () => {
+                        if (!editorLocked) {
+                            _inputList.model.deleteInput(model.index)
+                        }
+                    }
                 }
             }
 
@@ -71,6 +91,9 @@ Item {
             }
 
             onCurrentIndexChanged: () => {
+                if (editorLocked || !uiState) {
+                    return
+                }
                 uiState.setCurrentInput(
                     model.inputIdentifier(currentIndex),
                     currentIndex
@@ -81,6 +104,7 @@ Item {
         InputListener {
             Layout.margins: 10
             Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
+            enabled: !editorLocked
 
             text: "Add Key"
             callback: (inputs) => { _inputList.model.addKey(inputs) }
