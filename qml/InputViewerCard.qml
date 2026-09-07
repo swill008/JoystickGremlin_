@@ -37,15 +37,27 @@ ColumnLayout {
     }
 
     function hwAxis(id) {
+        if (!_live) {
+            return 0
+        }
         return axisStamp >= 0 ? _live.axisValue(id) : 0
     }
     function vjAxis(g, id) {
+        if (!_live) {
+            return 0
+        }
         return axisStamp >= 0 ? _live.vjoyAxisValue(g, id) : 0
     }
     function hwButton(id) {
+        if (!_live) {
+            return 0
+        }
         return buttonStamp >= 0 ? _live.buttonValue(id) : 0
     }
     function vjButton(g, id) {
+        if (!_live) {
+            return 0
+        }
         return buttonStamp >= 0 ? _live.vjoyButtonValue(g, id) : 0
     }
 
