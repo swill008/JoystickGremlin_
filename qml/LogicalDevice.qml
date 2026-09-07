@@ -10,8 +10,6 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 
-// Visualizes the inputs and information about their associated actions
-// contained in the LogicalDevice system.
 Item {
     id: _root
 
@@ -19,7 +17,8 @@ Item {
     property InputIdentifier inputIdentifier
     property alias device: _inputList.model
 
-    // Modal window to allow renaming of inputs.
+    DeviceNames { id: _names }
+
     TextInputDialog {
         id: _textInput
 
@@ -34,7 +33,6 @@ Item {
         }
     }
 
-    // List of all existing inputs.
     ColumnLayout {
         id: _content
 
@@ -57,7 +55,13 @@ Item {
                 height: 50
 
                 selected: model.index === _inputList.currentIndex
+                nameKey: "logical:" + label
                 onClicked: () => { _inputList.currentIndex = model.index }
+                onRenameRequested: {
+                    _textInput.text = _names.display(nameKey, name)
+                    _textInput.callback = (value) => { _names.setAlias(nameKey, value) }
+                    _textInput.visible = true
+                }
 
                 editButton: IconButton {
                     text: bsi.icons.edit
@@ -93,7 +97,6 @@ Item {
             }
         }
 
-        // Controls to add new logical device input instances.
         RowLayout {
             Layout.minimumWidth: 100
             Layout.preferredHeight: 50

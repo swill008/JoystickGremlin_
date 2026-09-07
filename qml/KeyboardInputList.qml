@@ -10,10 +10,24 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 
-// Visualizes the inputs and information about their associated actions
-// contained in a Device instance.
 Item {
-    // List of all existing inputs.
+    DeviceNames { id: _names }
+
+    TextInputDialog {
+        id: _renameDialog
+
+        visible: false
+        width: 320
+
+        property string nameKey: ""
+        property string fallback: ""
+
+        onAccepted: (value) => {
+            _names.setAlias(nameKey, value)
+            visible = false
+        }
+    }
+
     ColumnLayout {
         id: _content
 
@@ -36,7 +50,14 @@ Item {
                 height: 50
 
                 selected: model.index === _inputList.currentIndex
+                nameKey: "keyboard:" + name
                 onClicked: () => { _inputList.currentIndex = model.index }
+                onRenameRequested: {
+                    _renameDialog.nameKey = nameKey
+                    _renameDialog.fallback = name
+                    _renameDialog.text = _names.display(nameKey, name)
+                    _renameDialog.visible = true
+                }
 
                 deleteButton: IconButton {
                     text: bsi.icons.remove
