@@ -15,6 +15,8 @@ Item {
 
     property Device device
 
+    ActionNames { id: _actionNames }
+
     TextInputDialog {
         id: _renameDialog
 
@@ -24,7 +26,7 @@ Item {
         property int rowIndex: -1
 
         onAccepted: (value) => {
-            device.setActionName(rowIndex, value)
+            _actionNames.setOnModel(device, rowIndex, value)
             visible = false
         }
     }
