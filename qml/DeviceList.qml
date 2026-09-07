@@ -53,6 +53,11 @@ Item {
         _deviceList.itemAt(_deviceList.currentIndex - 1)?.clicked()
     }
 
+    function isVjoyTab(deviceName, vjoyId) {
+        var label = String(deviceName || "").toLowerCase()
+        return label.indexOf("vjoy") === 0 || Number(vjoyId) > 0
+    }
+
     DeviceTabBar {
         id: _deviceList
 
@@ -65,12 +70,13 @@ Item {
             JGTabButton {
                 id: _button
 
+                visible: !_root.isVjoyTab(name, vjoy_id)
                 text: _root._nameTick, _names.display(model.guid, name)
-                width: _metric.width + 50
+                width: visible ? _metric.width + 50 : 0
                 checked: uiState && uiState.currentTab === "physical" &&
                     uiState.currentDevice === model.guid
 
-                ToolTip.visible: hovered
+                ToolTip.visible: hovered && visible
                 ToolTip.delay: 400
                 ToolTip.text: name
 
@@ -83,7 +89,11 @@ Item {
                 }
 
                 TapHandler {
-                    onDoubleTapped: _root.rename(model.guid, name)
+                    onDoubleTapped: {
+                        if (visible) {
+                            _root.rename(model.guid, name)
+                        }
+                    }
                 }
 
                 TextMetrics {
