@@ -26,6 +26,7 @@ Window {
     property string hardwareTip: ""
 
     DeviceNames { id: _names }
+    PairDeviceModel { id: _pairs }
 
     function displayName(guid, hardwareName) {
         if (!_names) {
@@ -38,9 +39,6 @@ Window {
         target: _inputViewer
 
         function onClosing() {
-            _stateDisplay.children.forEach((child) => {
-                child.destroy()
-            })
             _deviceData.destroy()
             backend.resumeInputHighlighting()
         }
@@ -48,6 +46,9 @@ Window {
 
     Component.onCompleted: () => {
         backend.pauseInputHighlighting()
+        if (_pairs) {
+            _pairs.reload()
+        }
     }
 
     DeviceListModel {
@@ -105,13 +106,13 @@ Window {
             id: _deviceScroll
             Layout.alignment: Qt.AlignTop
             Layout.rightMargin: 10
-            Layout.minimumWidth: 360
-            Layout.preferredWidth: 420
-            Layout.maximumWidth: 560
+            Layout.minimumWidth: 280
+            Layout.preferredWidth: 320
+            Layout.maximumWidth: 400
             Layout.fillHeight: true
 
             ColumnLayout {
-                width: Math.max(_deviceScroll.availableWidth, 360)
+                width: Math.max(_deviceScroll.availableWidth, 280)
 
                 Repeater {
                     model: _deviceData
@@ -134,9 +135,22 @@ Window {
             ColumnLayout {
                 id: _stateDisplay
 
-                anchors.left: parent.left
-                anchors.right: parent.right
+                width: Math.max(_dynamicScroll.availableWidth, 700)
                 spacing: 12
+
+                Repeater {
+                    model: _pairs
+                    delegate: InputViewerCard {
+                        required property string guid
+                        required property string name
+                        required property string pairLabel
+
+                        Layout.fillWidth: true
+                        deviceGuid: guid
+                        title: name
+                        pairLabel: pairLabel
+                    }
+                }
             }
         }
     }
@@ -155,30 +169,7 @@ Window {
             readonly property bool hasFriendlyName: shownName !== name
             Layout.fillWidth: true
 
-            property var widget_btn_hat
             property var widget_axis_temp
-            property var widget_axis_cur
-            property var widget_card
-
-            function showCard() {
-                if (widget_card) {
-                    return
-                }
-                widget_card = create_widget("InputViewerCard.qml", guid, shownName)
-            }
-
-            function hideCard() {
-                if (widget_card) {
-                    widget_card.destroy()
-                    widget_card = null
-                }
-            }
-
-            Component.onCompleted: {
-                if (_foldButton.checked) {
-                    showCard()
-                }
-            }
 
             RowLayout {
                 Layout.fillWidth: true
@@ -187,15 +178,8 @@ Window {
                     id: _foldButton
 
                     checkable: true
-                    checked: true
+                    checked: false
                     text: checked ? bsi.icons.folded : bsi.icons.unfolded
-                    onCheckedChanged: {
-                        if (checked) {
-                            showCard()
-                        } else {
-                            hideCard()
-                        }
-                    }
                 }
 
                 Label {
@@ -239,7 +223,7 @@ Window {
                                 guid,
                                 shownName
                             )
-                        } else {
+                        } else if (widget_axis_temp) {
                             widget_axis_temp.destroy()
                         }
                     }
