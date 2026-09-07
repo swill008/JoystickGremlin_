@@ -22,7 +22,6 @@ Item {
     implicitWidth: _button.implicitWidth
     implicitHeight: _button.implicitHeight
 
-    // Underlying input listener model.
     InputListenerModel {
         id: _listener
 
@@ -33,8 +32,6 @@ Item {
         }
     }
 
-    // State machine managing the input listener model setup and operational
-    // modes.
     DSM.StateMachine {
         id: _stateMachine
 
@@ -68,7 +65,6 @@ Item {
             DSM.SignalTransition {
                 targetState: disabled
                 signal: _listener.listeningTerminated
-                enabled: _listener
             }
 
             onEntered: function() {
