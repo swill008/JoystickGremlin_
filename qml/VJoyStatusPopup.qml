@@ -19,6 +19,14 @@ Popup {
     padding: 16
     width: 420
 
+    property var status: _status
+
+    VJoyStatus {
+        id: _status
+
+        Component.onCompleted: refresh()
+    }
+
     background: Rectangle {
         color: Style.background
         border.color: Style.accent
@@ -27,16 +35,14 @@ Popup {
     }
 
     onOpened: {
-        if (_status) {
-            _status.refresh()
+        if (_root.status) {
+            _root.status.refresh()
         }
     }
 
     contentItem: ColumnLayout {
         spacing: 12
         width: parent ? parent.width : 420
-
-        VJoyStatus { id: _status }
 
         Label {
             text: "Device tabs"
@@ -62,17 +68,17 @@ Popup {
             CheckBox {
                 required property var modelData
                 text: modelData.label
-                checked: _status && _status.pinStamp >= 0 && _status.isExtraPinned(modelData.key)
+                checked: _root.status && _root.status.pinStamp >= 0 && _root.status.isExtraPinned(modelData.key)
                 onToggled: {
-                    if (_status) {
-                        _status.setExtraPinned(modelData.key, checked)
+                    if (_root.status) {
+                        _root.status.setExtraPinned(modelData.key, checked)
                     }
                 }
             }
         }
 
         Label {
-            text: "vJoy  ·  " + (_status ? _status.activeCount : 0) + " of 16 installed and activated"
+            text: "vJoy  ·  " + (_root.status ? _root.status.activeCount : 0) + " of 16 installed and activated"
             font.bold: true
         }
 
@@ -88,8 +94,8 @@ Popup {
                 RowLayout {
                     required property int index
                     readonly property int deviceId: index + 1
-                    readonly property bool active: _status && _status.isActive(deviceId)
-                    readonly property bool pinned: _status && _status.isPinned(deviceId)
+                    readonly property bool active: _root.status && _root.status.isActive(deviceId)
+                    readonly property bool pinned: _root.status && _root.status.isPinned(deviceId)
                     Layout.fillWidth: true
                     spacing: 4
 
@@ -97,8 +103,8 @@ Popup {
                         checked: parent.pinned
                         enabled: parent.active
                         onToggled: {
-                            if (_status) {
-                                _status.setPinned(parent.deviceId, checked)
+                            if (_root.status) {
+                                _root.status.setPinned(parent.deviceId, checked)
                             }
                         }
                     }
