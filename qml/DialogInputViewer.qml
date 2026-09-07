@@ -24,15 +24,31 @@ Window {
     title: "Input Viewer"
 
     property string hardwareTip: ""
+    readonly property string oscGuid: "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
 
     DeviceNames { id: _names }
     PairDeviceModel { id: _pairs }
 
     function displayName(guid, hardwareName) {
+        var key = String(guid || "").toLowerCase().replace(/[{}]/g, "")
+        if (key === oscGuid) {
+            return "OSC"
+        }
         if (!_names) {
             return hardwareName
         }
         return _names.display(guid, hardwareName)
+    }
+
+    function pairTitle(guid, name) {
+        var key = String(guid || "").toLowerCase().replace(/[{}]/g, "")
+        if (key === oscGuid) {
+            return "OSC"
+        }
+        if (String(name).indexOf("-") === 8 && String(name).length === 36) {
+            return displayName(guid, name)
+        }
+        return name && name.length ? name : displayName(guid, name)
     }
 
     Connections {
@@ -147,7 +163,7 @@ Window {
 
                         Layout.fillWidth: true
                         deviceGuid: guid
-                        title: name
+                        title: _inputViewer.pairTitle(guid, name)
                         pairLabel: pairLabel
                     }
                 }
