@@ -1,0 +1,485 @@
+# -*- coding: utf-8; -*-
+
+# SPDX-License-Identifier: GPL-3.0-only
+
+from __future__ import annotations
+
+import argparse
+import ctypes
+import logging
+import logging.handlers
+import os
+import sys
+import time
+import traceback
+import types
+from pathlib import Path
+from typing import Any
+
+from PySide6 import (
+    QtCore,
+    QtGui,
+    QtQml,
+    QtQuick,
+    QtWidgets,
+)
+
+import dill
+import resources  # noqa: F401
+import vjoy.vjoy
+from gremlin.config import Configuration
+from gremlin.types import PropertyType
+
+install_path = os.path.normcase(os.path.dirname(os.path.abspath(sys.argv[0])))
+os.chdir(install_path)
+
+os.environ["QT_QUICK_CONTROLS_STYLE"] = "Universal"
+
+import gremlin.util
+
+sys.path.insert(0, gremlin.util.userprofile_path())
+gremlin.util.setup_userprofile()
+
+import gremlin.audio_player
+import gremlin.config
+import gremlin.device_initialization
+import gremlin.error
+import gremlin.event_handler
+import gremlin.mode_manager
+import gremlin.plugin_manager
+import gremlin.signal
+import gremlin.tts
+import gremlin.types
+import gremlin.ui.action_image_generator
+import gremlin.ui.backend
+import gremlin.ui.option
+import gremlin.ui.osc_option  # noqa: F401
+import gremlin.ui.log_option  # noqa: F401
+import gremlin.ui.tools
+import gremlin.ui.util
+import gremlin.osc
+import gremlin.ui.osc_device_model  # noqa: F401
+import gremlin.ui.device_names  # noqa: F401
+import gremlin.osc_persist  # noqa: F401
+
+
+def configure_logger(config: dict[str, Any]) -> None:
+    logger = logging.getLogger(config["name"])
+    logger.setLevel(config["level"])
+    if config["mode"] == "rotate":
+        handler = logging.handlers.RotatingFileHandler(
+            config["logfile"], maxBytes=1 * 1024 * 1024, backupCount=1
+        )
+    elif config["mode"] == "session":
+        handler = logging.FileHandler(config["logfile"], mode="w")
+    else:
+        raise gremlin.error.GremlinError(f"Invalid logging mode: {config['mode']}")
+    handler.setLevel(config["level"])
+    formatter = logging.Formatter(config["format"], "%Y-%m-%d %H:%M:%S")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+    if config["mode"] != "session":
+        logger.debug("-" * 80)
+        logger.debug(time.strftime("%Y-%m-%d %H:%M"))
+        logger.debug(f"Starting Joystick Gremlin {gremlin.util.get_code_release()}-OSC")
+        logger.debug("-" * 80)
+
+
+def exception_hook(
+    exception_type: type[BaseException],
+    value: BaseException,
+    trace: types.TracebackType | None,
+) -> None:
+    msg = " ".join(traceback.format_exception(exception_type, value, trace))
+    logging.getLogger("system").error(f"Unhandled exception: {msg}")
+    try:
+        gremlin.signal.display_error("An unhandled exception occured.", msg)
+    except RuntimeError:
+        pass
+
+
+def shutdown_cleanup() -> None:
+    gremlin.event_handler.EventListener().terminate()
+    backend = gremlin.ui.backend.Backend()
+    backend.runner.stop()
+    backend.process_monitor.stop()
+    vjoy.vjoy.VJoyProxy.reset()
+    gremlin.audio_player.AudioPlayer().stop()
+    gremlin.tts.TTSManager().stop()
+    gremlin.osc.OscRuntime().stop()
+
+
+def _raise_existing_window() -> None:
+    try:
+        user32 = ctypes.windll.user32
+        found = []
+
+        @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
+        def _enum(hwnd: int, _: int) -> bool:
+            if not user32.IsWindowVisible(hwnd):
+                return True
+            length = user32.GetWindowTextLengthW(hwnd) + 1
+            buf = ctypes.create_unicode_buffer(length)
+            user32.GetWindowTextW(hwnd, buf, length)
+            if buf.value.startswith("Joystick Gremlin"):
+                found.append(hwnd)
+            return True
+
+        user32.EnumWindows(_enum, 0)
+        if found:
+            hwnd = found[0]
+            user32.ShowWindow(hwnd, 9)
+            user32.SetForegroundWindow(hwnd)
+    except Exception:
+        pass
+
+
+def acquire_single_instance() -> QtCore.QLockFile | None:
+    lock = QtCore.QLockFile(
+        os.path.join(gremlin.util.userprofile_path(), "gremlin.lock")
+    )
+    lock.setStaleLockTime(30000)
+    if lock.tryLock(100):
+        return lock
+    _raise_existing_window()
+    return None
+
+
+def register_config_options() -> None:
+    cfg = gremlin.config.Configuration()
+    osc_ips = gremlin.osc.local_ipv4_addresses()
+    osc_sec = gremlin.osc.OSC_SECTION
+    osc_grp = gremlin.osc.OSC_GROUP
+
+    cfg.register(
+        "global", "internal", "last-mode", PropertyType.String, "Default",
+        "Name of the last active mode", {},
+    )
+    cfg.register(
+        "global", "internal", "last-profile", PropertyType.String, "",
+        "Most recently used profile", {},
+    )
+    cfg.register(
+        "global", "internal", "recent-profiles", PropertyType.List, [],
+        "List of recently opened profiles", {},
+    )
+    cfg.register(
+        "global", "internal", "last-known-version", PropertyType.String,
+        gremlin.util.get_code_version(), "Last known version of Gremlin.", {},
+    )
+    cfg.register(
+        "global", "general", "check-for-updates", PropertyType.Bool, False,
+        "Check for new Gremlin versions online upon start.", {}, True,
+    )
+    if cfg.exists("global", "general", "check-for-updates"):
+        cfg.set("global", "general", "check-for-updates", False)
+    cfg.register(
+        "global", "general", "plugin-directory", PropertyType.Path, "",
+        "Directory containing additional action plugins", {"is_folder": True}, True,
+    )
+    cfg.register(
+        "action", "general", "action-priorities", PropertyType.List, [],
+        "Priority order of the actions", {}, True,
+    )
+    cfg.register(
+        "global", "general", "device-change-behavior", PropertyType.Selection,
+        "Reload",
+        "Action Gremlin takes when a joystick is connected or disconnected.",
+        {"valid_options": ["Disable", "Ignore", "Reload"]}, True,
+    )
+    cfg.register(
+        "global", "general", "dark-mode", PropertyType.Bool, False,
+        "Use the dark mode UI.", {}, True,
+    )
+    cfg.register(
+        "global", "general", "log-level", PropertyType.String, "Warning",
+        "Diagnostic log level written to the user-profile log files.", {}, False,
+    )
+    cfg.register(
+        "global", "general", "refresh-axis-on-activation", PropertyType.Bool, True,
+        "Use known physical device state to perform actions using these values "
+        "upon profile activation.", {}, True,
+    )
+    cfg.register(
+        "global", "general", "refresh-axis-on-mode-change", PropertyType.Bool, True,
+        "Force an update of all axes by emitting axis events upon a mode change.",
+        {}, True,
+    )
+    cfg.register(
+        "global", "general", "input-highlighting", PropertyType.Bool, True,
+        "Select the input in the UI by using an input on the physical device. "
+        "Selects only inputs if the active tab matches the device.", {}, True,
+    )
+    cfg.register(
+        "profile", "automation", "enable-auto-loading", PropertyType.Bool, False,
+        "Enable the automatic loading and activation of profiles based on the "
+        "specified executable and profile combinations.", {}, True,
+    )
+    cfg.register(
+        "profile", "automation", "remain-active-on-focus-loss", PropertyType.Bool,
+        False,
+        "Keep the profile active when the monitored executable loses focus and "
+        "the newly focused executable does not have a profile assigned to it.",
+        {}, True,
+    )
+    cfg.register(
+        "profile", "automation", "entries-auto-loading", PropertyType.List, [],
+        "List of executable and profile combinations for automatic loading.",
+        {}, False,
+    )
+    cfg.register(
+        "devices", "display", "aliases", PropertyType.List, [],
+        "Friendly display names for devices and inputs.", {}, False,
+    )
+    cfg.register(
+        osc_sec, osc_grp, "enabled", PropertyType.Bool, True,
+        "Listen for OSC packets while a profile is active.", {}, True,
+    )
+    cfg.register(
+        osc_sec, osc_grp, "host", PropertyType.Selection,
+        gremlin.osc.default_bind_host(),
+        "Input IP Gremlin binds to.",
+        {"valid_options": osc_ips}, False,
+    )
+    cfg.register(
+        osc_sec, osc_grp, "port", PropertyType.String, "8001",
+        "Input port Gremlin listens on. Must match Companion Target Port.", {}, False,
+    )
+    cfg.register(
+        osc_sec, osc_grp, "output-host", PropertyType.Selection, "127.0.0.1",
+        "Output IP for OSC feedback to Companion.",
+        {"valid_options": osc_ips}, False,
+    )
+    cfg.register(
+        osc_sec, osc_grp, "output-port", PropertyType.String, "8000",
+        "Output port for OSC feedback.",
+        {}, False,
+    )
+    cfg.register(
+        osc_sec, osc_grp, "pad-args", PropertyType.Bool, False,
+        "Pad zero argument commands. Treat an address-only packet as value 1.0.",
+        {}, True,
+    )
+    cfg.register(
+        osc_sec, osc_grp, "autorelease-no-arg", PropertyType.Bool, True,
+        "Autorelease on no arg messages. Press then release after the delay.",
+        {}, True,
+    )
+    cfg.register(
+        osc_sec, osc_grp, "autorelease-delay", PropertyType.String, "250",
+        "Default Autorelease Delay in milliseconds.",
+        {}, False,
+    )
+    for name in (
+        "enabled", "host", "port", "output-host", "output-port",
+        "pad-args", "autorelease-no-arg", "autorelease-delay",
+    ):
+        if cfg.exists("global", "osc", name):
+            cfg.set(osc_sec, osc_grp, name, cfg.value("global", "osc", name))
+
+
+def configure_loggers() -> None:
+    configure_logger({
+        "name": "system", "level": logging.WARNING,
+        "logfile": os.path.join(gremlin.util.userprofile_path(), "system.log"),
+        "format": "%(asctime)s %(levelname)10s %(message)s", "mode": "rotate",
+    })
+    configure_logger({
+        "name": "user", "level": logging.WARNING,
+        "logfile": os.path.join(gremlin.util.userprofile_path(), "user.log"),
+        "format": "%(asctime)s %(message)s", "mode": "rotate",
+    })
+    configure_logger({
+        "name": "event", "level": logging.WARNING,
+        "logfile": os.path.join(gremlin.util.userprofile_path(), "event.log"),
+        "format": "%(asctime)s,%(levelname)s,%(message)s", "mode": "session",
+    })
+
+
+def update_action_priorities() -> None:
+    cfg = gremlin.config.Configuration()
+    key = ["action", "general", "action-priorities"]
+    priorities = []
+    if cfg.exists(*key):
+        priorities = cfg.value(*key)
+    priority_names = [v[0] for v in priorities]
+    priority_actions = ["Map to vJoy", "Macro", "Response Curve"]
+    plugin_names = [
+        p.name for p in gremlin.plugin_manager.PluginManager().repository.values()
+    ]
+    plugin_names = [n for n in priority_actions if n in plugin_names] + sorted(
+        [n for n in plugin_names if n not in priority_actions]
+    )
+    for tag in plugin_names:
+        if tag not in priority_names:
+            priorities.append((tag, True))
+    to_delete = []
+    for i, tag in enumerate(priority_names):
+        if tag not in plugin_names:
+            to_delete.append(i)
+    for idx in reversed(to_delete):
+        del priorities[idx]
+    cfg.set(*key, priorities)
+
+
+class JoystickGremlinApp(QtWidgets.QApplication):
+    def __init__(self, argv: list[str]) -> None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--profile", help="Path to the profile to load on startup")
+        parser.add_argument(
+            "--enable", help="Enable Joystick Gremlin upon launch", action="store_true"
+        )
+        parser.add_argument(
+            "--start-minimized",
+            help="Start Joystick Gremlin minimized",
+            action="store_true",
+        )
+        cmd_args, qt_argv = parser.parse_known_args(argv)
+        super().__init__(qt_argv)
+
+        configure_loggers()
+        self.syslog = logging.getLogger("system")
+        register_config_options()
+        gremlin.ui.log_option.apply_log_level()
+
+        executable_name = os.path.split(sys.executable)[-1]
+        if executable_name == "joystick_gremlin.exe":
+            sys.excepthook = exception_hook
+        sys.excepthook = exception_hook
+
+        dill.DILL.init()
+        device_initialization_error = None
+        try:
+            gremlin.device_initialization.joystick_devices_initialization()
+        except gremlin.error.GremlinError as e:
+            device_initialization_error = str(e)[1:-1]
+
+        self.initialize_qt()
+
+        if device_initialization_error is not None:
+            self.engine.load(
+                QtCore.QUrl.fromLocalFile(
+                    gremlin.util.resource_path("qml/MainFailure.qml")
+                )
+            )
+            self.engine.rootContext().setContextProperty(
+                "errorString", device_initialization_error
+            )
+            self.aboutToQuit.connect(shutdown_cleanup)
+            return
+
+        self.syslog.info("Initializing plugins")
+        gremlin.plugin_manager.PluginManager()
+        self.cfg.purge_unused()
+        update_action_priorities()
+
+        self.engine.load(
+            QtCore.QUrl.fromLocalFile(gremlin.util.resource_path("qml/Main.qml"))
+        )
+        if not self.engine.rootObjects():
+            sys.exit(-1)
+
+        self.process_cmd_args(cmd_args)
+        self.backend.check_for_updates()
+
+        self.main_window = self.engine.rootObjects()[0]
+        self.color_information_object = self.main_window.findChild(
+            QtCore.QObject, "colorInformation"
+        )
+        if self.color_information_object is None:
+            raise gremlin.error.GremlinError(
+                "Failed to find color information object in QML."
+            )
+        gremlin.ui.util.ColorInformation().update_colors(self.color_information_object)
+        self._theme_refresh_timer = QtCore.QTimer()
+        self._theme_refresh_timer.setSingleShot(True)
+        self._theme_refresh_timer.setInterval(0)
+        self._theme_refresh_timer.timeout.connect(self._on_theme_colors_changed)
+        for changed in (
+            self.color_information_object.foregroundChanged,
+            self.color_information_object.backgroundChanged,
+            self.color_information_object.accentChanged,
+        ):
+            changed.connect(self._theme_refresh_timer.start)
+
+        self.syslog.info("Gremlin UI launching")
+        self.aboutToQuit.connect(shutdown_cleanup)
+
+    def _on_theme_colors_changed(self) -> None:
+        gremlin.ui.util.ColorInformation().update_colors(self.color_information_object)
+        self.backend.ui_state.bumpThemeRevision()
+
+    def process_cmd_args(self, args: argparse.Namespace) -> None:
+        if args.profile is not None and os.path.isfile(args.profile):
+            self.backend.loadProfile(args.profile)
+        else:
+            last_profile = Path(
+                Configuration().value("global", "internal", "last-profile")
+            )
+            if last_profile.is_file():
+                self.backend.loadProfile(str(last_profile))
+
+        if args.enable:
+            self.backend.activate_gremlin(True)
+        if args.start_minimized:
+            self.backend.minimize()
+
+    def initialize_qt(self) -> None:
+        QtCore.QLoggingCategory.setFilterRules("qt.qml.binding.removal.info=true")
+        QtQuick.QQuickWindow.setTextRenderType(QtQuick.QQuickWindow.NativeTextRendering)
+        app_id = "joystick.gremlin"
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        self.setWindowIcon(QtGui.QIcon(gremlin.util.resource_path("gfx/icon.png")))
+        self.setApplicationDisplayName(
+            f"Joystick Gremlin {gremlin.util.get_code_release()}-OSC"
+        )
+        self.setOrganizationName("H2IK")
+        self.setOrganizationDomain("https://whitemagic.github.io/JoystickGremlin/")
+        self.setApplicationName("Joystick Gremlin")
+        self.setFont(QtGui.QFont("Segoe UI", 11))
+        if QtGui.QFontDatabase.addApplicationFont(":/BootstrapIcons") < 0:
+            self.syslog.error("Failed to load BootstrapIcons")
+
+        self.engine = QtQml.QQmlApplicationEngine(parent=self)
+        self.engine.addImportPath(gremlin.util.resource_path("theme"))
+        QtQml.qmlRegisterSingletonType(
+            QtCore.QUrl.fromLocalFile(gremlin.util.resource_path("qml/Style.qml")),
+            "Gremlin.Style", 1, 0, "Style",
+        )
+        QtCore.QDir.addSearchPath(
+            "core_plugins", gremlin.util.resource_path("action_plugins/")
+        )
+        QtCore.QDir.addSearchPath("qml", gremlin.util.resource_path("qml/"))
+
+        self.cfg = Configuration()
+        user_plugins_path = Path(
+            self.cfg.value("global", "general", "plugin-directory")
+        )
+        if user_plugins_path.is_dir():
+            QtCore.QDir.addSearchPath("user_plugins", str(user_plugins_path))
+
+        self.backend = gremlin.ui.backend.Backend(self.engine)
+        self.backend.newProfile()
+        action_image_provider = (
+            gremlin.ui.action_image_generator.ActionSummaryImageProvider()
+        )
+        self.engine.addImageProvider("action_summary", action_image_provider)
+        self.engine.rootContext().setContextProperty("backend", self.backend)
+        self.engine.rootContext().setContextProperty("uiState", self.backend.ui_state)
+        self.engine.rootContext().setContextProperty("signal", gremlin.signal.signal)
+
+
+def main() -> int:
+    lock = acquire_single_instance()
+    if lock is None:
+        return 0
+    app = JoystickGremlinApp(sys.argv)
+    app._instance_lock = lock
+    app.exec()
+    logging.getLogger("system").info("Terminating Gremlin")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
