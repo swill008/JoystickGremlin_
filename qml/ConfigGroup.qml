@@ -54,7 +54,9 @@ ColumnLayout {
                 Layout.fillWidth: true
 
                 title: name
-                explanation: description
+                explanation: name === "Input highlighting"
+                    ? "Select the input in the UI by using an input on the physical device."
+                    : description
 
                 RowLayout {
                     spacing: 8
