@@ -9,14 +9,14 @@ import QtQuick.Layouts
 import Gremlin.Device
 import Gremlin.Style
 
-Item {
+ColumnLayout {
     id: _root
 
     property string deviceGuid: ""
     property string title: ""
-    property string pairLabel: _pairing.pairedDeviceLabel(deviceGuid)
+    property string pairLabel: _pairing ? _pairing.pairedDeviceLabel(deviceGuid) : ""
 
-    implicitHeight: _content.implicitHeight + 16
+    spacing: 8
 
     InputPairing { id: _pairing }
 
@@ -25,125 +25,93 @@ Item {
         guid: deviceGuid
     }
 
-    DeviceButtonState {
-        id: _buttons
-        guid: deviceGuid
-    }
-
     Rectangle {
-        anchors.fill: parent
+        Layout.fillWidth: true
+        Layout.preferredHeight: _inner.implicitHeight + 24
         color: Style.background
-        border.color: Style.backgroundShade
+        border.color: Style.accent
         border.width: 1
         radius: 6
-    }
 
-    ColumnLayout {
-        id: _content
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: 12
-        spacing: 10
+        ColumnLayout {
+            id: _inner
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 12
+            spacing: 10
 
-        RowLayout {
-            Layout.fillWidth: true
+            RowLayout {
+                Layout.fillWidth: true
 
-            JGText {
-                text: title
-                font.pointSize: 13
-                font.weight: 600
+                JGText {
+                    text: title
+                    font.pointSize: 13
+                }
+
+                Item { Layout.fillWidth: true }
+
+                JGText {
+                    visible: pairLabel.length > 0
+                    text: "\u2192  " + pairLabel
+                    color: Style.accent
+                }
             }
 
-            Item { Layout.fillWidth: true }
-
             JGText {
-                visible: pairLabel.length > 0
-                text: "→  " + pairLabel
-                color: Style.accent
+                text: "Axes"
+                opacity: 0.7
             }
-        }
 
-        JGText {
-            visible: _axes.rowCount() > 0
-            text: "Axes"
-            color: Style.foreground
-            opacity: 0.7
-        }
+            Row {
+                Layout.fillWidth: true
+                spacing: 14
 
-        Row {
-            id: _axisRow
-            Layout.fillWidth: true
-            spacing: 12
-            visible: _axes.rowCount() > 0
+                Repeater {
+                    model: _axes
 
-            Repeater {
-                model: _axes
+                    delegate: Column {
+                        required property int identifier
+                        required property double value
+                        width: 64
+                        spacing: 4
 
-                delegate: Column {
-                    required property int identifier
-                    required property double value
-                    width: 56
-                    spacing: 4
-
-                    Label {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: _pairing.axisLabel(identifier)
-                        color: Style.foreground
-                        font.pointSize: 10
-                    }
-
-                    Rectangle {
-                        width: parent.width
-                        height: 8
-                        radius: 4
-                        color: Style.lowColor
+                        Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: _pairing ? _pairing.axisLabel(identifier) : ("A" + identifier)
+                            color: Style.foreground
+                            font.pointSize: 10
+                        }
 
                         Rectangle {
-                            width: Math.max(4, parent.width * ((value + 1.0) * 0.5))
-                            height: parent.height
-                            radius: 4
-                            color: "#22C55E"
+                            width: parent.width
+                            height: 10
+                            radius: 5
+                            color: Style.lowColor
+
+                            Rectangle {
+                                height: parent.height
+                                radius: 5
+                                width: Math.max(4, parent.width * Math.min(1.0, Math.max(0.0, (value + 1.0) * 0.5)))
+                                color: "#22C55E"
+                            }
                         }
                     }
                 }
             }
-        }
 
-        JGText {
-            visible: _buttons.rowCount() > 0
-            text: "Buttons"
-            color: Style.foreground
-            opacity: 0.7
-        }
+            AxesStateCurrent {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 170
+                deviceGuid: _root.deviceGuid
+                title: ""
+            }
 
-        Flow {
-            Layout.fillWidth: true
-            spacing: 8
-            visible: _buttons.rowCount() > 0
-
-            Repeater {
-                model: _buttons
-
-                delegate: Rectangle {
-                    required property int identifier
-                    required property var value
-
-                    width: 36
-                    height: 36
-                    radius: 18
-                    color: value ? "#22C55E" : Style.background
-                    border.color: value ? "#16A34A" : Style.medColor
-                    border.width: 1
-
-                    Label {
-                        anchors.centerIn: parent
-                        text: identifier
-                        color: value ? "#052e16" : Style.foreground
-                        font.pointSize: 10
-                        font.weight: 600
-                    }
-                }
+            ButtonState {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 220
+                deviceGuid: _root.deviceGuid
+                title: ""
             }
         }
     }
