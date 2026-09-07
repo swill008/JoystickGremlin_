@@ -65,6 +65,8 @@ Window {
                     required property bool mapped
 
                     Layout.fillWidth: true
+                    implicitHeight: item ? item.implicitHeight : 0
+                    Layout.preferredHeight: implicitHeight
                     sourceComponent: mapped ? _pairComp : _unmappedComp
 
                     property string _guid: guid
@@ -81,7 +83,7 @@ Window {
             deviceGuid: parent._guid
             title: parent._name
             pairLabel: parent._pair
-            Layout.fillWidth: true
+            width: parent.width
         }
     }
 
@@ -90,7 +92,7 @@ Window {
         UnmappedCard {
             deviceGuid: parent._guid
             title: parent._name
-            Layout.fillWidth: true
+            width: parent.width
         }
     }
 }
