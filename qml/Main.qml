@@ -27,11 +27,20 @@ ApplicationWindow {
     visible: true
     id: _root
 
+    WindowPlacement { id: _windowPlacement }
+
     Component.onCompleted: () => {
         if (backend) {
             Style.isDarkMode = backend.useDarkMode
         }
+        _windowPlacement.restore(_root)
     }
+
+    onXChanged: _windowPlacement.scheduleSave(_root)
+    onYChanged: _windowPlacement.scheduleSave(_root)
+    onWidthChanged: _windowPlacement.scheduleSave(_root)
+    onHeightChanged: _windowPlacement.scheduleSave(_root)
+    onVisibilityChanged: _windowPlacement.scheduleSave(_root)
 
     Universal.theme: Style.theme
     color: Style.background
@@ -499,6 +508,7 @@ ApplicationWindow {
     }
 
     onClosing: (close) => {
+        _windowPlacement.save(_root)
         if (backend && backend.profileContainsUnsavedChanges) {
             _saveBeforeQuitDialog.open()
             close.accepted = false
