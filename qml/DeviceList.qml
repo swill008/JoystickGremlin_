@@ -87,6 +87,10 @@ Item {
         return _root._nameTick, _names.display(key, fallback)
     }
 
+    function isRenamed(key, fallback) {
+        return _root.displayName(key, fallback) !== fallback
+    }
+
     Component.onCompleted: {
         if (deviceListModel) {
             deviceListModel.deviceType = "all"
@@ -114,7 +118,7 @@ Item {
                 checked: uiState && uiState.currentTab === "physical" &&
                     uiState.currentDevice === model.guid
 
-                ToolTip.visible: hovered && visible
+                ToolTip.visible: hovered && visible && _root.isRenamed(model.guid, name)
                 ToolTip.delay: 400
                 ToolTip.text: name
 
@@ -151,7 +155,7 @@ Item {
             width: visible ? _metricKeyboard.width + 50 : 0
             checked: uiState && uiState.currentTab === "keyboard"
 
-            ToolTip.visible: hovered && visible
+            ToolTip.visible: hovered && visible && _root.isRenamed("keyboard", "Keyboard")
             ToolTip.delay: 400
             ToolTip.text: "Keyboard"
 
@@ -187,7 +191,7 @@ Item {
             width: visible ? _metricIO.width + 50 : 0
             checked: uiState && uiState.currentTab === "logical"
 
-            ToolTip.visible: hovered && visible
+            ToolTip.visible: hovered && visible && _root.isRenamed("logical", "Logical Device")
             ToolTip.delay: 400
             ToolTip.text: "Logical Device"
 
@@ -223,7 +227,7 @@ Item {
             width: visible ? _metricOsc.width + 50 : 0
             checked: uiState && uiState.currentTab === "osc"
 
-            ToolTip.visible: hovered && visible
+            ToolTip.visible: hovered && visible && _root.isRenamed("osc", "OSC")
             ToolTip.delay: 400
             ToolTip.text: "OSC"
 
