@@ -56,7 +56,7 @@ Popup {
                 Rectangle {
                     required property int index
                     readonly property int deviceId: index + 1
-                    readonly property bool active: _status.isActive(deviceId)
+                    readonly property bool active: _status.activeCount >= 0 && _status.isActive(deviceId)
 
                     implicitWidth: 52
                     implicitHeight: 36
