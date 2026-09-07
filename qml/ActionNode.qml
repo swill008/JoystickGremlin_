@@ -14,12 +14,9 @@ import "helpers.js" as Helpers
 Item {
     id: _root
 
-    // Data to render
     property ActionModel action
-    // Information about the hierarchy of the action sequence
     property ActionModel parentAction
     property string containerName
-    // Item rendering information
     property int itemSpacing : 10
 
     implicitHeight: _content.height
@@ -29,12 +26,14 @@ Item {
 
         function onActionChanged()
         {
-            // Not used currently
         }
     }
 
     function loadDynamicItem()
     {
+        if (!_root.action) {
+            return
+        }
         let component = Qt.createComponent(
             Qt.resolvedUrl(_root.action.qmlPath)
         )
@@ -62,11 +61,6 @@ Item {
                     }
                 );
 
-                // As this object is created within a layout we can
-                // use the fillWidth property to ensure this object
-                // uses all available space. Height is controlled by
-                // the contents of the item and propagate up to the
-                // layout itself.
                 _action.dynamicItem.Layout.fillWidth = true
             }
             else if(component.status === Component.Error)
@@ -88,40 +82,31 @@ Item {
         }
     }
 
-    // +------------------------------------------------------------------------
-    // | Rendering of the node's content
-    // +------------------------------------------------------------------------
     ColumnLayout {
         id: _content
 
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: _root.action.depth > 1 ?
+        anchors.leftMargin: _root.action && _root.action.depth > 1 ?
             _foldButton.width + _root.itemSpacing : _root.itemSpacing
 
-        // Drag & drop support
         Drag.active: _dragArea.drag.active
         Drag.dragType: Drag.Automatic
         Drag.supportedActions: Qt.MoveAction
         Drag.proposedAction: Qt.MoveAction
         Drag.mimeData: {
-            "text/plain": _root.action.sequenceIndex,
+            "text/plain": _root.action ? _root.action.sequenceIndex : "",
             "type": "action",
-            "root": _root.action.rootActionId
+            "root": _root.action ? _root.action.rootActionId : ""
         }
         Drag.onDragFinished: function(action)
         {
-            // If the drop action ought to be ignored, reset the UI by emitting
-            // the appropriate event.
             if(action === Qt.IgnoreAction)
             {
                 signal.reloadCurrentInputItem();
             }
         }
 
-        // +--------------------------------------------------------------------
-        // | Header
-        // +--------------------------------------------------------------------
         RowLayout {
             id: _header
 
@@ -134,7 +119,7 @@ Item {
                 id: _foldButton
 
                 checkable: true
-                checked: backend.isActionExpanded(
+                checked: backend && _root.action && backend.isActionExpanded(
                     _root.action.id,
                     _root.action.sequenceIndex
                 )
@@ -144,11 +129,13 @@ Item {
                 Layout.leftMargin: -10
 
                 onClicked: () => {
-                    backend.setIsActionExpanded(
-                        _root.action.id,
-                        _root.action.sequenceIndex,
-                        checked
-                    )
+                    if (backend && _root.action) {
+                        backend.setIsActionExpanded(
+                            _root.action.id,
+                            _root.action.sequenceIndex,
+                            checked
+                        )
+                    }
                 }
             }
 
@@ -158,7 +145,7 @@ Item {
                 font.family: "bootstrap-icons"
                 font.pixelSize: 24
 
-                text: _root.action.icon
+                text: _root.action ? _root.action.icon : ""
             }
 
             JGTextField {
@@ -167,31 +154,38 @@ Item {
                 Layout.minimumWidth: 150
                 Layout.fillWidth: true
 
-                text: _root.action.actionLabel
+                text: _root.action ? _root.action.actionLabel : ""
 
-                onTextEdited: () => { _root.action.actionLabel = text }
+                onTextEdited: () => {
+                    if (_root.action) {
+                        _root.action.actionLabel = text
+                    }
+                }
             }
 
             TriggerMode {
-                visible: _root.action.actionBehavior === "button" &&
+                visible: _root.action && _root.action.actionBehavior === "button" &&
                     _root.action.canChangeActivation
 
                 Layout.alignment: Qt.AlignVCenter
 
-                pressChecked: _root.action.activateOnPress
-                releaseChecked: _root.action.activateOnRelease
+                pressChecked: _root.action && _root.action.activateOnPress
+                releaseChecked: _root.action && _root.action.activateOnRelease
 
                 onPressCheckedChanged: function() {
-                    _root.action.activateOnPress = pressChecked
-
+                    if (_root.action) {
+                        _root.action.activateOnPress = pressChecked
+                    }
                 }
                 onReleaseCheckedChanged: function() {
-                    _root.action.activateOnRelease = releaseChecked
+                    if (_root.action) {
+                        _root.action.activateOnRelease = releaseChecked
+                    }
                 }
             }
 
             Label {
-                visible: _root.action.isValid != true
+                visible: _root.action && _root.action.isValid != true
 
                 font.family: "bootstrap-icons"
                 font.pixelSize: 24
@@ -201,6 +195,9 @@ Item {
 
                 HoverHandler {
                     onHoveredChanged: () => {
+                        if (!_root.action) {
+                            return
+                        }
                         _hintsTooltip.parent = parent
                         _hintsTooltip.x = -_hintsTooltip.width - 5
                         _hintsTooltip.y = parent.height + 5
@@ -216,14 +213,13 @@ Item {
                 text: bsi.icons.remove
 
                 onClicked: {
-                    parentAction.removeAction(_root.action.sequenceIndex)
+                    if (parentAction && _root.action) {
+                        parentAction.removeAction(_root.action.sequenceIndex)
+                    }
                 }
             }
         }
 
-        // +--------------------------------------------------------------------
-        // | Dynamic QML item loading
-        // +--------------------------------------------------------------------
         RowLayout {
             id: _action
 
@@ -234,8 +230,6 @@ Item {
 
             visible: _foldButton.checked
 
-            // Synchronize the container item's height with that of the
-            // dynamically created element
             Binding {
                 target: _action
                 property: "implicitHeight"
@@ -244,30 +238,21 @@ Item {
                 when: _action.dynamicItem !== null
             }
 
-            // Dynamically load the QML item
             Component.onCompleted: loadDynamicItem()
-
-            // Destroy the dynamic object instance
             Component.onDestruction: destroyDynamicItem()
         }
 
         Rectangle {
             color: "transparent"
             z: -1
-            height: _root.action.lastInContainer ? 15 : 0
+            height: _root.action && _root.action.lastInContainer ? 15 : 0
             Layout.fillWidth: true
         }
     }
 
-    // +------------------------------------------------------------------------
-    // | Drag & Drop support
-    // +------------------------------------------------------------------------
-
-    // Drag interface area
     MouseArea {
         id: _dragArea
 
-        // Start at label field x coordinate, otherwise button stops working
         x: _header.x
         y: _header.y
         z: -1
@@ -277,7 +262,6 @@ Item {
         drag.target: _content
         drag.axis: Drag.YAxis
 
-        // Create an image of the object being dragged for visualization
         onPressed: function()
         {
             _content.grabToImage(function(result)
@@ -287,9 +271,8 @@ Item {
         }
     }
 
-    // Drop area below every non-root action
     Loader {
-        active: _root.action.name !== "Root"
+        active: _root.action && _root.action.name !== "Root"
 
         sourceComponent: DragDropArea {
             y: (_action.visible ? _action.y + _action.height : _header.y +
@@ -298,6 +281,7 @@ Item {
             target: _header
             validationCallback: function(drag) {
                 return drag.getDataAsString("type") === "action" &&
+                    _root.action &&
                     drag.getDataAsString("root") === _root.action.rootActionId
             }
             dropCallback: function(drop) {
