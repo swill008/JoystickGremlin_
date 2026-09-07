@@ -256,13 +256,13 @@ ApplicationWindow {
             MenuItem {
                 text: qsTr("vJoy Pairing-Viewer")
                 onTriggered: () => {
-                    Helpers.createComponent("DialogInputViewer.qml")
+                    Helpers.toggleComponent("DialogInputViewer.qml")
                 }
             }
             MenuItem {
                 text: qsTr("Device Viewer")
                 onTriggered: () => {
-                    Helpers.createComponent("DialogDeviceViewer.qml")
+                    Helpers.toggleComponent("DialogDeviceViewer.qml")
                 }
             }
             MenuItem {
@@ -349,21 +349,21 @@ ApplicationWindow {
 
             JGToolButton {
                 text: "\uF3F2"
-                tooltip: qsTr("Open vJoy Pairing-Viewer")
+                tooltip: qsTr("Toggle vJoy Pairing-Viewer")
                 caption: "vJoy Pairing"
 
                 onClicked: () => {
-                    Helpers.createComponent("DialogInputViewer.qml")
+                    Helpers.toggleComponent("DialogInputViewer.qml")
                 }
             }
 
             JGToolButton {
                 text: "\uF4CA"
-                tooltip: qsTr("Open Device Viewer")
+                tooltip: qsTr("Toggle Device Viewer")
                 caption: "Device"
 
                 onClicked: () => {
-                    Helpers.createComponent("DialogDeviceViewer.qml")
+                    Helpers.toggleComponent("DialogDeviceViewer.qml")
                 }
             }
 
