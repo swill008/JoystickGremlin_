@@ -22,7 +22,6 @@ KEY_MAX = "window-maximized"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
-MARGIN = 24
 
 
 def _ensure() -> Configuration:
@@ -64,17 +63,6 @@ def _screen_at(point: QtCore.QPoint) -> QtGui.QScreen | None:
     return app.screenAt(point) or app.primaryScreen()
 
 
-def _fit_to_screen(rect: QtCore.QRect, screen: QtGui.QScreen) -> QtCore.QRect:
-    avail = screen.availableGeometry().adjusted(MARGIN, MARGIN, -MARGIN, -MARGIN)
-    if avail.width() < 900 or avail.height() < 600:
-        avail = screen.availableGeometry()
-    width = min(max(rect.width(), 900), avail.width())
-    height = min(max(rect.height(), 600), avail.height())
-    x = min(max(rect.x(), avail.x()), avail.x() + avail.width() - width)
-    y = min(max(rect.y(), avail.y()), avail.y() + avail.height() - height)
-    return QtCore.QRect(x, y, width, height)
-
-
 def _intersects_enough(rect: QtCore.QRect, screen: QtGui.QScreen) -> bool:
     visible = rect.intersected(screen.availableGeometry())
     if visible.width() < 200 or visible.height() < 80:
@@ -89,6 +77,15 @@ def _target_screen(saved: QtCore.QRect) -> QtGui.QScreen | None:
     return _screen_at(QtGui.QCursor.pos())
 
 
+def _centered(size: QtCore.QSize, screen: QtGui.QScreen) -> QtCore.QRect:
+    avail = screen.availableGeometry()
+    width = min(max(size.width(), 900), avail.width())
+    height = min(max(size.height(), 600), avail.height())
+    x = avail.x() + max(0, (avail.width() - width) // 2)
+    y = avail.y() + max(0, (avail.height() - height) // 2)
+    return QtCore.QRect(x, y, width, height)
+
+
 def restore_window(window: QtGui.QWindow) -> None:
     cfg = _ensure()
     saved = QtCore.QRect(
@@ -100,15 +97,7 @@ def restore_window(window: QtGui.QWindow) -> None:
     screen = _target_screen(saved)
     if screen is None:
         return
-    if not _intersects_enough(saved, screen):
-        avail = screen.availableGeometry()
-        saved = QtCore.QRect(
-            avail.x() + max(MARGIN, (avail.width() - DEFAULT_W) // 2),
-            avail.y() + max(MARGIN, (avail.height() - DEFAULT_H) // 2),
-            DEFAULT_W,
-            DEFAULT_H,
-        )
-    fitted = _fit_to_screen(saved, screen)
+    fitted = _centered(saved.size(), screen)
     window.setVisibility(QtGui.QWindow.Visibility.Windowed)
     window.setGeometry(fitted)
     if cfg.value(SECTION, GROUP, KEY_MAX):
