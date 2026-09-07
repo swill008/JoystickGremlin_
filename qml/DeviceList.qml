@@ -91,15 +91,6 @@ Item {
         return _root.displayName(key, fallback) !== fallback
     }
 
-    Component.onCompleted: {
-        if (deviceListModel) {
-            deviceListModel.deviceType = "all"
-        }
-        if (_vjoy) {
-            _vjoy.refresh()
-        }
-    }
-
     DeviceTabBar {
         id: _deviceList
 
