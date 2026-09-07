@@ -17,7 +17,7 @@ ColumnLayout {
     property string pairLabel: ""
     property int liveStamp: _live ? _live.stamp : 0
 
-    spacing: 6
+    spacing: 4
 
     MappedAxisModel {
         id: _axes
@@ -49,25 +49,26 @@ ColumnLayout {
 
     Rectangle {
         Layout.fillWidth: true
-        implicitHeight: _inner.implicitHeight + 20
+        implicitHeight: _inner.implicitHeight + 16
         color: Style.background
         border.color: Style.accent
         border.width: 1
         radius: 6
+        clip: true
 
         ColumnLayout {
             id: _inner
-            width: parent.width - 20
-            x: 10
-            y: 10
-            spacing: 8
+            width: parent.width - 16
+            x: 8
+            y: 8
+            spacing: 6
 
             RowLayout {
                 Layout.fillWidth: true
 
                 JGText {
                     text: title
-                    font.pointSize: 13
+                    font.pointSize: 12
                 }
 
                 Item { Layout.fillWidth: true }
@@ -84,17 +85,21 @@ ColumnLayout {
                 }
             }
 
-            Loader {
-                id: _temporalLoader
+            Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: _temporal.checked ? 220 : 0
-                active: _temporal.checked
+                Layout.preferredHeight: _temporal.checked ? 200 : 0
                 visible: _temporal.checked
-                source: Qt.resolvedUrl("AxesStateSeries.qml")
-                onLoaded: {
-                    if (item) {
-                        item.deviceGuid = _root.deviceGuid
-                        item.title = _root.title
+                clip: true
+
+                Loader {
+                    anchors.fill: parent
+                    active: _temporal.checked
+                    source: Qt.resolvedUrl("AxesStateSeries.qml")
+                    onLoaded: {
+                        if (item) {
+                            item.deviceGuid = _root.deviceGuid
+                            item.title = ""
+                        }
                     }
                 }
             }
@@ -102,6 +107,7 @@ ColumnLayout {
             JGText {
                 text: "Mapped axes"
                 opacity: 0.7
+                font.pointSize: 10
             }
 
             Repeater {
@@ -114,23 +120,24 @@ ColumnLayout {
                     required property string vjoyGuid
                     required property int vjoyInput
                     Layout.fillWidth: true
-                    spacing: 10
+                    spacing: 8
 
                     Label {
                         text: label
                         color: Style.foreground
-                        Layout.preferredWidth: 36
+                        Layout.preferredWidth: 28
+                        font.pointSize: 10
                     }
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 10
-                        radius: 5
+                        Layout.preferredHeight: 8
+                        radius: 4
                         color: Style.lowColor
 
                         Rectangle {
                             height: parent.height
-                            radius: 5
+                            radius: 4
                             width: parent.width * Math.min(1.0, Math.max(0.0, (hwAxis(identifier) + 1.0) * 0.5))
                             color: "#22C55E"
                         }
@@ -139,18 +146,19 @@ ColumnLayout {
                     Label {
                         text: vjoyLabel
                         color: Style.accent
-                        Layout.preferredWidth: 110
+                        Layout.preferredWidth: 88
+                        font.pointSize: 9
                     }
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 10
-                        radius: 5
+                        Layout.preferredHeight: 8
+                        radius: 4
                         color: Style.lowColor
 
                         Rectangle {
                             height: parent.height
-                            radius: 5
+                            radius: 4
                             width: parent.width * Math.min(1.0, Math.max(0.0, (vjAxis(vjoyGuid, vjoyInput) + 1.0) * 0.5))
                             color: "#38BDF8"
                         }
@@ -161,11 +169,12 @@ ColumnLayout {
             JGText {
                 text: "Mapped buttons"
                 opacity: 0.7
+                font.pointSize: 10
             }
 
             Flow {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: 4
 
                 Repeater {
                     model: _buttons
@@ -180,31 +189,23 @@ ColumnLayout {
                         property bool hwOn: hwButton(identifier) > 0.5
                         property bool vjOn: vjButton(vjoyGuid, vjoyInput) > 0.5
 
-                        width: 72
-                        height: 36
-                        radius: 6
+                        width: 34
+                        height: 22
+                        radius: 4
                         color: (hwOn || vjOn) ? "#166534" : Style.background
                         border.color: (hwOn || vjOn) ? "#22C55E" : Style.medColor
                         border.width: 1
 
-                        Column {
+                        Label {
                             anchors.centerIn: parent
-                            spacing: 1
-
-                            Label {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: label
-                                color: Style.foreground
-                                font.pointSize: 10
-                                font.weight: 600
-                            }
-                            Label {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: vjoyLabel
-                                color: Style.accent
-                                font.pointSize: 8
-                            }
+                            text: label
+                            color: Style.foreground
+                            font.pointSize: 9
                         }
+
+                        ToolTip.visible: _hover.hovered
+                        ToolTip.text: vjoyLabel
+                        HoverHandler { id: _hover }
                     }
                 }
             }
