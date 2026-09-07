@@ -35,16 +35,7 @@ Window {
         return name && name.length ? name : guid
     }
 
-    Connections {
-        target: _inputViewer
-
-        function onClosing() {
-            backend.resumeInputHighlighting()
-        }
-    }
-
     Component.onCompleted: () => {
-        backend.pauseInputHighlighting()
         if (_devices) {
             _devices.reload()
         }
