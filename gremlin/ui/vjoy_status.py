@@ -19,6 +19,13 @@ GROUP = "display"
 NAME = "vjoy-tabs"
 
 
+class _PinHub(QtCore.QObject):
+    changed = QtCore.Signal()
+
+
+HUB = _PinHub()
+
+
 def _ensure() -> Configuration:
     cfg = Configuration()
     if not cfg.exists(SECTION, GROUP, NAME):
@@ -60,6 +67,11 @@ class VJoyStatus(QtCore.QObject):
         super().__init__(parent)
         self._active = [False] * 16
         self._pins = _load_pins()
+        HUB.changed.connect(self._reload_pins)
+
+    def _reload_pins(self) -> None:
+        self._pins = _load_pins()
+        self.changed.emit()
 
     @QtCore.Slot()
     def refresh(self) -> None:
@@ -93,7 +105,7 @@ class VJoyStatus(QtCore.QObject):
         else:
             self._pins.discard(index)
         _save_pins(self._pins)
-        self.changed.emit()
+        HUB.changed.emit()
 
     def _count(self) -> int:
         return sum(1 for item in self._active if item)
