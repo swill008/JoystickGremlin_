@@ -21,7 +21,7 @@ def _norm(value: object) -> str:
 
 
 @ta.QmlElement
-class PairLiveState(QtCore.QObject):
+class PairLiveThrottle(QtCore.QObject):
     stampChanged = QtCore.Signal()
     axisStampChanged = QtCore.Signal()
     buttonStampChanged = QtCore.Signal()
