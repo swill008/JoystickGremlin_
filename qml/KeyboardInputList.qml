@@ -11,19 +11,16 @@ import Gremlin.Device
 import Gremlin.Style
 
 Item {
-    DeviceNames { id: _names }
-
     TextInputDialog {
         id: _renameDialog
 
         visible: false
         width: 320
 
-        property string nameKey: ""
-        property string fallback: ""
+        property int rowIndex: -1
 
         onAccepted: (value) => {
-            _names.setAlias(nameKey, value)
+            _inputList.model.setActionName(rowIndex, value)
             visible = false
         }
     }
@@ -50,12 +47,10 @@ Item {
                 height: 50
 
                 selected: model.index === _inputList.currentIndex
-                nameKey: "keyboard:" + name
                 onClicked: () => { _inputList.currentIndex = model.index }
                 onRenameRequested: {
-                    _renameDialog.nameKey = nameKey
-                    _renameDialog.fallback = name
-                    _renameDialog.text = _names.display(nameKey, name)
+                    _renameDialog.rowIndex = model.index
+                    _renameDialog.text = description
                     _renameDialog.visible = true
                 }
 
