@@ -136,6 +136,7 @@ Window {
 
                 anchors.left: parent.left
                 anchors.right: parent.right
+                spacing: 12
             }
         }
     }
@@ -157,6 +158,27 @@ Window {
             property var widget_btn_hat
             property var widget_axis_temp
             property var widget_axis_cur
+            property var widget_card
+
+            function showCard() {
+                if (widget_card) {
+                    return
+                }
+                widget_card = create_widget("InputViewerCard.qml", guid, shownName)
+            }
+
+            function hideCard() {
+                if (widget_card) {
+                    widget_card.destroy()
+                    widget_card = null
+                }
+            }
+
+            Component.onCompleted: {
+                if (_foldButton.checked) {
+                    showCard()
+                }
+            }
 
             RowLayout {
                 Layout.fillWidth: true
@@ -165,8 +187,15 @@ Window {
                     id: _foldButton
 
                     checkable: true
-                    checked: false
+                    checked: true
                     text: checked ? bsi.icons.folded : bsi.icons.unfolded
+                    onCheckedChanged: {
+                        if (checked) {
+                            showCard()
+                        } else {
+                            hideCard()
+                        }
+                    }
                 }
 
                 Label {
@@ -212,36 +241,6 @@ Window {
                             )
                         } else {
                             widget_axis_temp.destroy()
-                        }
-                    }
-                }
-                Switch {
-                    text: "Axes - Current"
-
-                    onClicked: () => {
-                        if(checked) {
-                            widget_axis_cur = create_widget(
-                                "AxesStateCurrent.qml",
-                                guid,
-                                shownName
-                            )
-                        } else {
-                            widget_axis_cur.destroy()
-                        }
-                    }
-                }
-                Switch {
-                    text: "Buttons & Hats"
-
-                    onClicked: () => {
-                        if(checked) {
-                            widget_btn_hat = create_widget(
-                                "ButtonState.qml",
-                                guid,
-                                shownName
-                            )
-                        } else {
-                            widget_btn_hat.destroy()
                         }
                     }
                 }
