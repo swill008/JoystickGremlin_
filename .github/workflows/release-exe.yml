@@ -38,11 +38,7 @@ jobs:
       - name: Pack portable zip
         shell: pwsh
         run: |
-          if (Test-Path dist\Joystick.Gremlin.R15-OSC) {
-            Remove-Item -Recurse -Force dist\Joystick.Gremlin.R15-OSC
-          }
-          Rename-Item dist\joystick_gremlin dist\Joystick.Gremlin.R15-OSC
-          Compress-Archive -Path dist\Joystick.Gremlin.R15-OSC -DestinationPath dist\Joystick.Gremlin.R15-OSC.zip
+          Compress-Archive -Path dist\joystick_gremlin\* -DestinationPath dist\Joystick.Gremlin.R15-OSC.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -53,7 +49,7 @@ jobs:
             Portable package, same style as official Joystick Gremlin R15.
 
             Unzip anywhere (Documents, Desktop, etc). Do not put it in Program Files.
-            Run Joystick.Gremlin.R15-OSC\joystick_gremlin.exe
+            Run joystick_gremlin.exe from the unzipped folder.
 
             Requires vJoy already installed.
             Unsigned build — SmartScreen may warn on first run.
