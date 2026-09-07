@@ -102,14 +102,16 @@ Window {
         anchors.fill: parent
 
         ScrollView {
+            id: _deviceScroll
             Layout.alignment: Qt.AlignTop
             Layout.rightMargin: 10
-            Layout.minimumWidth: 250
-            Layout.maximumWidth: 400
+            Layout.minimumWidth: 360
+            Layout.preferredWidth: 420
+            Layout.maximumWidth: 560
             Layout.fillHeight: true
 
             ColumnLayout {
-                width: 250
+                width: Math.max(_deviceScroll.availableWidth, 360)
 
                 Repeater {
                     model: _deviceData
@@ -170,12 +172,12 @@ Window {
                 Label {
                     id: _nameLabel
                     Layout.fillWidth: true
-                    Layout.minimumWidth: 160
                     text: shownName
                     color: Style.foreground
                     font.pointSize: 12
                     font.family: "Segoe UI"
-                    elide: Text.ElideRight
+                    wrapMode: Text.WrapAnywhere
+                    maximumLineCount: 3
 
                     HoverHandler {
                         id: _hover
