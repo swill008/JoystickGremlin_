@@ -19,7 +19,6 @@ import "helpers.js" as Helpers
 
 ApplicationWindow {
 
-    // Basic application setup.
     title: backend.windowTitle
     minimumWidth: 1300
     minimumHeight: 700
@@ -34,6 +33,30 @@ ApplicationWindow {
 
     Universal.theme: Style.theme
     color: Style.background
+
+    function requestNewProfile() {
+        _newProfileDialog.open()
+    }
+
+    function saveCurrentProfile() {
+        var fpath = backend.profilePath()
+        if (fpath === "") {
+            _saveProfileFileDialog.open()
+        } else {
+            showSaveResult(backend.saveProfile(fpath), fpath)
+        }
+    }
+
+    function showSaveResult(ok, path) {
+        if (ok) {
+            _saveResultDialog.titleText = "Profile saved"
+            _saveResultDialog.messageText = "The profile has been saved.\n" + path
+        } else {
+            _saveResultDialog.titleText = "Save failed"
+            _saveResultDialog.messageText = "The profile was not written to disk."
+        }
+        _saveResultDialog.open()
+    }
 
     ColorInformation {
         id: colorInformation
@@ -67,12 +90,14 @@ ApplicationWindow {
                 case MessageDialog.Save:
                     var fpath = backend.profilePath()
                     if(fpath === "") {
-                        console.log("Saving to " + fpath)
                         _saveProfileFileDialog.quitAfterSave = true
                         _saveProfileFileDialog.open()
                     } else {
-                        backend.saveProfile(fpath)
-                        Qt.quit()
+                        if (backend.saveProfile(fpath)) {
+                            Qt.quit()
+                        } else {
+                            showSaveResult(false, fpath)
+                        }
                     }
                     break
                 case MessageDialog.Discard:
@@ -82,6 +107,24 @@ ApplicationWindow {
                     break
             }
         }
+    }
+
+    DismissibleDialog {
+        id: _newProfileDialog
+
+        titleText: "New Profile"
+        messageText: "Creating a new profile will replace the current profile. Unsaved mappings will be lost.\n\nOptions and OSC host/port are not wiped."
+        confirmText: "Create new profile"
+        cancelText: "Cancel"
+        destructive: true
+
+        onConfirmed: backend.newProfile()
+    }
+
+    DismissibleDialog {
+        id: _saveResultDialog
+
+        confirmText: "OK"
     }
 
     FileDialog {
@@ -96,9 +139,16 @@ ApplicationWindow {
         nameFilters: ["Profile files (*.xml)"]
 
         onAccepted: () => {
-            backend.saveProfile(currentFile)
+            var ok = backend.saveProfile(currentFile)
             if (quitAfterSave) {
-                Qt.quit()
+                quitAfterSave = false
+                if (ok) {
+                    Qt.quit()
+                } else {
+                    showSaveResult(false, "")
+                }
+            } else {
+                showSaveResult(ok, backend.profilePath())
             }
         }
     }
@@ -123,15 +173,13 @@ ApplicationWindow {
         hints: []
     }
 
-    // Menu bar with all its entries.
     menuBar: MenuBar {
         Menu {
             title: qsTr("File")
 
-            // File menu.
             MenuItem {
                 text: qsTr("New Profile")
-                onTriggered: () => { backend.newProfile() }
+                onTriggered: () => { requestNewProfile() }
             }
             MenuItem {
                 text: qsTr("Load Profile")
@@ -150,14 +198,7 @@ ApplicationWindow {
             }
             MenuItem {
                 text: qsTr("Save Profile")
-                onTriggered: () => {
-                    var fpath = backend.profilePath()
-                    if(fpath === "") {
-                        _saveProfileFileDialog.open();
-                    } else {
-                        backend.saveProfile(fpath)
-                    }
-                }
+                onTriggered: () => { saveCurrentProfile() }
             }
             MenuItem {
                 text: qsTr("Save Profile As")
@@ -175,7 +216,6 @@ ApplicationWindow {
             }
         }
 
-        // Tools menu.
         Menu {
             title: qsTr("Tools")
 
@@ -185,10 +225,6 @@ ApplicationWindow {
                     Helpers.createComponent("DialogManageModes.qml")
                 }
             }
-            // MenuItem {
-            //     text: qsTr("Input Repeater")
-            //     //onTriggered: Helpers.createComponent(".qml")
-            // }
             MenuItem {
                 text: qsTr("Input Viewer")
                 onTriggered: () => {
@@ -227,15 +263,8 @@ ApplicationWindow {
                     Helpers.createComponent("DialogOptions.qml")
                 }
             }
-            // MenuItem {
-            //     text: qsTr("Log Display")
-            //     onTriggered: () => {
-            //         Helpers.createComponent("DialogLogDisplay.qml")
-            //     }
-            // }
         }
 
-        // Help menu.
         Menu {
             title: qsTr("Help")
 
@@ -258,20 +287,13 @@ ApplicationWindow {
                 text: "\uF392"
                 tooltip: qsTr("Create new profile")
 
-                onClicked: () => { backend.newProfile() }
+                onClicked: () => { requestNewProfile() }
             }
             JGToolButton {
                 text: "\uF356"
                 tooltip: qsTr("Save current profile")
 
-                onClicked: () => {
-                    var fpath = backend.profilePath()
-                    if(fpath === "") {
-                        _saveProfileFileDialog.open()
-                    } else {
-                        backend.saveProfile(fpath)
-                    }
-                }
+                onClicked: () => { saveCurrentProfile() }
             }
             JGToolButton {
                 text: "\uF358"
