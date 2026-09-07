@@ -15,10 +15,51 @@ ColumnLayout {
     property string deviceGuid: ""
     property string title: ""
     property string pairLabel: _pairing ? _pairing.pairedDeviceLabel(deviceGuid) : ""
+    property var _axisWidget: null
+    property var _buttonWidget: null
 
     spacing: 8
 
     InputPairing { id: _pairing }
+
+    function _validGuid() {
+        return String(deviceGuid).replace(/[{}]/g, "").length >= 32
+    }
+
+    function _rebuild() {
+        if (_axisWidget) {
+            _axisWidget.destroy()
+            _axisWidget = null
+        }
+        if (_buttonWidget) {
+            _buttonWidget.destroy()
+            _buttonWidget = null
+        }
+        if (!_validGuid()) {
+            return
+        }
+        let axisComp = Qt.createComponent(Qt.resolvedUrl("AxesStateCurrent.qml"))
+        if (axisComp.status === Component.Ready) {
+            _axisWidget = axisComp.createObject(_inner, {
+                deviceGuid: deviceGuid,
+                title: title,
+                "Layout.fillWidth": true,
+                "Layout.preferredHeight": 170
+            })
+        }
+        let btnComp = Qt.createComponent(Qt.resolvedUrl("ButtonState.qml"))
+        if (btnComp.status === Component.Ready) {
+            _buttonWidget = btnComp.createObject(_inner, {
+                deviceGuid: deviceGuid,
+                title: title,
+                "Layout.fillWidth": true,
+                "Layout.preferredHeight": 240
+            })
+        }
+    }
+
+    Component.onCompleted: _rebuild()
+    onDeviceGuidChanged: _rebuild()
 
     Rectangle {
         Layout.fillWidth: true
@@ -51,41 +92,6 @@ ColumnLayout {
                     color: Style.accent
                 }
             }
-
-            Loader {
-                id: _axisLoader
-                Layout.fillWidth: true
-                Layout.preferredHeight: 170
-                source: Qt.resolvedUrl("AxesStateCurrent.qml")
-                onLoaded: {
-                    if (item) {
-                        item.deviceGuid = _root.deviceGuid
-                        item.title = _root.title
-                    }
-                }
-            }
-
-            Loader {
-                id: _buttonLoader
-                Layout.fillWidth: true
-                Layout.preferredHeight: 240
-                source: Qt.resolvedUrl("ButtonState.qml")
-                onLoaded: {
-                    if (item) {
-                        item.deviceGuid = _root.deviceGuid
-                        item.title = _root.title
-                    }
-                }
-            }
-        }
-    }
-
-    onDeviceGuidChanged: {
-        if (_axisLoader.item) {
-            _axisLoader.item.deviceGuid = deviceGuid
-        }
-        if (_buttonLoader.item) {
-            _buttonLoader.item.deviceGuid = deviceGuid
         }
     }
 }
