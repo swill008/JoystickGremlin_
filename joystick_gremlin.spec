@@ -2,8 +2,6 @@
 
 import os
 
-# Properly enumerate all files required for the action_plugins and
-# container_plugins system.
 action_plugins_files = []
 for root, _, files in os.walk("action_plugins"):
     for fname in files:
@@ -23,6 +21,7 @@ binaries = [
     ("vjoy/vJoyInterface.dll", "."),
     ("dill/dill.dll", "."),
     ("dill/dill.dll", "dill"),
+    ("vjoy/vJoyInterface.dll", "vjoy"),
 ]
 
 hidden_imports = [
@@ -66,6 +65,10 @@ hidden_imports = [
     "gremlin.ui.util",
     "miniaudio",
     "_cffi_backend",
+    "pythonosc",
+    "pythonosc.osc_server",
+    "pythonosc.udp_client",
+    "pythonosc.dispatcher",
 ]
 
 exclude_imports = [
@@ -85,7 +88,7 @@ a = Analysis(
     excludes=exclude_imports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=["packaging/pyi_rth_native_dlls.py"],
     noarchive=False,
     optimize=0,
 )
