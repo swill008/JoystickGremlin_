@@ -15,6 +15,11 @@ Item {
 
     property Device device
 
+    DeviceLiveState {
+        id: _liveState
+        guid: device ? device.guid : ""
+    }
+
     ActionNames { id: _actionNames }
 
     TextInputDialog {
@@ -67,6 +72,7 @@ Item {
             width: _inputList.width - 20
             height: 50
 
+            liveState: _liveState
             selected: model.index === _inputList.currentIndex
             onClicked: () => { _inputList.currentIndex = model.index }
             onRenameRequested: {

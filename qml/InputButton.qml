@@ -15,6 +15,14 @@ Button {
     property Component editButton: null
     property string nameKey: ""
     property string defaultName: name
+    property var liveState: null
+    property int liveStamp: liveState && liveState.stamp !== undefined ? liveState.stamp : 0
+    property string inputKind: liveState && index !== undefined ? liveState.kindAt(index) : ""
+    property real liveValue: liveStamp >= 0 && liveState && index !== undefined ? liveState.valueAt(index) : 0
+
+    readonly property bool _buttonActive: inputKind === "button" && liveValue > 0.5
+    readonly property bool _hatActive: inputKind === "hat" && liveValue > 0.5
+    readonly property bool _axisActive: inputKind === "axis"
 
     signal renameRequested()
 
@@ -99,8 +107,34 @@ Button {
 
     background: Rectangle {
         border.color: hovered ? Style.accent : selected ? Style.accent : Style.backgroundShade
-        border.width: 1
-        color: selected ? Universal.chromeMediumColor : Style.background
+        border.width: _buttonActive || _hatActive ? 2 : 1
+        color: {
+            if (_buttonActive || _hatActive) {
+                return Qt.rgba(0.133, 0.773, 0.369, selected ? 0.55 : 0.38)
+            }
+            if (selected) {
+                return Universal.chromeMediumColor
+            }
+            return Style.background
+        }
+
+        Rectangle {
+            visible: _axisActive
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: 1
+            anchors.rightMargin: 1
+            anchors.bottomMargin: 1
+            height: 5
+            color: Style.lowColor
+
+            Rectangle {
+                width: Math.max(0, Math.min(parent.width, parent.width * ((liveValue + 1.0) * 0.5)))
+                height: parent.height
+                color: "#22C55E"
+            }
+        }
     }
 
     contentItem: Item {
@@ -109,11 +143,25 @@ Button {
             text: name
             font.weight: 600
 
-            width: Math.min(implicitWidth, parent.width - 30)
+            width: Math.min(implicitWidth, parent.width - 48)
             elide: Text.ElideRight
 
             anchors.top: parent.top
             anchors.left: parent.left
+        }
+
+        Rectangle {
+            visible: inputKind === "button" || inputKind === "hat"
+            width: 10
+            height: 10
+            radius: 5
+            anchors.top: parent.top
+            anchors.topMargin: 4
+            anchors.left: _inputLabel.right
+            anchors.leftMargin: 8
+            color: (_buttonActive || _hatActive) ? "#22C55E" : Style.lowColor
+            border.width: 1
+            border.color: (_buttonActive || _hatActive) ? "#16A34A" : Style.medColor
         }
 
         Loader {
@@ -121,6 +169,7 @@ Button {
 
             anchors.top: parent.top
             anchors.left: _inputLabel.right
+            anchors.leftMargin: (inputKind === "button" || inputKind === "hat") ? 22 : 0
         }
 
         Loader {
@@ -146,6 +195,7 @@ Button {
 
             anchors.bottom: parent.bottom
             anchors.right: parent.right
+            anchors.bottomMargin: _axisActive ? 6 : 0
 
             sourceComponent: Image {
                 source: "image://action_summary/" + actionSequenceDescriptor
@@ -172,6 +222,7 @@ Button {
 
             anchors.left: parent.left
             anchors.bottom: parent.bottom
+            anchors.bottomMargin: _axisActive ? 6 : 0
         }
 
         TextMetrics {
