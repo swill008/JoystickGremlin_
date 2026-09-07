@@ -23,6 +23,8 @@ Window {
 
     title: "Input Viewer"
 
+    property string hardwareTip: ""
+
     DeviceNames { id: _names }
 
     function displayName(guid, hardwareName) {
@@ -68,6 +70,32 @@ Window {
         }
 
         return widget
+    }
+
+    Popup {
+        id: _hardwareTip
+
+        visible: _inputViewer.hardwareTip.length > 0
+        modal: false
+        focus: false
+        padding: 8
+        closePolicy: Popup.NoAutoClose
+        parent: Overlay.overlay
+        x: 24
+        y: 24
+
+        background: Rectangle {
+            color: Style.background
+            border.color: Style.accent
+            border.width: 1
+            radius: 3
+        }
+
+        contentItem: Label {
+            text: _inputViewer.hardwareTip
+            color: Style.foreground
+            font.pointSize: 11
+        }
     }
 
     RowLayout {
@@ -139,7 +167,7 @@ Window {
 
                 Item {
                     Layout.fillWidth: true
-                    implicitHeight: _nameLabel.implicitHeight
+                    implicitHeight: Math.max(_nameLabel.implicitHeight, 20)
 
                     Label {
                         id: _nameLabel
@@ -155,10 +183,17 @@ Window {
                         anchors.fill: parent
                         hoverEnabled: true
                         acceptedButtons: Qt.NoButton
-
-                        ToolTip.visible: containsMouse
-                        ToolTip.delay: 250
-                        ToolTip.text: name
+                        onEntered: {
+                            _inputViewer.hardwareTip = name
+                            var pos = mapToItem(Overlay.overlay, 12, height + 4)
+                            _hardwareTip.x = pos.x
+                            _hardwareTip.y = pos.y
+                        }
+                        onExited: {
+                            if (_inputViewer.hardwareTip === name) {
+                                _inputViewer.hardwareTip = ""
+                            }
+                        }
                     }
                 }
             }
