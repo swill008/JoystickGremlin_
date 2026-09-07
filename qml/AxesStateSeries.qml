@@ -29,10 +29,12 @@ Item {
 
     implicitHeight: _content.implicitHeight
 
+    function _validGuid(value) {
+        return String(value || "").replace(/[{}]/g, "").length >= 32
+    }
+
     DeviceAxisSeries {
         id: _axis_series
-
-        guid: deviceGuid
 
         onDeviceChanged: () => {
             _chart.removeAllSeries()
@@ -49,9 +51,21 @@ Item {
         }
     }
 
+    Component.onCompleted: {
+        if (_validGuid(deviceGuid)) {
+            _axis_series.guid = deviceGuid
+        }
+    }
+
+    onDeviceGuidChanged: {
+        if (_validGuid(deviceGuid)) {
+            _axis_series.guid = deviceGuid
+        }
+    }
+
     Timer {
         interval: 10
-        running: true
+        running: _validGuid(deviceGuid)
         repeat: true
         onTriggered: () => {
             for(var i=0; i<_chart.count; i++) {
@@ -68,6 +82,7 @@ Item {
 
         RowLayout {
             id: _header
+            visible: String(title || "").length > 0
 
             JGText {
                 text: title + " - Axes"
@@ -84,7 +99,7 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 300
+            Layout.preferredHeight: 200
 
             z: -1
             clip: true
@@ -124,5 +139,4 @@ Item {
             }
         }
     }
-
 }
