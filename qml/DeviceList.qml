@@ -11,12 +11,39 @@ import QtQuick.Controls.Universal
 import Gremlin.Device
 import Gremlin.Profile
 
-// Render buttons for all input devices and the logical device as well as the
-// scripts and profile settings tabs.
 Item {
     id: _root
 
     property DeviceListModel deviceListModel
+    property int _nameTick: 0
+
+    DeviceNames {
+        id: _names
+
+        onChanged: _root._nameTick++
+    }
+
+    TextInputDialog {
+        id: _renameDialog
+
+        visible: false
+        width: 320
+
+        property string nameKey: ""
+        property string fallback: ""
+
+        onAccepted: (value) => {
+            _names.setAlias(nameKey, value)
+            visible = false
+        }
+    }
+
+    function rename(key, fallback) {
+        _renameDialog.nameKey = key
+        _renameDialog.fallback = fallback
+        _renameDialog.text = _names.display(key, fallback)
+        _renameDialog.visible = true
+    }
 
     function nextTab() {
         _deviceList.itemAt(_deviceList.currentIndex + 1)?.clicked()
@@ -31,7 +58,6 @@ Item {
 
         anchors.fill: parent
 
-        // Show joystick devices used as inputs.
         Repeater {
             id: _physicalInputs
             model: deviceListModel
@@ -39,7 +65,7 @@ Item {
             JGTabButton {
                 id: _button
 
-                text: name
+                text: _root._nameTick, _names.display(model.guid, name)
                 width: _metric.width + 50
                 checked: uiState && uiState.currentTab === "physical" &&
                     uiState.currentDevice === model.guid
@@ -50,6 +76,10 @@ Item {
                     }
                     uiState.setCurrentTab("physical")
                     uiState.setCurrentDevice(model.guid)
+                }
+
+                TapHandler {
+                    onDoubleTapped: _root.rename(model.guid, name)
                 }
 
                 TextMetrics {
@@ -64,7 +94,7 @@ Item {
         JGTabButton {
             id: _keyboardButton
 
-            text: "Keyboard"
+            text: _root._nameTick, _names.display("keyboard", "Keyboard")
             width: _metricKeyboard.width + 50
             checked: uiState && uiState.currentTab === "keyboard"
 
@@ -74,6 +104,10 @@ Item {
                 }
                 uiState.setCurrentTab("keyboard")
                 uiState.setCurrentDevice("6f1d2b61-d5a0-11cf-bfc7-444553540000")
+            }
+
+            TapHandler {
+                onDoubleTapped: _root.rename("keyboard", "Keyboard")
             }
 
             TextMetrics {
@@ -87,7 +121,7 @@ Item {
         JGTabButton {
             id: _logicalButton
 
-            text: "Logical Device"
+            text: _root._nameTick, _names.display("logical", "Logical Device")
             width: _metricIO.width + 50
             checked: uiState && uiState.currentTab === "logical"
 
@@ -97,6 +131,10 @@ Item {
                 }
                 uiState.setCurrentTab("logical")
                 uiState.setCurrentDevice("f0af472f-8e17-493b-a1eb-7333ee8543f2")
+            }
+
+            TapHandler {
+                onDoubleTapped: _root.rename("logical", "Logical Device")
             }
 
             TextMetrics {
@@ -110,7 +148,7 @@ Item {
         JGTabButton {
             id: _oscButton
 
-            text: "OSC"
+            text: _root._nameTick, _names.display("osc", "OSC")
             width: _metricOsc.width + 50
             checked: uiState && uiState.currentTab === "osc"
 
@@ -120,6 +158,10 @@ Item {
                 }
                 uiState.setCurrentTab("osc")
                 uiState.setCurrentDevice("a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70")
+            }
+
+            TapHandler {
+                onDoubleTapped: _root.rename("osc", "OSC")
             }
 
             TextMetrics {

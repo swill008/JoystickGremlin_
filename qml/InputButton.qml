@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls
 
+import Gremlin.Device
 import Gremlin.Style
 
 Button {
@@ -12,10 +13,21 @@ Button {
     property bool selected: false
     property Component deleteButton: null
     property Component editButton: null
+    property string nameKey: ""
+    property string defaultName: name
+
+    signal renameRequested()
 
     property int _descriptionWidth: 0
     property int _actionWidth: 0
     property bool _actionTruncated: false
+    property int _nameTick: 0
+
+    DeviceNames {
+        id: _names
+
+        onChanged: _control._nameTick++
+    }
 
     Connections {
         target: _control
@@ -42,6 +54,11 @@ Button {
         interval: 50
         repeat: false
         onTriggered: updateWidths()
+    }
+
+    function displayName() {
+        let key = nameKey.length > 0 ? nameKey : defaultName
+        return _names.display(key, defaultName)
     }
 
     function updateWidths() {
@@ -101,7 +118,7 @@ Button {
     contentItem: Item {
         JGText {
             id: _inputLabel
-            text: name
+            text: _control._nameTick, _control.displayName()
             font.weight: 600
 
             width: Math.min(implicitWidth, parent.width - 30)
@@ -184,6 +201,11 @@ Button {
 
     HoverHandler {
         id: _hover
+    }
+
+    TapHandler {
+        acceptedButtons: Qt.LeftButton
+        onDoubleTapped: _control.renameRequested()
     }
 
     ToolTip {
