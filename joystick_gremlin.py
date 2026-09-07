@@ -8,6 +8,7 @@ import ctypes
 import logging
 import logging.handlers
 import os
+import subprocess
 import sys
 import time
 import traceback
@@ -132,17 +133,104 @@ def _gremlin_window_titles() -> list[str]:
     return titles
 
 
-def _confirm_second_instance(lock_held: bool, windows: list[str]) -> bool:
+def _window_process_ids() -> set[int]:
+    pids: set[int] = set()
+    try:
+        user32 = ctypes.windll.user32
+
+        @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
+        def _enum(hwnd: int, _: int) -> bool:
+            length = user32.GetWindowTextLengthW(hwnd) + 1
+            buf = ctypes.create_unicode_buffer(length)
+            user32.GetWindowTextW(hwnd, buf, length)
+            if "Joystick Gremlin" not in buf.value:
+                return True
+            pid = ctypes.c_ulong()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if pid.value:
+                pids.add(int(pid.value))
+            return True
+
+        user32.EnumWindows(_enum, 0)
+    except Exception:
+        pass
+    return pids
+
+
+def _command_line_process_ids() -> set[int]:
+    pids: set[int] = set()
+    try:
+        completed = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_Process | "
+                "Where-Object { $_.CommandLine -and "
+                "($_.CommandLine -like '*joystick_gremlin*') } | "
+                "ForEach-Object { $_.ProcessId }",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=4,
+            creationflags=0x08000000,
+        )
+        for line in completed.stdout.splitlines():
+            line = line.strip()
+            if line.isdigit():
+                pids.add(int(line))
+    except Exception:
+        pass
+    return pids
+
+
+def _lock_owner_pid() -> int | None:
+    lock = QtCore.QLockFile(
+        os.path.join(gremlin.util.userprofile_path(), "gremlin.lock")
+    )
+    pid = ctypes.c_long()
+    hostname = QtCore.QStringConverter  # placeholder to keep imports used? no
+    try:
+        owner_pid, _host, _app = lock.lockInfo()
+        if owner_pid:
+            return int(owner_pid)
+    except Exception:
+        pass
+    return None
+
+
+def _other_gremlin_pids() -> list[int]:
+    pids = _window_process_ids() | _command_line_process_ids()
+    owner = _lock_owner_pid()
+    if owner:
+        pids.add(owner)
+    pids.discard(os.getpid())
+    return sorted(pid for pid in pids if pid > 0)
+
+
+def _confirm_second_instance(
+    lock_held: bool, windows: list[str], pids: list[int]
+) -> bool:
+    already = len(pids)
+    total = already + 1
+    pid_text = ", ".join(str(pid) for pid in pids) if pids else "unknown"
     extra = ""
     if windows:
-        extra = "\n\nOpen window:\n- " + "\n- ".join(windows[:4])
-    elif lock_held:
-        extra = "\n\nAnother Optimization build is already using the Gremlin lock file."
+        extra = "\nOpen window:\n- " + "\n- ".join(windows[:4])
+    elif lock_held and not pids:
+        extra = "\nAnother Optimization build is using the Gremlin lock file."
+    hung_hint = ""
+    if already > len({title for title in windows}):
+        hung_hint = "\nMore processes than windows were found. A copy may be hung in the background."
+    elif already and not windows:
+        hung_hint = "\nA Gremlin process is running with no visible window. It may be hung."
     text = (
-        "Another Joystick Gremlin window is already running."
-        + extra
-        + "\n\nOnly one copy can own vJoy. The second copy can look Active "
-        "while mapping does nothing if the first copy already claimed the device.\n\n"
+        f"Joystick Gremlin processes already running: {already}\n"
+        f"Process IDs: {pid_text}\n"
+        f"This launch would be copy {total}."
+        f"{extra}{hung_hint}\n\n"
+        "Only one copy can own vJoy. A second Active copy will not move vJoy "
+        "if the first copy already claimed the device.\n\n"
         "Continue and open another copy anyway?"
     )
     result = ctypes.windll.user32.MessageBoxW(
@@ -491,8 +579,9 @@ class JoystickGremlinApp(QtWidgets.QApplication):
 def main() -> int:
     lock = acquire_instance_lock()
     windows = _gremlin_window_titles()
-    if lock is None or windows:
-        if not _confirm_second_instance(lock is None, windows):
+    pids = _other_gremlin_pids()
+    if lock is None or windows or pids:
+        if not _confirm_second_instance(lock is None, windows, pids):
             return 0
     app = JoystickGremlinApp(sys.argv)
     app._instance_lock = lock
