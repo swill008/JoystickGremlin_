@@ -31,7 +31,7 @@ ColumnLayout {
         guid: deviceGuid
     }
 
-    PairLiveState {
+    PairLiveThrottle {
         id: _live
         guid: deviceGuid
     }
