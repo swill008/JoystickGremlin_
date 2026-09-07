@@ -16,11 +16,18 @@ Item {
 
     property DeviceListModel deviceListModel
     property int _nameTick: 0
+    property int _vjoyTick: 0
 
     DeviceNames {
         id: _names
 
         onChanged: _root._nameTick++
+    }
+
+    VJoyStatus {
+        id: _vjoy
+
+        onChanged: _root._vjoyTick++
     }
 
     TextInputDialog {
@@ -58,6 +65,15 @@ Item {
         return label.indexOf("vjoy") === 0 || Number(vjoyId) > 0
     }
 
+    function showDeviceTab(deviceName, vjoyId) {
+        if (!_root.isVjoyTab(deviceName, vjoyId)) {
+            return true
+        }
+        return _root._vjoyTick >= 0 && _vjoy.isPinned(Number(vjoyId))
+    }
+
+    Component.onCompleted: _vjoy.refresh()
+
     DeviceTabBar {
         id: _deviceList
 
@@ -70,7 +86,7 @@ Item {
             JGTabButton {
                 id: _button
 
-                visible: !_root.isVjoyTab(name, vjoy_id)
+                visible: _root.showDeviceTab(name, vjoy_id)
                 text: _root._nameTick, _names.display(model.guid, name)
                 width: visible ? _metric.width + 50 : 0
                 checked: uiState && uiState.currentTab === "physical" &&
