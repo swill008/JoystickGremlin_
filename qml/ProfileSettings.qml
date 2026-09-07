@@ -24,11 +24,9 @@ Item {
     ScrollView {
         anchors.fill: parent
 
-        // Ensure the content doesn't cause horizontal scrolling.
         contentWidth: availableWidth
         padding: 10
 
-        // Disable annoying mobile device scrolling behaviors.
         ScrollBar.vertical.interactive: true
         Component.onCompleted: {
             contentItem.boundsMovement = Flickable.StopAtBounds
@@ -92,12 +90,13 @@ Item {
                         stepSize: 0.1
                         decimals: 3
 
-                        value: settingsModel.macroDefaultDelay
+                        value: settingsModel ? settingsModel.macroDefaultDelay : 0
                         onValueModified: (newValue) => {
-                            settingsModel.macroDefaultDelay = newValue
+                            if (settingsModel) {
+                                settingsModel.macroDefaultDelay = newValue
+                            }
                         }
                     }
-
 
                     UIText {
                         Layout.fillWidth: true
@@ -206,14 +205,12 @@ Item {
         }
     }
 
-    // Header text component
     component UIHeader : JGText {
         font.pointSize: 14
         font.weight: 500
         font.family: "Segoe UI"
     }
 
-    // Standard text component
     component UIText : JGText {
         Layout.fillWidth: true
         horizontalAlignment: Text.AlignJustify
@@ -239,8 +236,6 @@ Item {
                     minValue: -1.0
                     maxValue: 1.0
                     stepSize: 0.05
-
-                    // internalWidth: 130
 
                     value: model.value
                     onValueModified: (newValue) => { model.value = newValue }
