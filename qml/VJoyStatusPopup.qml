@@ -94,8 +94,8 @@ Popup {
                 RowLayout {
                     required property int index
                     readonly property int deviceId: index + 1
-                    readonly property bool active: _root.status && _root.status.isActive(deviceId)
-                    readonly property bool pinned: _root.status && _root.status.isPinned(deviceId)
+                    readonly property bool active: _root.status && _root.status.activeCount >= 0 && _root.status.isActive(deviceId)
+                    readonly property bool pinned: _root.status && _root.status.pinStamp >= 0 && _root.status.isPinned(deviceId)
                     Layout.fillWidth: true
                     spacing: 4
 
