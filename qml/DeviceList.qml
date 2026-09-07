@@ -72,7 +72,12 @@ Item {
         return _root._vjoyTick >= 0 && _vjoy.isPinned(Number(vjoyId))
     }
 
-    Component.onCompleted: _vjoy.refresh()
+    Component.onCompleted: {
+        if (deviceListModel) {
+            deviceListModel.deviceType = "all"
+        }
+        _vjoy.refresh()
+    }
 
     DeviceTabBar {
         id: _deviceList
