@@ -8,30 +8,7 @@ import os
 import sys
 
 from gremlin.error import GremlinError
-
-
-def _load_native_dll(path: str):
-    path = os.path.abspath(path)
-    directory = os.path.dirname(path)
-    if hasattr(os, "add_dll_directory"):
-        try:
-            os.add_dll_directory(directory)
-        except OSError:
-            pass
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-    kernel32.LoadLibraryExW.restype = ctypes.c_void_p
-    kernel32.LoadLibraryExW.argtypes = [
-        ctypes.c_wchar_p,
-        ctypes.c_void_p,
-        ctypes.c_uint32,
-    ]
-    handle = kernel32.LoadLibraryExW(path, None, 0x00000008)
-    if not handle:
-        raise ctypes.WinError(ctypes.get_last_error())
-    dll = ctypes.CDLL.__new__(ctypes.CDLL)
-    dll._name = path
-    dll._handle = handle
-    return dll
+from gremlin.win_dll import load_native_dll
 
 
 class VJoyState(enum.Enum):
@@ -61,7 +38,7 @@ class VJoyInterface:
 
     vjoy_dll_loaded = False
     try:
-        vjoy_dll = _load_native_dll(dll_path)
+        vjoy_dll = load_native_dll(dll_path)
         vjoy_dll_loaded = True
     except OSError as e:
         print("Failed loading vJoy dll, {}".format(e))
@@ -122,7 +99,6 @@ class VJoyInterface:
 
     @classmethod
     def initialize(cls) -> None:
-        """Initializes the functions as class methods."""
         if not cls.vjoy_dll_loaded:
             return
 
