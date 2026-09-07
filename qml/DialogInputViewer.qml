@@ -13,9 +13,9 @@ import Gremlin.Style
 Window {
     id: _inputViewer
 
-    width: 1400
+    width: 1200
     height: 800
-    minimumWidth: 900
+    minimumWidth: 800
     minimumHeight: 500
 
     color: Style.background
@@ -23,39 +23,22 @@ Window {
 
     title: "Input Viewer"
 
-    property string hardwareTip: ""
     readonly property string oscGuid: "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
 
-    DeviceNames { id: _names }
     PairDeviceModel { id: _pairs }
-
-    function displayName(guid, hardwareName) {
-        var key = String(guid || "").toLowerCase().replace(/[{}]/g, "")
-        if (key === oscGuid) {
-            return "OSC"
-        }
-        if (!_names) {
-            return hardwareName
-        }
-        return _names.display(guid, hardwareName)
-    }
 
     function pairTitle(guid, name) {
         var key = String(guid || "").toLowerCase().replace(/[{}]/g, "")
         if (key === oscGuid) {
             return "OSC"
         }
-        if (String(name).indexOf("-") === 8 && String(name).length === 36) {
-            return displayName(guid, name)
-        }
-        return name && name.length ? name : displayName(guid, name)
+        return name && name.length ? name : guid
     }
 
     Connections {
         target: _inputViewer
 
         function onClosing() {
-            _deviceData.destroy()
             backend.resumeInputHighlighting()
         }
     }
@@ -67,182 +50,32 @@ Window {
         }
     }
 
-    DeviceListModel {
-        id: _deviceData
-
-        deviceType: "all"
-    }
-
-    function create_widget(qml_path, guid, name) {
-        let component = Qt.createComponent(Qt.resolvedUrl(qml_path))
-        if (component.status == Component.Ready) {
-            var widget = component.createObject(
-                _stateDisplay,
-                {
-                    deviceGuid: guid,
-                    title: name,
-                    "Layout.fillWidth": true
-                }
-            );
-        }
-
-        return widget
-    }
-
-    Popup {
-        id: _hardwareTip
-
-        visible: _inputViewer.hardwareTip.length > 0
-        modal: false
-        focus: false
-        padding: 8
-        closePolicy: Popup.NoAutoClose
-        parent: Overlay.overlay
-
-        background: Rectangle {
-            color: Style.background
-            border.color: Style.accent
-            border.width: 1
-            radius: 3
-        }
-
-        contentItem: Label {
-            text: _inputViewer.hardwareTip
-            color: Style.foreground
-            font.pointSize: 11
-        }
-    }
-
-    RowLayout {
-        id: _root
-
+    ScrollView {
+        id: _dynamicScroll
         anchors.fill: parent
+        anchors.margins: 12
 
-        ScrollView {
-            id: _deviceScroll
-            Layout.alignment: Qt.AlignTop
-            Layout.rightMargin: 10
-            Layout.minimumWidth: 280
-            Layout.preferredWidth: 320
-            Layout.maximumWidth: 400
-            Layout.fillHeight: true
-
-            ColumnLayout {
-                width: Math.max(_deviceScroll.availableWidth, 280)
-
-                Repeater {
-                    model: _deviceData
-                    delegate: _deviceDelegate
-                }
-            }
+        Component.onCompleted: () => {
+            _dynamicScroll.contentItem.boundsMovement = Flickable.StopAtBounds
+            _dynamicScroll.contentItem.boundsBehavior = Flickable.StopAtBounds
         }
-
-        ScrollView  {
-            id: _dynamicScroll
-
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-
-            Component.onCompleted: () => {
-                _dynamicScroll.contentItem.boundsMovement = Flickable.StopAtBounds
-                _dynamicScroll.contentItem.boundsBehavior = Flickable.StopAtBounds
-            }
-
-            ColumnLayout {
-                id: _stateDisplay
-
-                width: Math.max(_dynamicScroll.availableWidth, 700)
-                spacing: 12
-
-                Repeater {
-                    model: _pairs
-                    delegate: InputViewerCard {
-                        required property string guid
-                        required property string name
-                        required property string pairLabel
-
-                        Layout.fillWidth: true
-                        deviceGuid: guid
-                        title: _inputViewer.pairTitle(guid, name)
-                        pairLabel: pairLabel
-                    }
-                }
-            }
-        }
-    }
-
-    Component {
-        id: _deviceDelegate
 
         ColumnLayout {
-            id: _delegateContent
+            id: _stateDisplay
+            width: Math.max(_dynamicScroll.availableWidth, 760)
+            spacing: 12
 
-            required property int index
-            required property string name
-            required property string guid
+            Repeater {
+                model: _pairs
+                delegate: InputViewerCard {
+                    required property string guid
+                    required property string name
+                    required property string pairLabel
 
-            readonly property string shownName: _inputViewer.displayName(guid, name)
-            readonly property bool hasFriendlyName: shownName !== name
-            Layout.fillWidth: true
-
-            property var widget_axis_temp
-
-            RowLayout {
-                Layout.fillWidth: true
-
-                IconButton {
-                    id: _foldButton
-
-                    checkable: true
-                    checked: false
-                    text: checked ? bsi.icons.folded : bsi.icons.unfolded
-                }
-
-                Label {
-                    id: _nameLabel
                     Layout.fillWidth: true
-                    text: shownName
-                    color: Style.foreground
-                    font.pointSize: 12
-                    font.family: "Segoe UI"
-                    wrapMode: Text.WrapAnywhere
-                    maximumLineCount: 3
-
-                    HoverHandler {
-                        id: _hover
-                        onHoveredChanged: {
-                            if (hovered && hasFriendlyName) {
-                                _inputViewer.hardwareTip = name
-                                var pos = _nameLabel.mapToItem(Overlay.overlay, 8, _nameLabel.height + 4)
-                                _hardwareTip.x = pos.x
-                                _hardwareTip.y = pos.y
-                            } else if (_inputViewer.hardwareTip === name) {
-                                _inputViewer.hardwareTip = ""
-                            }
-                        }
-                    }
-                }
-            }
-
-            ColumnLayout {
-                visible: _foldButton.checked
-                Layout.fillWidth: true
-                Layout.leftMargin: _foldButton.width
-
-                Switch {
-                    text: "Axes - Temporal"
-
-                    onClicked: () => {
-                        if(checked) {
-                            widget_axis_temp = create_widget(
-                                "AxesStateSeries.qml",
-                                guid,
-                                shownName
-                            )
-                        } else if (widget_axis_temp) {
-                            widget_axis_temp.destroy()
-                        }
-                    }
+                    deviceGuid: guid
+                    title: _inputViewer.pairTitle(guid, name)
+                    pairLabel: pairLabel
                 }
             }
         }
