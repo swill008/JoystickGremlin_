@@ -8,28 +8,27 @@ import os
 import sys
 
 from gremlin.error import GremlinError
-from gremlin.win_dll import load_native_dll
 
 
 class VJoyState(enum.Enum):
     """Enumeration of the possible VJoy device states."""
 
-    Owned = 0
-    Free = 1
-    Bust = 2
-    Missing = 3
-    Unknown = 4
+    Owned = 0  # The device is owned by the current application
+    Free = 1  # The device is not owned by any application
+    Bust = 2  # The device is owned by another application
+    Missing = 3  # The device is not present
+    Unknown = 4  # Unknown type of error
 
 
 class VJoyInterface:
     """Allows low level interaction with VJoy devices via ctypes."""
 
+    # Attempt to find the correct location of the dll for development
+    # and installed use cases.
     dev_path = os.path.join(os.path.dirname(__file__), "vJoyInterface.dll")
     if os.path.isfile("vJoyInterface.dll"):
-        dll_path = os.path.abspath("vJoyInterface.dll")
-    elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS") and os.path.isfile(
-        os.path.join(sys._MEIPASS, "vJoyInterface.dll")
-    ):
+        dll_path = "vJoyInterface.dll"
+    if "_MEIPASS" in sys.__dict__:
         dll_path = os.path.join(sys._MEIPASS, "vJoyInterface.dll")
     elif os.path.isfile(dev_path):
         dll_path = dev_path
@@ -38,7 +37,7 @@ class VJoyInterface:
 
     vjoy_dll_loaded = False
     try:
-        vjoy_dll = load_native_dll(dll_path)
+        vjoy_dll = ctypes.cdll.LoadLibrary(dll_path)
         vjoy_dll_loaded = True
     except OSError as e:
         print("Failed loading vJoy dll, {}".format(e))
@@ -99,6 +98,7 @@ class VJoyInterface:
 
     @classmethod
     def initialize(cls) -> None:
+        """Initializes the functions as class methods."""
         if not cls.vjoy_dll_loaded:
             return
 
@@ -111,4 +111,5 @@ class VJoyInterface:
             setattr(cls, fn_name, dll_fn)
 
 
+# Initialize the class
 VJoyInterface.initialize()
