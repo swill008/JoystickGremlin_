@@ -19,10 +19,13 @@ Item {
     implicitHeight: _content.implicitHeight
 
     function computeButtonHeight() {
-        let columns =  Math.floor(
+        let columns = Math.floor(
             Math.max(_button_grid.width, _button_grid.Layout.minimumWidth) /
             _button_grid.cellWidth
         )
+        if (columns < 1) {
+            columns = 1
+        }
         let rows = Math.ceil(_button_grid.count / columns)
         return rows * _button_grid.cellHeight
     }
@@ -66,44 +69,58 @@ Item {
         }
 
         RowLayout {
-            // Button state display.
             GridView {
                 id: _button_grid
 
                 Layout.fillWidth: true
                 Layout.minimumWidth: 400
                 Layout.preferredWidth: 600
-                Layout.minimumHeight: computeButtonHeight(_root.width)
+                Layout.minimumHeight: computeButtonHeight()
                 Layout.alignment: Qt.AlignTop
 
                 boundsMovement: Flickable.StopAtBounds
                 boundsBehavior: Flickable.StopAtBounds
                 interactive: false
 
-                cellWidth: 50
-                cellHeight: 50
+                cellWidth: 76
+                cellHeight: 22
 
                 model: _button_state
-                delegate: Component {
-                    RoundButton {
-                        required property int index
-                        required property int identifier
-                        required property bool value
+                delegate: Item {
+                    required property int index
+                    required property int identifier
+                    required property bool value
 
-                        width: 40
-                        height: 40
-                        radius: 10
+                    width: _button_grid.cellWidth
+                    height: _button_grid.cellHeight
 
-                        hoverEnabled: false
+                    Row {
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: 4
+                        spacing: 6
 
-                        text: identifier
-                        checked: value
-                        font.pointSize: 10
+                        Rectangle {
+                            width: 11
+                            height: 11
+                            radius: 6
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: value ? Style.accent : "transparent"
+                            border.width: 2
+                            border.color: value ? Style.accent : Style.lowColor
+                        }
+
+                        Text {
+                            text: identifier
+                            color: Style.foreground
+                            font.pointSize: 10
+                            font.family: "Segoe UI"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
                     }
                 }
             }
 
-            // Hat state display.
             GridView {
                 id: _hat_grid
 
