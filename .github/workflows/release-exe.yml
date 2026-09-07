@@ -28,17 +28,19 @@ jobs:
       - name: Build executable
         run: poetry run pyinstaller -y --clean joystick_gremlin.spec
 
-      - name: Install Inno Setup
-        run: choco install innosetup --no-progress -y
-
-      - name: Compile installer
-        run: |
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\joystick_gremlin.iss
-
       - name: Stamp date
         run: |
-          $CURRENT_DATE = Get-Date -Format yyyy_MM_dd
+          $CURRENT_DATE = Get-Date -Format yyyy_MM_dd_HHmm
           echo "CURRENT_DATE=$CURRENT_DATE" >> $env:GITHUB_ENV
+
+      - name: Pack portable zip
+        shell: pwsh
+        run: |
+          if (Test-Path dist\Joystick.Gremlin.R15-OSC) {
+            Remove-Item -Recurse -Force dist\Joystick.Gremlin.R15-OSC
+          }
+          Rename-Item dist\joystick_gremlin dist\Joystick.Gremlin.R15-OSC
+          Compress-Archive -Path dist\Joystick.Gremlin.R15-OSC -DestinationPath dist\Joystick.Gremlin.R15-OSC.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -46,9 +48,12 @@ jobs:
           tag_name: r15-osc-${{ env.CURRENT_DATE }}
           name: Joystick Gremlin R15-OSC ${{ env.CURRENT_DATE }}
           body: |
-            Windows installer for the R15-OSC-Optimization branch.
+            Portable package, same style as official Joystick Gremlin R15.
+
+            Unzip anywhere (Documents, Desktop, etc). Do not put it in Program Files.
+            Run Joystick.Gremlin.R15-OSC\joystick_gremlin.exe
 
             Requires vJoy already installed.
             Unsigned build — SmartScreen may warn on first run.
-          files: dist/JoystickGremlin-R15-OSC-Setup.exe
+          files: dist/Joystick.Gremlin.R15-OSC.zip
           token: ${{ secrets.GITHUB_TOKEN }}
