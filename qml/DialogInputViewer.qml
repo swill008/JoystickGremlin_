@@ -149,6 +149,7 @@ Window {
             required property string guid
 
             readonly property string shownName: _inputViewer.displayName(guid, name)
+            readonly property bool hasFriendlyName: shownName !== name
             Layout.fillWidth: true
 
             property var widget_btn_hat
@@ -179,7 +180,7 @@ Window {
                     HoverHandler {
                         id: _hover
                         onHoveredChanged: {
-                            if (hovered) {
+                            if (hovered && hasFriendlyName) {
                                 _inputViewer.hardwareTip = name
                                 var pos = _nameLabel.mapToItem(Overlay.overlay, 8, _nameLabel.height + 4)
                                 _hardwareTip.x = pos.x
