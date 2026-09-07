@@ -1,5 +1,4 @@
 # -*- coding: utf-8; -*-
-
 # SPDX-License-Identifier: GPL-3.0-only
 
 from __future__ import annotations
@@ -24,6 +23,12 @@ from gremlin.types import PropertyType
 _config_file_path = os.path.join(util.userprofile_path(), "configuration.json")
 
 
+def _as_list(value: Any) -> Any:
+    if isinstance(value, set):
+        return list(value)
+    return value
+
+
 _required_properties = {
     PropertyType.Bool: {},
     PropertyType.Int: {"min": int, "max": int},
@@ -40,7 +45,6 @@ class Configuration(metaclass=common.SingletonMetaclass):
     """Responsible for loading and saving configuration data."""
 
     def __init__(self) -> None:
-        """Creates a new instance, loading the current configuration."""
         self._data = {}
         self._last_reload = None
         self._save_lock = threading.Lock()
@@ -77,13 +81,18 @@ class Configuration(metaclass=common.SingletonMetaclass):
             for group, grp_data in sec_data.items():
                 for name, entry in grp_data.items():
                     data_type = PropertyType.to_enum(entry["data_type"])
-                    value = entry["value"]
+                    value = _as_list(entry["value"])
                     if data_type in util._property_to_string:
                         value = util.property_from_string(data_type, value)
+                    properties = entry["properties"]
+                    if isinstance(properties, dict):
+                        properties = {
+                            key: _as_list(item) for key, item in properties.items()
+                        }
                     self._data[(section, group, name)] = {
                         "value": value,
                         "data_type": data_type,
-                        "properties": entry["properties"],
+                        "properties": properties,
                         "expose": entry["expose"],
                     }
 
@@ -124,13 +133,16 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 json_data[section] = {}
             if group not in json_data[section]:
                 json_data[section][group] = {}
-            value = entry["value"]
+            value = _as_list(entry["value"])
             if entry["data_type"] in util._property_to_string:
                 value = util.property_to_string(entry["data_type"], value)
+            properties = entry["properties"]
+            if isinstance(properties, dict):
+                properties = {pkey: _as_list(item) for pkey, item in properties.items()}
             json_data[section][group][name] = {
                 "value": value,
                 "data_type": PropertyType.to_string(entry["data_type"]),
-                "properties": entry["properties"],
+                "properties": properties,
                 "expose": entry["expose"],
             }
         with open(_config_file_path, "w") as hdl:
@@ -150,6 +162,9 @@ class Configuration(metaclass=common.SingletonMetaclass):
     ) -> None:
         self._validate(section, group, name)
         key = (section, group, name)
+        initial_value = _as_list(initial_value)
+        if isinstance(properties, dict):
+            properties = {pkey: _as_list(item) for pkey, item in properties.items()}
         if data_type not in _required_properties:
             raise error.GremlinError(
                 "Attempting to register an entry with unsupported data type: "
@@ -182,6 +197,7 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 self._data[key]["data_type"] = data_type
             self._data[key]["description"] = description
             self._data[key]["expose"] = expose
+            self._data[key]["value"] = _as_list(self._data[key]["value"])
         else:
             self._data[key] = {
                 "value": initial_value,
@@ -212,12 +228,13 @@ class Configuration(metaclass=common.SingletonMetaclass):
         self.save()
 
     def get(self, section: str, group: str, name: str, entry: str) -> Any:
-        return self._retrieve_value(section, group, name, entry)
+        return _as_list(self._retrieve_value(section, group, name, entry))
 
     def set(self, section: str, group: str, name: str, value: Any) -> None:
         key = (section, group, name)
         if key not in self._data:
             raise error.GremlinError(f"No parameter with key '{key}' exists.")
+        value = _as_list(value)
         _, is_valid = util.determine_value_type(value, self._data[key]["data_type"])
         if is_valid:
             self._data[key]["value"] = value
@@ -277,7 +294,7 @@ class Configuration(metaclass=common.SingletonMetaclass):
         )
 
     def value(self, section: str, group: str, name: str) -> Any:
-        return self._retrieve_value(section, group, name, "value")
+        return _as_list(self._retrieve_value(section, group, name, "value"))
 
     def data_type(self, section: str, group: str, name: str) -> PropertyType:
         return self._retrieve_value(section, group, name, "data_type")
@@ -286,7 +303,10 @@ class Configuration(metaclass=common.SingletonMetaclass):
         return self._retrieve_value(section, group, name, "description")
 
     def properties(self, section: str, group: str, name: str) -> dict[str, Any]:
-        return self._retrieve_value(section, group, name, "properties")
+        raw = self._retrieve_value(section, group, name, "properties")
+        if isinstance(raw, dict):
+            return {key: _as_list(item) for key, item in raw.items()}
+        return raw
 
     def expose(self, section: str, group: str, name: str) -> bool:
         return self._retrieve_value(section, group, name, "expose")
