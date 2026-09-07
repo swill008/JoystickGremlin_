@@ -7,8 +7,13 @@ import time
 
 from PySide6 import QtCore
 
+import gremlin.ui.type_aliases as ta
 from gremlin.osc import OscRuntime
+from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
+
+assert QML_IMPORT_NAME == "Gremlin.Device"
+assert QML_IMPORT_MAJOR_VERSION == 1
 
 _DEBOUNCE_S = 0.3
 
@@ -46,7 +51,6 @@ def _on_main(self, address: str, args: object) -> None:
     _orig_on_main(self, address, args)
     if hold:
         self._learn = True
-        self.listenChanged.emit()
 
 
 def model_listen_for_command(self) -> None:
@@ -54,12 +58,12 @@ def model_listen_for_command(self) -> None:
     _orig_listen_cmd(self)
 
 
-def model_listen_for_bulk(self, type_str: str) -> None:
-    self._capture_only = True
-    self._bulk = True
-    self._bulk_mode = type_str or "Button"
-    self._last_bulk_addr = ""
-    self._last_bulk_time = 0.0
+def start_bulk(model: OscDeviceManagementModel, type_str: str) -> None:
+    model._capture_only = True
+    model._bulk = True
+    model._bulk_mode = type_str or "Button"
+    model._last_bulk_addr = ""
+    model._last_bulk_time = 0.0
     OscRuntime().listen_bulk()
 
 
@@ -92,6 +96,14 @@ OscRuntime.cancel_listen = cancel_listen
 OscRuntime.stop = stop
 OscRuntime._on_main = _on_main
 OscDeviceManagementModel.listenForCommand = model_listen_for_command
-OscDeviceManagementModel.listenForBulk = QtCore.Slot(str)(model_listen_for_bulk)
 OscDeviceManagementModel.cancelListen = model_cancel_listen
 OscDeviceManagementModel._on_learned = model_on_learned
+
+
+@ta.QmlElement
+class OscBulkCapture(QtCore.QObject):
+    @QtCore.Slot("QVariant", str)
+    def start(self, model: object, type_str: str) -> None:
+        if model is None:
+            return
+        start_bulk(model, type_str)
