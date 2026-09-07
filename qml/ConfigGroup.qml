@@ -65,6 +65,12 @@ ColumnLayout {
                         Layout.minimumWidth: visible ? 180 : 0
                     }
 
+                    OptionHighlightScope {
+                        visible: name === "Input highlighting"
+                        Layout.preferredWidth: visible ? 220 : 0
+                        Layout.minimumWidth: visible ? 160 : 0
+                    }
+
                     Switch {
                         Layout.alignment: Qt.AlignRight
 
