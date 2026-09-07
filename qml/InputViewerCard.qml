@@ -20,14 +20,9 @@ ColumnLayout {
 
     InputPairing { id: _pairing }
 
-    DeviceAxisState {
-        id: _axes
-        guid: deviceGuid
-    }
-
     Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: _inner.implicitHeight + 24
+        implicitHeight: _inner.implicitHeight + 24
         color: Style.background
         border.color: Style.accent
         border.width: 1
@@ -35,11 +30,10 @@ ColumnLayout {
 
         ColumnLayout {
             id: _inner
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 12
-            spacing: 10
+            width: parent.width - 24
+            x: 12
+            y: 12
+            spacing: 8
 
             RowLayout {
                 Layout.fillWidth: true
@@ -58,61 +52,40 @@ ColumnLayout {
                 }
             }
 
-            JGText {
-                text: "Axes"
-                opacity: 0.7
-            }
-
-            Row {
+            Loader {
+                id: _axisLoader
                 Layout.fillWidth: true
-                spacing: 14
-
-                Repeater {
-                    model: _axes
-
-                    delegate: Column {
-                        required property int identifier
-                        required property double value
-                        width: 64
-                        spacing: 4
-
-                        Label {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: _pairing ? _pairing.axisLabel(identifier) : ("A" + identifier)
-                            color: Style.foreground
-                            font.pointSize: 10
-                        }
-
-                        Rectangle {
-                            width: parent.width
-                            height: 10
-                            radius: 5
-                            color: Style.lowColor
-
-                            Rectangle {
-                                height: parent.height
-                                radius: 5
-                                width: Math.max(4, parent.width * Math.min(1.0, Math.max(0.0, (value + 1.0) * 0.5)))
-                                color: "#22C55E"
-                            }
-                        }
+                Layout.preferredHeight: 170
+                source: Qt.resolvedUrl("AxesStateCurrent.qml")
+                onLoaded: {
+                    if (item) {
+                        item.deviceGuid = _root.deviceGuid
+                        item.title = _root.title
                     }
                 }
             }
 
-            AxesStateCurrent {
+            Loader {
+                id: _buttonLoader
                 Layout.fillWidth: true
-                Layout.preferredHeight: 170
-                deviceGuid: _root.deviceGuid
-                title: ""
+                Layout.preferredHeight: 240
+                source: Qt.resolvedUrl("ButtonState.qml")
+                onLoaded: {
+                    if (item) {
+                        item.deviceGuid = _root.deviceGuid
+                        item.title = _root.title
+                    }
+                }
             }
+        }
+    }
 
-            ButtonState {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 220
-                deviceGuid: _root.deviceGuid
-                title: ""
-            }
+    onDeviceGuidChanged: {
+        if (_axisLoader.item) {
+            _axisLoader.item.deviceGuid = deviceGuid
+        }
+        if (_buttonLoader.item) {
+            _buttonLoader.item.deviceGuid = deviceGuid
         }
     }
 }
