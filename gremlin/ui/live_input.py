@@ -9,7 +9,7 @@ from PySide6 import QtCore
 
 import dill
 import gremlin.ui.type_aliases as ta
-from gremlin import event_handler
+from gremlin import event_handler, shared_state
 from gremlin.types import InputType
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -108,6 +108,9 @@ class DeviceLiveState(QtCore.QObject):
         self.stampChanged.emit()
 
     def _flush_axes(self) -> None:
+        if shared_state.runtime_active():
+            self._axis_dirty = False
+            return
         if self._axis_dirty:
             self._axis_dirty = False
             self._bump()
@@ -136,6 +139,8 @@ class DeviceLiveState(QtCore.QObject):
         return value
 
     def _on_event(self, event: event_handler.Event) -> None:
+        if shared_state.runtime_active():
+            return
         if self._device is None or self._device_uuid is None:
             return
         if _norm_guid(event.device_guid) != self._guid:
