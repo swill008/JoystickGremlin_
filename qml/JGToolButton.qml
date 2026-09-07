@@ -14,11 +14,9 @@ ToolButton {
 
         Label {
             id: _icon
-
             text: parent.parent.text
             font.family: "bootstrap-icons"
             font.pixelSize: 24
-            color: parent.parent.color !== undefined ? _icon.color : palette.buttonText
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             width: parent.width
@@ -35,7 +33,6 @@ ToolButton {
 
     ToolTip {
         id: _tooltip
-
         visible: parent.hovered
         delay: 500
     }
