@@ -16,7 +16,9 @@ assert QML_IMPORT_MAJOR_VERSION == 1
 
 SECTION = "devices"
 GROUP = "display"
-NAME = "vjoy-tabs"
+VJOY_NAME = "vjoy-tabs"
+EXTRA_NAME = "extra-tabs"
+EXTRA_DEFAULT = ["keyboard", "logical", "osc"]
 
 
 class _PinHub(QtCore.QObject):
@@ -26,16 +28,16 @@ class _PinHub(QtCore.QObject):
 HUB = _PinHub()
 
 
-def _ensure() -> Configuration:
+def _ensure(name: str, default: list, description: str) -> Configuration:
     cfg = Configuration()
-    if not cfg.exists(SECTION, GROUP, NAME):
+    if not cfg.exists(SECTION, GROUP, name):
         cfg.register(
             SECTION,
             GROUP,
-            NAME,
+            name,
             PropertyType.List,
-            [],
-            "vJoy device tabs shown in the main bar.",
+            default,
+            description,
             {},
             False,
         )
@@ -44,7 +46,9 @@ def _ensure() -> Configuration:
 
 def _load_pins() -> set[int]:
     pins: set[int] = set()
-    raw = _ensure().value(SECTION, GROUP, NAME) or []
+    raw = _ensure(VJOY_NAME, [], "vJoy device tabs shown in the main bar.").value(
+        SECTION, GROUP, VJOY_NAME
+    ) or []
     for item in raw:
         try:
             index = int(item)
@@ -56,7 +60,33 @@ def _load_pins() -> set[int]:
 
 
 def _save_pins(pins: set[int]) -> None:
-    _ensure().set(SECTION, GROUP, NAME, sorted(pins))
+    _ensure(VJOY_NAME, [], "vJoy device tabs shown in the main bar.").set(
+        SECTION, GROUP, VJOY_NAME, sorted(pins)
+    )
+
+
+def _load_extra() -> set[str]:
+    raw = _ensure(
+        EXTRA_NAME,
+        list(EXTRA_DEFAULT),
+        "Keyboard, Logical, and OSC tabs shown in the main bar.",
+    ).value(SECTION, GROUP, EXTRA_NAME)
+    if raw is None:
+        return set(EXTRA_DEFAULT)
+    extras: set[str] = set()
+    for item in raw:
+        key = str(item).strip().lower()
+        if key in EXTRA_DEFAULT:
+            extras.add(key)
+    return extras
+
+
+def _save_extra(extras: set[str]) -> None:
+    _ensure(
+        EXTRA_NAME,
+        list(EXTRA_DEFAULT),
+        "Keyboard, Logical, and OSC tabs shown in the main bar.",
+    ).set(SECTION, GROUP, EXTRA_NAME, sorted(extras))
 
 
 @ta.QmlElement
@@ -67,10 +97,12 @@ class VJoyStatus(QtCore.QObject):
         super().__init__(parent)
         self._active = [False] * 16
         self._pins = _load_pins()
+        self._extra = _load_extra()
         HUB.changed.connect(self._reload_pins)
 
     def _reload_pins(self) -> None:
         self._pins = _load_pins()
+        self._extra = _load_extra()
         self.changed.emit()
 
     @QtCore.Slot()
@@ -83,6 +115,7 @@ class VJoyStatus(QtCore.QObject):
                 active.append(False)
         self._active = active
         self._pins = _load_pins()
+        self._extra = _load_extra()
         self.changed.emit()
 
     @QtCore.Slot(int, result=bool)
@@ -107,6 +140,22 @@ class VJoyStatus(QtCore.QObject):
         _save_pins(self._pins)
         HUB.changed.emit()
 
+    @QtCore.Slot(str, result=bool)
+    def isExtraPinned(self, name: str) -> bool:
+        return str(name).strip().lower() in self._extra
+
+    @QtCore.Slot(str, bool)
+    def setExtraPinned(self, name: str, pinned: bool) -> None:
+        key = str(name).strip().lower()
+        if key not in EXTRA_DEFAULT:
+            return
+        if pinned:
+            self._extra.add(key)
+        else:
+            self._extra.discard(key)
+        _save_extra(self._extra)
+        HUB.changed.emit()
+
     def _count(self) -> int:
         return sum(1 for item in self._active if item)
 
@@ -114,6 +163,9 @@ class VJoyStatus(QtCore.QObject):
         total = 0
         for index in self._pins:
             total += 1 << index
+        for offset, name in enumerate(EXTRA_DEFAULT, start=17):
+            if name in self._extra:
+                total += 1 << offset
         return total
 
     activeCount = QtCore.Property(int, fget=_count, notify=changed)
