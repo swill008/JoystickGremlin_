@@ -10,25 +10,49 @@ import sys
 from gremlin.error import GremlinError
 
 
+def _load_native_dll(path: str):
+    path = os.path.abspath(path)
+    directory = os.path.dirname(path)
+    if hasattr(os, "add_dll_directory"):
+        try:
+            os.add_dll_directory(directory)
+        except OSError:
+            pass
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.LoadLibraryExW.restype = ctypes.c_void_p
+    kernel32.LoadLibraryExW.argtypes = [
+        ctypes.c_wchar_p,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+    ]
+    handle = kernel32.LoadLibraryExW(path, None, 0x00000008)
+    if not handle:
+        raise ctypes.WinError(ctypes.get_last_error())
+    dll = ctypes.CDLL.__new__(ctypes.CDLL)
+    dll._name = path
+    dll._handle = handle
+    return dll
+
+
 class VJoyState(enum.Enum):
     """Enumeration of the possible VJoy device states."""
 
-    Owned = 0  # The device is owned by the current application
-    Free = 1  # The device is not owned by any application
-    Bust = 2  # The device is owned by another application
-    Missing = 3  # The device is not present
-    Unknown = 4  # Unknown type of error
+    Owned = 0
+    Free = 1
+    Bust = 2
+    Missing = 3
+    Unknown = 4
 
 
 class VJoyInterface:
     """Allows low level interaction with VJoy devices via ctypes."""
 
-    # Attempt to find the correct location of the dll for development
-    # and installed use cases.
     dev_path = os.path.join(os.path.dirname(__file__), "vJoyInterface.dll")
     if os.path.isfile("vJoyInterface.dll"):
-        dll_path = "vJoyInterface.dll"
-    if "_MEIPASS" in sys.__dict__:
+        dll_path = os.path.abspath("vJoyInterface.dll")
+    elif getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS") and os.path.isfile(
+        os.path.join(sys._MEIPASS, "vJoyInterface.dll")
+    ):
         dll_path = os.path.join(sys._MEIPASS, "vJoyInterface.dll")
     elif os.path.isfile(dev_path):
         dll_path = dev_path
@@ -37,27 +61,20 @@ class VJoyInterface:
 
     vjoy_dll_loaded = False
     try:
-        vjoy_dll = ctypes.cdll.LoadLibrary(dll_path)
+        vjoy_dll = _load_native_dll(dll_path)
         vjoy_dll_loaded = True
     except OSError as e:
         print("Failed loading vJoy dll, {}".format(e))
 
-    # Declare argument and return types for all the functions
-    # exposed by the dll
     api_functions = {
-        # General vJoy information
         "GetvJoyVersion": {"arguments": [], "returns": ctypes.c_short},
         "vJoyEnabled": {"arguments": [], "returns": ctypes.c_bool},
         "GetvJoyProductString": {"arguments": [], "returns": ctypes.c_wchar_p},
         "GetvJoyManufacturerString": {"arguments": [], "returns": ctypes.c_wchar_p},
         "GetvJoySerialNumberString": {"arguments": [], "returns": ctypes.c_wchar_p},
-        # Device properties
         "GetVJDButtonNumber": {"arguments": [ctypes.c_uint], "returns": ctypes.c_int},
         "GetVJDDiscPovNumber": {"arguments": [ctypes.c_uint], "returns": ctypes.c_int},
         "GetVJDContPovNumber": {"arguments": [ctypes.c_uint], "returns": ctypes.c_int},
-        # API claims this should return a bool, however, this is untrue and
-        # is an int, see:
-        # http://vjoystick.sourceforge.net/site/index.php/forum/5-Discussion/1026-bug-with-getvjdaxisexist
         "GetVJDAxisExist": {
             "arguments": [ctypes.c_uint, ctypes.c_uint],
             "returns": ctypes.c_int,
@@ -70,7 +87,6 @@ class VJoyInterface:
             "arguments": [ctypes.c_uint, ctypes.c_uint, ctypes.c_void_p],
             "returns": ctypes.c_bool,
         },
-        # Device management
         "GetOwnerPid": {"arguments": [ctypes.c_uint], "returns": ctypes.c_int},
         "AcquireVJD": {"arguments": [ctypes.c_uint], "returns": ctypes.c_bool},
         "RelinquishVJD": {
@@ -82,12 +98,10 @@ class VJoyInterface:
             "returns": ctypes.c_bool,
         },
         "GetVJDStatus": {"arguments": [ctypes.c_uint], "returns": ctypes.c_int},
-        # Reset functions
         "ResetVJD": {"arguments": [ctypes.c_uint], "returns": ctypes.c_bool},
         "ResetAll": {"arguments": [], "returns": None},
         "ResetButtons": {"arguments": [ctypes.c_uint], "returns": ctypes.c_bool},
         "ResetPovs": {"arguments": [ctypes.c_uint], "returns": ctypes.c_bool},
-        # Set values
         "SetAxis": {
             "arguments": [ctypes.c_long, ctypes.c_uint, ctypes.c_uint],
             "returns": ctypes.c_bool,
@@ -121,5 +135,4 @@ class VJoyInterface:
             setattr(cls, fn_name, dll_fn)
 
 
-# Initialize the class
 VJoyInterface.initialize()
