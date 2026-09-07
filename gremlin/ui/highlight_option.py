@@ -63,6 +63,17 @@ def ensure_registered() -> None:
             {},
             False,
         )
+    else:
+        cfg.register(
+            SECTION,
+            GROUP,
+            NAME,
+            PropertyType.String,
+            cfg.value(SECTION, GROUP, NAME),
+            "How quickly the UI jumps to an input that was used.",
+            {},
+            False,
+        )
     if not cfg.exists(SECTION, GROUP, SCOPE_NAME):
         cfg.register(
             SECTION,
@@ -70,6 +81,17 @@ def ensure_registered() -> None:
             SCOPE_NAME,
             PropertyType.String,
             DEFAULT_SCOPE,
+            "Whether highlighting stays on the active device tab or follows any device.",
+            {},
+            False,
+        )
+    else:
+        cfg.register(
+            SECTION,
+            GROUP,
+            SCOPE_NAME,
+            PropertyType.String,
+            cfg.value(SECTION, GROUP, SCOPE_NAME),
             "Whether highlighting stays on the active device tab or follows any device.",
             {},
             False,
@@ -150,3 +172,5 @@ MetaConfigOption().register(
     "Stay on the current device tab, or switch to the device that produced the input.",
     HighlightSourceOption,
 )
+
+ensure_registered()
