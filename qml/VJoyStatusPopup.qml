@@ -16,8 +16,8 @@ Popup {
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    padding: 14
-    width: 360
+    padding: 16
+    width: 420
 
     VJoyStatus { id: _status }
 
@@ -31,7 +31,8 @@ Popup {
     onOpened: _status.refresh()
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: 12
+        width: parent.width
 
         Label {
             text: "vJoy devices"
@@ -54,9 +55,9 @@ Popup {
 
         GridLayout {
             columns: 4
-            columnSpacing: 10
-            rowSpacing: 8
-            Layout.alignment: Qt.AlignHCenter
+            columnSpacing: 12
+            rowSpacing: 10
+            Layout.fillWidth: true
 
             Repeater {
                 model: 16
@@ -66,6 +67,7 @@ Popup {
                     readonly property int deviceId: index + 1
                     readonly property bool active: _status.activeCount >= 0 && _status.isActive(deviceId)
                     readonly property bool pinned: _status.pinStamp >= 0 && _status.isPinned(deviceId)
+                    Layout.fillWidth: true
                     spacing: 4
 
                     CheckBox {
@@ -75,7 +77,7 @@ Popup {
                     }
 
                     Rectangle {
-                        implicitWidth: 44
+                        Layout.fillWidth: true
                         implicitHeight: 32
                         radius: 4
                         color: parent.active ? Style.accent : Style.background
@@ -84,7 +86,7 @@ Popup {
 
                         Label {
                             anchors.centerIn: parent
-                            text: parent.parent.deviceId
+                            text: deviceId
                             font.bold: true
                             font.pixelSize: 14
                             color: parent.parent.active ? Style.background : Style.foreground
