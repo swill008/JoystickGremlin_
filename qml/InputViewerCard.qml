@@ -15,6 +15,7 @@ ColumnLayout {
     property string deviceGuid: ""
     property string title: ""
     property string pairLabel: ""
+    property int liveStamp: _live ? _live.stamp : 0
 
     spacing: 6
 
@@ -33,7 +34,18 @@ ColumnLayout {
         guid: deviceGuid
     }
 
-    property int liveStamp: _live ? _live.stamp : 0
+    function hwAxis(id) {
+        return liveStamp >= 0 ? _live.axisValue(id) : 0
+    }
+    function vjAxis(g, id) {
+        return liveStamp >= 0 ? _live.vjoyAxisValue(g, id) : 0
+    }
+    function hwButton(id) {
+        return liveStamp >= 0 ? _live.buttonValue(id) : 0
+    }
+    function vjButton(g, id) {
+        return liveStamp >= 0 ? _live.vjoyButtonValue(g, id) : 0
+    }
 
     Rectangle {
         Layout.fillWidth: true
@@ -68,7 +80,6 @@ ColumnLayout {
             }
 
             JGText {
-                visible: _axes.count > 0 || _axes.rowCount() > 0
                 text: "Mapped axes"
                 opacity: 0.7
             }
@@ -100,7 +111,7 @@ ColumnLayout {
                         Rectangle {
                             height: parent.height
                             radius: 5
-                            width: parent.width * Math.min(1.0, Math.max(0.0, ((_live.axisValue(identifier) + 1.0) * 0.5)))
+                            width: parent.width * Math.min(1.0, Math.max(0.0, (hwAxis(identifier) + 1.0) * 0.5))
                             color: "#22C55E"
                         }
                     }
@@ -120,19 +131,16 @@ ColumnLayout {
                         Rectangle {
                             height: parent.height
                             radius: 5
-                            width: parent.width * Math.min(1.0, Math.max(0.0, ((_live.vjoyAxisValue(vjoyGuid, vjoyInput) + 1.0) * 0.5)))
+                            width: parent.width * Math.min(1.0, Math.max(0.0, (vjAxis(vjoyGuid, vjoyInput) + 1.0) * 0.5))
                             color: "#38BDF8"
                         }
                     }
-
-                    property int _tick: _root.liveStamp
                 }
             }
 
             JGText {
                 text: "Mapped buttons"
                 opacity: 0.7
-                visible: true
             }
 
             Flow {
@@ -149,9 +157,8 @@ ColumnLayout {
                         required property string vjoyGuid
                         required property int vjoyInput
 
-                        property bool hwOn: _live.buttonValue(identifier) > 0.5
-                        property bool vjOn: _live.vjoyButtonValue(vjoyGuid, vjoyInput) > 0.5
-                        property int _tick: _root.liveStamp
+                        property bool hwOn: hwButton(identifier) > 0.5
+                        property bool vjOn: vjButton(vjoyGuid, vjoyInput) > 0.5
 
                         width: 72
                         height: 36
