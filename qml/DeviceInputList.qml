@@ -7,6 +7,7 @@ import QtQuick.Controls.Universal
 import QtQuick.Layouts
 import QtQuick.Window
 
+import Gremlin.Config
 import Gremlin.Device
 import Gremlin.Style
 
@@ -18,6 +19,10 @@ Item {
     DeviceLiveState {
         id: _liveState
         guid: device ? device.guid : ""
+    }
+
+    HighlightSpeedModel {
+        id: _highlightSpeed
     }
 
     ActionNames { id: _actionNames }
@@ -65,6 +70,21 @@ Item {
 
         scrollbarAlwaysVisible: true
         spacing: 5
+        highlightFollowsCurrentItem: true
+        highlightMoveVelocity: -1
+        highlightMoveDuration: {
+            if (!_highlightSpeed) {
+                return 420
+            }
+            if (_highlightSpeed.speed === "Fast") {
+                return 70
+            }
+            if (_highlightSpeed.speed === "Medium") {
+                return 180
+            }
+            return 420
+        }
+        highlightResizeDuration: highlightMoveDuration
 
         model: device
 
