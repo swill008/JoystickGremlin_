@@ -70,6 +70,10 @@ Item {
                 checked: uiState && uiState.currentTab === "physical" &&
                     uiState.currentDevice === model.guid
 
+                ToolTip.visible: hovered
+                ToolTip.delay: 400
+                ToolTip.text: name
+
                 onClicked: () => {
                     if (!uiState) {
                         return
@@ -98,6 +102,10 @@ Item {
             width: _metricKeyboard.width + 50
             checked: uiState && uiState.currentTab === "keyboard"
 
+            ToolTip.visible: hovered
+            ToolTip.delay: 400
+            ToolTip.text: "Keyboard"
+
             onClicked: () => {
                 if (!uiState) {
                     return
@@ -125,6 +133,10 @@ Item {
             width: _metricIO.width + 50
             checked: uiState && uiState.currentTab === "logical"
 
+            ToolTip.visible: hovered
+            ToolTip.delay: 400
+            ToolTip.text: "Logical Device"
+
             onClicked: () => {
                 if (!uiState) {
                     return
@@ -151,6 +163,10 @@ Item {
             text: _root._nameTick, _names.display("osc", "OSC")
             width: _metricOsc.width + 50
             checked: uiState && uiState.currentTab === "osc"
+
+            ToolTip.visible: hovered
+            ToolTip.delay: 400
+            ToolTip.text: "OSC"
 
             onClicked: () => {
                 if (!uiState) {
