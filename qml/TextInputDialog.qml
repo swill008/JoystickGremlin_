@@ -48,10 +48,13 @@ Window {
 
             text: _root.text
 
-            onPressed: {
-                if (!_root._clearedOnClick) {
-                    text = ""
-                    _root._clearedOnClick = true
+            TapHandler {
+                onTapped: {
+                    if (!_root._clearedOnClick) {
+                        _input.text = ""
+                        _root._clearedOnClick = true
+                        _input.forceActiveFocus()
+                    }
                 }
             }
 
