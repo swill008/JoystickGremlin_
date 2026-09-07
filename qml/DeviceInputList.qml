@@ -74,15 +74,15 @@ Item {
         highlightMoveVelocity: -1
         highlightMoveDuration: {
             if (!_highlightSpeed) {
-                return 420
+                return 150
             }
             if (_highlightSpeed.speed === "Fast") {
-                return 70
+                return 0
             }
             if (_highlightSpeed.speed === "Medium") {
-                return 180
+                return 70
             }
-            return 420
+            return 150
         }
         highlightResizeDuration: highlightMoveDuration
 
