@@ -17,6 +17,8 @@ Item {
     property InputIdentifier inputIdentifier
     property alias device: _inputList.model
 
+    ActionNames { id: _actionNames }
+
     TextInputDialog {
         id: _textInput
 
@@ -87,7 +89,7 @@ Item {
                 onRenameRequested: {
                     _textInput.text = description
                     _textInput.callback = (value) => {
-                        _inputList.model.setActionName(index, value)
+                        _actionNames.setOnModel(_inputList.model, index, value)
                     }
                     _textInput.visible = true
                 }

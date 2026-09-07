@@ -11,6 +11,8 @@ import Gremlin.Device
 import Gremlin.Style
 
 Item {
+    ActionNames { id: _actionNames }
+
     TextInputDialog {
         id: _renameDialog
 
@@ -20,7 +22,7 @@ Item {
         property int rowIndex: -1
 
         onAccepted: (value) => {
-            _inputList.model.setActionName(rowIndex, value)
+            _actionNames.setOnModel(_inputList.model, rowIndex, value)
             visible = false
         }
     }
