@@ -195,17 +195,30 @@ class Backend(QtCore.QObject):
             or shared_state.suspend_input_highlighting()
         ):
             return
+        if not self.joystick_change_monitor.should_process(event):
+            return
+        from gremlin.ui.highlight_option import highlight_follows_any_device
+
+        follow = highlight_follows_any_device()
         current_input = self.ui_state.currentInput
-        if (
-            self.ui_state.currentTab == "physical"
+        same_device = (
+            current_input is not None
             and current_input.device_guid == event.device_guid
-            and self.joystick_change_monitor.should_process(event)
-        ):
+        )
+        if follow:
+            if self.ui_state.currentTab != "physical" or not same_device:
+                self.ui_state.setCurrentTab("physical")
+                self.ui_state.setCurrentDevice(str(event.device_guid))
+        else:
+            if self.ui_state.currentTab != "physical" or not same_device:
+                return
+        try:
             new_input = InputIdentifier(
                 event.device_guid, event.event_type, event.identifier
             )
-            if current_input.linear_index != new_input.linear_index:
-                signal.setInputIndex.emit(new_input.linear_index)
+            signal.setInputIndex.emit(new_input.linear_index)
+        except Exception:
+            return
 
     def _profile_change_handler(self) -> None:
         shared_state.current_profile = self.profile
