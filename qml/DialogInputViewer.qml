@@ -142,12 +142,14 @@ Window {
                     text: checked ? bsi.icons.folded : bsi.icons.unfolded
                 }
 
-                JGText {
+                Label {
                     Layout.fillWidth: true
-
                     text: shownName
+                    color: Style.foreground
+                    font.pointSize: 12
+                    font.family: "Segoe UI"
 
-                    ToolTip.visible: hovered && shownName !== name
+                    ToolTip.visible: hovered
                     ToolTip.delay: 400
                     ToolTip.text: name
                 }
