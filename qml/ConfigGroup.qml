@@ -122,9 +122,7 @@ ColumnLayout {
 
                         Layout.fillWidth: true
                         text: model.value
-
                         readOnly: true
-                        onTextChanged: () => { model.value = text }
                     }
                     Button {
                         text: "Select"
@@ -148,8 +146,9 @@ ColumnLayout {
                     title: "Select a File"
 
                     onAccepted: () => {
-                        associatedField.text =
-                            selectedFile.toString().substring("file:///".length)
+                        var path = selectedFile.toString().substring("file:///".length)
+                        associatedField.text = path
+                        model.value = path
                     }
                 }
 
@@ -161,8 +160,9 @@ ColumnLayout {
                     title: "Select a Folder"
 
                     onAccepted: () => {
-                        associatedField.text =
-                            selectedFolder.toString().substring("file:///".length)
+                        var path = selectedFolder.toString().substring("file:///".length)
+                        associatedField.text = path
+                        model.value = path
                     }
                 }
             }
