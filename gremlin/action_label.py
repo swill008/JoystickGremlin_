@@ -12,9 +12,7 @@ from gremlin.signal import signal
 from gremlin import shared_state
 from gremlin.ui.device import Device, KeyboardManagerModel
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
-from gremlin.logical_device import LogicalDevice
 from gremlin.ui.device import LogicalDeviceManagementModel
-from gremlin.osc import OSC_DEVICE_UUID
 
 _orig_init = InputItem.__init__
 _orig_from_xml = InputItem.from_xml
@@ -45,29 +43,10 @@ def _to_xml(self) -> ElementTree.Element:
     return node
 
 
-def _role_name(model, role: int) -> str:
-    return str(model.roles.get(role, b""), "utf-8") if isinstance(model.roles.get(role), (bytes, bytearray)) else str(model.roles.get(role, ""))
-
-
 def _description_from_item(item) -> str:
     if item is None:
         return ""
     return getattr(item, "action_name", "") or ""
-
-
-def _wrap_data(original):
-    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
-        value = original(self, index, role)
-        role_name = ""
-        try:
-            raw = self.roles.get(role)
-            role_name = raw.data().decode() if hasattr(raw, "data") else str(raw)
-        except Exception:
-            role_name = ""
-        if role_name != "description":
-            return value
-        return value
-    return data
 
 
 def _set_item_name(item, name: str, index: int) -> None:
@@ -80,7 +59,12 @@ def _set_item_name(item, name: str, index: int) -> None:
 @QtCore.Slot(int, str)
 def device_set_action_name(self, index: int, name: str) -> None:
     info = self._convert_index(index)
-    item = self._get_input_item(info)
+    profile = shared_state.current_profile
+    if profile is None or self._device is None:
+        return
+    item = profile.get_input_item(
+        self._device.device_guid.uuid, info[0], info[1], self._mode, True
+    )
     _set_item_name(item, name, index)
     self.refreshInput(index)
 
