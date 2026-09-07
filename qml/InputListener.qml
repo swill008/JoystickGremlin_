@@ -18,6 +18,7 @@ Item {
     property alias multipleInputs: _listener.multipleInputs
     property alias text: _name.text
     property var callback
+    signal listenFinished()
 
     implicitWidth: _button.implicitWidth
     implicitHeight: _button.implicitHeight
@@ -29,6 +30,7 @@ Item {
             if (_root.callback) {
                 _root.callback(inputs)
             }
+            _root.listenFinished()
         }
     }
 
@@ -64,7 +66,7 @@ Item {
 
             DSM.SignalTransition {
                 targetState: disabled
-                signal: _listener.listeningTerminated
+                signal: _root.listenFinished
             }
 
             onEntered: function() {
