@@ -65,52 +65,67 @@ def _set_item_name(item, name: str, index: int) -> None:
     signal.inputItemChanged.emit(index)
 
 
-def apply_action_name(model: object, index: int, name: str) -> None:
+def _read_item(model: object, index: int, create: bool):
     profile = shared_state.current_profile
     if profile is None or index < 0:
-        return
-    if isinstance(model, Device):
-        if model._device is None:
-            return
+        return None
+    if hasattr(model, "_convert_index") and hasattr(model, "_device"):
+        if getattr(model, "_device", None) is None:
+            return None
         info = model._convert_index(index)
-        item = profile.get_input_item(
-            model._device.device_guid.uuid, info[0], info[1], model._mode, True
+        return profile.get_input_item(
+            model._device.device_guid.uuid,
+            info[0],
+            info[1],
+            getattr(model, "_mode", "Default"),
+            create,
         )
-        _set_item_name(item, name, index)
-        model.refreshInput(index)
-        return
-    if isinstance(model, OscDeviceManagementModel):
+    if hasattr(model, "_index_to_input") and hasattr(model, "_osc"):
         info = model._index_to_input(index)
-        item = profile.get_input_item(
-            model._osc.device_guid, info.type, info.id, model._mode, True
+        return profile.get_input_item(
+            model._osc.device_guid,
+            info.type,
+            info.id,
+            getattr(model, "_mode", "Default"),
+            create,
         )
-        _set_item_name(item, name, index)
-        model.refreshInput(index)
-        return
-    if isinstance(model, LogicalDeviceManagementModel):
-        label = model._logical.labels_of_type()[index]
-        info = model._logical[label]
-        item = profile.get_input_item(
-            model._logical.device_guid, info.type, info.id, model._mode, True
+    if hasattr(model, "_logical"):
+        labels = model._logical.labels_of_type()
+        if index >= len(labels):
+            return None
+        info = model._logical[labels[index]]
+        return profile.get_input_item(
+            model._logical.device_guid,
+            info.type,
+            info.id,
+            getattr(model, "_mode", "Default"),
+            create,
         )
-        _set_item_name(item, name, index)
-        model.refreshInput(index)
-        return
-    if isinstance(model, KeyboardManagerModel):
+    if hasattr(model, "inputIdentifier"):
         identifier = model.inputIdentifier(index)
         if identifier is None:
-            return
-        item = profile.get_input_item(
+            return None
+        return profile.get_input_item(
             identifier.device_guid,
             identifier.input_type,
             identifier.input_id,
             getattr(model, "_mode", "Default"),
-            True,
+            create,
         )
-        _set_item_name(item, name, index)
-        model.dataChanged.emit(
-            model.createIndex(index, 0), model.createIndex(index, 0)
-        )
+    return None
+
+
+def apply_action_name(model: object, index: int, name: str) -> None:
+    item = _read_item(model, index, True)
+    _set_item_name(item, name, index)
+    if hasattr(model, "refreshInput"):
+        model.refreshInput(index)
+    elif hasattr(model, "dataChanged") and hasattr(model, "createIndex"):
+        model.dataChanged.emit(model.createIndex(index, 0), model.createIndex(index, 0))
+
+
+def read_action_name(model: object, index: int) -> str:
+    return _description_from_item(_read_item(model, index, False))
 
 
 def _patch_description(original, resolve_item):
@@ -133,38 +148,15 @@ def _device_item(self, row: int):
 
 
 def _osc_item(self, row: int):
-    info = self._index_to_input(row)
-    profile = shared_state.current_profile
-    if profile is None:
-        return None
-    return profile.get_input_item(
-        self._osc.device_guid, info.type, info.id, self._mode, False
-    )
+    return _read_item(self, row, False)
 
 
 def _logical_item(self, row: int):
-    label = self._logical.labels_of_type()[row]
-    info = self._logical[label]
-    profile = shared_state.current_profile
-    if profile is None:
-        return None
-    return profile.get_input_item(
-        self._logical.device_guid, info.type, info.id, self._mode, False
-    )
+    return _read_item(self, row, False)
 
 
 def _keyboard_item(self, row: int):
-    identifier = self.inputIdentifier(row)
-    profile = shared_state.current_profile
-    if profile is None or identifier is None:
-        return None
-    return profile.get_input_item(
-        identifier.device_guid,
-        identifier.input_type,
-        identifier.input_id,
-        getattr(self, "_mode", "Default"),
-        False,
-    )
+    return _read_item(self, row, False)
 
 
 InputItem.__init__ = _init
@@ -181,3 +173,7 @@ class ActionNames(QtCore.QObject):
     @QtCore.Slot("QVariant", int, str)
     def setOnModel(self, model: object, index: int, name: str) -> None:
         apply_action_name(model, index, name)
+
+    @QtCore.Slot("QVariant", int, result=str)
+    def getOnModel(self, model: object, index: int) -> str:
+        return read_action_name(model, index)
