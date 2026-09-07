@@ -374,13 +374,22 @@ class Backend(QtCore.QObject):
         signal.reloadCurrentInputItem.emit()
         signal.reloadUi.emit()
 
-    @QtCore.Slot(str)
-    def saveProfile(self, qml_url: str) -> None:
-        path = to_local_path(qml_url)
-        self.profile.fpath = path
-        self.profile.to_xml(self.profile.fpath)
-        self.config.set("global", "internal", "last-profile", str(path))
-        self.windowTitleChanged.emit()
+    @QtCore.Slot(str, result=bool)
+    def saveProfile(self, qml_url: str) -> bool:
+        try:
+            path = to_local_path(qml_url)
+            if not path:
+                return False
+            self.profile.fpath = path
+            self.profile.to_xml(self.profile.fpath)
+            if not os.path.isfile(str(self.profile.fpath)):
+                return False
+            self.config.set("global", "internal", "last-profile", str(path))
+            self.windowTitleChanged.emit()
+            return True
+        except Exception:
+            logging.getLogger("system").exception("Failed to save profile")
+            return False
 
     @QtCore.Slot(result=str)
     def profilePath(self) -> str:
