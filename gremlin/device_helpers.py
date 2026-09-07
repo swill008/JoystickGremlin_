@@ -67,17 +67,6 @@ class JoystickInputSignificant(metaclass=common.SingletonMetaclass):
         self._mre_registry = {}
         self._time_registry = {}
 
-    def _speed_settings(self) -> tuple[float, bool]:
-        try:
-            from gremlin.ui.highlight_option import (
-                accept_first_axis,
-                highlight_threshold,
-            )
-
-            return highlight_threshold(), accept_first_axis()
-        except Exception:
-            return 0.33, False
-
     def _process_axis(self, event: event_handler.Event) -> bool:
         """Process an axis event.
 
@@ -87,17 +76,16 @@ class JoystickInputSignificant(metaclass=common.SingletonMetaclass):
         Returns:
             True if it should be processed, False otherwise
         """
-        threshold, accept_first = self._speed_settings()
         if event in self._event_registry:
             # Reset everything if we have no recent data.
             if self._time_registry[event] + 5.0 < time.time():
                 self._event_registry[event] = event
                 self._time_registry[event] = time.time()
-                return accept_first and abs(float(event.value or 0.0)) > threshold
+                return False
             # Update state.
             else:
                 self._time_registry[event] = time.time()
-                if abs(self._event_registry[event].value - event.value) > threshold:
+                if abs(self._event_registry[event].value - event.value) > 0.33:
                     self._event_registry[event] = event
                     self._time_registry[event] = time.time()
                     return True
@@ -106,8 +94,6 @@ class JoystickInputSignificant(metaclass=common.SingletonMetaclass):
         else:
             self._event_registry[event] = event
             self._time_registry[event] = time.time()
-            if accept_first:
-                return abs(float(event.value or 0.0)) > threshold
             return False
 
     def _process_button(self, event: event_handler.Event) -> bool:
