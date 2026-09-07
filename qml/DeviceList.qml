@@ -72,6 +72,10 @@ Item {
         return _root._vjoyTick >= 0 && _vjoy.isPinned(Number(vjoyId))
     }
 
+    function extraVisible(key) {
+        return _root._vjoyTick >= 0 && _vjoy.isExtraPinned(key)
+    }
+
     Component.onCompleted: {
         if (deviceListModel) {
             deviceListModel.deviceType = "all"
@@ -129,11 +133,12 @@ Item {
         JGTabButton {
             id: _keyboardButton
 
+            visible: _root.extraVisible("keyboard")
             text: _root._nameTick, _names.display("keyboard", "Keyboard")
-            width: _metricKeyboard.width + 50
+            width: visible ? _metricKeyboard.width + 50 : 0
             checked: uiState && uiState.currentTab === "keyboard"
 
-            ToolTip.visible: hovered
+            ToolTip.visible: hovered && visible
             ToolTip.delay: 400
             ToolTip.text: "Keyboard"
 
@@ -146,7 +151,11 @@ Item {
             }
 
             TapHandler {
-                onDoubleTapped: _root.rename("keyboard", "Keyboard")
+                onDoubleTapped: {
+                    if (visible) {
+                        _root.rename("keyboard", "Keyboard")
+                    }
+                }
             }
 
             TextMetrics {
@@ -160,11 +169,12 @@ Item {
         JGTabButton {
             id: _logicalButton
 
+            visible: _root.extraVisible("logical")
             text: _root._nameTick, _names.display("logical", "Logical Device")
-            width: _metricIO.width + 50
+            width: visible ? _metricIO.width + 50 : 0
             checked: uiState && uiState.currentTab === "logical"
 
-            ToolTip.visible: hovered
+            ToolTip.visible: hovered && visible
             ToolTip.delay: 400
             ToolTip.text: "Logical Device"
 
@@ -177,7 +187,11 @@ Item {
             }
 
             TapHandler {
-                onDoubleTapped: _root.rename("logical", "Logical Device")
+                onDoubleTapped: {
+                    if (visible) {
+                        _root.rename("logical", "Logical Device")
+                    }
+                }
             }
 
             TextMetrics {
@@ -191,11 +205,12 @@ Item {
         JGTabButton {
             id: _oscButton
 
+            visible: _root.extraVisible("osc")
             text: _root._nameTick, _names.display("osc", "OSC")
-            width: _metricOsc.width + 50
+            width: visible ? _metricOsc.width + 50 : 0
             checked: uiState && uiState.currentTab === "osc"
 
-            ToolTip.visible: hovered
+            ToolTip.visible: hovered && visible
             ToolTip.delay: 400
             ToolTip.text: "OSC"
 
@@ -208,7 +223,11 @@ Item {
             }
 
             TapHandler {
-                onDoubleTapped: _root.rename("osc", "OSC")
+                onDoubleTapped: {
+                    if (visible) {
+                        _root.rename("osc", "OSC")
+                    }
+                }
             }
 
             TextMetrics {
