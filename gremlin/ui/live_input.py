@@ -29,6 +29,7 @@ class DeviceLiveState(QtCore.QObject):
         self._device_uuid = None
         self._kinds: list[str] = []
         self._values: list[float] = []
+        self._axis_rows: dict[int, int] = {}
         self._stamp = 0
         self._axis_dirty = False
         self._timer = QtCore.QTimer(self)
@@ -40,14 +41,18 @@ class DeviceLiveState(QtCore.QObject):
     def _get_guid(self) -> str:
         return str(self._device.device_guid) if self._device is not None else ""
 
+    def _clear(self) -> None:
+        self._device = None
+        self._device_uuid = None
+        self._kinds = []
+        self._values = []
+        self._axis_rows = {}
+        self.guidChanged.emit()
+        self._bump()
+
     def _set_guid(self, guid: str) -> None:
         if not guid or guid == "Unknown":
-            self._device = None
-            self._device_uuid = None
-            self._kinds = []
-            self._values = []
-            self.guidChanged.emit()
-            self._bump()
+            self._clear()
             return
         if self._device is not None and guid == str(self._device.device_guid):
             return
@@ -57,18 +62,26 @@ class DeviceLiveState(QtCore.QObject):
             )
             self._device_uuid = uuid.UUID(guid)
         except Exception:
-            self._device = None
-            self._device_uuid = None
-            self._kinds = []
-            self._values = []
-            self.guidChanged.emit()
-            self._bump()
+            self._clear()
             return
         self._kinds = []
         self._values = []
+        self._axis_rows = {}
         for i in range(self._device.axis_count):
             self._kinds.append("axis")
             self._values.append(0.0)
+            axis_id = int(self._device.axis_map[i].axis_index)
+            self._axis_rows[axis_id] = i
+            self._axis_rows[i] = i
+            self._axis_rows[i + 1] = i
+        lookup = getattr(self._device, "axis_lookup", None) or {}
+        for axis_id, position in lookup.items():
+            try:
+                row = int(position) - 1
+            except (TypeError, ValueError):
+                continue
+            if 0 <= row < self._device.axis_count:
+                self._axis_rows[int(axis_id)] = row
         for _ in range(self._device.button_count):
             self._kinds.append("button")
             self._values.append(0.0)
@@ -90,22 +103,52 @@ class DeviceLiveState(QtCore.QObject):
             self._axis_dirty = False
             self._bump()
 
+    def _axis_row(self, identifier: object) -> int | None:
+        try:
+            key = int(identifier)
+        except (TypeError, ValueError):
+            return None
+        if key in self._axis_rows:
+            return self._axis_rows[key]
+        if self._device is None:
+            return None
+        if 0 <= key < self._device.axis_count:
+            return key
+        return None
+
+    def _axis_value(self, event: event_handler.Event) -> float | None:
+        raw = event.value
+        if raw is None:
+            raw = getattr(event, "raw_value", None)
+        if raw is None:
+            return None
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            return None
+        if value > 1.5 or value < -1.5:
+            value = max(-1.0, min(1.0, value / 32767.0))
+        else:
+            value = max(-1.0, min(1.0, value))
+        return value
+
     def _on_event(self, event: event_handler.Event) -> None:
         if self._device is None or self._device_uuid is None:
             return
         if event.device_guid != self._device_uuid:
             return
         if event.event_type == InputType.JoystickAxis:
-            for i in range(self._device.axis_count):
-                if self._device.axis_map[i].axis_index == event.identifier:
-                    try:
-                        self._values[i] = float(event.value)
-                    except (TypeError, ValueError):
-                        return
-                    self._axis_dirty = True
-                    if not self._timer.isActive():
-                        self._timer.start()
-                    return
+            row = self._axis_row(event.identifier)
+            if row is None:
+                return
+            value = self._axis_value(event)
+            if value is None:
+                return
+            self._values[row] = value
+            self._axis_dirty = True
+            if not self._timer.isActive():
+                self._timer.start()
+            return
         if event.event_type == InputType.JoystickButton:
             row = self._device.axis_count + event.identifier - 1
             if 0 <= row < len(self._values):
