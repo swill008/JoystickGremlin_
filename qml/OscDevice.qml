@@ -87,7 +87,8 @@ Item {
                 selected: model.index === _inputList.currentIndex
                 onClicked: () => { _inputList.currentIndex = model.index }
                 onRenameRequested: {
-                    _textInput.text = description
+                    let current = _actionNames.getOnModel(_inputList.model, index)
+                    _textInput.text = current.length ? current : ""
                     _textInput.callback = (value) => {
                         _actionNames.setOnModel(_inputList.model, index, value)
                     }
