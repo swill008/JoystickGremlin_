@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, cast
 
 from PySide6 import QtCore
@@ -26,10 +27,30 @@ from gremlin.ui.device import (
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
 
+_IMPORT_LINE = re.compile(
+    r"^(?P<addr>/\S+?)(?:\s*,\s*|\s+)(?P<suffix>[A-Za-z]+)?$"
+)
+
+
+def _parse_import_line(line: str) -> tuple[str, str] | None:
+    text = line.strip()
+    if not text:
+        return None
+    match = _IMPORT_LINE.match(text)
+    if match:
+        address = match.group("addr")
+        suffix = (match.group("suffix") or "").upper()
+    elif text.startswith("/"):
+        address = text.split()[0].rstrip(",")
+        suffix = ""
+    else:
+        return None
+    if suffix in ("A", "C", "E"):
+        return address, "Axis"
+    return address, "Button"
+
 
 class OscInputIdentifier(InputIdentifier):
-    """InputIdentifier that does not query DILL for the virtual OSC device."""
-
     @QtCore.Property(str, notify=InputIdentifier.changed)
     def label(self) -> str:
         if not self.isValid:
@@ -51,8 +72,6 @@ class OscInputIdentifier(InputIdentifier):
 
 @ta.QmlElement
 class OscDeviceManagementModel(QtCore.QAbstractListModel):
-    """Model for the OSC virtual input device tab."""
-
     listenChanged = QtCore.Signal()
     listenBound = QtCore.Signal(int)
     commandCaptured = QtCore.Signal(str, str)
@@ -133,6 +152,32 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         self._sort_alpha = True
         self.beginResetModel()
         self.endResetModel()
+
+    @QtCore.Slot(str)
+    def importInputs(self, text: str) -> None:
+        created = []
+        for raw in (text or "").splitlines():
+            parsed = _parse_import_line(raw)
+            if parsed is None:
+                continue
+            address, type_str = parsed
+            if self._osc.find_address(address) is not None:
+                continue
+            try:
+                self._osc.create(InputType.to_enum(type_str), label=address)
+                created.append(address)
+            except GremlinError:
+                continue
+        if not created:
+            return
+        self.beginResetModel()
+        self.endResetModel()
+        signal.oscDeviceModified.emit()
+        try:
+            index = self._label_to_index(created[-1])
+        except ValueError:
+            index = self.rowCount() - 1
+        self.listenBound.emit(index)
 
     @QtCore.Slot()
     def listenForInput(self) -> None:
