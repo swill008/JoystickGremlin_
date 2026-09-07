@@ -205,3 +205,6 @@ class DeviceLiveState(QtCore.QObject):
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     locked = QtCore.Property(bool, fget=_get_locked, fset=_set_locked, notify=lockedChanged)
     stamp = QtCore.Property(int, fget=_get_stamp, notify=stampChanged)
+
+
+import gremlin.ui.input_pairing  # noqa: F401
