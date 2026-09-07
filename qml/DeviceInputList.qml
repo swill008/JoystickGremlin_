@@ -35,6 +35,9 @@ Item {
         target: uiState
 
         function onDeviceChanged() {
+            if (!uiState) {
+                return
+            }
             let tmp = uiState.currentInputIndex
             _inputList.currentIndex = -1
             _inputList.currentIndex = tmp
@@ -79,18 +82,17 @@ Item {
             height: 10
         }
 
-        Component.onCompleted: () => {
+        function syncSelection() {
+            if (!uiState || !device) {
+                return
+            }
             uiState.setCurrentInput(
                 device.inputIdentifier(currentIndex),
                 currentIndex
             )
         }
 
-        onCurrentIndexChanged: () => {
-            uiState.setCurrentInput(
-                device.inputIdentifier(currentIndex),
-                currentIndex
-            )
-        }
+        Component.onCompleted: syncSelection()
+        onCurrentIndexChanged: syncSelection()
     }
 }

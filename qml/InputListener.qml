@@ -27,7 +27,9 @@ Item {
         id: _listener
 
         onListeningTerminated: function(inputs) {
-            _root.callback(inputs)
+            if (_root.callback) {
+                _root.callback(inputs)
+            }
         }
     }
 
@@ -48,7 +50,9 @@ Item {
             }
 
             onEntered: function() {
-                _listener.enabled = false
+                if (_listener) {
+                    _listener.enabled = false
+                }
                 _popup.close()
             }
         }
@@ -64,10 +68,13 @@ Item {
             DSM.SignalTransition {
                 targetState: disabled
                 signal: _listener.listeningTerminated
+                enabled: _listener
             }
 
             onEntered: function() {
-                _listener.enabled = true
+                if (_listener) {
+                    _listener.enabled = true
+                }
             }
         }
     }
@@ -90,8 +97,6 @@ Item {
 
             ToolTip {
                 text: _name.text
-                // Set an upper width of the tooltip to force word wrap on
-                // long description texts.
                 width: contentWidth > 500 ? 500 : contentWidth + 20
                 visible: _hoverHandler.hovered
                 delay: 500
@@ -116,7 +121,6 @@ Item {
         focus: true
         closePolicy: Popup.NoAutoClose
 
-        // Overlay display
         ColumnLayout {
             id: _layout
             anchors.fill: parent
@@ -126,7 +130,7 @@ Item {
                     text: "Waiting for user input. Hold ESC to abort."
                 }
                 Label {
-                    text: _listener.currentInput
+                    text: _listener ? _listener.currentInput : ""
                 }
             }
         }
