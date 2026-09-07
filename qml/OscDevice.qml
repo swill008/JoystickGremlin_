@@ -10,7 +10,6 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 
-// OSC virtual inputs. Same list + Add pattern as Logical Device.
 Item {
     id: _root
 
@@ -29,6 +28,36 @@ Item {
         onAccepted: (value) => {
             callback(value)
             visible = false
+        }
+    }
+
+    DismissibleDialog {
+        id: _clearDialog
+
+        titleText: "Clear OSC inputs"
+        messageText: "This will remove every OSC input in the current profile."
+        confirmText: "Clear"
+        cancelText: "Cancel"
+        destructive: true
+
+        onConfirmed: _inputList.model.clearAllInputs()
+    }
+
+    DismissibleDialog {
+        id: _importDialog
+
+        titleText: "Import"
+        messageText: "OSC Import is not wired yet."
+        confirmText: "OK"
+    }
+
+    OscAddDialog {
+        id: _addDialog
+
+        deviceModel: _inputList.model
+
+        onAccepted: (cmd, mode) => {
+            _inputList.model.createMappedInput(mode, cmd)
         }
     }
 
@@ -101,42 +130,32 @@ Item {
         }
 
         RowLayout {
-            Layout.minimumWidth: 100
-            Layout.preferredHeight: 50
-
-            ComboBox {
-                id: _input_type
-
-                Layout.fillWidth: true
-                Layout.leftMargin: 5
-
-                model: ["Button", "Axis"]
-            }
+            Layout.fillWidth: true
+            Layout.preferredHeight: 44
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
 
             Button {
-                Layout.preferredHeight: _input_type.height
-
-                text: _inputList.model.listening ? "Listening…" : "Listen"
-
-                onClicked: () => {
-                    if (_inputList.model.listening) {
-                        _inputList.model.cancelListen()
-                    } else {
-                        _inputList.model.listenForInput()
-                    }
-                }
+                text: "Clear"
+                onClicked: _clearDialog.open()
             }
 
+            Item { Layout.fillWidth: true }
+
             Button {
-                Layout.preferredHeight: _input_type.height
-                Layout.rightMargin: 5
-
-                text: bsi.icons.add
-                font.family: "bootstrap-icons"
-
-                onClicked: () => {
-                    _inputList.model.createInput(_input_type.currentValue)
+                text: "Sort"
+                onClicked: _inputList.model.sortInputs()
+            }
+            Button {
+                text: "Add"
+                onClicked: {
+                    _addDialog.resetFields()
+                    _addDialog.open()
                 }
+            }
+            Button {
+                text: "Import"
+                onClicked: _importDialog.open()
             }
         }
     }

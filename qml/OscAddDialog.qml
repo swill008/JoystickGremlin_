@@ -1,0 +1,193 @@
+// -*- coding: utf-8; -*-
+// SPDX-License-Identifier: GPL-3.0-only
+
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+import Gremlin.Device
+import Gremlin.Style
+
+Popup {
+    id: _root
+
+    property var deviceModel: null
+    property string lastParameters: ""
+    property string lastSource: ""
+
+    signal accepted(string cmd, string mode)
+
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    modal: true
+    focus: true
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    padding: 16
+    width: 720
+
+    background: Rectangle {
+        color: Style.background
+        border.color: Style.accent
+        border.width: 1
+        radius: 4
+    }
+
+    function resetFields() {
+        _cmd.text = ""
+        lastParameters = ""
+        lastSource = ""
+        _modeButton.checked = true
+        _messageOnly.checked = true
+        _triggerOn.checked = false
+        _delay.text = "250"
+    }
+
+    function helpText() {
+        if (_modeAxis.checked || _modeChange.checked) {
+            return "The first parameter is used as an axis value.\nValues are limited to the range -1.0 to 1.0."
+        }
+        return "The input will trigger a press action when the first parameter value is not zero (0).\nA value of zero (0) will trigger a release action.\nUse this mode to trigger button presses from OSC messages."
+    }
+
+    function footerText() {
+        if (_messageData.checked) {
+            return "The OSC message and its data are used as the input."
+        }
+        return "The OSC message is the primary input (data ignored)"
+    }
+
+    function selectedMode() {
+        if (_modeAxis.checked || _modeChange.checked) {
+            return "Axis"
+        }
+        return "Button"
+    }
+
+    Connections {
+        target: _root.deviceModel
+
+        function onCommandCaptured(address, parameters) {
+            _cmd.text = address
+            lastParameters = parameters
+            lastSource = address
+        }
+    }
+
+    contentItem: ColumnLayout {
+        spacing: 10
+
+        Label {
+            text: "OSC Input Mapper"
+            font.bold: true
+            font.pixelSize: 16
+        }
+
+        Label { text: "OSC message:" }
+
+        RowLayout {
+            Label { text: "Cmd:"; Layout.preferredWidth: 70 }
+            TextField {
+                id: _cmd
+                Layout.fillWidth: true
+                placeholderText: "/button/1"
+            }
+        }
+
+        Label { text: "Parameters:  " + (_root.lastParameters || "") }
+        Label { text: "Source:  " + (_root.lastSource || "") }
+
+        RowLayout {
+            spacing: 16
+            Label { text: "Action mode:" }
+            RadioButton { id: _modeChange; text: "Change" }
+            RadioButton { id: _modeButton; text: "Button"; checked: true }
+            RadioButton { id: _modeAxis; text: "Axis" }
+            Item { Layout.fillWidth: true }
+            RadioButton { id: _messageOnly; text: "Message only"; checked: true }
+            RadioButton { id: _messageData; text: "Message + data" }
+        }
+
+        ButtonGroup { buttons: [_modeChange, _modeButton, _modeAxis] }
+        ButtonGroup { buttons: [_messageOnly, _messageData] }
+
+        RowLayout {
+            spacing: 6
+            CheckBox { id: _triggerOn; text: "Trigger on message" }
+            TextField {
+                id: _delay
+                text: "250"
+                implicitWidth: 60
+                enabled: _triggerOn.checked
+            }
+            Repeater {
+                model: [
+                    {"label": "1/10s", "ms": "100"},
+                    {"label": "1/4s", "ms": "250"},
+                    {"label": "1/2s", "ms": "500"},
+                    {"label": "3/4s", "ms": "750"},
+                    {"label": "1s", "ms": "1000"}
+                ]
+                Button {
+                    text: modelData.label
+                    enabled: _triggerOn.checked
+                    onClicked: _delay.text = modelData.ms
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: _help.implicitHeight + 16
+            color: "#8a7a2a"
+            border.color: "#c4b44a"
+
+            Label {
+                id: _help
+                anchors.fill: parent
+                anchors.margins: 8
+                wrapMode: Text.WordWrap
+                text: _root.helpText()
+                color: "#1b1b1b"
+            }
+        }
+
+        Label { text: _root.footerText() }
+
+        Item { Layout.preferredHeight: 8 }
+
+        RowLayout {
+            Button {
+                text: deviceModel && deviceModel.listening ? "Listening…" : "Listen"
+                onClicked: {
+                    if (!deviceModel) {
+                        return
+                    }
+                    if (deviceModel.listening) {
+                        deviceModel.cancelListen()
+                    } else {
+                        deviceModel.listenForCommand()
+                    }
+                }
+            }
+            Item { Layout.fillWidth: true }
+            Button {
+                text: "Ok"
+                enabled: _cmd.text.trim().length > 0
+                onClicked: {
+                    _root.accepted(_cmd.text.trim(), _root.selectedMode())
+                    _root.close()
+                }
+            }
+            Button {
+                text: "Cancel"
+                onClicked: _root.close()
+            }
+        }
+    }
+
+    onClosed: {
+        if (deviceModel && deviceModel.listening) {
+            deviceModel.cancelListen()
+        }
+    }
+}
