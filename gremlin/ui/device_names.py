@@ -6,6 +6,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import gremlin.action_label  # noqa: F401
+import gremlin.ui.osc_settings_info  # noqa: F401
 import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
