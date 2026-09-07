@@ -12,7 +12,6 @@ import gremlin.ui.vjoy_status  # noqa: F401
 import gremlin.ui.live_input  # noqa: F401
 import gremlin.ui.highlight_option  # noqa: F401
 import gremlin.ui.window_placement  # noqa: F401
-import gremlin.ui.input_pairing  # noqa: F401
 import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
