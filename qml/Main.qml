@@ -260,6 +260,12 @@ ApplicationWindow {
                 }
             }
             MenuItem {
+                text: qsTr("Device Viewer")
+                onTriggered: () => {
+                    Helpers.createComponent("DialogDeviceViewer.qml")
+                }
+            }
+            MenuItem {
                 text: qsTr("Calibration")
                 onTriggered: () => {
                     Helpers.createComponent("DialogCalibration.qml")
@@ -348,6 +354,16 @@ ApplicationWindow {
 
                 onClicked: () => {
                     Helpers.createComponent("DialogInputViewer.qml")
+                }
+            }
+
+            JGToolButton {
+                text: "\uF4CA"
+                tooltip: qsTr("Open Device Viewer")
+                caption: "Device"
+
+                onClicked: () => {
+                    Helpers.createComponent("DialogDeviceViewer.qml")
                 }
             }
 
