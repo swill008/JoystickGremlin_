@@ -46,6 +46,9 @@ Item {
     }
 
     function rename(key, fallback) {
+        if (!_names) {
+            return
+        }
         _renameDialog.nameKey = key
         _renameDialog.fallback = fallback
         _renameDialog.text = _names.display(key, fallback)
@@ -69,18 +72,27 @@ Item {
         if (!_root.isVjoyTab(deviceName, vjoyId)) {
             return true
         }
-        return _root._vjoyTick >= 0 && _vjoy.isPinned(Number(vjoyId))
+        return _vjoy && _vjoy.isPinned(Number(vjoyId))
     }
 
     function extraVisible(key) {
-        return _root._vjoyTick >= 0 && _vjoy.isExtraPinned(key)
+        return !_vjoy || _vjoy.isExtraPinned(key)
+    }
+
+    function displayName(key, fallback) {
+        if (!_names) {
+            return fallback
+        }
+        return _root._nameTick, _names.display(key, fallback)
     }
 
     Component.onCompleted: {
         if (deviceListModel) {
             deviceListModel.deviceType = "all"
         }
-        _vjoy.refresh()
+        if (_vjoy) {
+            _vjoy.refresh()
+        }
     }
 
     DeviceTabBar {
@@ -96,7 +108,7 @@ Item {
                 id: _button
 
                 visible: _root.showDeviceTab(name, vjoy_id)
-                text: _root._nameTick, _names.display(model.guid, name)
+                text: _root.displayName(model.guid, name)
                 width: visible ? _metric.width + 50 : 0
                 checked: uiState && uiState.currentTab === "physical" &&
                     uiState.currentDevice === model.guid
@@ -134,7 +146,7 @@ Item {
             id: _keyboardButton
 
             visible: _root.extraVisible("keyboard")
-            text: _root._nameTick, _names.display("keyboard", "Keyboard")
+            text: _root.displayName("keyboard", "Keyboard")
             width: visible ? _metricKeyboard.width + 50 : 0
             checked: uiState && uiState.currentTab === "keyboard"
 
@@ -170,7 +182,7 @@ Item {
             id: _logicalButton
 
             visible: _root.extraVisible("logical")
-            text: _root._nameTick, _names.display("logical", "Logical Device")
+            text: _root.displayName("logical", "Logical Device")
             width: visible ? _metricIO.width + 50 : 0
             checked: uiState && uiState.currentTab === "logical"
 
@@ -206,7 +218,7 @@ Item {
             id: _oscButton
 
             visible: _root.extraVisible("osc")
-            text: _root._nameTick, _names.display("osc", "OSC")
+            text: _root.displayName("osc", "OSC")
             width: visible ? _metricOsc.width + 50 : 0
             checked: uiState && uiState.currentTab === "osc"
 
