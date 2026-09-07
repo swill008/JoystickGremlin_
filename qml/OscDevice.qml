@@ -43,12 +43,12 @@ Item {
         onConfirmed: _inputList.model.clearAllInputs()
     }
 
-    DismissibleDialog {
+    OscImportDialog {
         id: _importDialog
 
-        titleText: "Import"
-        messageText: "OSC Import is not wired yet."
-        confirmText: "OK"
+        onAccepted: (text) => {
+            _inputList.model.importInputs(text)
+        }
     }
 
     OscAddDialog {
@@ -155,7 +155,10 @@ Item {
             }
             Button {
                 text: "Import"
-                onClicked: _importDialog.open()
+                onClicked: {
+                    _importDialog.resetFields()
+                    _importDialog.open()
+                }
             }
         }
     }
