@@ -27,6 +27,30 @@ def _is_vjoy_name(name: str) -> bool:
     return str(name or "").lower().startswith("vjoy")
 
 
+def _connected_keys() -> set[str]:
+    keys: set[str] = set()
+    for getter in (
+        device_initialization.joystick_devices,
+        device_initialization.physical_devices,
+        device_initialization.input_devices,
+    ):
+        try:
+            devices = getter()
+        except Exception:
+            continue
+        for device in devices or []:
+            key = _norm(getattr(device, "device_guid", ""))
+            if key:
+                keys.add(key)
+    for guid in (
+        dill.UUID_Keyboard,
+        dill.UUID_LogicalDevice,
+        OSC_GUID,
+    ):
+        keys.add(_norm(guid))
+    return keys
+
+
 @ta.QmlElement
 class ViewerDeviceModel(QtCore.QAbstractListModel):
     roles = {
@@ -48,6 +72,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
         self.beginResetModel()
         self._rows = []
         seen: set[str] = set()
+        connected = _connected_keys()
         profile = shared_state.current_profile
         if profile is not None:
             for device_id, items in (profile.inputs or {}).items():
@@ -55,6 +80,8 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
                     continue
                 guid = str(device_id)
                 key = _norm(guid)
+                if key not in connected:
+                    continue
                 targets = sorted(
                     {
                         vid
@@ -81,7 +108,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
             if _is_vjoy_name(name):
                 continue
             key = _norm(guid)
-            if key in seen:
+            if not key or key not in connected or key in seen:
                 continue
             self._rows.append(
                 {
