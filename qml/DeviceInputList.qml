@@ -68,7 +68,8 @@ Item {
             onClicked: () => { _inputList.currentIndex = model.index }
             onRenameRequested: {
                 _renameDialog.rowIndex = model.index
-                _renameDialog.text = description
+                let current = _actionNames.getOnModel(device, model.index)
+                _renameDialog.text = current.length ? current : ""
                 _renameDialog.visible = true
             }
         }

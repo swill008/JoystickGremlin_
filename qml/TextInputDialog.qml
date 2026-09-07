@@ -20,21 +20,35 @@ Window {
 
     signal accepted(string value)
     property string text : "New text"
+    property string lastAccepted: ""
     property var validator: function(value) { return true }
     property bool _clearedOnClick: false
+    property bool _committed: false
 
     title: "Text Input Field"
 
+    function seedText() {
+        if (_root.text && _root.text.length > 0) {
+            return _root.text
+        }
+        return lastAccepted
+    }
+
     onVisibleChanged: {
         if (visible) {
+            _committed = false
             _clearedOnClick = false
-            _input.text = _root.text
+            _input.text = seedText()
+        } else if (!_committed) {
+            lastAccepted = ""
         }
     }
 
     onTextChanged: {
         _clearedOnClick = false
-        _input.text = _root.text
+        if (visible) {
+            _input.text = seedText()
+        }
     }
 
     RowLayout {
@@ -45,8 +59,6 @@ Window {
 
             Layout.fillWidth: true
             Layout.leftMargin: 5
-
-            text: _root.text
 
             TapHandler {
                 onTapped: {
@@ -72,7 +84,11 @@ Window {
 
             text: "Ok"
 
-            onClicked: () => { _root.accepted(_input.text) }
+            onClicked: () => {
+                _root.lastAccepted = _input.text
+                _root._committed = true
+                _root.accepted(_input.text)
+            }
         }
     }
 
