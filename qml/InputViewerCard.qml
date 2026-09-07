@@ -77,6 +77,26 @@ ColumnLayout {
                     text: "\u2192  " + pairLabel
                     color: Style.accent
                 }
+
+                Switch {
+                    id: _temporal
+                    text: "Axes - Temporal"
+                }
+            }
+
+            Loader {
+                id: _temporalLoader
+                Layout.fillWidth: true
+                Layout.preferredHeight: _temporal.checked ? 220 : 0
+                active: _temporal.checked
+                visible: _temporal.checked
+                source: Qt.resolvedUrl("AxesStateSeries.qml")
+                onLoaded: {
+                    if (item) {
+                        item.deviceGuid = _root.deviceGuid
+                        item.title = _root.title
+                    }
+                }
             }
 
             JGText {
