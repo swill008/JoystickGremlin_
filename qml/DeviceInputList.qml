@@ -15,6 +15,9 @@ Item {
     id: _root
 
     property Device device
+    readonly property bool editorLocked: backend && backend.gremlinActive
+    enabled: !editorLocked
+    opacity: editorLocked ? 0.55 : 1.0
 
     DeviceLiveState {
         id: _liveState
@@ -36,6 +39,9 @@ Item {
         property int rowIndex: -1
 
         onAccepted: (value) => {
+            if (editorLocked) {
+                return
+            }
             _actionNames.setOnModel(device, rowIndex, value)
             visible = false
         }
@@ -45,7 +51,7 @@ Item {
         target: uiState
 
         function onDeviceChanged() {
-            if (!uiState) {
+            if (!uiState || editorLocked) {
                 return
             }
             let tmp = uiState.currentInputIndex
@@ -62,7 +68,7 @@ Item {
         target: signal
 
         function onSetInputIndex(index) {
-            if (index < 0) {
+            if (editorLocked || index < 0) {
                 return
             }
             _inputList.currentIndex = index
@@ -98,11 +104,19 @@ Item {
         delegate: InputButton {
             width: _inputList.width - 20
             height: 50
+            enabled: !editorLocked
 
-            liveState: _liveState
+            liveState: editorLocked ? null : _liveState
             selected: model.index === _inputList.currentIndex
-            onClicked: () => { _inputList.currentIndex = model.index }
+            onClicked: () => {
+                if (!editorLocked) {
+                    _inputList.currentIndex = model.index
+                }
+            }
             onRenameRequested: {
+                if (editorLocked) {
+                    return
+                }
                 _renameDialog.rowIndex = model.index
                 let current = _actionNames.getOnModel(device, model.index)
                 _renameDialog.text = current.length ? current : ""
@@ -116,7 +130,7 @@ Item {
         }
 
         function syncSelection() {
-            if (!uiState || !device || currentIndex < 0) {
+            if (!uiState || !device || currentIndex < 0 || editorLocked) {
                 return
             }
             var ident = device.inputIdentifier(currentIndex)
