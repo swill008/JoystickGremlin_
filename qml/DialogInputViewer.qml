@@ -65,8 +65,7 @@ Window {
                     required property bool mapped
 
                     Layout.fillWidth: true
-                    implicitHeight: item ? item.implicitHeight : 0
-                    Layout.preferredHeight: implicitHeight
+                    Layout.preferredHeight: item ? item.implicitHeight : 0
                     sourceComponent: mapped ? _pairComp : _unmappedComp
 
                     property string _guid: guid
