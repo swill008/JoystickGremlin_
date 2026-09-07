@@ -61,22 +61,13 @@ Button {
         let spacing = 30
         let textPadding = 10
 
-        // If the description is empty, we can use the entire width for the
-        // action information.
         if (text.length == 0) {
             actionWidth = Math.min(_control.width, imageWidth)
         }
-
-        // Otherwise, if the action display style is just the count we reserve
-        // space for the number and give the rest to the label.
         else if (actionSequenceDisplayMode === "Count") {
             descriptionWidth = _control.width - countWidth - spacing
             actionWidth = countWidth
         }
-
-        // Finally, if we display an image representing the action, we have to
-        // figure out if everything can fit together, or if both have to be
-        // truncated.
         else {
             _textMetrics.text = text
             let textWidth = _textMetrics.width + textPadding
@@ -153,7 +144,7 @@ Button {
 
             sourceComponent: Image {
                 source: "image://action_summary/" + actionSequenceDescriptor
-                    + "?r=" + uiState.themeRevision
+                    + "?r=" + (uiState ? uiState.themeRevision : 0)
                 asynchronous: false
                 cache: false
                 clip: true

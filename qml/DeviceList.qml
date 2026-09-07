@@ -41,10 +41,13 @@ Item {
 
                 text: name
                 width: _metric.width + 50
-                checked: uiState.currentTab === "physical" &&
+                checked: uiState && uiState.currentTab === "physical" &&
                     uiState.currentDevice === model.guid
 
                 onClicked: () => {
+                    if (!uiState) {
+                        return
+                    }
                     uiState.setCurrentTab("physical")
                     uiState.setCurrentDevice(model.guid)
                 }
@@ -58,15 +61,17 @@ Item {
             }
         }
 
-        // Keyboard and logical device buttons.
         JGTabButton {
             id: _keyboardButton
 
             text: "Keyboard"
             width: _metricKeyboard.width + 50
-            checked: uiState.currentTab === "keyboard"
+            checked: uiState && uiState.currentTab === "keyboard"
 
             onClicked: () => {
+                if (!uiState) {
+                    return
+                }
                 uiState.setCurrentTab("keyboard")
                 uiState.setCurrentDevice("6f1d2b61-d5a0-11cf-bfc7-444553540000")
             }
@@ -84,9 +89,12 @@ Item {
 
             text: "Logical Device"
             width: _metricIO.width + 50
-            checked: uiState.currentTab === "logical"
+            checked: uiState && uiState.currentTab === "logical"
 
             onClicked: () => {
+                if (!uiState) {
+                    return
+                }
                 uiState.setCurrentTab("logical")
                 uiState.setCurrentDevice("f0af472f-8e17-493b-a1eb-7333ee8543f2")
             }
@@ -104,9 +112,12 @@ Item {
 
             text: "OSC"
             width: _metricOsc.width + 50
-            checked: uiState.currentTab === "osc"
+            checked: uiState && uiState.currentTab === "osc"
 
             onClicked: () => {
+                if (!uiState) {
+                    return
+                }
                 uiState.setCurrentTab("osc")
                 uiState.setCurrentDevice("a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70")
             }
