@@ -344,6 +344,7 @@ ApplicationWindow {
             JGToolButton {
                 text: "\uF3F2"
                 tooltip: qsTr("Open vJoy Input Viewer")
+                caption: "vJoy"
 
                 onClicked: () => {
                     Helpers.createComponent("DialogInputViewer.qml")
