@@ -17,6 +17,7 @@ Window {
 
     color: Style.background
     Universal.theme: Style.theme
+    flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
 
     signal accepted(string value)
     property string text : "New text"
@@ -39,8 +40,19 @@ Window {
             _committed = false
             _clearedOnClick = false
             _input.text = seedText()
+            Qt.callLater(function() {
+                if (_root.visible) {
+                    _input.forceActiveFocus()
+                }
+            })
         } else if (!_committed) {
             lastAccepted = ""
+        }
+    }
+
+    onActiveChanged: {
+        if (visible && !active && !_committed) {
+            visible = false
         }
     }
 
@@ -59,6 +71,7 @@ Window {
 
             Layout.fillWidth: true
             Layout.leftMargin: 5
+            focus: true
 
             TapHandler {
                 onTapped: {
@@ -69,6 +82,13 @@ Window {
                     }
                 }
             }
+
+            Keys.onEscapePressed: {
+                _root._committed = false
+                _root.visible = false
+            }
+            Keys.onReturnPressed: _button.click()
+            Keys.onEnterPressed: _button.click()
 
             onTextEdited: () => {
                 let isValid = _root.validator(text)
