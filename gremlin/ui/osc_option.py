@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from PySide6 import QtCore
 
+import gremlin.updates  # noqa: F401
 from gremlin.config import Configuration
 from gremlin.osc import (
     DEFAULT_OUTPUT_PORT,
@@ -71,7 +72,7 @@ class OscAddressModel(QtCore.QAbstractListModel, BaseMetaConfigOptionWidget):
         self.endResetModel()
         self.currentIndexChanged.emit()
 
-    def _normalize_host(self, host: str) -> str:
+    def _normalize_host(self, host: str) -> None:
         return str(host or "").strip()
 
     def _commit_host(self, host: str) -> None:
