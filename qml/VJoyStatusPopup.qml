@@ -35,14 +35,9 @@ Popup {
         width: parent.width
 
         Label {
-            text: "vJoy devices"
+            text: "Device tabs"
             font.bold: true
             font.pixelSize: 16
-        }
-
-        Label {
-            text: _status.activeCount + " of 16 installed and activated"
-            opacity: 0.8
         }
 
         Label {
@@ -51,6 +46,26 @@ Popup {
             Layout.fillWidth: true
             opacity: 0.75
             font.pixelSize: 12
+        }
+
+        Repeater {
+            model: [
+                {"key": "keyboard", "label": "Keyboard"},
+                {"key": "logical", "label": "Logical Device"},
+                {"key": "osc", "label": "OSC"}
+            ]
+
+            CheckBox {
+                required property var modelData
+                text: modelData.label
+                checked: _status.pinStamp >= 0 && _status.isExtraPinned(modelData.key)
+                onToggled: _status.setExtraPinned(modelData.key, checked)
+            }
+        }
+
+        Label {
+            text: "vJoy  ·  " + _status.activeCount + " of 16 installed and activated"
+            font.bold: true
         }
 
         GridLayout {
