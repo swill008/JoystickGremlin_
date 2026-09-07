@@ -17,10 +17,11 @@ assert QML_IMPORT_MAJOR_VERSION == 1
 
 _DEBOUNCE_S = 0.3
 
-_orig_listen_once = OscRuntime.listen_once
-_orig_cancel = OscRuntime.cancel_listen
-_orig_stop = OscRuntime.stop
-_orig_on_main = OscRuntime._on_main
+_cls = OscRuntime.klass
+_orig_listen_once = _cls.listen_once
+_orig_cancel = _cls.cancel_listen
+_orig_stop = _cls.stop
+_orig_on_main = _cls._on_main
 _orig_learned = OscDeviceManagementModel._on_learned
 _orig_cancel_model = OscDeviceManagementModel.cancelListen
 _orig_listen_cmd = OscDeviceManagementModel.listenForCommand
@@ -90,11 +91,11 @@ def model_on_learned(self, address: str, args: object) -> None:
     _orig_learned(self, address, args)
 
 
-OscRuntime.listen_once = listen_once
-OscRuntime.listen_bulk = listen_bulk
-OscRuntime.cancel_listen = cancel_listen
-OscRuntime.stop = stop
-OscRuntime._on_main = _on_main
+_cls.listen_once = listen_once
+_cls.listen_bulk = listen_bulk
+_cls.cancel_listen = cancel_listen
+_cls.stop = stop
+_cls._on_main = _on_main
 OscDeviceManagementModel.listenForCommand = model_listen_for_command
 OscDeviceManagementModel.cancelListen = model_cancel_listen
 OscDeviceManagementModel._on_learned = model_on_learned
