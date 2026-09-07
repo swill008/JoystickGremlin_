@@ -56,14 +56,24 @@ ColumnLayout {
                 title: name
                 explanation: description
 
-                Switch {
-                    Layout.alignment: Qt.AlignRight
+                RowLayout {
+                    spacing: 8
 
-                    checked: model.value
+                    OptionHighlightSpeed {
+                        visible: name === "Input highlighting"
+                        Layout.preferredWidth: visible ? 252 : 0
+                        Layout.minimumWidth: visible ? 180 : 0
+                    }
 
-                    text: checked ? "On" : "Off"
+                    Switch {
+                        Layout.alignment: Qt.AlignRight
 
-                    onToggled: () => { model.value = checked }
+                        checked: model.value
+
+                        text: checked ? "On" : "Off"
+
+                        onToggled: () => { model.value = checked }
+                    }
                 }
             }
         }
