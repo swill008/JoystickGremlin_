@@ -15,11 +15,17 @@ Item {
 
     property InputItemModel inputItemModel
     property int inputIndex
+    readonly property bool editorLocked: backend && backend.gremlinActive
+    enabled: !editorLocked
+    opacity: editorLocked ? 0.55 : 1.0
 
     Connections {
         target: uiState
 
         function onInputChanged() {
+            if (!backend || !uiState) {
+                return
+            }
             _root.inputItemModel = backend.getInputItem(
                 uiState.currentInput,
                 uiState.currentInputIndex
@@ -31,6 +37,9 @@ Item {
         target: signal
 
         function onReloadCurrentInputItem() {
+            if (!backend || !uiState) {
+                return
+            }
             _root.inputItemModel = backend.getInputItem(
                 uiState.currentInput,
                 uiState.currentInputIndex
@@ -57,6 +66,7 @@ Item {
             Layout.fillHeight: true
             Layout.fillWidth: true
             scrollbarAlwaysVisible: true
+            enabled: !editorLocked
 
             model: _root.inputItemModel
             delegate: _entryDelegate
@@ -79,6 +89,7 @@ Item {
                     id: _binding
 
                     implicitWidth: view.width
+                    enabled: !editorLocked
 
                     inputBinding: modelData
                     inputItemModel: _root.inputItemModel
@@ -96,10 +107,14 @@ Item {
 
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
+                enabled: !editorLocked
 
                 text: "New Action Sequence"
 
                 onClicked: {
+                    if (editorLocked) {
+                        return
+                    }
                     if (!_root.inputItemModel) {
                         _selectInputDialog.open()
                         return
