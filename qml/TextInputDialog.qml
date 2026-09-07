@@ -24,6 +24,7 @@ Popup {
     property string text : "New text"
     property string lastAccepted: ""
     property var validator: function(value) { return true }
+    property bool clearOnClick: true
     property bool _clearedOnClick: false
     property bool _committed: false
 
@@ -46,6 +47,9 @@ Popup {
         _clearedOnClick = false
         _input.text = seedText()
         _input.forceActiveFocus()
+        if (!clearOnClick) {
+            _input.selectAll()
+        }
     }
 
     onTextChanged: {
@@ -66,7 +70,7 @@ Popup {
 
             TapHandler {
                 onTapped: {
-                    if (!_root._clearedOnClick) {
+                    if (_root.clearOnClick && !_root._clearedOnClick) {
                         _input.text = ""
                         _root._clearedOnClick = true
                         _input.forceActiveFocus()
