@@ -202,7 +202,7 @@ ColumnLayout {
                     width: parent.width - 16
                     x: 8
                     y: 8
-                    spacing: 8
+                    spacing: 10
 
                     Repeater {
                         model: _buttons
