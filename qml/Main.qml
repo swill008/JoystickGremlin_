@@ -254,7 +254,7 @@ ApplicationWindow {
                 }
             }
             MenuItem {
-                text: qsTr("vJoy Input Viewer")
+                text: qsTr("vJoy Pairing-Viewer")
                 onTriggered: () => {
                     Helpers.createComponent("DialogInputViewer.qml")
                 }
@@ -349,8 +349,8 @@ ApplicationWindow {
 
             JGToolButton {
                 text: "\uF3F2"
-                tooltip: qsTr("Open vJoy Input Viewer")
-                caption: "vJoy"
+                tooltip: qsTr("Open vJoy Pairing-Viewer")
+                caption: "vJoy Pairing"
 
                 onClicked: () => {
                     Helpers.createComponent("DialogInputViewer.qml")
