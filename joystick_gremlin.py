@@ -164,10 +164,11 @@ def _command_line_process_ids() -> set[int]:
                 "powershell",
                 "-NoProfile",
                 "-Command",
-                "Get-CimInstance Win32_Process | "
-                "Where-Object { $_.CommandLine -and "
-                "($_.CommandLine -like '*joystick_gremlin*') } | "
-                "ForEach-Object { $_.ProcessId }",
+                "Get-CimInstance Win32_Process | Where-Object {"
+                " $_.Name -eq 'joystick_gremlin.exe' -or "
+                "(($_.Name -eq 'python.exe' -or $_.Name -eq 'pythonw.exe') -and "
+                "$_.CommandLine -and ($_.CommandLine -match 'joystick_gremlin\\.py'))"
+                "} | ForEach-Object { $_.ProcessId }",
             ],
             capture_output=True,
             text=True,
@@ -219,7 +220,7 @@ def _this_process_tree() -> set[int]:
 
         kernel32 = ctypes.windll.kernel32
         snapshot = kernel32.CreateToolhelp32Snapshot(2, 0)
-        if snapshot == ctypes.c_void_p(-1).value:
+        if snapshot in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
             return tree
         entry = PROCESSENTRY32()
         entry.dwSize = ctypes.sizeof(PROCESSENTRY32)
@@ -265,7 +266,7 @@ def _terminate_other_gremlin(pids: list[int]) -> None:
             continue
         try:
             subprocess.run(
-                ["taskkill", "/PID", str(pid), "/F", "/T"],
+                ["taskkill", "/PID", str(pid), "/F"],
                 capture_output=True,
                 timeout=3,
                 creationflags=0x08000000,
@@ -297,16 +298,20 @@ def _confirm_second_instance(
         f"{extra}{hung_hint}\n\n"
         "Only one copy can own vJoy.\n\n"
         "Yes = Close the other process(es) and start this copy.\n"
-        "No = Start this copy anyway. The other process(es) stay running.\n"
-        "         vJoy mapping in this copy may not respond."
+        "No = Start this copy anyway. vJoy mapping may not respond.\n"
+        "Cancel = Do not start this copy."
     )
     result = ctypes.windll.user32.MessageBoxW(
         None,
         text,
         "Joystick Gremlin",
-        0x34,
+        0x33,
     )
-    return "close_others" if result == 6 else "continue"
+    if result == 6:
+        return "close_others"
+    if result == 7:
+        return "continue"
+    return "quit"
 
 
 def acquire_instance_lock() -> QtCore.QLockFile | None:
@@ -645,6 +650,8 @@ def main() -> int:
     pids = _other_gremlin_pids()
     if lock is None or windows or pids:
         choice = _confirm_second_instance(lock is None, windows, pids)
+        if choice == "quit":
+            return 0
         if choice == "close_others":
             _terminate_other_gremlin(pids)
             lock = acquire_instance_lock()
