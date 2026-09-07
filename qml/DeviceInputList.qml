@@ -86,10 +86,11 @@ Item {
             if (!uiState || !device) {
                 return
             }
-            uiState.setCurrentInput(
-                device.inputIdentifier(currentIndex),
-                currentIndex
-            )
+            var ident = device.inputIdentifier(currentIndex)
+            if (!ident) {
+                return
+            }
+            uiState.setCurrentInput(ident, currentIndex)
         }
 
         Component.onCompleted: syncSelection()
