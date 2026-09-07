@@ -26,12 +26,14 @@ class DeviceLiveState(QtCore.QObject):
 
     guidChanged = QtCore.Signal()
     stampChanged = QtCore.Signal()
+    lockedChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._device = None
         self._device_uuid = None
         self._guid = ""
+        self._locked = False
         self._kinds: list[str] = []
         self._values: list[float] = []
         self._axis_rows: dict[int, int] = {}
@@ -45,6 +47,16 @@ class DeviceLiveState(QtCore.QObject):
 
     def _get_guid(self) -> str:
         return self._guid
+
+    def _get_locked(self) -> bool:
+        return self._locked or shared_state.runtime_active()
+
+    def _set_locked(self, value: bool) -> None:
+        flag = bool(value)
+        if flag == self._locked:
+            return
+        self._locked = flag
+        self.lockedChanged.emit()
 
     def _clear(self) -> None:
         self._device = None
@@ -108,7 +120,7 @@ class DeviceLiveState(QtCore.QObject):
         self.stampChanged.emit()
 
     def _flush_axes(self) -> None:
-        if shared_state.runtime_active():
+        if self._get_locked():
             self._axis_dirty = False
             return
         if self._axis_dirty:
@@ -139,7 +151,7 @@ class DeviceLiveState(QtCore.QObject):
         return value
 
     def _on_event(self, event: event_handler.Event) -> None:
-        if shared_state.runtime_active():
+        if self._get_locked():
             return
         if self._device is None or self._device_uuid is None:
             return
@@ -191,4 +203,5 @@ class DeviceLiveState(QtCore.QObject):
         return 0.0
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
+    locked = QtCore.Property(bool, fget=_get_locked, fset=_set_locked, notify=lockedChanged)
     stamp = QtCore.Property(int, fget=_get_stamp, notify=stampChanged)
