@@ -127,6 +127,10 @@ ApplicationWindow {
         confirmText: "OK"
     }
 
+    VJoyStatusPopup {
+        id: _vjoyStatusPopup
+    }
+
     FileDialog {
         id: _saveProfileFileDialog
         title: "Please choose a file"
@@ -327,6 +331,36 @@ ApplicationWindow {
                 }
             }
 
+            ToolButton {
+                implicitWidth: 56
+                implicitHeight: 40
+                onClicked: _vjoyStatusPopup.open()
+
+                contentItem: Row {
+                    spacing: 2
+                    anchors.centerIn: parent
+
+                    Label {
+                        text: "V"
+                        font.bold: true
+                        font.pixelSize: 16
+                        color: Style.foreground
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    Label {
+                        text: "\uF448"
+                        font.family: "bootstrap-icons"
+                        font.pixelSize: 18
+                        color: Style.foreground
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                ToolTip.visible: hovered
+                ToolTip.delay: 500
+                ToolTip.text: qsTr("vJoy device status")
+            }
+
             LayoutHorizontalSpacer {}
 
             Label {
@@ -394,7 +428,7 @@ ApplicationWindow {
     DeviceListModel {
         id: _deviceListModel
 
-        deviceType: "input"
+        deviceType: "physical"
     }
 
     Device {
