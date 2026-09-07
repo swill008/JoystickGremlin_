@@ -55,6 +55,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
 
     listenChanged = QtCore.Signal()
     listenBound = QtCore.Signal(int)
+    commandCaptured = QtCore.Signal(str, str)
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
@@ -73,6 +74,8 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         super().__init__(parent)
         self._osc = OscDevice()
         self._mode: str = "Default"
+        self._capture_only = False
+        self._sort_alpha = False
         runtime = OscRuntime()
         runtime.learned.connect(self._on_learned)
         runtime.listenChanged.connect(self.listenChanged)
@@ -80,26 +83,79 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         signal.inputItemChanged.connect(self.refreshInput)
         signal.oscDeviceModified.connect(self._full_refresh)
 
+    def _labels(self) -> list[str]:
+        labels = self._osc.labels_of_type()
+        if self._sort_alpha:
+            return sorted(labels)
+        return labels
+
     @QtCore.Slot(str)
     def createInput(self, type_str: str) -> None:
+        self.createMappedInput(type_str, "")
+
+    @QtCore.Slot(str, str)
+    def createMappedInput(self, type_str: str, label: str) -> None:
+        address = (label or "").strip()
+        if address:
+            existing = self._osc.find_address(address)
+            if existing is not None:
+                try:
+                    index = self._label_to_index(address)
+                except ValueError:
+                    index = self.rowCount() - 1
+                self.listenBound.emit(index)
+                return
         self.beginInsertRows(QtCore.QModelIndex(), self.rowCount(), self.rowCount())
-        self._osc.create(InputType.to_enum(type_str))
+        kwargs = {}
+        if address:
+            kwargs["label"] = address
+        self._osc.create(InputType.to_enum(type_str), **kwargs)
         self.endInsertRows()
         self.dataChanged.emit(
             self.createIndex(0, 0), self.createIndex(self.rowCount(), 0)
         )
         signal.oscDeviceModified.emit()
+        self.listenBound.emit(self.rowCount() - 1)
+
+    @QtCore.Slot()
+    def clearAllInputs(self) -> None:
+        labels = list(self._osc.labels_of_type())
+        self.beginResetModel()
+        for label in labels:
+            doomed = self._osc[label]
+            self._drop_profile_mappings(doomed.type, doomed.id)
+            self._osc.delete(label)
+        self.endResetModel()
+        signal.oscDeviceModified.emit()
+
+    @QtCore.Slot()
+    def sortInputs(self) -> None:
+        self._sort_alpha = True
+        self.beginResetModel()
+        self.endResetModel()
 
     @QtCore.Slot()
     def listenForInput(self) -> None:
+        self._capture_only = False
+        OscRuntime().listen_once()
+
+    @QtCore.Slot()
+    def listenForCommand(self) -> None:
+        self._capture_only = True
         OscRuntime().listen_once()
 
     @QtCore.Slot()
     def cancelListen(self) -> None:
+        self._capture_only = False
         OscRuntime().cancel_listen()
 
     def _on_learned(self, address: str, args: object) -> None:
         payload = args if isinstance(args, tuple) else ()
+        if self._capture_only:
+            self._capture_only = False
+            shown = ", ".join(str(item) for item in payload)
+            self.commandCaptured.emit(address, shown)
+            return
         existing = self._osc.find_address(address)
         if existing is None:
             self.beginInsertRows(QtCore.QModelIndex(), self.rowCount(), self.rowCount())
@@ -177,7 +233,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         self.endResetModel()
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._osc.labels_of_type())
+        return len(self._labels())
 
     def data(
         self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
@@ -227,10 +283,10 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         return identifier
 
     def _index_to_input(self, index: int):
-        return self._osc[self._osc.labels_of_type()[index]]
+        return self._osc[self._labels()[index]]
 
     def _label_to_index(self, label: str) -> int:
-        return self._osc.labels_of_type().index(label.casefold())
+        return self._labels().index(label.casefold())
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
