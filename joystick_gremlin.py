@@ -59,6 +59,7 @@ import gremlin.ui.tools
 import gremlin.ui.util
 import gremlin.osc
 import gremlin.ui.osc_device_model  # noqa: F401
+import gremlin.ui.device_names  # noqa: F401
 import gremlin.osc_persist  # noqa: F401
 
 
@@ -223,6 +224,10 @@ def register_config_options() -> None:
         "profile", "automation", "entries-auto-loading", PropertyType.List, [],
         "List of executable and profile combinations for automatic loading.",
         {}, False,
+    )
+    cfg.register(
+        "devices", "display", "aliases", PropertyType.List, [],
+        "Friendly display names for devices and inputs.", {}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "enabled", PropertyType.Bool, True,
