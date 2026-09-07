@@ -81,6 +81,9 @@ Popup {
         titleText: "Listening for OSC"
         confirmText: "OK"
         messageText: ""
+
+        onOpened: _root.closePolicy = Popup.NoAutoClose
+        onClosed: _root.closePolicy = Popup.CloseOnEscape | Popup.CloseOnPressOutside
     }
 
     contentItem: ColumnLayout {
