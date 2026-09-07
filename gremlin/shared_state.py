@@ -24,6 +24,9 @@ _suspend_input_highlighting = False
 # Timer used to disable input highlighting with a delay
 _suspend_timer = None
 
+# True while a profile is running (Gremlin toggled on)
+_runtime_active = False
+
 # Holds the currently active profile
 current_profile: None | profile.Profile = None
 
@@ -57,3 +60,14 @@ def set_suspend_input_highlighting_delayed() -> None:
 
     _suspend_timer = threading.Timer(2, lambda: set_suspend_input_highlighting(False))
     _suspend_timer.start()
+
+
+def runtime_active() -> bool:
+    """Returns whether Gremlin is currently running a profile."""
+    return _runtime_active
+
+
+def set_runtime_active(value: bool) -> None:
+    """Records whether a profile is running."""
+    global _runtime_active
+    _runtime_active = bool(value)
