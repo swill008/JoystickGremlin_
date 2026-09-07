@@ -7,6 +7,7 @@ from PySide6 import QtCore
 
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
+from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
 import gremlin.ui.type_aliases as ta
 
 QML_IMPORT_NAME = "Gremlin.Config"
@@ -131,3 +132,21 @@ class HighlightScopeModel(QtCore.QObject):
         self._set_scope(value)
 
     scope = QtCore.Property(str, fget=_get_scope, fset=_set_scope, notify=scopeChanged)
+
+
+class HighlightSourceOption(QtCore.QObject, BaseMetaConfigOptionWidget):
+    def __init__(self, parent: ta.OQO = None) -> None:
+        QtCore.QObject.__init__(self, parent)
+        BaseMetaConfigOptionWidget.__init__(self)
+
+    def _qml_path(self) -> str:
+        return "file:///" + QtCore.QFile("qml:OptionHighlightScope.qml").fileName()
+
+
+MetaConfigOption().register(
+    SECTION,
+    GROUP,
+    "input-highlight-source",
+    "Stay on the current device tab, or switch to the device that produced the input.",
+    HighlightSourceOption,
+)
