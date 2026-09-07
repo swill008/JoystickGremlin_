@@ -15,7 +15,8 @@ ColumnLayout {
     property string deviceGuid: ""
     property string title: ""
     property string pairLabel: ""
-    property int liveStamp: _live ? _live.stamp : 0
+    property int axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
+    property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
     property bool pairActive: backend && backend.gremlinActive
 
     spacing: 4
@@ -36,16 +37,16 @@ ColumnLayout {
     }
 
     function hwAxis(id) {
-        return liveStamp >= 0 ? _live.axisValue(id) : 0
+        return axisStamp >= 0 ? _live.axisValue(id) : 0
     }
     function vjAxis(g, id) {
-        return liveStamp >= 0 ? _live.vjoyAxisValue(g, id) : 0
+        return axisStamp >= 0 ? _live.vjoyAxisValue(g, id) : 0
     }
     function hwButton(id) {
-        return liveStamp >= 0 ? _live.buttonValue(id) : 0
+        return buttonStamp >= 0 ? _live.buttonValue(id) : 0
     }
     function vjButton(g, id) {
-        return liveStamp >= 0 ? _live.vjoyButtonValue(g, id) : 0
+        return buttonStamp >= 0 ? _live.vjoyButtonValue(g, id) : 0
     }
 
     Rectangle {
