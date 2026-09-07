@@ -10,19 +10,32 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 
-// Visualizes the inputs and information about their associated actions
-// contained in a Device instance.
 Item {
     id: _root
 
     property Device device
 
-    // Sychronize input selection when the underlying device changes.
+    DeviceNames { id: _names }
+
+    TextInputDialog {
+        id: _renameDialog
+
+        visible: false
+        width: 320
+
+        property string nameKey: ""
+        property string fallback: ""
+
+        onAccepted: (value) => {
+            _names.setAlias(nameKey, value)
+            visible = false
+        }
+    }
+
     Connections {
         target: uiState
 
         function onDeviceChanged() {
-            // Forcibly refresh the selected input.
             let tmp = uiState.currentInputIndex
             _inputList.currentIndex = -1
             _inputList.currentIndex = tmp
@@ -37,7 +50,6 @@ Item {
         }
     }
 
-    // List of all the inputs available on the device
     JGListView {
         id: _inputList
 
@@ -54,7 +66,14 @@ Item {
             height: 50
 
             selected: model.index === _inputList.currentIndex
+            nameKey: device.guid + ":" + name
             onClicked: () => { _inputList.currentIndex = model.index }
+            onRenameRequested: {
+                _renameDialog.nameKey = nameKey
+                _renameDialog.fallback = name
+                _renameDialog.text = _names.display(nameKey, name)
+                _renameDialog.visible = true
+            }
         }
 
         footer: Item {
