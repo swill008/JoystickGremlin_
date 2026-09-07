@@ -109,8 +109,55 @@ def shutdown_cleanup() -> None:
     gremlin.osc.OscRuntime().stop()
 
 
+def _this_process_tree() -> set[int]:
+    tree = {os.getpid()}
+    try:
+        tree.add(os.getppid())
+    except Exception:
+        pass
+    try:
+        class PROCESSENTRY32(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", ctypes.c_ulong),
+                ("cntUsage", ctypes.c_ulong),
+                ("th32ProcessID", ctypes.c_ulong),
+                ("th32DefaultHeapID", ctypes.c_void_p),
+                ("th32ModuleID", ctypes.c_ulong),
+                ("cntThreads", ctypes.c_ulong),
+                ("th32ParentProcessID", ctypes.c_ulong),
+                ("pcPriClassBase", ctypes.c_long),
+                ("dwFlags", ctypes.c_ulong),
+                ("szExeFile", ctypes.c_wchar * 260),
+            ]
+
+        kernel32 = ctypes.windll.kernel32
+        snapshot = kernel32.CreateToolhelp32Snapshot(2, 0)
+        if snapshot in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
+            return tree
+        entry = PROCESSENTRY32()
+        entry.dwSize = ctypes.sizeof(PROCESSENTRY32)
+        parents: dict[int, int] = {}
+        if kernel32.Process32FirstW(snapshot, ctypes.byref(entry)):
+            while True:
+                parents[int(entry.th32ProcessID)] = int(entry.th32ParentProcessID)
+                if not kernel32.Process32NextW(snapshot, ctypes.byref(entry)):
+                    break
+        kernel32.CloseHandle(snapshot)
+        pid = os.getpid()
+        for _ in range(8):
+            parent = parents.get(pid)
+            if not parent or parent in tree or parent <= 4:
+                break
+            tree.add(parent)
+            pid = parent
+    except Exception:
+        pass
+    return tree
+
+
 def _gremlin_window_titles() -> list[str]:
     titles: list[str] = []
+    protected = _this_process_tree()
     try:
         user32 = ctypes.windll.user32
 
@@ -122,8 +169,13 @@ def _gremlin_window_titles() -> list[str]:
             buf = ctypes.create_unicode_buffer(length)
             user32.GetWindowTextW(hwnd, buf, length)
             title = buf.value
-            if title and "Joystick Gremlin" in title:
-                titles.append(title)
+            if not title or "Joystick Gremlin" not in title:
+                return True
+            pid = ctypes.c_ulong()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if int(pid.value) in protected:
+                return True
+            titles.append(title)
             return True
 
         user32.EnumWindows(_enum, 0)
@@ -134,6 +186,7 @@ def _gremlin_window_titles() -> list[str]:
 
 def _window_process_ids() -> set[int]:
     pids: set[int] = set()
+    protected = _this_process_tree()
     try:
         user32 = ctypes.windll.user32
 
@@ -146,8 +199,9 @@ def _window_process_ids() -> set[int]:
                 return True
             pid = ctypes.c_ulong()
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-            if pid.value:
-                pids.add(int(pid.value))
+            value = int(pid.value)
+            if value and value not in protected:
+                pids.add(value)
             return True
 
         user32.EnumWindows(_enum, 0)
@@ -197,52 +251,6 @@ def _lock_owner_pid() -> int | None:
     return None
 
 
-def _this_process_tree() -> set[int]:
-    tree = {os.getpid()}
-    try:
-        tree.add(os.getppid())
-    except Exception:
-        pass
-    try:
-        class PROCESSENTRY32(ctypes.Structure):
-            _fields_ = [
-                ("dwSize", ctypes.c_ulong),
-                ("cntUsage", ctypes.c_ulong),
-                ("th32ProcessID", ctypes.c_ulong),
-                ("th32DefaultHeapID", ctypes.c_void_p),
-                ("th32ModuleID", ctypes.c_ulong),
-                ("cntThreads", ctypes.c_ulong),
-                ("th32ParentProcessID", ctypes.c_ulong),
-                ("pcPriClassBase", ctypes.c_long),
-                ("dwFlags", ctypes.c_ulong),
-                ("szExeFile", ctypes.c_wchar * 260),
-            ]
-
-        kernel32 = ctypes.windll.kernel32
-        snapshot = kernel32.CreateToolhelp32Snapshot(2, 0)
-        if snapshot in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
-            return tree
-        entry = PROCESSENTRY32()
-        entry.dwSize = ctypes.sizeof(PROCESSENTRY32)
-        parents: dict[int, int] = {}
-        if kernel32.Process32FirstW(snapshot, ctypes.byref(entry)):
-            while True:
-                parents[int(entry.th32ProcessID)] = int(entry.th32ParentProcessID)
-                if not kernel32.Process32NextW(snapshot, ctypes.byref(entry)):
-                    break
-        kernel32.CloseHandle(snapshot)
-        pid = os.getpid()
-        for _ in range(8):
-            parent = parents.get(pid)
-            if not parent or parent in tree or parent <= 4:
-                break
-            tree.add(parent)
-            pid = parent
-    except Exception:
-        pass
-    return tree
-
-
 def _other_gremlin_pids() -> list[int]:
     protected = _this_process_tree()
     pids = _window_process_ids() | _command_line_process_ids()
@@ -279,7 +287,7 @@ def _terminate_other_gremlin(pids: list[int]) -> None:
 def _confirm_second_instance(
     lock_held: bool, windows: list[str], pids: list[int]
 ) -> str:
-    already = len(pids)
+    already = max(len(pids), 1 if lock_held or windows else 0)
     pid_text = ", ".join(str(pid) for pid in pids) if pids else "unknown"
     extra = ""
     if windows:
@@ -287,14 +295,12 @@ def _confirm_second_instance(
     elif lock_held and not pids:
         extra = "\nAnother Optimization build is using the Gremlin lock file."
     hung_hint = ""
-    if already > len(set(windows)):
-        hung_hint = "\nMore processes than windows were found. A copy may be hung in the background."
-    elif already and not windows:
+    if pids and not windows:
         hung_hint = "\nA Gremlin process is running with no visible window. It may be hung."
     text = (
-        f"Joystick Gremlin processes already running: {already}\n"
+        f"Joystick Gremlin already running: {already}\n"
         f"Process IDs: {pid_text}\n"
-        f"This launch would be copy {already + 1}."
+        f"This launch would be another copy."
         f"{extra}{hung_hint}\n\n"
         "Only one copy can own vJoy.\n\n"
         "Yes = Close the other process(es) and start this copy.\n"
@@ -648,7 +654,7 @@ def main() -> int:
     lock = acquire_instance_lock()
     windows = _gremlin_window_titles()
     pids = _other_gremlin_pids()
-    if lock is None or windows or pids:
+    if lock is None or windows:
         choice = _confirm_second_instance(lock is None, windows, pids)
         if choice == "quit":
             return 0
