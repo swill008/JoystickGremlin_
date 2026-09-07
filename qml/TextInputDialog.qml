@@ -1,4 +1,4 @@
-﻿// -*- coding: utf-8; -*-
+// -*- coding: utf-8; -*-
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
@@ -21,10 +21,21 @@ Window {
     signal accepted(string value)
     property string text : "New text"
     property var validator: function(value) { return true }
-
-    onTextChanged: () =>  { _input.focus = true }
+    property bool _clearedOnClick: false
 
     title: "Text Input Field"
+
+    onVisibleChanged: {
+        if (visible) {
+            _clearedOnClick = false
+            _input.text = _root.text
+        }
+    }
+
+    onTextChanged: {
+        _clearedOnClick = false
+        _input.text = _root.text
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -36,6 +47,13 @@ Window {
             Layout.leftMargin: 5
 
             text: _root.text
+
+            onPressed: {
+                if (!_root._clearedOnClick) {
+                    text = ""
+                    _root._clearedOnClick = true
+                }
+            }
 
             onTextEdited: () => {
                 let isValid = _root.validator(text)
