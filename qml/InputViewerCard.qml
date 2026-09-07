@@ -16,6 +16,7 @@ ColumnLayout {
     property string title: ""
     property string pairLabel: ""
     property int liveStamp: _live ? _live.stamp : 0
+    property bool pairActive: backend && backend.gremlinActive
 
     spacing: 4
 
@@ -50,9 +51,9 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         implicitHeight: _inner.implicitHeight + 16
-        color: Style.background
-        border.color: Style.accent
-        border.width: 1
+        color: pairActive ? "#052e16" : Style.background
+        border.color: pairActive ? "#22C55E" : Style.accent
+        border.width: pairActive ? 2 : 1
         radius: 6
         clip: true
 
@@ -71,12 +72,27 @@ ColumnLayout {
                     font.pointSize: 12
                 }
 
+                Rectangle {
+                    visible: pairActive
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: "#22C55E"
+                }
+
+                JGText {
+                    visible: pairActive
+                    text: "Active"
+                    color: "#22C55E"
+                    font.pointSize: 10
+                }
+
                 Item { Layout.fillWidth: true }
 
                 JGText {
                     visible: pairLabel.length > 0
                     text: "\u2192  " + pairLabel
-                    color: Style.accent
+                    color: pairActive ? "#86EFAC" : Style.accent
                 }
 
                 Switch {
@@ -131,13 +147,13 @@ ColumnLayout {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 8
-                        radius: 4
+                        Layout.preferredHeight: 4
+                        radius: 2
                         color: Style.lowColor
 
                         Rectangle {
                             height: parent.height
-                            radius: 4
+                            radius: 2
                             width: parent.width * Math.min(1.0, Math.max(0.0, (hwAxis(identifier) + 1.0) * 0.5))
                             color: "#22C55E"
                         }
@@ -152,13 +168,13 @@ ColumnLayout {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 8
-                        radius: 4
+                        Layout.preferredHeight: 4
+                        radius: 2
                         color: Style.lowColor
 
                         Rectangle {
                             height: parent.height
-                            radius: 4
+                            radius: 2
                             width: parent.width * Math.min(1.0, Math.max(0.0, (vjAxis(vjoyGuid, vjoyInput) + 1.0) * 0.5))
                             color: "#38BDF8"
                         }
