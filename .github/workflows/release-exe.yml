@@ -36,11 +36,7 @@ jobs:
       - name: Pack portable zip
         shell: pwsh
         run: |
-          if (Test-Path dist\Joystick.Gremlin.R15-OSC) {
-            Remove-Item -Recurse -Force dist\Joystick.Gremlin.R15-OSC
-          }
-          Rename-Item dist\joystick_gremlin dist\Joystick.Gremlin.R15-OSC
-          Compress-Archive -Path dist\Joystick.Gremlin.R15-OSC -DestinationPath dist\Joystick.Gremlin.R15-OSC.zip
+          Compress-Archive -Path dist\joystick_gremlin\* -DestinationPath dist\Joystick.Gremlin.R15-OSC.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
