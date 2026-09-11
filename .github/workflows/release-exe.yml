@@ -48,10 +48,11 @@ jobs:
           tag_name: r15-osc-${{ env.CURRENT_DATE }}
           name: Joystick Gremlin R15-OSC ${{ env.CURRENT_DATE }}
           body: |
-            Portable package, same style as official Joystick Gremlin R15.
+            System tray minimize/close, OSC listen stay-on-tab, bulk capture, tray Quit fix.
 
+            Portable zip, same style as official Joystick Gremlin R15.
             Unzip anywhere (Documents, Desktop, etc). Do not put it in Program Files.
-            Run Joystick.Gremlin.R15-OSC\joystick_gremlin.exe
+            Run joystick_gremlin.exe from the unzipped folder.
 
             Requires vJoy already installed.
             Unsigned build — SmartScreen may warn on first run.
