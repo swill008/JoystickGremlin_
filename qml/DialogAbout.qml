@@ -27,7 +27,7 @@ Window {
         }
 
         DisplayLabel {
-            text: "Release " + backend.gremlinVersion
+            text: "Release " + backend.gremlinVersion + "-OSC"
             font.pointSize: 14
         }
 
