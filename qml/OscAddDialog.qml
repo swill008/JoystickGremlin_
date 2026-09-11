@@ -23,8 +23,8 @@ Popup {
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    padding: 16
-    width: 720
+    padding: 20
+    width: 860
 
     OscSettingsInfo { id: _oscInfo }
     OscBulkCapture { id: _bulk }
@@ -140,13 +140,17 @@ Popup {
 
         RowLayout {
             spacing: 16
+            Layout.fillWidth: true
             Label { text: "Action mode:" }
             RadioButton { id: _modeChange; text: "Change" }
             RadioButton { id: _modeButton; text: "Button"; checked: true }
             RadioButton { id: _modeAxis; text: "Axis" }
             Item { Layout.fillWidth: true }
             RadioButton { id: _messageOnly; text: "Message only"; checked: true }
-            RadioButton { id: _messageData; text: "Message + data" }
+            RadioButton {
+                id: _messageData
+                text: "Message + data"
+            }
         }
 
         ButtonGroup { buttons: [_modeChange, _modeButton, _modeAxis] }
