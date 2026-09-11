@@ -15,6 +15,7 @@ Popup {
     property string lastParameters: ""
     property string lastSource: ""
     property bool closeOnCapture: true
+    readonly property string buttonHelpText: "The input will trigger a press action when the first parameter value is not zero (0).\nA value of zero (0) will trigger a release action.\nUse this mode to trigger button presses from OSC messages."
 
     signal accepted(string cmd, string mode)
 
@@ -51,7 +52,7 @@ Popup {
         if (_modeAxis.checked || _modeChange.checked) {
             return "The first parameter is used as an axis value.\nValues are limited to the range -1.0 to 1.0."
         }
-        return "The input will trigger a press action when the first parameter value is not zero (0).\nA value of zero (0) will trigger a release action.\nUse this mode to trigger button presses from OSC messages."
+        return buttonHelpText
     }
 
     function footerText() {
@@ -181,19 +182,32 @@ Popup {
             }
         }
 
-        Rectangle {
+        Item {
             Layout.fillWidth: true
-            implicitHeight: _help.implicitHeight + 16
-            color: "#8a7a2a"
-            border.color: "#c4b44a"
+            implicitHeight: _helpMeasure.implicitHeight + 16
 
             Label {
-                id: _help
-                anchors.fill: parent
-                anchors.margins: 8
+                id: _helpMeasure
+                visible: false
+                width: parent.width - 16
                 wrapMode: Text.WordWrap
-                text: _root.helpText()
-                color: "#1b1b1b"
+                text: _root.buttonHelpText
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                color: "#8a7a2a"
+                border.color: "#c4b44a"
+
+                Label {
+                    id: _help
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    wrapMode: Text.WordWrap
+                    verticalAlignment: Text.AlignTop
+                    text: _root.helpText()
+                    color: "#1b1b1b"
+                }
             }
         }
 
