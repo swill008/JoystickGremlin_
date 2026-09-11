@@ -28,29 +28,25 @@ jobs:
       - name: Build executable
         run: poetry run pyinstaller -y --clean joystick_gremlin.spec
 
-      - name: Stamp date
-        run: |
-          $CURRENT_DATE = Get-Date -Format yyyy_MM_dd_HHmm
-          echo "CURRENT_DATE=$CURRENT_DATE" >> $env:GITHUB_ENV
-
       - name: Pack portable zip
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\joystick_gremlin\* -DestinationPath dist\Joystick.Gremlin.R15-OSC.zip
+          Compress-Archive -Path dist\joystick_gremlin\* -DestinationPath dist\Joystick.Gremlin.15.0.2-OSC.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: r15-osc-${{ env.CURRENT_DATE }}
-          name: Joystick Gremlin R15-OSC ${{ env.CURRENT_DATE }}
+          tag_name: 15.0.2-OSC
+          name: Joystick Gremlin 15.0.2-OSC
           body: |
+            Portable standalone build 15.0.2-OSC.
+
             System tray minimize/close, OSC listen stay-on-tab, bulk capture, tray Quit fix.
 
-            Portable zip, same style as official Joystick Gremlin R15.
             Unzip anywhere (Documents, Desktop, etc). Do not put it in Program Files.
             Run joystick_gremlin.exe from the unzipped folder.
 
             Requires vJoy already installed.
             Unsigned build — SmartScreen may warn on first run.
-          files: dist/Joystick.Gremlin.R15-OSC.zip
+          files: dist/Joystick.Gremlin.15.0.2-OSC.zip
           token: ${{ secrets.GITHUB_TOKEN }}
