@@ -291,7 +291,7 @@ class Backend(QtCore.QObject):
 
     @QtCore.Property(str, notify=propertyChanged)
     def gremlinVersion(self) -> str:
-        return util.get_code_release()
+        return util.get_code_version()
 
     @QtCore.Property(UIState, notify=uiChanged)
     def uiState(self) -> UIState:
