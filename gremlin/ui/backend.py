@@ -32,6 +32,7 @@ from gremlin import (
     util,
 )
 from gremlin.logical_device import LogicalDevice
+from gremlin.osc import OSC_DEVICE_UUID
 from gremlin.signal import (
     display_error,
     signal,
@@ -194,6 +195,8 @@ class Backend(QtCore.QObject):
             not self.config.value("global", "general", "input-highlighting")
             or shared_state.suspend_input_highlighting()
         ):
+            return
+        if event.device_guid == OSC_DEVICE_UUID:
             return
         if not self.joystick_change_monitor.should_process(event):
             return
@@ -386,9 +389,9 @@ class Backend(QtCore.QObject):
         signal.reloadUi.emit()
 
     @QtCore.Slot(str, result=bool)
-    def saveProfile(self, qml_url: str) -> bool:
+    def saveProfile(self, qml_path: str) -> bool:
         try:
-            path = to_local_path(qml_url)
+            path = to_local_path(qml_path)
             if not path:
                 return False
             self.profile.fpath = path
@@ -402,7 +405,6 @@ class Backend(QtCore.QObject):
             logging.getLogger("system").exception("Failed to save profile")
             return False
 
-    @QtCore.Slot(result=str)
     def profilePath(self) -> str:
         path = self.profile.fpath
         return "" if path is None else str(path)
