@@ -14,6 +14,7 @@ Popup {
     property var deviceModel: null
     property string lastParameters: ""
     property string lastSource: ""
+    property bool closeOnCapture: true
 
     signal accepted(string cmd, string mode)
 
@@ -39,6 +40,7 @@ Popup {
         _cmd.text = ""
         lastParameters = ""
         lastSource = ""
+        closeOnCapture = true
         _modeButton.checked = true
         _messageOnly.checked = true
         _triggerOn.checked = false
@@ -95,7 +97,7 @@ Popup {
             _cmd.text = address
             lastParameters = parameters
             lastSource = address
-            if (_bulkCapture.checked) {
+            if (!_root.closeOnCapture) {
                 return
             }
             _root.bindCapturedCommand(address)
@@ -206,6 +208,7 @@ Popup {
                         deviceModel.cancelListen()
                         _root.resumeHighlight()
                     } else {
+                        _root.closeOnCapture = !_bulkCapture.checked
                         _root.pauseHighlight()
                         _listenSettings.messageText = _oscInfo.summary()
                         _listenSettings.open()

@@ -298,6 +298,7 @@ class OscRuntime(QtCore.QObject):
         super().__init__()
         self._listener: OscListener | None = None
         self._learn = False
+        self._hold_learn = False
         self._pad_args = False
         self._autorelease = True
         self._autorelease_ms = DEFAULT_AUTORELEASE_MS
@@ -309,12 +310,14 @@ class OscRuntime(QtCore.QObject):
     def is_listening(self) -> bool:
         return self._learn
 
-    def listen_once(self) -> bool:
+    def listen_once(self, hold: bool = False) -> bool:
         from gremlin.signal import signal as ui_signal
 
+        self._hold_learn = hold
         self.start()
         if self._listener is None:
             self._learn = False
+            self._hold_learn = False
             self.listenChanged.emit()
             ui_signal.showError.emit(
                 "Could not start OSC listener.",
@@ -323,10 +326,17 @@ class OscRuntime(QtCore.QObject):
             return False
         self._learn = True
         self.listenChanged.emit()
-        log.info("OSC listen-once waiting for next packet")
+        log.info(
+            "OSC listen-once waiting for next packet hold=%s",
+            hold,
+        )
         return True
 
+    def listen_bulk(self) -> bool:
+        return self.listen_once(hold=True)
+
     def cancel_listen(self) -> None:
+        self._hold_learn = False
         if not self._learn:
             return
         self._learn = False
@@ -374,7 +384,9 @@ class OscRuntime(QtCore.QObject):
 
     def start(self) -> None:
         keep_learn = self._learn
+        keep_hold = self._hold_learn
         self.stop()
+        self._hold_learn = keep_hold
         from gremlin.signal import signal as ui_signal
 
         enabled, host, port = self._read_options()
@@ -409,6 +421,7 @@ class OscRuntime(QtCore.QObject):
             self._listener = None
 
     def stop(self) -> None:
+        self._hold_learn = False
         self._learn = False
         self.listenChanged.emit()
         if self._listener is None:
@@ -464,8 +477,9 @@ class OscRuntime(QtCore.QObject):
         payload = args if isinstance(args, tuple) else ()
         had_args = len(payload) > 0
         if self._learn:
-            self._learn = False
-            self.listenChanged.emit()
+            if not self._hold_learn:
+                self._learn = False
+                self.listenChanged.emit()
             log.info("OSC listen captured %s %s", address, payload)
             self.learned.emit(address, payload)
 
