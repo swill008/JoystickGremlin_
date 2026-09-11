@@ -389,9 +389,9 @@ class Backend(QtCore.QObject):
         signal.reloadUi.emit()
 
     @QtCore.Slot(str, result=bool)
-    def saveProfile(self, qml_path: str) -> bool:
+    def saveProfile(self, qml_url: str) -> bool:
         try:
-            path = to_local_path(qml_path)
+            path = to_local_path(qml_url)
             if not path:
                 return False
             self.profile.fpath = path
@@ -405,6 +405,7 @@ class Backend(QtCore.QObject):
             logging.getLogger("system").exception("Failed to save profile")
             return False
 
+    @QtCore.Slot(result=str)
     def profilePath(self) -> str:
         path = self.profile.fpath
         return "" if path is None else str(path)
