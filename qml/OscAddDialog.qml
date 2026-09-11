@@ -66,6 +66,28 @@ Popup {
         return "Button"
     }
 
+    function pauseHighlight() {
+        if (backend) {
+            backend.pauseInputHighlighting()
+        }
+    }
+
+    function resumeHighlight() {
+        if (backend) {
+            backend.resumeInputHighlighting()
+        }
+    }
+
+    function bindCapturedCommand(address) {
+        var cmd = (address || "").trim()
+        if (!cmd.length) {
+            return
+        }
+        _listenSettings.close()
+        _root.accepted(cmd, _root.selectedMode())
+        _root.close()
+    }
+
     Connections {
         target: _root.deviceModel
 
@@ -73,6 +95,10 @@ Popup {
             _cmd.text = address
             lastParameters = parameters
             lastSource = address
+            if (_bulkCapture.checked) {
+                return
+            }
+            _root.bindCapturedCommand(address)
         }
     }
 
@@ -178,7 +204,9 @@ Popup {
                     }
                     if (deviceModel.listening) {
                         deviceModel.cancelListen()
+                        _root.resumeHighlight()
                     } else {
+                        _root.pauseHighlight()
                         _listenSettings.messageText = _oscInfo.summary()
                         _listenSettings.open()
                         if (_bulkCapture.checked) {
@@ -221,5 +249,6 @@ Popup {
         if (deviceModel && deviceModel.listening) {
             deviceModel.cancelListen()
         }
+        _root.resumeHighlight()
     }
 }

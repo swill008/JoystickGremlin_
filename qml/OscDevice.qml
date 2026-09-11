@@ -23,6 +23,20 @@ Item {
 
     ActionNames { id: _actionNames }
 
+    function selectOscInput(index) {
+        if (editorLocked) {
+            return
+        }
+        _inputList.currentIndex = index
+        inputIndex = index
+        inputIdentifier = _inputList.model.inputIdentifier(index)
+        if (uiState) {
+            uiState.setCurrentTab("osc")
+            uiState.setCurrentDevice("a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70")
+            uiState.setCurrentInput(inputIdentifier, index)
+        }
+    }
+
     TextInputDialog {
         id: _textInput
 
@@ -168,12 +182,7 @@ Item {
             target: _inputList.model
 
             function onListenBound(index) {
-                if (editorLocked) {
-                    return
-                }
-                _inputList.currentIndex = index
-                inputIndex = index
-                inputIdentifier = _inputList.model.inputIdentifier(index)
+                _root.selectOscInput(index)
             }
         }
 
