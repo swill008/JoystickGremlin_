@@ -17,41 +17,9 @@ assert QML_IMPORT_MAJOR_VERSION == 1
 
 _DEBOUNCE_S = 0.3
 
-_cls = OscRuntime.klass
-_orig_listen_once = _cls.listen_once
-_orig_cancel = _cls.cancel_listen
-_orig_stop = _cls.stop
-_orig_on_main = _cls._on_main
 _orig_learned = OscDeviceManagementModel._on_learned
 _orig_cancel_model = OscDeviceManagementModel.cancelListen
 _orig_listen_cmd = OscDeviceManagementModel.listenForCommand
-
-
-def listen_once(self) -> bool:
-    self._hold_learn = False
-    return _orig_listen_once(self)
-
-
-def listen_bulk(self) -> bool:
-    self._hold_learn = True
-    return _orig_listen_once(self)
-
-
-def cancel_listen(self) -> None:
-    self._hold_learn = False
-    _orig_cancel(self)
-
-
-def stop(self) -> None:
-    self._hold_learn = False
-    _orig_stop(self)
-
-
-def _on_main(self, address: str, args: object) -> None:
-    hold = bool(getattr(self, "_hold_learn", False))
-    _orig_on_main(self, address, args)
-    if hold:
-        self._learn = True
 
 
 def model_listen_for_command(self) -> None:
@@ -91,11 +59,6 @@ def model_on_learned(self, address: str, args: object) -> None:
     _orig_learned(self, address, args)
 
 
-_cls.listen_once = listen_once
-_cls.listen_bulk = listen_bulk
-_cls.cancel_listen = cancel_listen
-_cls.stop = stop
-_cls._on_main = _on_main
 OscDeviceManagementModel.listenForCommand = model_listen_for_command
 OscDeviceManagementModel.cancelListen = model_cancel_listen
 OscDeviceManagementModel._on_learned = model_on_learned
