@@ -52,3 +52,22 @@ Any change to rules is written here. Do not keep a second unofficial list.
          tagPt = item.mapToItem(_face, …)
          Never use _stage.x / _stage.y as face coordinates.
     21.6 If a dot is still off, change one pixel pair on the JPEG overlay, then one map row. Do not nudge from a window screenshot.
+22. Button Map work lives on VKB-joystick-Button-Map (cut from Xbox_integration_ViGEmClient_dll). Do not mix Button Map commits onto R15-OSC-Optimization unless you say merge.
+23. Button Map dest is Mapped* vjoyLabel Repeater on the face. Callouts are physical EVO R marks only.
+24. EVO R hardware lock (device name VKBsim Gladiator EVO R). Dual photo is the same grip in two poses.
+    1/2 trigger
+    3 red
+    4 cap
+    5 lower white
+    6-10 5-way
+    11-15 top-right 5-way
+    16-20 silver wheel
+    21/22 paddle
+    23/24 En2
+    25/26 En1
+    27 mid pad
+    28 left pad
+    29 right pad
+    hat1 8-way ministick
+    axes 1-3 gimbal X/Y/Z
+    axis 4 Z slider
