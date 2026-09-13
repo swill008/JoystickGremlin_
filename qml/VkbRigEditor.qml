@@ -26,6 +26,9 @@ Item {
     property real bandY0: 0
     property real bandX1: 0
     property real bandY1: 0
+    property bool gridOn: true
+    property bool snapOn: true
+    property int gridSize: 8
 
     // Do NOT declare signal nodesChanged — property var nodes already has it.
     signal selectedChanged()
@@ -39,6 +42,19 @@ Item {
     function bump() {
         repaint()
         selectedChanged()
+    }
+
+    function snapPx(v) {
+        var g = gridSize
+        if (!snapOn || g < 2)
+            return v
+        return Math.round(v / g) * g
+    }
+
+    function snapPos(x, y, altOff) {
+        if (altOff || !snapOn)
+            return Qt.point(x, y)
+        return Qt.point(snapPx(x), snapPx(y))
     }
 
     onInteractiveChanged: {
@@ -322,7 +338,8 @@ Item {
                 best = i
             }
         }
-        n.spines.splice(best, 0, { fx: mx / Math.max(1, width), fy: my / Math.max(1, height) })
+        var spn = snapPos(mx, my, false)
+        n.spines.splice(best, 0, { fx: spn.x / Math.max(1, width), fy: spn.y / Math.max(1, height) })
         selectedId = id
         selectedSpine = best
         selectedChanged()
@@ -816,9 +833,11 @@ Item {
         }
     }
 
-    onWidthChanged: _lines.requestPaint()
-    onHeightChanged: _lines.requestPaint()
+    onWidthChanged: { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
+    onHeightChanged: { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
     onTickChanged: _lines.requestPaint()
+    onGridOnChanged: if (_grid) _grid.requestPaint()
+    onGridSizeChanged: if (_grid) _grid.requestPaint()
     onNodesChanged: {
         seeded = false
         _lines.requestPaint()
@@ -836,6 +855,50 @@ Item {
             }
             _ed.seeded = true
             _ed.bump()
+        }
+    }
+
+    Canvas {
+        id: _grid
+        anchors.fill: parent
+        z: 1
+        visible: _ed.interactive && _ed.gridOn
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            var g = Math.max(2, _ed.gridSize)
+            var w = width
+            var h = height
+            var x
+            var y
+            var major = g * 4
+            ctx.lineWidth = 1
+            ctx.strokeStyle = "#14FFFFFF"
+            ctx.beginPath()
+            for (x = 0; x <= w; x += g) {
+                if (Math.round(x) % major === 0)
+                    continue
+                ctx.moveTo(x + 0.5, 0)
+                ctx.lineTo(x + 0.5, h)
+            }
+            for (y = 0; y <= h; y += g) {
+                if (Math.round(y) % major === 0)
+                    continue
+                ctx.moveTo(0, y + 0.5)
+                ctx.lineTo(w, y + 0.5)
+            }
+            ctx.stroke()
+            ctx.strokeStyle = "#28FFFFFF"
+            ctx.beginPath()
+            for (x = 0; x <= w; x += major) {
+                ctx.moveTo(x + 0.5, 0)
+                ctx.lineTo(x + 0.5, h)
+            }
+            for (y = 0; y <= h; y += major) {
+                ctx.moveTo(0, y + 0.5)
+                ctx.lineTo(w, y + 0.5)
+            }
+            ctx.stroke()
         }
     }
 
@@ -961,13 +1024,16 @@ Item {
             if (!n) {
                 return
             }
+            var altOff = !!(m.modifiers & Qt.AltModifier)
             if (_ed.dragKind === "hot") {
-                var p = _ed.toPhoto(m.x, m.y)
+                var hp = _ed.snapPos(m.x, m.y, altOff)
+                var p = _ed.toPhoto(hp.x, hp.y)
                 n.nx = Math.max(0, Math.min(1, p.x))
                 n.ny = Math.max(0, Math.min(1, p.y))
             } else if (_ed.dragKind === "chip") {
-                var fx = Math.max(0.01, Math.min(0.92, (m.x - _ed.dragOffX) / Math.max(1, width)))
-                var fy = Math.max(0.01, Math.min(0.92, (m.y - _ed.dragOffY) / Math.max(1, height)))
+                var cp = _ed.snapPos(m.x - _ed.dragOffX, m.y - _ed.dragOffY, altOff)
+                var fx = Math.max(0.01, Math.min(0.92, cp.x / Math.max(1, width)))
+                var fy = Math.max(0.01, Math.min(0.92, cp.y / Math.max(1, height)))
                 var dFx = fx - n.chipFx
                 var dFy = fy - n.chipFy
                 var ids = (_ed.selectedIds && _ed.selectedIds.length) ? _ed.selectedIds : [_ed.selectedId]
@@ -979,8 +1045,9 @@ Item {
                     q.chipFy = Math.max(0.01, Math.min(0.92, q.chipFy + dFy))
                 }
             } else if (_ed.dragKind === "spine" && n.spines && _ed.dragSpine >= 0) {
-                n.spines[_ed.dragSpine].fx = Math.max(0, Math.min(1, m.x / Math.max(1, width)))
-                n.spines[_ed.dragSpine].fy = Math.max(0, Math.min(1, m.y / Math.max(1, height)))
+                var sp = _ed.snapPos(m.x, m.y, altOff)
+                n.spines[_ed.dragSpine].fx = Math.max(0, Math.min(1, sp.x / Math.max(1, width)))
+                n.spines[_ed.dragSpine].fy = Math.max(0, Math.min(1, sp.y / Math.max(1, height)))
             }
             _ed.repaint()
         }
@@ -1041,6 +1108,6 @@ Item {
         visible: _ed.interactive
         color: "#A1A1AA"
         font.pixelSize: 10
-        text: "Shift-click or drag-box to multi-select. Group / Ungroup in the inspector. Wheel zoom."
+        text: "Grid snap in the toolbar. Alt-drag to ignore snap. Shift-click or drag-box to multi-select."
     }
 }

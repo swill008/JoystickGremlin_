@@ -231,6 +231,54 @@ Window {
                             _cardLoader.item.resetView()
                     }
                 }
+                ToolSeparator { visible: editing }
+                CheckBox {
+                    visible: editing
+                    text: "Grid"
+                    checked: {
+                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                        return e ? e.gridOn : true
+                    }
+                    onToggled: {
+                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                        if (e)
+                            e.gridOn = checked
+                    }
+                }
+                CheckBox {
+                    visible: editing
+                    text: "Snap"
+                    checked: {
+                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                        return e ? e.snapOn : true
+                    }
+                    onToggled: {
+                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                        if (e)
+                            e.snapOn = checked
+                    }
+                }
+                Label {
+                    visible: editing
+                    text: "Size"
+                    color: "#A1A1AA"
+                }
+                SpinBox {
+                    visible: editing
+                    from: 4
+                    to: 64
+                    stepSize: 2
+                    editable: true
+                    value: {
+                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                        return e ? e.gridSize : 8
+                    }
+                    onValueModified: {
+                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                        if (e)
+                            e.gridSize = value
+                    }
+                }
                 Label {
                     visible: editing
                     text: "control.hardware  " + _hw.path
