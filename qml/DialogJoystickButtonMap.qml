@@ -4,7 +4,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal
-import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.Device
@@ -13,85 +12,112 @@ import Gremlin.Style
 Window {
     id: _buttonMap
 
-    width: 1200
-    height: 800
-    minimumWidth: 800
-    minimumHeight: 500
+    width: 980
+    height: 980
+    minimumWidth: 720
+    minimumHeight: 720
 
-    color: Style.background
+    color: "#141414"
     Universal.theme: Style.theme
 
     title: "Joystick Button Map"
 
-    readonly property string oscGuid: "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
+    property string activeGuid: ""
+    property string activePair: ""
 
     ViewerDeviceModel { id: _devices }
 
-    function pairTitle(guid, name) {
-        var key = String(guid || "").toLowerCase().replace(/[{}]/g, "")
-        if (key === oscGuid) {
-            return "OSC"
+    PairLiveThrottle {
+        id: _live
+        guid: _buttonMap.activeGuid
+    }
+
+    MappedButtonModel {
+        id: _buttons
+        guid: _buttonMap.activeGuid
+    }
+
+    MappedAxisModel {
+        id: _axes
+        guid: _buttonMap.activeGuid
+    }
+
+    function pickDevice() {
+        var guid = ""
+        var pair = ""
+        var fallbackGuid = ""
+        var fallbackPair = ""
+        if (!_devices) {
+            activeGuid = ""
+            activePair = ""
+            return
         }
-        return name && name.length ? name : guid
+        for (var i = 0; i < _devices.count; i++) {
+            var row = _row(i)
+            if (!row) {
+                continue
+            }
+            if (row.mapped && !fallbackGuid) {
+                fallbackGuid = row.guid
+                fallbackPair = row.pairLabel
+            }
+            if (row.mapped && /vkb|gladiator|evo|ste?cs|gunfighter/i.test(row.name || "")) {
+                guid = row.guid
+                pair = row.pairLabel
+                break
+            }
+        }
+        activeGuid = guid || fallbackGuid
+        activePair = pair || fallbackPair
+    }
+
+    function _row(i) {
+        // ViewerDeviceModel exposes roles to Repeater; stash via _probe
+        return _probe.rows[i] || null
+    }
+
+    QtObject {
+        id: _probe
+        property var rows: []
+    }
+
+    Repeater {
+        model: _devices
+        Item {
+            required property string guid
+            required property string name
+            required property string pairLabel
+            required property bool mapped
+            required property int index
+
+            Component.onCompleted: {
+                _probe.rows[index] = {
+                    guid: guid,
+                    name: name,
+                    pairLabel: pairLabel,
+                    mapped: mapped
+                }
+                _buttonMap.pickDevice()
+            }
+            Component.onDestruction: {
+                _probe.rows[index] = null
+            }
+        }
     }
 
     Component.onCompleted: () => {
         if (_devices) {
             _devices.reload()
         }
+        pickDevice()
     }
 
-    ScrollView {
-        id: _dynamicScroll
+    VkbRigFace {
         anchors.fill: parent
-        anchors.margins: 12
-
-        Component.onCompleted: () => {
-            _dynamicScroll.contentItem.boundsMovement = Flickable.StopAtBounds
-            _dynamicScroll.contentItem.boundsBehavior = Flickable.StopAtBounds
-        }
-
-        ColumnLayout {
-            id: _stateDisplay
-            width: Math.max(_dynamicScroll.availableWidth, 760)
-            spacing: 8
-
-            Repeater {
-                model: _devices
-                delegate: Loader {
-                    required property string guid
-                    required property string name
-                    required property string pairLabel
-                    required property bool mapped
-
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: item ? item.implicitHeight : 0
-                    sourceComponent: mapped ? _pairComp : _unmappedComp
-
-                    property string _guid: guid
-                    property string _name: _buttonMap.pairTitle(guid, name)
-                    property string _pair: pairLabel
-                }
-            }
-        }
-    }
-
-    Component {
-        id: _pairComp
-        JoystickButtonMapCard {
-            deviceGuid: parent._guid
-            title: parent._name
-            pairLabel: parent._pair
-            width: parent.width
-        }
-    }
-
-    Component {
-        id: _unmappedComp
-        UnmappedCard {
-            deviceGuid: parent._guid
-            title: parent._name
-            width: parent.width
-        }
+        anchors.margins: 8
+        pairLabel: _buttonMap.activePair
+        live: _live
+        buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
+        axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
     }
 }

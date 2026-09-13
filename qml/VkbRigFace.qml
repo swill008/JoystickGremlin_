@@ -32,10 +32,12 @@ Item {
     }
 
     function destText(kind, id) {
-        var dest = pairLabel && pairLabel.length ? pairLabel : "—"
-        if (kind === "hat") return dest + " Hat " + id
-        if (kind === "axis") return dest + " Axis " + id
-        return dest + " Btn " + id
+        if (!pairLabel || !pairLabel.length) {
+            return "—"
+        }
+        if (kind === "hat") return pairLabel + " Hat " + id
+        if (kind === "axis") return pairLabel + " Axis " + id
+        return pairLabel + " Btn " + id
     }
 
     Image {
