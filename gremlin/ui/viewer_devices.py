@@ -76,17 +76,24 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
         profile = shared_state.current_profile
         if profile is not None:
             for device_id, items in (profile.inputs or {}).items():
-                if not any(pairing._has_pair_maps(item) for item in items or []):
+                if not any(pairing._maps_for_item(item) for item in items or []):
                     continue
                 guid = str(device_id)
                 key = _norm(guid)
                 if key not in connected:
                     continue
+                targets = sorted(
+                    {
+                        vid
+                        for item in items or []
+                        for vid, _, _ in pairing._maps_for_item(item)
+                    }
+                )
                 self._rows.append(
                     {
                         "guid": guid,
                         "name": pairing._device_name(guid),
-                        "pairLabel": pairing._pair_label_for_items(items),
+                        "pairLabel": ", ".join(f"vJoy Device {vid}" for vid in targets),
                         "mapped": True,
                     }
                 )
