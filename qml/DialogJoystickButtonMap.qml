@@ -72,21 +72,15 @@ Window {
         guid1 = ""
         guid2 = ""
         targetGuid = ""
-        if (!_devices || !_devices.listRows) {
+        if (!_devices || !_devices.guidForDeviceName) {
             return
         }
-        var rows = _devices.listRows() || []
-        for (var i = 0; i < rows.length; i++) {
-            var row = rows[i]
-            if (!row || !row.guid) {
-                continue
-            }
-            if (_isTarget(row.name)) {
-                targetGuid = String(row.guid)
-                guid0 = targetGuid
-                return
-            }
+        var guid = String(_devices.guidForDeviceName(targetName) || "")
+        if (!guid.length) {
+            return
         }
+        targetGuid = guid
+        guid0 = guid
     }
 
     function _dest(model, id) {
