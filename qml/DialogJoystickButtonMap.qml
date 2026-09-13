@@ -22,21 +22,10 @@ Window {
 
     title: "Joystick Button Map — VKBsim Gladiator EVO R"
 
+    // Exact DILL / Device-tab / pairing-card name. No regex.
     readonly property string targetName: "VKBsim Gladiator EVO R"
 
     ViewerDeviceModel { id: _devices }
-
-    function isTarget(name) {
-        var text = String(name || "")
-        var n = text.toLowerCase()
-        if (text === targetName) {
-            return true
-        }
-        if (n.indexOf("evo l") !== -1 || n.indexOf("ot l") !== -1) {
-            return false
-        }
-        return n.indexOf("gladiator") !== -1 && (n.indexOf("evo r") !== -1 || n.indexOf("ot r") !== -1)
-    }
 
     Component.onCompleted: () => {
         if (_devices) {
@@ -70,7 +59,7 @@ Window {
                 required property bool mapped
 
                 anchors.fill: parent
-                visible: _buttonMap.isTarget(name)
+                visible: name === _buttonMap.targetName
 
                 onVisibleChanged: {
                     if (visible) {
