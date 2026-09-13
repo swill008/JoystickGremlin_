@@ -41,6 +41,7 @@ from gremlin.types import (
     InputType,
     ScanCode,
 )
+from vigem.ids import is_vigem_xbox_summary
 
 if TYPE_CHECKING:
     from gremlin.code_runner import CallbackObject
@@ -353,6 +354,13 @@ class EventListener(QtCore.QObject):
             data: information about the device changing state
             action: whether the device was added or removed
         """
+        # ViGEm 360 pads are created by Gremlin itself. Reloading on that
+        # arrival unplugs the pad (XboxProxy.reset) and Steam flaps connect.
+        try:
+            if is_vigem_xbox_summary(data):
+                return
+        except Exception:
+            pass
         if self._device_update_timer is not None:
             self._device_update_timer.cancel()
         self._device_update_timer = threading.Timer(0.2, self._run_device_list_update)
@@ -360,9 +368,20 @@ class EventListener(QtCore.QObject):
 
     def _run_device_list_update(self) -> None:
         """Performs the update of the devices connected."""
+        before = {
+            dev.device_guid.uuid
+            for dev in device_initialization.joystick_devices()
+        }
         device_initialization.joystick_devices_initialization()
         self._init_joysticks()
-        self.device_change_event.emit()
+        after = {
+            dev.device_guid.uuid
+            for dev in device_initialization.joystick_devices()
+        }
+        # HID already ignores ViGEm pads; do not fire Reload if the
+        # filtered list did not change.
+        if before != after:
+            self.device_change_event.emit()
 
     def _keyboard_handler(self, event: Event) -> bool:
         """Callback for keyboard events.
