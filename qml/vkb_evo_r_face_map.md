@@ -33,12 +33,12 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 20 | that wheel, center | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 21 | Grey upper paddle / flipper push | Right | 590 | 258 | 0.656 | 0.280 | pair 21/22 |
 | 22 | Grey upper paddle / flipper pull | Right | 590 | 258 | 0.656 | 0.280 | pair 21/22 |
-| 23 | En2 right knob up | Base | 653 | 726 | 0.726 | 0.789 | pair 23/24 |
-| 24 | En2 right knob down | Base | 653 | 726 | 0.726 | 0.789 | pair 23/24 |
-| 25 | En1 left knob up | Base | 558 | 728 | 0.621 | 0.791 | pair 25/26 |
-| 26 | En1 left knob down | Base | 558 | 728 | 0.621 | 0.791 | pair 25/26 |
+| 23 | En2 right knob up | Base | 664 | 734 | 0.739 | 0.798 | pair 23/24 |
+| 24 | En2 right knob down | Base | 664 | 734 | 0.739 | 0.798 | pair 23/24 |
+| 25 | En1 left knob up | Base | 560 | 734 | 0.623 | 0.798 | pair 25/26 |
+| 26 | En1 left knob down | Base | 560 | 734 | 0.623 | 0.798 | pair 25/26 |
 | 27 | Middle base pad | Base | 558 | 652 | 0.621 | 0.709 | pads |
-| 28 | Left base pad | Base | 524 | 656 | 0.583 | 0.713 | pads |
+| 28 | Left base pad | Base | 516 | 654 | 0.574 | 0.711 | pads |
 | 29 | Right base pad | Base | 588 | 644 | 0.654 | 0.700 | pads |
 
 ## Hats
@@ -54,7 +54,7 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 1 | Stick X roll | 386 | 529 | 0.429 | 0.575 |
 | 2 | Stick Y pitch | 386 | 529 | 0.429 | 0.575 |
 | 3 | Stick Z twist | 386 | 529 | 0.429 | 0.575 |
-| 4 | Z slider between En1 and En2 | 590 | 708 | 0.656 | 0.770 |
+| 4 | Z slider between En1 and En2 | 598 | 734 | 0.665 | 0.798 |
 
 ## Plus layout
 
@@ -83,5 +83,5 @@ Label order only. Do not use this section to change nx/ny.
 - H1 is the analog ministick nub (310,166), not the right rim of the well.
 - 11-15 is the top-right 5-way center hole (382,167).
 - 6-10 is the lower 5-way center (380,218), right of the red.
-- 28 = far-left square (524,656). 27 = middle square (558,652). 29 = right square (588,644). Do not pile them on the right pad.
-- 25/26 En1 knob center (558,728), not the top rim. 23/24 En2 knob center (653,726), not the upper-left rim.
+- 28 = far-left square (516,654). 27 = middle square (558,652). 29 = right square (588,644). Do not pile them on the right pad.
+- 25/26 En1 knob center (560,734), not the top rim. 23/24 En2 knob center (664,734), not the left rim. A4 slider center (598,734), not the top rim.

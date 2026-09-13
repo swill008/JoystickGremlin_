@@ -339,12 +339,12 @@ Item {
             stroke(_p2122, 0.656, 0.280, "left")
             stroke(_p12, 0.617, 0.301, "left")
             stroke(_b5, 0.605, 0.420, "left")
-            stroke(_b28, 0.583, 0.713, "top")
+            stroke(_b28, 0.574, 0.711, "top")
             stroke(_b27, 0.621, 0.709, "top")
             stroke(_b29, 0.654, 0.700, "top")
-            stroke(_p2526, 0.621, 0.791, "top")
-            stroke(_a4, 0.656, 0.770, "top")
-            stroke(_p2324, 0.726, 0.789, "top")
+            stroke(_p2526, 0.623, 0.798, "top")
+            stroke(_a4, 0.665, 0.798, "top")
+            stroke(_p2324, 0.739, 0.798, "top")
         }
     }
 
