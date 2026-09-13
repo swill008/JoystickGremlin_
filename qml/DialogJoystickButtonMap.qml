@@ -417,10 +417,16 @@ Window {
                 CheckBox {
                     visible: editing
                     text: "Auto pan"
-                    checked: _cardLoader.item ? _cardLoader.item.autoPanOn : false
+                    checked: {
+                        var c = _cardLoader.item
+                        if (!c)
+                            return false
+                        return c.autoPanOn === true
+                    }
                     onToggled: {
-                        if (_cardLoader.item)
-                            _cardLoader.item.autoPanOn = checked
+                        var c = _cardLoader.item
+                        if (c)
+                            c.autoPanOn = checked
                     }
                 }
                 Label {
