@@ -20,3 +20,4 @@ Any change to rules is written here. Do not keep a second unofficial list.
 13. Xbox tab is labeled layout + incoming sources, not a DILL input device. Hardware maps with Map to Xbox.
 14. Keep older R15 XML profiles loadable. Xbox-only nodes (map-to-xbox) are extra; stock R15 will not understand them.
 15. Standing rules live in this file (grok_rules) at the program folder root. Recall from this file. Any rule change is written here.
+16. All images generated for the user to view must be displayed in chat using image generation.
