@@ -70,11 +70,11 @@ Item {
         radius: Math.min(width, height) * 0.35
     }
 
-    Hotspot { nx: 0.27; ny: 0.175; nw: 0.16; nh: 0.09; lit: on("left_shoulder"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 8 }
+    Hotspot { nx: 0.258; ny: 0.168; nw: 0.16; nh: 0.09; lit: on("left_shoulder"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 8 }
     Hotspot { nx: 0.74; ny: 0.175; nw: 0.16; nh: 0.09; lit: on("right_shoulder"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 8 }
 
     Hotspot {
-        nx: 0.268; ny: 0.30; nw: 0.07
+        nx: 0.248; ny: 0.30; nw: 0.07
         nh: 0.13 + 0.04 * Math.min(1.0, Math.max(0.0, v("left_trigger")))
         lit: v("left_trigger") > 0.08
         glow: "#38BDF8"; fill: "#8838BDF8"; radius: 6
@@ -87,8 +87,8 @@ Item {
     }
 
     Item {
-        x: px(0.318) - pw(0.12) * 0.5
-        y: py(0.568) - pw(0.12) * 0.5
+        x: px(0.298) - pw(0.12) * 0.5
+        y: py(0.542) - pw(0.12) * 0.5
         width: pw(0.12); height: width
         Rectangle {
             anchors.fill: parent
@@ -103,14 +103,14 @@ Item {
             radius: width / 2
             color: "#f8fafc"
             opacity: 0.9
-            x: parent.width * 0.39 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("left_stick_x")))
-            y: parent.height * 0.39 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("left_stick_y")))
+            x: (parent.width - width) * 0.5 + parent.width * 0.28 * Math.max(-1, Math.min(1, v("left_stick_x")))
+            y: (parent.height - height) * 0.5 - parent.height * 0.28 * Math.max(-1, Math.min(1, v("left_stick_y")))
         }
     }
 
     Item {
-        x: px(0.655) - pw(0.12) * 0.5
-        y: py(0.728) - pw(0.12) * 0.5
+        x: px(0.632) - pw(0.12) * 0.5
+        y: py(0.705) - pw(0.12) * 0.5
         width: pw(0.12); height: width
         Rectangle {
             anchors.fill: parent
@@ -125,8 +125,8 @@ Item {
             radius: width / 2
             color: "#f8fafc"
             opacity: 0.9
-            x: parent.width * 0.39 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("right_stick_x")))
-            y: parent.height * 0.39 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("right_stick_y")))
+            x: (parent.width - width) * 0.5 + parent.width * 0.28 * Math.max(-1, Math.min(1, v("right_stick_x")))
+            y: (parent.height - height) * 0.5 - parent.height * 0.28 * Math.max(-1, Math.min(1, v("right_stick_y")))
         }
     }
 
@@ -135,13 +135,13 @@ Item {
     Hotspot { nx: 0.365; ny: 0.730; nw: 0.038; nh: 0.042; lit: on("dpad_left"); glow: "#f8fafc"; fill: "#66f8fafc"; radius: 3 }
     Hotspot { nx: 0.435; ny: 0.730; nw: 0.038; nh: 0.042; lit: on("dpad_right"); glow: "#f8fafc"; fill: "#66f8fafc"; radius: 3 }
 
-    Hotspot { nx: 0.505; ny: 0.575; nw: 0.11; nh: 0.11 * _pw / _ph; lit: on("guide"); glow: "#4ade80"; fill: "#00000000"; radius: width / 2 }
+    Hotspot { nx: 0.505; ny: 0.575; nw: 0.095; nh: 0.095 * _pw / _ph; lit: on("guide"); glow: "#4ade80"; fill: "#00000000"; radius: width / 2 }
 
     Hotspot { nx: 0.738; ny: 0.512; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("y"); glow: "#facc15"; fill: "#66fde047"; radius: width / 2 }
     Hotspot { nx: 0.785; ny: 0.575; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("b"); glow: "#f87171"; fill: "#66f87171"; radius: width / 2 }
     Hotspot { nx: 0.738; ny: 0.638; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("a"); glow: "#4ade80"; fill: "#664ade80"; radius: width / 2 }
     Hotspot { nx: 0.688; ny: 0.575; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("x"); glow: "#60a5fa"; fill: "#6660a5fa"; radius: width / 2 }
 
-    Hotspot { nx: 0.448; ny: 0.562; nw: 0.04; nh: 0.03; lit: on("back"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
-    Hotspot { nx: 0.560; ny: 0.562; nw: 0.04; nh: 0.03; lit: on("start"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
+    Hotspot { nx: 0.458; ny: 0.572; nw: 0.026; nh: 0.022; lit: on("back"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
+    Hotspot { nx: 0.548; ny: 0.572; nw: 0.026; nh: 0.022; lit: on("start"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
 }
