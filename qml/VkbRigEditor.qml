@@ -23,11 +23,15 @@ Item {
     // Do NOT declare signal nodesChanged — property var nodes already has it.
     signal selectedChanged()
 
-    function bump() {
+    function repaint() {
         tick++
-        selectedChanged()
         if (_lines)
             _lines.requestPaint()
+    }
+
+    function bump() {
+        repaint()
+        selectedChanged()
     }
 
     onInteractiveChanged: {
@@ -338,13 +342,18 @@ Item {
 
     Repeater {
         id: _chips
-        model: _ed.nodes
+        model: (_ed.nodes || []).length
         delegate: Item {
             id: _wrap
-            required property var modelData
             required property int index
-            x: { _ed.tick; return modelData.chipFx * _ed.width }
-            y: { _ed.tick; return modelData.chipFy * _ed.height }
+            readonly property var node: {
+                _ed.tick
+                var list = _ed.nodes || []
+                return (index >= 0 && index < list.length) ? list[index] : null
+            }
+            visible: node !== null
+            x: { _ed.tick; return node ? node.chipFx * _ed.width : 0 }
+            y: { _ed.tick; return node ? node.chipFy * _ed.height : 0 }
             z: 3
             width: { _ed.tick; return _body.item ? Math.max(8, _body.item.implicitWidth) : 40 }
             height: { _ed.tick; return _body.item ? Math.max(8, _body.item.implicitHeight) : 20 }
@@ -352,13 +361,15 @@ Item {
             Loader {
                 id: _body
                 sourceComponent: {
-                    var k = modelData.kind
+                    var n = _wrap.node
+                    if (!n) return _tagComp
+                    var k = n.kind
                     if (k === "plus") return _plusComp
                     if (k === "pair" || k === "axis_stack") return _stackComp
                     return _tagComp
                 }
                 onLoaded: {
-                    item.node = Qt.binding(function() { return modelData })
+                    item.node = Qt.binding(function() { return _wrap.node })
                 }
             }
         }
@@ -572,7 +583,8 @@ Item {
         anchors.fill: parent
         z: 8
         enabled: _ed.interactive
-        hoverEnabled: _ed.interactive
+        hoverEnabled: true
+        preventStealing: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         focus: true
         Keys.onDeletePressed: _ed.deleteSelection()
@@ -613,7 +625,7 @@ Item {
             _ed.bump()
         }
         onPositionChanged: (m) => {
-            if (!pressed || !_ed.dragKind) {
+            if (!_ed.dragKind) {
                 return
             }
             var n = _ed.nodeAt(_ed.selectedId)
@@ -625,16 +637,19 @@ Item {
                 n.nx = Math.max(0, Math.min(1, p.x))
                 n.ny = Math.max(0, Math.min(1, p.y))
             } else if (_ed.dragKind === "chip") {
-                n.chipFx = Math.max(0, Math.min(0.95, (m.x - _ed.dragOffX) / Math.max(1, width)))
-                n.chipFy = Math.max(0, Math.min(0.95, (m.y - _ed.dragOffY) / Math.max(1, height)))
+                n.chipFx = Math.max(0.01, Math.min(0.92, (m.x - _ed.dragOffX) / Math.max(1, width)))
+                n.chipFy = Math.max(0.01, Math.min(0.92, (m.y - _ed.dragOffY) / Math.max(1, height)))
             } else if (_ed.dragKind === "spine" && n.spines && _ed.dragSpine >= 0) {
                 n.spines[_ed.dragSpine].fx = Math.max(0, Math.min(1, m.x / Math.max(1, width)))
                 n.spines[_ed.dragSpine].fy = Math.max(0, Math.min(1, m.y / Math.max(1, height)))
             }
-            _ed.bump()
+            _ed.repaint()
         }
         onReleased: {
-            _ed.dragKind = ""
+            if (_ed.dragKind) {
+                _ed.dragKind = ""
+                _ed.bump()
+            }
         }
         onDoubleClicked: (m) => {
             var hit = _ed.hitTest(m.x, m.y)
