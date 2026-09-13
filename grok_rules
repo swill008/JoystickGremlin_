@@ -42,3 +42,13 @@ Any change to rules is written here. Do not keep a second unofficial list.
     19.7 If a large file is truncated, restore from the last known good commit first (device.py: e592376, 60033 bytes) then re-apply only the missing hunk. Do not layer patches on a stub.
     19.8 Small files stay on the GitHub connector as today.
 20. EVO R Button Map lock lives in qml/vkb_evo_r_face_map.md. Read that file before moving any face leader or plus. Update that file in the same commit as any hotspot change.
+21. Face leaders — precision only. No guessing. No window-screenshot math.
+    21.1 Root cause of missed leaders: (a) nx/ny were read off a GUI screenshot that includes gutters and chrome, but px/py are fractions of the painted JPEG only; (b) tag ends used mapToItem(_face) while photo ends used _stage.x, which is not face space. Do not repeat either.
+    21.2 Measure on the source bitmap only. For EVO R that is qml/images/vkb_gladiator_rig.jpg (899 x 920). Pixel x,y of the control, then nx = x / width, ny = y / height.
+    21.3 Prove the dots on a copy of that JPEG and show it in chat before changing QML. The user confirms the overlay, not a window screenshot.
+    21.4 Write the confirmed row into qml/vkb_evo_r_face_map.md and the matching stroke() in the same commit.
+    21.5 Both ends of every leader must use the same item space:
+         photoPt(nx, ny) = _img.mapToItem(_face, _ox + nx * _pw, _oy + ny * _ph)
+         tagPt = item.mapToItem(_face, …)
+         Never use _stage.x / _stage.y as face coordinates.
+    21.6 If a dot is still off, change one pixel pair on the JPEG overlay, then one map row. Do not nudge from a window screenshot.
