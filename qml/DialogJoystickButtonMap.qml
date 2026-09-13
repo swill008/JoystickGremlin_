@@ -22,10 +22,42 @@ Window {
 
     title: "Joystick Button Map — VKBsim Gladiator EVO R"
 
-    // Exact DILL / Device-tab / pairing-card name. No regex.
     readonly property string targetName: "VKBsim Gladiator EVO R"
+    property int _nameTick: 0
 
     ViewerDeviceModel { id: _devices }
+
+    DeviceNames {
+        id: _names
+        onChanged: _buttonMap._nameTick++
+    }
+
+    function displayName(guid, name) {
+        if (!_names) {
+            return name
+        }
+        return _nameTick, _names.display(guid, name)
+    }
+
+    function isTarget(guid, name) {
+        var raw = String(name || "")
+        var shown = String(displayName(guid, raw) || "")
+        if (raw === targetName || shown === targetName) {
+            return true
+        }
+        var a = raw.toLowerCase()
+        var b = shown.toLowerCase()
+        if (a.indexOf("evo l") !== -1 || b.indexOf("evo l") !== -1) {
+            return false
+        }
+        if (a.indexOf("ot l") !== -1 || b.indexOf("ot l") !== -1) {
+            return false
+        }
+        function isRight(s) {
+            return s.indexOf("gladiator") !== -1 && (s.indexOf("evo r") !== -1 || s.indexOf("ot r") !== -1)
+        }
+        return isRight(a) || isRight(b)
+    }
 
     Component.onCompleted: () => {
         if (_devices) {
@@ -59,7 +91,7 @@ Window {
                 required property bool mapped
 
                 anchors.fill: parent
-                visible: name === _buttonMap.targetName
+                visible: _buttonMap.isTarget(guid, name)
 
                 onVisibleChanged: {
                     if (visible) {
@@ -75,7 +107,7 @@ Window {
                 JoystickButtonMapCard {
                     anchors.fill: parent
                     deviceGuid: guid
-                    title: name
+                    title: _buttonMap.displayName(guid, name)
                     pairLabel: pairLabel
                 }
             }
