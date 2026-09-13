@@ -6,7 +6,6 @@ import QtQuick
 import Gremlin.Device
 import Gremlin.Style
 
-// Same live stack as qml/InputViewerCard.qml (vJoy Pairing).
 Item {
     id: _root
 
@@ -18,10 +17,6 @@ Item {
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
     property int hatStamp: _live && _live.hatStamp !== undefined ? _live.hatStamp : (_live ? _live.stamp : 0)
     property int liveStamp: buttonStamp + axisStamp + hatStamp + _buttons.count + _axes.count + _hats.count
-
-    property var btnDest: ({})
-    property var axisDest: ({})
-    property var hatDest: ({})
 
     PairLiveThrottle {
         id: _live
@@ -43,45 +38,6 @@ Item {
         guid: _root.deviceGuid
     }
 
-    Repeater {
-        model: _buttons
-        Item {
-            required property int identifier
-            required property string vjoyLabel
-            Component.onCompleted: {
-                var m = _root.btnDest
-                m[identifier] = vjoyLabel
-                _root.btnDest = m
-            }
-        }
-    }
-
-    Repeater {
-        model: _axes
-        Item {
-            required property int identifier
-            required property string vjoyLabel
-            Component.onCompleted: {
-                var m = _root.axisDest
-                m[identifier] = vjoyLabel
-                _root.axisDest = m
-            }
-        }
-    }
-
-    Repeater {
-        model: _hats
-        Item {
-            required property int identifier
-            required property string vjoyLabel
-            Component.onCompleted: {
-                var m = _root.hatDest
-                m[identifier] = vjoyLabel
-                _root.hatDest = m
-            }
-        }
-    }
-
     function hwAxis(id) {
         if (!_live) {
             return 0
@@ -100,20 +56,63 @@ Item {
         }
         return hatStamp >= 0 ? _live.hatValue(id) : 0
     }
+
+    function _roleDest(model, id) {
+        if (!model) {
+            return ""
+        }
+        if (model.destLabel) {
+            try {
+                var slot = String(model.destLabel(id) || "")
+                if (slot.length) {
+                    return slot
+                }
+            } catch (e) {
+            }
+        }
+        var identRole = 0x0100 + 1
+        var labelRole = 0x0100 + 5
+        for (var i = 0; i < model.count; i++) {
+            var idx = model.index(i, 0)
+            if (Number(model.data(idx, identRole)) === Number(id)) {
+                return String(model.data(idx, labelRole) || "")
+            }
+        }
+        return ""
+    }
+
     function destBtn(id) {
         liveStamp
-        var label = String(_root.btnDest[id] || "")
-        return label.length ? label : "—"
+        var label = _roleDest(_buttons, id)
+        if (label.length) {
+            return label
+        }
+        if (pairLabel && pairLabel.length) {
+            return pairLabel + " Btn " + id
+        }
+        return "—"
     }
     function destAxis(id) {
         liveStamp
-        var label = String(_root.axisDest[id] || "")
-        return label.length ? label : "—"
+        var label = _roleDest(_axes, id)
+        if (label.length) {
+            return label
+        }
+        if (pairLabel && pairLabel.length) {
+            return pairLabel + " Axis " + id
+        }
+        return "—"
     }
     function destHat(id) {
         liveStamp
-        var label = String(_root.hatDest[id] || "")
-        return label.length ? label : "—"
+        var label = _roleDest(_hats, id)
+        if (label.length) {
+            return label
+        }
+        if (pairLabel && pairLabel.length) {
+            return pairLabel + " Hat " + id
+        }
+        return "—"
     }
 
     VkbRigFace {
