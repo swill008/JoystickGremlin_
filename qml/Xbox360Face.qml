@@ -87,8 +87,8 @@ Item {
     }
 
     Item {
-        x: px(0.298) - pw(0.12) * 0.5
-        y: py(0.542) - pw(0.12) * 0.5
+        x: px(0.292) - pw(0.12) * 0.5
+        y: py(0.580) - pw(0.12) * 0.5
         width: pw(0.12); height: width
         Rectangle {
             anchors.fill: parent
@@ -109,8 +109,8 @@ Item {
     }
 
     Item {
-        x: px(0.632) - pw(0.12) * 0.5
-        y: py(0.705) - pw(0.12) * 0.5
+        x: px(0.620) - pw(0.12) * 0.5
+        y: py(0.728) - pw(0.12) * 0.5
         width: pw(0.12); height: width
         Rectangle {
             anchors.fill: parent
