@@ -16,16 +16,16 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 3 | Red head button | Left | 311 | 234 | 0.346 | 0.254 | single |
 | 4 | White cap | Right | 551 | 227 | 0.613 | 0.247 | single |
 | 5 | Lower grip white | Right | 544 | 386 | 0.605 | 0.420 | single |
-| 6 | 5-way right of red, up | Left | 380 | 218 | 0.423 | 0.237 | plus 6-10 |
-| 7 | that 5-way, right | Left | 380 | 218 | 0.423 | 0.237 | plus 6-10 |
-| 8 | that 5-way, down | Left | 380 | 218 | 0.423 | 0.237 | plus 6-10 |
-| 9 | that 5-way, left | Left | 380 | 218 | 0.423 | 0.237 | plus 6-10 |
-| 10 | that 5-way, center | Left | 380 | 218 | 0.423 | 0.237 | plus 6-10 |
-| 11 | Top-right head 5-way, up | Left | 382 | 167 | 0.425 | 0.182 | plus 11-15 |
-| 12 | that 5-way, right | Left | 382 | 167 | 0.425 | 0.182 | plus 11-15 |
-| 13 | that 5-way, down | Left | 382 | 167 | 0.425 | 0.182 | plus 11-15 |
-| 14 | that 5-way, left | Left | 382 | 167 | 0.425 | 0.182 | plus 11-15 |
-| 15 | that 5-way, center | Left | 382 | 167 | 0.425 | 0.182 | plus 11-15 |
+| 6 | 5-way right of red, up | Left | 370 | 210 | 0.412 | 0.228 | plus 6-10 |
+| 7 | that 5-way, right | Left | 370 | 210 | 0.412 | 0.228 | plus 6-10 |
+| 8 | that 5-way, down | Left | 370 | 210 | 0.412 | 0.228 | plus 6-10 |
+| 9 | that 5-way, left | Left | 370 | 210 | 0.412 | 0.228 | plus 6-10 |
+| 10 | that 5-way, center | Left | 370 | 210 | 0.412 | 0.228 | plus 6-10 |
+| 11 | Top-right head 5-way, up | Left | 376 | 161 | 0.418 | 0.175 | plus 11-15 |
+| 12 | that 5-way, right | Left | 376 | 161 | 0.418 | 0.175 | plus 11-15 |
+| 13 | that 5-way, down | Left | 376 | 161 | 0.418 | 0.175 | plus 11-15 |
+| 14 | that 5-way, left | Left | 376 | 161 | 0.418 | 0.175 | plus 11-15 |
+| 15 | that 5-way, center | Left | 376 | 161 | 0.418 | 0.175 | plus 11-15 |
 | 16 | Silver wheel 5-way, up | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 17 | that wheel, right | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 18 | that wheel, down | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
@@ -82,7 +82,7 @@ Chips hug the photo and sit at hotspot Y so leaders stay near-horizontal. 5-ways
 - 21/22 is the grey flipper face right of the red trigger (590,258). Not the red trigger. Not past the flipper tip in the background.
 - 1/2 is the right-grip red trigger centroid (555,277).
 - H1 is the analog ministick nub (310,166), not the right rim of the well.
-- 11-15 is the top-right 5-way center hole (382,167).
-- 6-10 is the lower 5-way center (380,218), right of the red.
+- 11-15 is the top-right 5-way center hole (376,161).
+- 6-10 is the lower 5-way center (370,210), right of the red.
 - 28 = far-left square (516,654). 27 = middle square (558,652). 29 = right square (588,644). Do not pile them on the right pad.
 - 25/26 En1 knob center (560,734), not the top rim. 23/24 En2 knob center (664,734), not the left rim. A4 slider center (598,734), not the top rim.
