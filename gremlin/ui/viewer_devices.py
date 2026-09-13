@@ -152,3 +152,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
+
+    @QtCore.Slot(result="QVariant")
+    def listRows(self):
+        return list(self._rows)

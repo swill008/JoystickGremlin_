@@ -25,6 +25,7 @@ class PairLiveThrottle(QtCore.QObject):
     stampChanged = QtCore.Signal()
     axisStampChanged = QtCore.Signal()
     buttonStampChanged = QtCore.Signal()
+    hatStampChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -32,11 +33,13 @@ class PairLiveThrottle(QtCore.QObject):
         self._uid = None
         self._hw_axis: dict[int, float] = {}
         self._hw_button: dict[int, float] = {}
+        self._hw_hat: dict[int, float] = {}
         self._vj_axis: dict[tuple[str, int], float] = {}
         self._vj_button: dict[tuple[str, int], float] = {}
         self._stamp = 0
         self._axis_stamp = 0
         self._button_stamp = 0
+        self._hat_stamp = 0
         self._watch = set()
         self._axis_dirty = False
         self._timer = QtCore.QTimer(self)
@@ -71,7 +74,8 @@ class PairLiveThrottle(QtCore.QObject):
         self._hw_axis.clear()
         self._hw_button.clear()
         self._watch = {_norm(self._guid)} if self._guid else set()
-        for kind in (InputType.JoystickAxis, InputType.JoystickButton):
+        self._hw_hat.clear()
+        for kind in (InputType.JoystickAxis, InputType.JoystickButton, InputType.JoystickHat):
             for row in pairing._mapped_rows(self._guid, kind):
                 vg = _norm(row.get("vjoyGuid", ""))
                 if vg:
@@ -108,6 +112,25 @@ class PairLiveThrottle(QtCore.QObject):
             else:
                 self._vj_button[(ev, ident)] = pressed
             self._bump_button()
+            return
+        if event.event_type == InputType.JoystickHat:
+            try:
+                ident = int(event.identifier)
+            except Exception:
+                return
+            val = getattr(event, "value", None)
+            on = 0.0
+            if isinstance(val, (list, tuple)) and len(val) >= 2:
+                try:
+                    on = 1.0 if float(val[0]) or float(val[1]) else 0.0
+                except Exception:
+                    on = 1.0
+            elif val not in (None, 0, 0.0, "center", "Center", "neutral"):
+                on = 1.0
+            if is_hw:
+                self._hw_hat[ident] = on
+            self._hat_stamp += 1
+            self.hatStampChanged.emit()
 
     @QtCore.Slot(int, result=float)
     def axisValue(self, identifier: int) -> float:
@@ -125,6 +148,10 @@ class PairLiveThrottle(QtCore.QObject):
     def vjoyButtonValue(self, vjoy_guid: str, identifier: int) -> float:
         return float(self._vj_button.get((_norm(vjoy_guid), int(identifier)), 0.0))
 
+    @QtCore.Slot(int, result=float)
+    def hatValue(self, identifier: int) -> float:
+        return float(self._hw_hat.get(int(identifier), 0.0))
+
     def _get_stamp(self) -> int:
         return self._stamp
 
@@ -134,7 +161,11 @@ class PairLiveThrottle(QtCore.QObject):
     def _get_button_stamp(self) -> int:
         return self._button_stamp
 
+    def _get_hat_stamp(self) -> int:
+        return self._hat_stamp
+
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid)
     stamp = QtCore.Property(int, fget=_get_stamp, notify=stampChanged)
     axisStamp = QtCore.Property(int, fget=_get_axis_stamp, notify=axisStampChanged)
     buttonStamp = QtCore.Property(int, fget=_get_button_stamp, notify=buttonStampChanged)
+    hatStamp = QtCore.Property(int, fget=_get_hat_stamp, notify=hatStampChanged)

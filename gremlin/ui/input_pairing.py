@@ -196,6 +196,17 @@ class _MappedModel(QtCore.QAbstractListModel):
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
 
+    @QtCore.Slot(int, result=str)
+    def destLabel(self, identifier: int) -> str:
+        try:
+            ident = int(identifier)
+        except Exception:
+            return ""
+        for row in self._rows:
+            if int(row.get("identifier", -1)) == ident:
+                return str(row.get("vjoyLabel") or "")
+        return ""
+
 
 @ta.QmlElement
 class MappedAxisModel(_MappedModel):
@@ -207,6 +218,12 @@ class MappedAxisModel(_MappedModel):
 class MappedButtonModel(_MappedModel):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(InputType.JoystickButton, parent)
+
+
+@ta.QmlElement
+class MappedHatModel(_MappedModel):
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(InputType.JoystickHat, parent)
 
 
 @ta.QmlElement

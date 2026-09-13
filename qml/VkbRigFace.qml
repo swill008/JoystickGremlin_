@@ -2,18 +2,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
-import QtQuick.Controls
 import Gremlin.Style
 
 Item {
     id: _face
 
-    property string pairLabel: ""
-    property var live: null
-    property int buttonStamp: 0
-    property int axisStamp: 0
+    property var host: null
+    property int liveStamp: 0
 
-    // painted image size
     readonly property real _pw: _img.paintedWidth
     readonly property real _ph: _img.paintedHeight
     readonly property real _ox: (_img.width - _pw) * 0.5
@@ -22,23 +18,12 @@ Item {
     function px(nx) { return _ox + nx * _pw }
     function py(ny) { return _oy + ny * _ph }
 
-    function hwButton(id) {
-        if (!live || buttonStamp < 0) return 0
-        try { return live.buttonValue(id) } catch (e) { return 0 }
-    }
-    function hwAxis(id) {
-        if (!live || axisStamp < 0) return 0
-        try { return live.axisValue(id) } catch (e) { return 0 }
-    }
-
-    function destText(kind, id) {
-        if (!pairLabel || !pairLabel.length) {
-            return "—"
-        }
-        if (kind === "hat") return pairLabel + " Hat " + id
-        if (kind === "axis") return pairLabel + " Axis " + id
-        return pairLabel + " Btn " + id
-    }
+    function hwButton(id) { return host && host.hwButton ? host.hwButton(id) : 0 }
+    function hwAxis(id) { return host && host.hwAxis ? host.hwAxis(id) : 0 }
+    function hwHat(id) { return host && host.hwHat ? host.hwHat(id) : 0 }
+    function destBtn(id) { return host && host.destBtn ? host.destBtn(id) : "—" }
+    function destAxis(id) { return host && host.destAxis ? host.destAxis(id) : "—" }
+    function destHat(id) { return host && host.destHat ? host.destHat(id) : "—" }
 
     Image {
         id: _img
@@ -47,7 +32,12 @@ Item {
         fillMode: Image.PreserveAspectFit
         asynchronous: true
         cache: true
+        onStatusChanged: _face.relayout()
+        onPaintedWidthChanged: _face.relayout()
+        onPaintedHeightChanged: _face.relayout()
     }
+
+    signal relayout()
 
     component Callout: Item {
         property real ax: 0.5
@@ -55,7 +45,7 @@ Item {
         property real lx: 0.05
         property real ly: 0.05
         property string hw: ""
-        property string dest: ""
+        property string dest: "—"
         property bool lit: false
 
         anchors.fill: parent
@@ -71,11 +61,12 @@ Item {
                 ctx.lineWidth = 1.2
                 ctx.beginPath()
                 ctx.moveTo(px(ax), py(ay))
-                ctx.lineTo(px(lx), py(ly) + 10)
+                ctx.lineTo(px(lx) + 6, py(ly) + 10)
                 ctx.stroke()
             }
             Connections {
                 target: _face
+                function onRelayout() { _line.requestPaint() }
                 function onWidthChanged() { _line.requestPaint() }
                 function onHeightChanged() { _line.requestPaint() }
             }
@@ -92,7 +83,7 @@ Item {
         }
 
         Rectangle {
-            x: px(lx) - (lx > 0.5 ? width - 8 : 0)
+            x: px(lx) - (lx > 0.55 ? width - 8 : 0)
             y: py(ly)
             implicitWidth: _lab.implicitWidth + 12
             implicitHeight: _lab.implicitHeight + 8
@@ -109,26 +100,36 @@ Item {
         }
     }
 
-    // Left grip
-    Callout { ax: 0.30; ay: 0.22; lx: 0.02; ly: 0.08; hw: "HW Hat 1"; dest: destText("hat", 1); lit: false }
-    Callout { ax: 0.36; ay: 0.20; lx: 0.28; ly: 0.02; hw: "HW Hat 2"; dest: destText("hat", 2); lit: false }
-    Callout { ax: 0.385; ay: 0.285; lx: 0.02; ly: 0.26; hw: "HW 2"; dest: destText("btn", 2); lit: hwButton(2) > 0.5 }
-    Callout { ax: 0.30; ay: 0.355; lx: 0.02; ly: 0.34; hw: "HW 1"; dest: destText("btn", 1); lit: hwButton(1) > 0.5 }
-    Callout { ax: 0.31; ay: 0.38; lx: 0.02; ly: 0.42; hw: "HW Axis T"; dest: destText("axis", 3); lit: Math.abs(hwAxis(3)) > 0.15 }
-    Callout { ax: 0.43; ay: 0.40; lx: 0.02; ly: 0.50; hw: "HW Axis 4/5"; dest: destText("axis", 4); lit: Math.abs(hwAxis(4)) > 0.15 || Math.abs(hwAxis(5)) > 0.15 }
-    Callout { ax: 0.455; ay: 0.405; lx: 0.02; ly: 0.58; hw: "HW 8 click"; dest: destText("btn", 8); lit: hwButton(8) > 0.5 }
-    Callout { ax: 0.38; ay: 0.48; lx: 0.02; ly: 0.66; hw: "HW 9"; dest: destText("btn", 9); lit: hwButton(9) > 0.5 }
-    Callout { ax: 0.42; ay: 0.58; lx: 0.02; ly: 0.74; hw: "HW Axis X/Y"; dest: destText("axis", 1); lit: Math.abs(hwAxis(1)) > 0.15 || Math.abs(hwAxis(2)) > 0.15 }
+    // ---- Left grip (mounted) ----
+    Callout { ax: 0.30; ay: 0.20; lx: 0.01; ly: 0.04; hw: "HW Hat 1"; dest: destHat(1); lit: liveStamp, hwHat(1) > 0.5 }
+    Callout { ax: 0.36; ay: 0.185; lx: 0.28; ly: 0.005; hw: "HW Hat 2"; dest: destHat(2); lit: liveStamp, hwHat(2) > 0.5 }
+    Callout { ax: 0.335; ay: 0.235; lx: 0.01; ly: 0.11; hw: "HW Hat 3"; dest: destHat(3); lit: liveStamp, hwHat(3) > 0.5 }
+    Callout { ax: 0.385; ay: 0.285; lx: 0.01; ly: 0.18; hw: "HW 2"; dest: destBtn(2); lit: liveStamp, hwButton(2) > 0.5 }
+    Callout { ax: 0.30; ay: 0.355; lx: 0.01; ly: 0.25; hw: "HW 1"; dest: destBtn(1); lit: liveStamp, hwButton(1) > 0.5 }
+    Callout { ax: 0.295; ay: 0.375; lx: 0.01; ly: 0.32; hw: "HW Axis T"; dest: destAxis(3); lit: liveStamp, Math.abs(hwAxis(3)) > 0.12 }
+    Callout { ax: 0.43; ay: 0.40; lx: 0.01; ly: 0.39; hw: "HW Axis 4"; dest: destAxis(4); lit: liveStamp, Math.abs(hwAxis(4)) > 0.12 }
+    Callout { ax: 0.43; ay: 0.40; lx: 0.01; ly: 0.46; hw: "HW Axis 5"; dest: destAxis(5); lit: liveStamp, Math.abs(hwAxis(5)) > 0.12 }
+    Callout { ax: 0.455; ay: 0.405; lx: 0.01; ly: 0.53; hw: "HW 8"; dest: destBtn(8); lit: liveStamp, hwButton(8) > 0.5 }
+    Callout { ax: 0.38; ay: 0.48; lx: 0.01; ly: 0.60; hw: "HW 9"; dest: destBtn(9); lit: liveStamp, hwButton(9) > 0.5 }
+    Callout { ax: 0.40; ay: 0.52; lx: 0.01; ly: 0.67; hw: "HW 7"; dest: destBtn(7); lit: liveStamp, hwButton(7) > 0.5 }
+    Callout { ax: 0.42; ay: 0.58; lx: 0.01; ly: 0.74; hw: "HW Axis X"; dest: destAxis(1); lit: liveStamp, Math.abs(hwAxis(1)) > 0.12 }
+    Callout { ax: 0.42; ay: 0.60; lx: 0.01; ly: 0.81; hw: "HW Axis Y"; dest: destAxis(2); lit: liveStamp, Math.abs(hwAxis(2)) > 0.12 }
 
-    // Right grip
-    Callout { ax: 0.62; ay: 0.22; lx: 0.78; ly: 0.10; hw: "HW Hat 1"; dest: destText("hat", 1); lit: false }
-    Callout { ax: 0.64; ay: 0.30; lx: 0.78; ly: 0.22; hw: "HW 1"; dest: destText("btn", 1); lit: hwButton(1) > 0.5 }
-    Callout { ax: 0.60; ay: 0.305; lx: 0.78; ly: 0.32; hw: "HW 2"; dest: destText("btn", 2); lit: hwButton(2) > 0.5 }
-    Callout { ax: 0.60; ay: 0.42; lx: 0.78; ly: 0.42; hw: "HW 4"; dest: destText("btn", 4); lit: hwButton(4) > 0.5 }
+    // ---- Right grip ----
+    Callout { ax: 0.62; ay: 0.22; lx: 0.78; ly: 0.04; hw: "HW Hat 1"; dest: destHat(1); lit: liveStamp, hwHat(1) > 0.5 }
+    Callout { ax: 0.635; ay: 0.255; lx: 0.78; ly: 0.12; hw: "HW 3"; dest: destBtn(3); lit: liveStamp, hwButton(3) > 0.5 }
+    Callout { ax: 0.64; ay: 0.30; lx: 0.78; ly: 0.20; hw: "HW 1"; dest: destBtn(1); lit: liveStamp, hwButton(1) > 0.5 }
+    Callout { ax: 0.60; ay: 0.305; lx: 0.78; ly: 0.28; hw: "HW 2"; dest: destBtn(2); lit: liveStamp, hwButton(2) > 0.5 }
+    Callout { ax: 0.655; ay: 0.325; lx: 0.78; ly: 0.36; hw: "HW Axis T"; dest: destAxis(3); lit: liveStamp, Math.abs(hwAxis(3)) > 0.12 }
+    Callout { ax: 0.60; ay: 0.42; lx: 0.78; ly: 0.44; hw: "HW 4"; dest: destBtn(4); lit: liveStamp, hwButton(4) > 0.5 }
+    Callout { ax: 0.58; ay: 0.38; lx: 0.78; ly: 0.52; hw: "HW 5"; dest: destBtn(5); lit: liveStamp, hwButton(5) > 0.5 }
 
-    // Base
-    Callout { ax: 0.62; ay: 0.70; lx: 0.78; ly: 0.62; hw: "HW 10-12"; dest: destText("btn", 10); lit: hwButton(10) > 0.5 || hwButton(11) > 0.5 || hwButton(12) > 0.5 }
-    Callout { ax: 0.58; ay: 0.78; lx: 0.02; ly: 0.84; hw: "HW Axis 6"; dest: destText("axis", 6); lit: Math.abs(hwAxis(6)) > 0.15 }
-    Callout { ax: 0.64; ay: 0.80; lx: 0.50; ly: 0.94; hw: "HW Axis 7"; dest: destText("axis", 7); lit: Math.abs(hwAxis(7)) > 0.15 }
-    Callout { ax: 0.70; ay: 0.78; lx: 0.78; ly: 0.84; hw: "HW Axis 8"; dest: destText("axis", 8); lit: Math.abs(hwAxis(8)) > 0.15 }
+    // ---- Base buttons + rotaries / sliders ----
+    Callout { ax: 0.58; ay: 0.685; lx: 0.78; ly: 0.60; hw: "HW 10"; dest: destBtn(10); lit: liveStamp, hwButton(10) > 0.5 }
+    Callout { ax: 0.62; ay: 0.695; lx: 0.78; ly: 0.67; hw: "HW 11"; dest: destBtn(11); lit: liveStamp, hwButton(11) > 0.5 }
+    Callout { ax: 0.66; ay: 0.70; lx: 0.78; ly: 0.74; hw: "HW 12"; dest: destBtn(12); lit: liveStamp, hwButton(12) > 0.5 }
+    Callout { ax: 0.58; ay: 0.78; lx: 0.01; ly: 0.88; hw: "HW Axis 6"; dest: destAxis(6); lit: liveStamp, Math.abs(hwAxis(6)) > 0.12 }
+    Callout { ax: 0.64; ay: 0.80; lx: 0.42; ly: 0.94; hw: "HW Axis 7"; dest: destAxis(7); lit: liveStamp, Math.abs(hwAxis(7)) > 0.12 }
+    Callout { ax: 0.70; ay: 0.78; lx: 0.78; ly: 0.82; hw: "HW Axis 8"; dest: destAxis(8); lit: liveStamp, Math.abs(hwAxis(8)) > 0.12 }
+    Callout { ax: 0.58; ay: 0.78; lx: 0.01; ly: 0.94; hw: "HW 13"; dest: destBtn(13); lit: liveStamp, hwButton(13) > 0.5 }
 }
