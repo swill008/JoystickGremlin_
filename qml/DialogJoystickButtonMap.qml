@@ -566,14 +566,54 @@ Window {
                                 MenuSeparator {}
                                 Menu {
                                     title: "Size"
-                                    MenuItem { text: "4"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 4 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 4 } }
-                                    MenuItem { text: "8"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 8 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 8 } }
-                                    MenuItem { text: "12"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 12 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 12 } }
-                                    MenuItem { text: "16"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 16 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 16 } }
-                                    MenuItem { text: "24"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 24 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 24 } }
-                                    MenuItem { text: "32"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 32 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 32 } }
-                                    MenuItem { text: "48"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 48 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 48 } }
-                                    MenuItem { text: "64"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 64 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 64 } }
+                                    MenuItem {
+                                        text: "4"
+                                        checkable: true
+                                        checked: { var e = _ed(); return e && e.gridSize === 4 }
+                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 4 }
+                                    }
+                                    MenuItem {
+                                        text: "8"
+                                        checkable: true
+                                        checked: { var e = _ed(); return e && e.gridSize === 8 }
+                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 8 }
+                                    }
+                                    MenuItem {
+                                        text: "12"
+                                        checkable: true
+                                        checked: { var e = _ed(); return e && e.gridSize === 12 }
+                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 12 }
+                                    }
+                                    MenuItem {
+                                        text: "16"
+                                        checkable: true
+                                        checked: { var e = _ed(); return e && e.gridSize === 16 }
+                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 16 }
+                                    }
+                                    MenuItem {
+                                        text: "24"
+                                        checkable: true
+                                        checked: { var e = _ed(); return e && e.gridSize === 24 }
+                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 24 }
+                                    }
+                                    MenuItem {
+                                        text: "32"
+                                        checkable: true
+                                        checked: { var e = _ed(); return e && e.gridSize === 32 }
+                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 32 }
+                                    }
+                                    MenuItem {
+                                        text: "48"
+                                        checkable: true
+                                        checked: { var e = _ed(); return e && e.gridSize === 48 }
+                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 48 }
+                                    }
+                                    MenuItem {
+                                        text: "64"
+                                        checkable: true
+                                        checked: { var e = _ed(); return e && e.gridSize === 64 }
+                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 64 }
+                                    }
                                 }
                             }
                         }
