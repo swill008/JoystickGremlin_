@@ -258,6 +258,15 @@ Window {
                             e.snapOn = checked
                     }
                 }
+                CheckBox {
+                    visible: editing
+                    text: "Auto pan"
+                    checked: _cardLoader.item ? _cardLoader.item.autoPanOn : true
+                    onToggled: {
+                        if (_cardLoader.item)
+                            _cardLoader.item.autoPanOn = checked
+                    }
+                }
                 Label {
                     visible: editing
                     text: "Size"

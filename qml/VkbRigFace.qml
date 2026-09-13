@@ -49,6 +49,7 @@ Item {
     property real autoVx: -1
     property real autoVy: -1
     property bool autoHover: false
+    property bool autoPanOn: true
 
     function resetView() {
         zoom = 1
@@ -98,7 +99,7 @@ Item {
     }
 
     function autoPanTick() {
-        if (!editing || !autoHover)
+        if (!editing || !autoHover || !autoPanOn)
             return
         if (typeof _midPan !== "undefined" && _midPan && _midPan.active)
             return
@@ -620,7 +621,7 @@ Item {
         Timer {
             interval: 16
             repeat: true
-            running: _face.editing && _face.autoHover
+            running: _face.editing && _face.autoHover && _face.autoPanOn
             onTriggered: _face.autoPanTick()
         }
 
