@@ -275,6 +275,12 @@ ApplicationWindow {
                 }
             }
             MenuItem {
+                text: qsTr("Joystick Button Map")
+                onTriggered: () => {
+                    Helpers.toggleComponent("DialogJoystickButtonMap.qml")
+                }
+            }
+            MenuItem {
                 text: qsTr("Device Viewer")
                 onTriggered: () => {
                     Helpers.toggleComponent("DialogDeviceViewer.qml")
@@ -379,6 +385,16 @@ ApplicationWindow {
 
                 onClicked: () => {
                     Helpers.toggleComponent("DialogXboxViewer.qml")
+                }
+            }
+
+            JGToolButton {
+                text: "\uF5E7"
+                tooltip: qsTr("Toggle Joystick Button Map")
+                caption: "Button Map"
+
+                onClicked: () => {
+                    Helpers.toggleComponent("DialogJoystickButtonMap.qml")
                 }
             }
 
