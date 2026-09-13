@@ -13,21 +13,44 @@ Item {
     property var axes: null
     property var hats: null
 
+    // Photo lives in the center. Labels use full-face 0..1 so they stay in the gutters.
+    readonly property real _gutterL: 0.22
+    readonly property real _gutterR: 0.22
+    readonly property real _gutterT: 0.02
+    readonly property real _gutterB: 0.18
+
     readonly property real _pw: _img.paintedWidth
     readonly property real _ph: _img.paintedHeight
     readonly property real _ox: (_img.width - _pw) * 0.5
     readonly property real _oy: (_img.height - _ph) * 0.5
 
-    function px(nx) { return _ox + nx * _pw }
-    function py(ny) { return _oy + ny * _ph }
+    function px(nx) { return _img.x + _ox + nx * _pw }
+    function py(ny) { return _img.y + _oy + ny * _ph }
+    function fx(nx) { return nx * width }
+    function fy(ny) { return ny * height }
 
     function hwButton(id) { return host && host.hwButton ? host.hwButton(id) : 0 }
     function hwAxis(id) { return host && host.hwAxis ? host.hwAxis(id) : 0 }
     function hwHat(id) { return host && host.hwHat ? host.hwHat(id) : 0 }
 
+    function shortDest(s) {
+        var t = String(s || "—")
+        t = t.replace(/vJoy Device /g, "vJ")
+        t = t.replace(/vJoy /g, "vJ")
+        t = t.replace(/Xbox 360 Controller /g, "X360 ")
+        t = t.replace(/Xbox /g, "X360 ")
+        t = t.replace(/Right Trigger/g, "RT")
+        t = t.replace(/Left Trigger/g, "LT")
+        t = t.replace(/Right Stick /g, "RS ")
+        t = t.replace(/Left Stick /g, "LS ")
+        t = t.replace(/Button /g, "B")
+        t = t.replace(/ +/g, " ")
+        return t
+    }
+
     function plusCell(hatAx, hatAy, cx, cy, dir) {
-        var dx = 0.128
-        var dy = 0.040
+        var dx = 0.095
+        var dy = 0.036
         var lx = cx
         var ly = cy
         if (dir === "up") ly = cy - dy
@@ -38,43 +61,42 @@ Item {
         return {ax: hatAx, ay: hatAy, lx: lx, ly: ly, line: isCenter, dot: isCenter}
     }
 
-    function pairCell(ax, ay, lx, ly0, which, count) {
-        var dy = 0.038
-        var ly = ly0 + which * dy
-        return {ax: ax, ay: ay, lx: lx, ly: ly, line: which === 0, dot: which === 0}
+    function pairCell(ax, ay, lx, ly0, which) {
+        var dy = 0.034
+        return {ax: ax, ay: ay, lx: lx, ly: ly0 + which * dy, line: which === 0, dot: which === 0}
     }
 
     function btnSpot(id) {
         var t = {
-            1:  pairCell(0.655, 0.259, 0.835, 0.300, 0),
-            2:  pairCell(0.655, 0.259, 0.835, 0.300, 1),
-            3:  {ax: 0.318, ay: 0.198, lx: 0.012, ly: 0.255},
-            4:  {ax: 0.618, ay: 0.168, lx: 0.835, ly: 0.085},
-            5:  {ax: 0.628, ay: 0.430, lx: 0.835, ly: 0.430},
-            6:  plusCell(0.392, 0.205, 0.145, 0.175, "up"),
-            7:  plusCell(0.392, 0.205, 0.145, 0.175, "right"),
-            8:  plusCell(0.392, 0.205, 0.145, 0.175, "down"),
-            9:  plusCell(0.392, 0.205, 0.145, 0.175, "left"),
-            10: plusCell(0.392, 0.205, 0.145, 0.175, "center"),
-            11: plusCell(0.448, 0.135, 0.145, 0.048, "up"),
-            12: plusCell(0.448, 0.135, 0.145, 0.048, "right"),
-            13: plusCell(0.448, 0.135, 0.145, 0.048, "down"),
-            14: plusCell(0.448, 0.135, 0.145, 0.048, "left"),
-            15: plusCell(0.448, 0.135, 0.145, 0.048, "center"),
-            16: plusCell(0.378, 0.365, 0.145, 0.330, "up"),
-            17: plusCell(0.378, 0.365, 0.145, 0.330, "right"),
-            18: plusCell(0.378, 0.365, 0.145, 0.330, "down"),
-            19: plusCell(0.378, 0.365, 0.145, 0.330, "left"),
-            20: plusCell(0.378, 0.365, 0.145, 0.330, "center"),
-            21: pairCell(0.688, 0.246, 0.835, 0.200, 0),
-            22: pairCell(0.688, 0.246, 0.835, 0.200, 1),
-            23: pairCell(0.668, 0.795, 0.835, 0.740, 0),
-            24: pairCell(0.668, 0.795, 0.835, 0.740, 1),
-            25: pairCell(0.582, 0.782, 0.145, 0.860, 0),
-            26: pairCell(0.582, 0.782, 0.145, 0.860, 1),
-            27: {ax: 0.598, ay: 0.698, lx: 0.560, ly: 0.605},
-            28: {ax: 0.558, ay: 0.708, lx: 0.400, ly: 0.605},
-            29: {ax: 0.638, ay: 0.688, lx: 0.720, ly: 0.605}
+            1:  pairCell(0.655, 0.259, 0.825, 0.300, 0),
+            2:  pairCell(0.655, 0.259, 0.825, 0.300, 1),
+            3:  {ax: 0.318, ay: 0.198, lx: 0.015, ly: 0.255},
+            4:  {ax: 0.618, ay: 0.168, lx: 0.825, ly: 0.070},
+            5:  {ax: 0.628, ay: 0.430, lx: 0.825, ly: 0.400},
+            6:  plusCell(0.392, 0.205, 0.110, 0.200, "up"),
+            7:  plusCell(0.392, 0.205, 0.110, 0.200, "right"),
+            8:  plusCell(0.392, 0.205, 0.110, 0.200, "down"),
+            9:  plusCell(0.392, 0.205, 0.110, 0.200, "left"),
+            10: plusCell(0.392, 0.205, 0.110, 0.200, "center"),
+            11: plusCell(0.448, 0.135, 0.110, 0.065, "up"),
+            12: plusCell(0.448, 0.135, 0.110, 0.065, "right"),
+            13: plusCell(0.448, 0.135, 0.110, 0.065, "down"),
+            14: plusCell(0.448, 0.135, 0.110, 0.065, "left"),
+            15: plusCell(0.448, 0.135, 0.110, 0.065, "center"),
+            16: plusCell(0.378, 0.365, 0.110, 0.355, "up"),
+            17: plusCell(0.378, 0.365, 0.110, 0.355, "right"),
+            18: plusCell(0.378, 0.365, 0.110, 0.355, "down"),
+            19: plusCell(0.378, 0.365, 0.110, 0.355, "left"),
+            20: plusCell(0.378, 0.365, 0.110, 0.355, "center"),
+            21: pairCell(0.688, 0.246, 0.825, 0.175, 0),
+            22: pairCell(0.688, 0.246, 0.825, 0.175, 1),
+            23: pairCell(0.668, 0.795, 0.825, 0.620, 0),
+            24: pairCell(0.668, 0.795, 0.825, 0.620, 1),
+            25: pairCell(0.582, 0.782, 0.015, 0.860, 0),
+            26: pairCell(0.582, 0.782, 0.015, 0.860, 1),
+            27: {ax: 0.598, ay: 0.698, lx: 0.500, ly: 0.835},
+            28: {ax: 0.558, ay: 0.708, lx: 0.320, ly: 0.835},
+            29: {ax: 0.638, ay: 0.688, lx: 0.680, ly: 0.835}
         }
         return t[id] || null
     }
@@ -90,16 +112,16 @@ Item {
     }
     function axisSpot(id) {
         var t = {
-            1: {ax: 0.430, ay: 0.590, lx: 0.012, ly: 0.520, line: true, dot: true},
-            2: {ax: 0.430, ay: 0.590, lx: 0.012, ly: 0.558, line: false, dot: false},
-            3: {ax: 0.430, ay: 0.590, lx: 0.012, ly: 0.596, line: false, dot: false},
-            4: {ax: 0.628, ay: 0.778, lx: 0.500, ly: 0.940}
+            1: {ax: 0.430, ay: 0.590, lx: 0.015, ly: 0.500, line: true, dot: true},
+            2: {ax: 0.430, ay: 0.590, lx: 0.015, ly: 0.534, line: false, dot: false},
+            3: {ax: 0.430, ay: 0.590, lx: 0.015, ly: 0.568, line: false, dot: false},
+            4: {ax: 0.628, ay: 0.778, lx: 0.500, ly: 0.910}
         }
         return t[id] || null
     }
     function hatSpot(id) {
         var t = {
-            1: {ax: 0.298, ay: 0.108, lx: 0.012, ly: 0.005}
+            1: {ax: 0.298, ay: 0.108, lx: 0.015, ly: 0.005}
         }
         return t[id] || null
     }
@@ -113,7 +135,10 @@ Item {
 
     Image {
         id: _img
-        anchors.fill: parent
+        x: _face.width * _gutterL
+        y: _face.height * _gutterT
+        width: _face.width * (1.0 - _gutterL - _gutterR)
+        height: _face.height * (1.0 - _gutterT - _gutterB)
         source: Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
         fillMode: Image.PreserveAspectFit
         asynchronous: true
@@ -121,6 +146,10 @@ Item {
         onStatusChanged: _face.relayout()
         onPaintedWidthChanged: _face.relayout()
         onPaintedHeightChanged: _face.relayout()
+        onXChanged: _face.relayout()
+        onYChanged: _face.relayout()
+        onWidthChanged: _face.relayout()
+        onHeightChanged: _face.relayout()
     }
 
     signal relayout()
@@ -150,7 +179,7 @@ Item {
                 ctx.lineWidth = 1.15
                 ctx.beginPath()
                 ctx.moveTo(px(ax), py(ay))
-                ctx.lineTo(px(lx) + 8, py(ly) + 10)
+                ctx.lineTo(fx(lx) + 8, fy(ly) + 10)
                 ctx.stroke()
             }
             Connections {
@@ -173,8 +202,8 @@ Item {
         }
 
         Rectangle {
-            x: px(lx) - (lx > 0.55 ? width - 8 : 0)
-            y: py(ly)
+            x: fx(lx) - (lx > 0.55 ? width - 8 : 0)
+            y: fy(ly)
             implicitWidth: _lab.implicitWidth + 12
             implicitHeight: _lab.implicitHeight + 8
             radius: 4
@@ -185,7 +214,7 @@ Item {
                 anchors.centerIn: parent
                 color: lit ? "#BBF7D0" : "#E4E4E7"
                 font.pixelSize: 11
-                text: hw + "  →  " + dest
+                text: hw + "  →  " + _face.shortDest(dest)
             }
         }
     }
@@ -200,7 +229,7 @@ Item {
             ay: visible ? _face.btnSpot(identifier).ay : 0
             lx: visible ? _face.btnSpot(identifier).lx : 0
             ly: visible ? _face.btnSpot(identifier).ly : 0
-            hw: "HW " + identifier
+            hw: "" + identifier
             dest: vjoyLabel
             lit: _face.liveStamp, _face.hwButton(identifier) > 0.5
             showLine: visible ? _face.spotOn(identifier, "line", true) : true
@@ -218,7 +247,7 @@ Item {
             ay: visible ? _face.axisSpot(identifier).ay : 0
             lx: visible ? _face.axisSpot(identifier).lx : 0
             ly: visible ? _face.axisSpot(identifier).ly : 0
-            hw: "HW Axis " + identifier
+            hw: "A" + identifier
             dest: vjoyLabel
             lit: _face.liveStamp, Math.abs(_face.hwAxis(identifier)) > 0.12
             showLine: visible ? _face.axisFlag(identifier, "line", true) : true
@@ -236,7 +265,7 @@ Item {
             ay: visible ? _face.hatSpot(identifier).ay : 0
             lx: visible ? _face.hatSpot(identifier).lx : 0
             ly: visible ? _face.hatSpot(identifier).ly : 0
-            hw: "HW Hat " + identifier
+            hw: "H" + identifier
             dest: vjoyLabel
             lit: _face.liveStamp, _face.hwHat(identifier) > 0.5
         }
