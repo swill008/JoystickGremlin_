@@ -1520,37 +1520,6 @@ Item {
                 return (_body.item && _body.item.implicitHeight > 1) ? _body.item.implicitHeight : _ed.chipH(node)
             }
 
-            Rectangle {
-                visible: {
-                    _ed.tick
-                    return !!(node && _ed.isGroup(node) && _ed.isSelected(node.id))
-                }
-                x: -4
-                y: -4
-                width: parent.width + 8
-                height: parent.height + 8
-                z: -1
-                radius: 8
-                color: "transparent"
-                border.width: 2
-                border.color: "#FBBF24"
-            }
-            Rectangle {
-                visible: {
-                    _ed.tick
-                    return !!(node && _ed.groupEditId === node.id)
-                }
-                x: -6
-                y: -6
-                width: parent.width + 12
-                height: parent.height + 12
-                z: -1
-                radius: 8
-                color: "transparent"
-                border.width: 1
-                border.color: "#38BDF8"
-            }
-
             Loader {
                 id: _body
                 width: {
@@ -1636,10 +1605,21 @@ Item {
             }
             border.color: {
                 _ed.tick
-                if (_ed.isSelected(node.id)) return "#FBBF24"
                 return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
             }
-            border.width: { _ed.tick; return (_ed.isSelected(node.id) || _ed.chipIsHollow(node)) ? 2 : 1 }
+            border.width: { _ed.tick; return _ed.chipIsHollow(node) ? 2 : 1 }
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -4
+                z: -1
+                radius: 8
+                color: "transparent"
+                border.width: 2
+                border.color: {
+                    _ed.tick
+                    return _ed.isSelected(node.id) ? "#FBBF24" : "transparent"
+                }
+            }
             Text {
                 id: _lab
                 anchors.centerIn: parent
@@ -1676,11 +1656,23 @@ Item {
             }
             border.color: {
                 _ed.tick
-                if (_ed.groupEditId === node.id && _ed.selectedMember === memberIndex) return "#38BDF8"
-                if (_ed.isSelected(node.id)) return "#FBBF24"
                 return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
             }
-            border.width: { _ed.tick; return (_ed.isSelected(node.id) || _ed.chipIsHollow(node) || (_ed.groupEditId === node.id && _ed.selectedMember === memberIndex)) ? 2 : 1 }
+            border.width: { _ed.tick; return _ed.chipIsHollow(node) ? 2 : 1 }
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -4
+                z: -1
+                radius: 8
+                color: "transparent"
+                border.width: 2
+                border.color: {
+                    _ed.tick
+                    if (_ed.groupEditId === node.id && _ed.selectedMember === memberIndex)
+                        return "#38BDF8"
+                    return _ed.isSelected(node.id) ? "#FBBF24" : "transparent"
+                }
+            }
             Text {
                 id: t
                 anchors.centerIn: parent
