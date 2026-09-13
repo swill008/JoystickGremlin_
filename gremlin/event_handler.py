@@ -256,7 +256,20 @@ class EventListener(QtCore.QObject):
         """Stops the loop from running."""
         self._running = False
         self._stop_event.set()
+        timer = getattr(self, "_device_update_timer", None)
+        if timer is not None:
+            try:
+                timer.cancel()
+            except Exception:
+                pass
+            self._device_update_timer = None
         self.keyboard_hook.stop()
+        mouse_hook = getattr(self, "mouse_hook", None)
+        if mouse_hook is not None:
+            try:
+                mouse_hook.stop()
+            except Exception:
+                pass
         dill.DILL.set_device_change_callback(lambda x: None)
         dill.DILL.set_input_event_callback(lambda x: None)
 
