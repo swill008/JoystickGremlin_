@@ -319,23 +319,23 @@ Item {
                 ctx.fill()
             }
 
-            // Photo nx/ny retargeted from live screenshot XD3LA.
-            stroke(_h1, 0.355, 0.250, "right")
-            stroke(_p1115, 0.470, 0.275, "right")
-            stroke(_p610, 0.415, 0.345, "right")
-            stroke(_b3, 0.355, 0.360, "right")
-            stroke(_p1620, 0.400, 0.470, "right")
-            stroke(_axes, 0.455, 0.680, "right")
-            stroke(_b4, 0.625, 0.305, "left")
-            stroke(_p2122, 0.705, 0.385, "left")
-            stroke(_p12, 0.665, 0.385, "left")
-            stroke(_b5, 0.640, 0.520, "left")
-            stroke(_p2526, 0.575, 0.820, "top")
-            stroke(_b28, 0.555, 0.735, "top")
-            stroke(_b27, 0.600, 0.725, "top")
-            stroke(_b29, 0.645, 0.715, "top")
-            stroke(_a4, 0.635, 0.820, "top")
-            stroke(_p2324, 0.720, 0.820, "top")
+            // nx/ny from qml/vkb_evo_r_face_map.md (JPEG 899x920, not the window).
+            stroke(_h1, 0.378, 0.190, "right")
+            stroke(_p1115, 0.445, 0.185, "right")
+            stroke(_p610, 0.428, 0.245, "right")
+            stroke(_b3, 0.395, 0.250, "right")
+            stroke(_p1620, 0.400, 0.370, "right")
+            stroke(_axes, 0.430, 0.575, "right")
+            stroke(_b4, 0.640, 0.212, "left")
+            stroke(_p2122, 0.695, 0.277, "left")
+            stroke(_p12, 0.678, 0.272, "left")
+            stroke(_b5, 0.640, 0.429, "left")
+            stroke(_p2526, 0.595, 0.739, "top")
+            stroke(_b28, 0.545, 0.625, "top")
+            stroke(_b27, 0.590, 0.617, "top")
+            stroke(_b29, 0.634, 0.609, "top")
+            stroke(_a4, 0.640, 0.739, "top")
+            stroke(_p2324, 0.684, 0.739, "top")
         }
     }
 
