@@ -19,8 +19,10 @@ Window {
     color: Style.background
     Universal.theme: Style.theme
 
-    title: "Joystick Button Map"
+    title: "Joystick Button Map — VKBsim Gladiator EVO R"
 
+    readonly property string targetName: "VKBsim Gladiator EVO R"
+    property string targetGuid: ""
     property string guid0: ""
     property string guid1: ""
     property string guid2: ""
@@ -50,37 +52,41 @@ Window {
     MappedHatModel { id: hats1; guid: _buttonMap.guid1 }
     MappedHatModel { id: hats2; guid: _buttonMap.guid2 }
 
-    function _isVjoyName(name) {
-        return String(name || "").toLowerCase().indexOf("vjoy") === 0
+    function _isTarget(name) {
+        var n = String(name || "").toLowerCase()
+        if (!n.length) {
+            return false
+        }
+        if (String(name) === targetName) {
+            return true
+        }
+        // Right stick only. Do not take EVO L / OT L.
+        if (n.indexOf("evo l") !== -1 || n.indexOf("ot l") !== -1) {
+            return false
+        }
+        return n.indexOf("gladiator") !== -1 && (n.indexOf("evo r") !== -1 || n.indexOf("ot r") !== -1)
     }
 
     function pickDevice() {
-        guid0 = ""; guid1 = ""; guid2 = ""
+        guid0 = ""
+        guid1 = ""
+        guid2 = ""
+        targetGuid = ""
         if (!_devices || !_devices.listRows) {
             return
         }
         var rows = _devices.listRows() || []
-        var picked = []
-        var fallback = []
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i]
             if (!row || !row.guid) {
                 continue
             }
-            var name = String(row.name || "")
-            if (_isVjoyName(name) || name === "Keyboard" || name === "Logical Device" || name === "OSC") {
-                continue
-            }
-            if (/vkb|gladiator|evo|ste?cs|gunfighter|sem/i.test(name)) {
-                picked.push(String(row.guid))
-            } else if (fallback.length < 3) {
-                fallback.push(String(row.guid))
+            if (_isTarget(row.name)) {
+                targetGuid = String(row.guid)
+                guid0 = targetGuid
+                return
             }
         }
-        var use = picked.length ? picked : fallback
-        if (use.length > 0) guid0 = use[0]
-        if (use.length > 1) guid1 = use[1]
-        if (use.length > 2) guid2 = use[2]
     }
 
     function _dest(model, id) {
