@@ -1503,6 +1503,7 @@ Item {
                 return y
             }
             z: 3
+            clip: false
             width: {
                 _ed.tick
                 if (!node)
@@ -1522,6 +1523,7 @@ Item {
 
             Loader {
                 id: _body
+                clip: false
                 width: {
                     _ed.tick
                     if (_wrap.node && _ed.isGroup(_wrap.node))
@@ -1546,6 +1548,22 @@ Item {
                 }
             }
         }
+    }
+
+    component SelRing: Rectangle {
+        property bool on: false
+        property color ringColor: "#FBBF24"
+        anchors.fill: parent
+        anchors.leftMargin: -4
+        anchors.rightMargin: -4
+        anchors.topMargin: -4
+        anchors.bottomMargin: -4
+        z: -1
+        antialiasing: true
+        color: "transparent"
+        border.width: 2
+        border.color: on ? ringColor : "transparent"
+        radius: parent.radius > 0 ? parent.radius + 4 : 0
     }
 
     Component {
@@ -1608,17 +1626,9 @@ Item {
                 return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
             }
             border.width: { _ed.tick; return _ed.chipIsHollow(node) ? 2 : 1 }
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: -4
-                z: -1
-                radius: 8
-                color: "transparent"
-                border.width: 2
-                border.color: {
-                    _ed.tick
-                    return _ed.isSelected(node.id) ? "#FBBF24" : "transparent"
-                }
+            antialiasing: true
+            SelRing {
+                on: { _ed.tick; return _ed.isSelected(node.id) }
             }
             Text {
                 id: _lab
@@ -1659,18 +1669,17 @@ Item {
                 return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
             }
             border.width: { _ed.tick; return _ed.chipIsHollow(node) ? 2 : 1 }
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: -4
-                z: -1
-                radius: 8
-                color: "transparent"
-                border.width: 2
-                border.color: {
+            antialiasing: true
+            SelRing {
+                on: {
+                    _ed.tick
+                    return _ed.isSelected(node.id)
+                }
+                ringColor: {
                     _ed.tick
                     if (_ed.groupEditId === node.id && _ed.selectedMember === memberIndex)
                         return "#38BDF8"
-                    return _ed.isSelected(node.id) ? "#FBBF24" : "transparent"
+                    return "#FBBF24"
                 }
             }
             Text {
