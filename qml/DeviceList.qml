@@ -245,5 +245,41 @@ Item {
                 text: _oscButton.text
             }
         }
+
+        JGTabButton {
+            id: _xboxButton
+
+            visible: _root._vjoyTick >= 0 && _root.extraVisible("xbox")
+            text: _root.displayName("xbox", "Xbox 360 Controller")
+            width: visible ? _metricXbox.width + 50 : 0
+            checked: uiState && uiState.currentTab === "xbox"
+
+            ToolTip.visible: hovered && visible && _root.isRenamed("xbox", "Xbox 360 Controller")
+            ToolTip.delay: 400
+            ToolTip.text: "Xbox 360 Controller"
+
+            onClicked: () => {
+                if (!uiState) {
+                    return
+                }
+                uiState.setCurrentTab("xbox")
+                uiState.setCurrentDevice("c8e4b6a1-3d92-4f17-9a50-7b2c4e8f1d60")
+            }
+
+            TapHandler {
+                onDoubleTapped: {
+                    if (visible) {
+                        _root.rename("xbox", "Xbox 360 Controller")
+                    }
+                }
+            }
+
+            TextMetrics {
+                id: _metricXbox
+
+                font: _xboxButton.font
+                text: _xboxButton.text
+            }
+        }
     }
 }
