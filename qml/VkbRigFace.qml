@@ -33,17 +33,21 @@ Item {
 
     function shortDest(s) {
         var t = String(s || "—")
-        t = t.replace(/vJoy Device /g, "vJ")
-        t = t.replace(/vJoy /g, "vJ")
-        t = t.replace(/Xbox 360 Controller /g, "X360 ")
-        t = t.replace(/Xbox /g, "X360 ")
+        t = t.replace(/vJoy Device /g, "")
+        t = t.replace(/vJoy /g, "")
+        t = t.replace(/vJ\d+\s*/g, "")
+        t = t.replace(/Xbox 360 Controller /g, "")
+        t = t.replace(/Xbox /g, "")
+        t = t.replace(/X360 \d+\s*/g, "")
         t = t.replace(/Right Trigger/g, "RT")
         t = t.replace(/Left Trigger/g, "LT")
         t = t.replace(/Right Stick /g, "RS ")
         t = t.replace(/Left Stick /g, "LS ")
         t = t.replace(/Button /g, "B")
+        t = t.replace(/ \+ /g, "+")
         t = t.replace(/ +/g, " ")
-        return t
+        t = t.trim()
+        return t.length ? t : "—"
     }
 
     function labelBtn(id) {
@@ -67,12 +71,8 @@ Item {
             return Qt.point(0, 0)
         }
         var x = side === "right" ? item.width : (side === "left" ? 0 : item.width * 0.5)
-        var y = item.height * 0.5
+        var y = side === "top" ? 0 : item.height * 0.5
         return item.mapToItem(_face, x, y)
-    }
-
-    function putBtn(id, label) {
-        destBtn[id] = label
     }
 
     Repeater {
@@ -140,8 +140,8 @@ Item {
             return _face.hwButton(hwId) > 0.5
         }
 
-        implicitWidth: _lab.implicitWidth + 12
-        implicitHeight: 22
+        implicitWidth: _lab.implicitWidth + 10
+        implicitHeight: 20
         radius: 4
         color: lit ? "#14532D" : "#18181B"
         border.color: lit ? "#22C55E" : "#3F3F46"
@@ -149,8 +149,8 @@ Item {
             id: _lab
             anchors.centerIn: parent
             color: lit ? "#BBF7D0" : "#E4E4E7"
-            font.pixelSize: 11
-            text: prefix + hwId + "  →  " + _face.shortDest(_dest)
+            font.pixelSize: 10
+            text: prefix + hwId + " → " + _face.shortDest(_dest)
         }
     }
 
@@ -168,46 +168,58 @@ Item {
             id: _g
             columns: 3
             rows: 3
-            spacing: 4
-            Item { width: 1; height: 1 }
+            spacing: 3
+            horizontalItemAlignment: Grid.AlignHCenter
+            verticalItemAlignment: Grid.AlignVCenter
+            Item { width: 8; height: 8 }
             Tag { hwId: up }
-            Item { width: 1; height: 1 }
+            Item { width: 8; height: 8 }
             Tag { hwId: leftId }
             Tag { hwId: center }
             Tag { hwId: rightId }
-            Item { width: 1; height: 1 }
+            Item { width: 8; height: 8 }
             Tag { hwId: down }
-            Item { width: 1; height: 1 }
+            Item { width: 8; height: 8 }
         }
     }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: 8
         spacing: 8
 
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 12
+            spacing: 8
 
-            Column {
-                id: _left
-                Layout.preferredWidth: 280
+            Item {
+                id: _leftPane
+                Layout.preferredWidth: 300
+                Layout.maximumWidth: 300
                 Layout.fillHeight: true
-                spacing: 10
+                clip: true
 
-                Tag { id: _h1; kind: "hat"; hwId: 1; prefix: "H" }
-                HatPlus { id: _p1115; up: 11; down: 13; leftId: 14; rightId: 12; center: 15 }
-                HatPlus { id: _p610; up: 6; down: 8; leftId: 9; rightId: 7; center: 10 }
-                Tag { id: _b3; hwId: 3 }
-                HatPlus { id: _p1620; up: 16; down: 18; leftId: 19; rightId: 17; center: 20 }
                 Column {
-                    id: _axes
-                    spacing: 4
-                    Tag { kind: "axis"; hwId: 1; prefix: "A" }
-                    Tag { kind: "axis"; hwId: 2; prefix: "A" }
-                    Tag { kind: "axis"; hwId: 3; prefix: "A" }
+                    id: _left
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 8
+                    width: 292
+
+                    Tag { id: _h1; kind: "hat"; hwId: 1; prefix: "H"; anchors.horizontalCenter: parent.horizontalCenter }
+                    HatPlus { id: _p1115; up: 11; down: 13; leftId: 14; rightId: 12; center: 15; anchors.horizontalCenter: parent.horizontalCenter }
+                    HatPlus { id: _p610; up: 6; down: 8; leftId: 9; rightId: 7; center: 10; anchors.horizontalCenter: parent.horizontalCenter }
+                    Tag { id: _b3; hwId: 3; anchors.horizontalCenter: parent.horizontalCenter }
+                    HatPlus { id: _p1620; up: 16; down: 18; leftId: 19; rightId: 17; center: 20; anchors.horizontalCenter: parent.horizontalCenter }
+                    Column {
+                        id: _axes
+                        spacing: 3
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        Tag { kind: "axis"; hwId: 1; prefix: "A" }
+                        Tag { kind: "axis"; hwId: 2; prefix: "A" }
+                        Tag { kind: "axis"; hwId: 3; prefix: "A" }
+                    }
                 }
             }
 
@@ -231,52 +243,54 @@ Item {
 
             Column {
                 id: _right
-                Layout.preferredWidth: 220
+                Layout.preferredWidth: 200
+                Layout.maximumWidth: 200
                 Layout.fillHeight: true
-                spacing: 8
+                spacing: 6
 
                 Tag { id: _b4; hwId: 4 }
                 Column {
                     id: _p2122
-                    spacing: 4
+                    spacing: 3
                     Tag { hwId: 21 }
                     Tag { hwId: 22 }
                 }
                 Column {
                     id: _p12
-                    spacing: 4
+                    spacing: 3
                     Tag { hwId: 1 }
                     Tag { hwId: 2 }
                 }
                 Tag { id: _b5; hwId: 5 }
                 Column {
                     id: _p2324
-                    spacing: 4
+                    spacing: 3
                     Tag { hwId: 23 }
                     Tag { hwId: 24 }
                 }
             }
         }
 
-        Row {
-            id: _bottom
+        Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 56
-            spacing: 16
-            layoutDirection: Qt.LeftToRight
+            Layout.preferredHeight: 52
 
-            Column {
-                id: _p2526
-                spacing: 4
-                Tag { hwId: 25 }
-                Tag { hwId: 26 }
+            Row {
+                id: _bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 18
+
+                Column {
+                    id: _p2526
+                    spacing: 3
+                    Tag { hwId: 25 }
+                    Tag { hwId: 26 }
+                }
+                Tag { id: _b28; hwId: 28; anchors.verticalCenter: parent.verticalCenter }
+                Tag { id: _b27; hwId: 27; anchors.verticalCenter: parent.verticalCenter }
+                Tag { id: _b29; hwId: 29; anchors.verticalCenter: parent.verticalCenter }
+                Tag { id: _a4; kind: "axis"; hwId: 4; prefix: "A"; anchors.verticalCenter: parent.verticalCenter }
             }
-            Item { width: 24; height: 1 }
-            Tag { id: _b28; hwId: 28 }
-            Tag { id: _b27; hwId: 27 }
-            Tag { id: _b29; hwId: 29 }
-            Item { width: 24; height: 1 }
-            Tag { id: _a4; kind: "axis"; hwId: 4; prefix: "A" }
         }
     }
 
@@ -316,12 +330,19 @@ Item {
             stroke(_p12, 0.655, 0.259, "left")
             stroke(_b5, 0.628, 0.430, "left")
             stroke(_p2324, 0.668, 0.795, "left")
-            stroke(_p2526, 0.582, 0.782, "right")
+            stroke(_p2526, 0.582, 0.782, "top")
             stroke(_b28, 0.558, 0.708, "top")
             stroke(_b27, 0.598, 0.698, "top")
             stroke(_b29, 0.638, 0.688, "top")
             stroke(_a4, 0.628, 0.778, "top")
         }
+    }
+
+    Timer {
+        interval: 50
+        running: true
+        repeat: false
+        onTriggered: _lines.requestPaint()
     }
 
     Connections {
