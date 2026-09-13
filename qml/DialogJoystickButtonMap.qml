@@ -303,6 +303,118 @@ Window {
         MenuItem { text: "Delete selected spine"; onTriggered: { var e = _ed(); if (e) e.deleteSelection() } }
     }
 
+    Menu {
+        id: _chipMenu
+        MenuItem {
+            text: "Reservoir…"
+            onTriggered: {
+                _resPop.refresh()
+                _resPop.open()
+            }
+        }
+    }
+
+    Popup {
+        id: _resPop
+        modal: false
+        dim: false
+        x: 12
+        y: 52
+        width: 360
+        height: Math.min(560, _buttonMap.height - 80)
+        padding: 0
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        property var items: []
+        property bool unusedOnly: false
+        function refresh() {
+            var e = _ed()
+            items = e ? e.catalog() : []
+        }
+        background: Rectangle {
+            color: "#111113"
+            border.color: "#3F3F46"
+            radius: 6
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 8
+            Label {
+                text: "Chiplet reservoir"
+                font.bold: true
+                color: "#E4E4E7"
+            }
+            Label {
+                text: "Every hardware control. Add places it at the view center. Already-on-map rows select it."
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                color: "#A1A1AA"
+                font.pixelSize: 11
+            }
+            CheckBox {
+                text: "Unused only"
+                checked: _resPop.unusedOnly
+                onToggled: _resPop.unusedOnly = checked
+            }
+            ListView {
+                id: _resList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 4
+                model: _resPop.items
+                delegate: Rectangle {
+                    required property var modelData
+                    width: _resList.width
+                    height: visible ? (_row.implicitHeight + 10) : 0
+                    visible: !_resPop.unusedOnly || !modelData.placed
+                    color: modelData.placed ? "#18181B" : "#0C0C0E"
+                    border.color: modelData.placed ? "#3F3F46" : "#14532D"
+                    radius: 4
+                    ColumnLayout {
+                        id: _row
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.margins: 6
+                        spacing: 2
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: modelData.friendly
+                                color: "#F4F4F5"
+                                font.pixelSize: 12
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                            Button {
+                                text: modelData.placed ? "Select" : "Add"
+                                implicitHeight: 24
+                                onClicked: {
+                                    var e = _ed()
+                                    if (!e)
+                                        return
+                                    if (modelData.placed)
+                                        e.setSelection([modelData.placedId])
+                                    else
+                                        e.addChiplet(modelData.kind, modelData.hwId)
+                                    _resPop.refresh()
+                                }
+                            }
+                        }
+                        Label {
+                            text: modelData.fullName
+                            color: "#A1A1AA"
+                            font.pixelSize: 10
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     FileDialog {
         id: _imageDialog
         title: "Choose background image"
@@ -349,6 +461,11 @@ Window {
                     visible: editing
                     text: "Leader"
                     onClicked: _leadMenu.popup()
+                }
+                Button {
+                    visible: editing
+                    text: "Chiplets"
+                    onClicked: _chipMenu.popup()
                 }
                 ToolSeparator { visible: editing }
                 Button {
@@ -589,14 +706,38 @@ Window {
                         }
                     }
 
-                    Label { text: "Name"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Full name"; color: "#A1A1AA"; visible: selectedNode }
+                    Label {
+                        visible: selectedNode
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: "#E4E4E7"
+                        font.pixelSize: 12
+                        text: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            var n = selectedNode
+                            if (!n || !e)
+                                return ""
+                            if (n.members && n.members.length) {
+                                var parts = []
+                                var lk = n.kind === "axis_stack" ? "axis" : "btn"
+                                for (var i = 0; i < n.members.length; i++)
+                                    parts.push(e.fullNameOf(lk, n.members[i].hwId))
+                                return parts.join("\n")
+                            }
+                            return e.fullNameOf(n.kind, n.hwId)
+                        }
+                    }
+
+                    Label { text: "Friendly name"; color: "#A1A1AA"; visible: selectedNode }
                     TextField {
                         Layout.fillWidth: true
-                        visible: selectedNode && selectedNode.kind !== "plus" && selectedNode.kind !== "pair" && selectedNode.kind !== "axis_stack" && selectedNode.kind !== "stack"
-                        text: selectedNode && selectedNode.label ? selectedNode.label : ""
-                        placeholderText: "blank = hardware id → dest"
+                        visible: !!selectedNode
+                        text: selectedNode && selectedNode.friendly ? selectedNode.friendly : (selectedNode && selectedNode.label ? selectedNode.label : "")
+                        placeholderText: "shown on the chip"
                         onEditingFinished: {
                             if (selectedNode) {
+                                selectedNode.friendly = text
                                 selectedNode.label = text
                                 if (_cardLoader.item && _cardLoader.item.editorItem)
                                     _cardLoader.item.editorItem.bump()

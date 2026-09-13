@@ -288,7 +288,7 @@ Item {
             anchors.centerIn: parent
             color: lit ? "#BBF7D0" : "#E4E4E7"
             font.pixelSize: 10
-            text: prefix + hwId + " → " + _face.shortDest(_dest)
+            text: prefix + hwId + " → " + _dest
         }
     }
 

@@ -193,12 +193,244 @@ Item {
             return "—"
         }
         if (kind === "axis" || kind === "axis_stack") {
-            return face.shortDest(face.labelAxis(hwId))
+            return face.labelAxis(hwId)
         }
         if (kind === "hat") {
-            return face.shortDest(face.labelHat(hwId))
+            return face.labelHat(hwId)
         }
-        return face.shortDest(face.labelBtn(hwId))
+        return face.labelBtn(hwId)
+    }
+
+    // Physical names from the EVO R lock inventory. Shown as default friendly names.
+    readonly property var physNames: ({
+        "btn:1": "Red trigger half",
+        "btn:2": "Red trigger full",
+        "btn:3": "Red head button",
+        "btn:4": "White cap",
+        "btn:5": "Lower grip white",
+        "btn:6": "Head 5-way (right of red) up",
+        "btn:7": "Head 5-way (right of red) right",
+        "btn:8": "Head 5-way (right of red) down",
+        "btn:9": "Head 5-way (right of red) left",
+        "btn:10": "Head 5-way (right of red) center",
+        "btn:11": "Top-right head 5-way up",
+        "btn:12": "Top-right head 5-way right",
+        "btn:13": "Top-right head 5-way down",
+        "btn:14": "Top-right head 5-way left",
+        "btn:15": "Top-right head 5-way center",
+        "btn:16": "Silver wheel 5-way up",
+        "btn:17": "Silver wheel 5-way right",
+        "btn:18": "Silver wheel 5-way down",
+        "btn:19": "Silver wheel 5-way left",
+        "btn:20": "Silver wheel 5-way center",
+        "btn:21": "Grey paddle push",
+        "btn:22": "Grey paddle pull",
+        "btn:23": "En2 right knob up",
+        "btn:24": "En2 right knob down",
+        "btn:25": "En1 left knob up",
+        "btn:26": "En1 left knob down",
+        "btn:27": "Middle base pad",
+        "btn:28": "Left base pad",
+        "btn:29": "Right base pad",
+        "hat:1": "Analog ministick",
+        "axis:1": "Stick X roll",
+        "axis:2": "Stick Y pitch",
+        "axis:3": "Stick Z twist",
+        "axis:4": "Z slider (En1–En2)"
+    })
+
+    function leafKind(kind) {
+        if (kind === "axis_stack")
+            return "axis"
+        if (kind === "plus" || kind === "pair" || kind === "stack")
+            return "btn"
+        return kind || "btn"
+    }
+
+    function physicalName(kind, hwId) {
+        var k = leafKind(kind) + ":" + hwId
+        return physNames[k] || ""
+    }
+
+    function defaultFriendly(kind, hwId) {
+        var p = physicalName(kind, hwId)
+        if (p.length)
+            return p
+        var lk = leafKind(kind)
+        if (lk === "axis")
+            return "Axis " + hwId
+        if (lk === "hat")
+            return "Hat " + hwId
+        return "Button " + hwId
+    }
+
+    function friendlyOf(n, mem) {
+        if (mem) {
+            if (mem.friendly && String(mem.friendly).length)
+                return mem.friendly
+            var lk = (n && n.kind === "axis_stack") ? "axis" : "btn"
+            return defaultFriendly(lk, mem.hwId)
+        }
+        if (!n)
+            return ""
+        if (n.friendly && String(n.friendly).length)
+            return n.friendly
+        if (n.label && String(n.label).length)
+            return n.label
+        if (isGroup(n))
+            return n.id
+        return defaultFriendly(n.kind, n.hwId)
+    }
+
+    function fullNameOf(kind, hwId) {
+        var lk = leafKind(kind)
+        var idn = lk === "axis" ? ("Axis " + hwId) : (lk === "hat" ? ("Hat " + hwId) : ("Button " + hwId))
+        var phys = physicalName(lk, hwId)
+        var dest = destOf(lk, hwId)
+        var s = idn
+        if (phys.length)
+            s += " · " + phys
+        if (dest && dest !== "—")
+            s += " → " + dest
+        return s
+    }
+
+    function placedId(kind, hwId) {
+        var want = leafKind(kind) + ":" + hwId
+        var list = nodes || []
+        for (var i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (isGroup(n)) {
+                var mem = n.members || []
+                var lk = n.kind === "axis_stack" ? "axis" : "btn"
+                for (var j = 0; j < mem.length; j++) {
+                    if (lk + ":" + mem[j].hwId === want)
+                        return n.id
+                }
+            } else if (leafKind(n.kind) + ":" + n.hwId === want) {
+                return n.id
+            }
+        }
+        return ""
+    }
+
+    function catalog() {
+        tick
+        var seen = {}
+        var items = []
+        function add(kind, hwId) {
+            var key = kind + ":" + hwId
+            if (seen[key])
+                return
+            seen[key] = true
+            var pid = placedId(kind, hwId)
+            items.push({
+                kind: kind,
+                hwId: hwId,
+                key: key,
+                friendly: defaultFriendly(kind, hwId),
+                fullName: fullNameOf(kind, hwId),
+                placed: pid.length > 0,
+                placedId: pid
+            })
+        }
+        var i
+        for (i = 1; i <= 29; i++)
+            add("btn", i)
+        add("hat", 1)
+        for (i = 1; i <= 4; i++)
+            add("axis", i)
+        function extras(map, kind) {
+            if (!map)
+                return
+            for (var k in map) {
+                var id = parseInt(k, 10)
+                if (id > 0)
+                    add(kind, id)
+            }
+        }
+        if (face) {
+            extras(face.destBtn, "btn")
+            extras(face.destAxis, "axis")
+            extras(face.destHat, "hat")
+        }
+        return items
+    }
+
+    function viewCenterPhoto() {
+        if (!face || !face.toPhoto)
+            return Qt.point(0.5, 0.5)
+        var z = face.zoom || 1
+        if (z < 0.01)
+            z = 1
+        var wx = ((face.width || width) * 0.5 - (face.panX || 0)) / z
+        var wy = ((face.height || height) * 0.5 - (face.panY || 0)) / z
+        return toPhoto(wx, wy)
+    }
+
+    function addChiplet(kind, hwId) {
+        kind = leafKind(kind)
+        hwId = parseInt(hwId, 10)
+        if (!(hwId > 0))
+            return
+        var existing = placedId(kind, hwId)
+        if (existing) {
+            setSelection([existing])
+            bump()
+            return
+        }
+        var p = viewCenterPhoto()
+        var st = _styleOf({})
+        var n = {
+            id: _uid(kind === "btn" ? "b" : kind.charAt(0)),
+            kind: kind,
+            hwId: hwId,
+            prefix: kind === "axis" ? "A" : (kind === "hat" ? "H" : ""),
+            label: "",
+            friendly: defaultFriendly(kind, hwId),
+            nx: Math.max(0.02, Math.min(0.98, p.x)),
+            ny: Math.max(0.02, Math.min(0.98, p.y)),
+            chipFx: p.x < 0.5 ? 0.18 : 0.84,
+            chipFy: Math.max(0.08, Math.min(0.90, p.y)),
+            pin: p.x < 0.5 ? "right" : "left",
+            spines: [],
+            curve: st.curve,
+            color: st.color,
+            border: st.border,
+            textColor: st.textColor,
+            highlight: st.highlight,
+            hlColor: st.hlColor,
+            hlBorder: st.hlBorder,
+            hlText: st.hlText,
+            fontSize: st.fontSize,
+            chipSize: st.chipSize,
+            chipShape: st.chipShape,
+            chipFill: st.chipFill,
+            hotSize: st.hotSize,
+            hotShape: st.hotShape,
+            hotFill: st.hotFill
+        }
+        var list = nodes || []
+        list.push(n)
+        setSelection([n.id])
+        bump()
+    }
+
+    function ensureFriendly(n) {
+        if (!n)
+            return
+        if (isGroup(n)) {
+            var mem = n.members || []
+            var lk = n.kind === "axis_stack" ? "axis" : "btn"
+            for (var i = 0; i < mem.length; i++) {
+                if (!mem[i].friendly || !String(mem[i].friendly).length)
+                    mem[i].friendly = defaultFriendly(lk, mem[i].hwId)
+            }
+            if (!n.friendly || !String(n.friendly).length)
+                n.friendly = n.label && n.label.length ? n.label : n.id
+        } else if (!n.friendly || !String(n.friendly).length) {
+            n.friendly = (n.label && n.label.length) ? n.label : defaultFriendly(n.kind, n.hwId)
+        }
     }
 
     function litOf(kind, hwId) {
@@ -941,11 +1173,9 @@ Item {
 
     function chipWGuess(n, mem) {
         var fs = (n && n.fontSize) ? n.fontSize : 10
-        var leaf = (n && n.kind === "axis_stack") ? "axis" : "btn"
-        var d = destOf(leaf, mem && mem.hwId ? mem.hwId : 0)
-        var s = ((leaf === "axis") ? "A" : "") + String(mem && mem.hwId ? mem.hwId : 0) + " → " + d
+        var s = mem ? friendlyOf(n, mem) : friendlyOf(n, null)
         var pad = Math.max(10, ((n && n.chipSize) || 18) * 0.55)
-        return Math.max(36, s.length * fs * 0.56 + pad)
+        return Math.max(36, String(s).length * fs * 0.56 + pad)
     }
 
     function memberHit(n, mx, my) {
@@ -1059,7 +1289,8 @@ Item {
                 hwId: parts[i].hwId,
                 role: parts[i].role || ("m" + i),
                 ox: parts[i].src.chipFx - ox0,
-                oy: parts[i].src.chipFy - oy0
+                oy: parts[i].src.chipFy - oy0,
+                friendly: parts[i].src.friendly || defaultFriendly(parts[i].kind, parts[i].hwId)
             })
         var g = {
             id: _uid("g"), kind: kind, members: members,
@@ -1101,7 +1332,9 @@ Item {
             dx = (mem[i].ox !== undefined) ? mem[i].ox : 0
             dy = (mem[i].oy !== undefined) ? mem[i].oy : ((i - (mem.length - 1) * 0.5) * 0.028)
             created.push({
-                id: _uid("b"), kind: leafKind, hwId: mem[i].hwId, prefix: prefix, label: "",
+                id: _uid("b"), kind: leafKind, hwId: mem[i].hwId, prefix: prefix,
+                label: "",
+                friendly: mem[i].friendly || defaultFriendly(leafKind, mem[i].hwId),
                 nx: n.nx, ny: n.ny,
                 chipFx: Math.max(0.02, Math.min(0.9, n.chipFx + dx)),
                 chipFy: Math.max(0.02, Math.min(0.9, n.chipFy + dy)),
@@ -1323,8 +1556,7 @@ Item {
                 font.pixelSize: { _ed.tick; return node.fontSize || 10 }
                 text: {
                     _ed.tick
-                    if (node.label && node.label.length) return node.label
-                    return (node.prefix || "") + node.hwId + " → " + _ed.destOf(node.kind, node.hwId)
+                    return _ed.friendlyOf(node, null)
                 }
             }
         }
@@ -1361,7 +1593,11 @@ Item {
                     return parent.on && node.highlight ? (node.hlText || "#BBF7D0") : (node.textColor || "#E4E4E7")
                 }
                 font.pixelSize: { _ed.tick; return node.fontSize || 10 }
-                text: { _ed.tick; return (leafKind === "axis" ? "A" : "") + hwId + " → " + _ed.destOf(leafKind, hwId) }
+                text: {
+                    _ed.tick
+                    var m = node && node.members ? node.members[memberIndex] : null
+                    return _ed.friendlyOf(node, m)
+                }
             }
         }
     }
@@ -1384,6 +1620,7 @@ Item {
         onTriggered: {
             var list = _ed.nodes || []
             for (var i = 0; i < list.length; i++) {
+                _ed.ensureFriendly(list[i])
                 _ed.ensureMidSpine(list[i])
             }
             _ed.seeded = true
