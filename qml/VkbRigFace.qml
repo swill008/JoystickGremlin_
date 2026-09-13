@@ -330,7 +330,7 @@ Item {
             stroke(_axes, 0.429, 0.575, "right")
             stroke(_b4, 0.613, 0.247, "left")
             stroke(_p2122, 0.643, 0.296, "left")
-            stroke(_p12, 0.679, 0.272, "left")
+            stroke(_p12, 0.617, 0.301, "left")
             stroke(_b5, 0.605, 0.420, "left")
             stroke(_p2526, 0.621, 0.770, "top")
             stroke(_b28, 0.652, 0.702, "top")
