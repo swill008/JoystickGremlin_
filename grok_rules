@@ -21,5 +21,23 @@ Any change to rules is written here. Do not keep a second unofficial list.
 14. Show generated / planned images before wiring new faces into QML, unless you already said go.
 15. Xbox tab is labeled layout + incoming sources, not a DILL input device. Hardware maps with Map to Xbox.
 16. Keep older R15 XML profiles loadable. Xbox-only nodes (map-to-xbox) are extra; stock R15 will not understand them.
-17. Standing rules live in this file (grok_rules) at the program folder root. Recall from this file. Any rule change is written here.
+17. Standing rules live in this file (grok_rules) at the program folder root. Recall this file. Any rule change is written here.
 18. All images generated for the user to view must be displayed in chat using image generation.
+19. Large files
+    19.1 A file is large if it is over 20,000 bytes, or if a previous push of that file was truncated. Today that includes gremlin/ui/device.py (~60k) and any later file of that size.
+    19.2 Do not send a large file through create_or_update_file or push_files. Those tools require the whole body in the tool call and have truncated device.py to PLACEHOLDER or ~2k bytes.
+    19.3 For a large-file change, ask the user for a session Personal Access Token and give the create / copy commands below. Use that token only in this chat, via Python requests against the GitHub API: fetch the last good copy, apply a hunk, PUT the full patched file, then verify size.
+         Create a fine-grained token (browser):
+           GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.
+           Resource owner: swill008. Repository access: only JoystickGremlin_. Permissions: Contents Read and write. Short expiry.
+         Or copy a GitHub CLI token already on the PC:
+           gh auth status
+           gh auth token
+         Paste the token in chat for this session only. Do not commit it. Do not put it in this file.
+    19.4 If the user refuses a session token, use this fallback:
+         19.4.1 Edit by hunk only: exact old text and exact new text. Copy / replace / paste. Do not rewrite or move the file.
+         19.4.2 The user applies the hunk locally (GitHub Desktop / git) and pushes. Grok then inspects size and key symbols on the branch.
+    19.5 Never store a token in grok_rules, the repo, artifacts, or project memory. Session tokens die with the chat. Prefer revoke after use.
+    19.6 After any write to a large file, confirm: byte size, not PLACEHOLDER, and required symbols (for device.py: class Device, InputIdentifier, map-to-vjoy, and map-to-xbox when that token is expected). Committed size must match the patched size before saying it landed.
+    19.7 If a large file is truncated, restore from the last known good commit first (device.py: e592376, 60033 bytes) then re-apply only the missing hunk. Do not layer patches on a stub.
+    19.8 Small files stay on the GitHub connector as today.
