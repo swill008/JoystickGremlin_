@@ -1291,7 +1291,11 @@ Window {
                             if (nodeIsGroup(selectedNode))
                                 return
                             var e = _ed()
-                            if (e) e.deleteSelection()
+                            if (e)
+                                e.deleteChip()
+                            selectedId = ""
+                            selectedNode = null
+                            refreshReservoir()
                             _chipPop.close()
                         }
                     }

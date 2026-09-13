@@ -1151,9 +1151,8 @@ Item {
 
     function deleteSelection() {
         var n = nodeAt(selectedId)
-        if (!n) {
+        if (!n)
             return
-        }
         var L = currentLeader(n)
         if (selectedSpine >= 0 && L.spines && selectedSpine < L.spines.length) {
             L.spines.splice(selectedSpine, 1)
@@ -1161,6 +1160,29 @@ Item {
             selectedSpine = -1
             bump()
         }
+    }
+
+    function deleteChip(id) {
+        var nid = id || selectedId
+        var n = nodeAt(nid)
+        if (!n || isGroup(n))
+            return false
+        var idx = nodeIndex(nid)
+        if (idx < 0)
+            return false
+        var list = nodes || []
+        list.splice(idx, 1)
+        var keep = []
+        var s = selectedIds || []
+        for (var i = 0; i < s.length; i++) {
+            if (s[i] !== nid)
+                keep.push(s[i])
+        }
+        groupEditId = ""
+        selectedMember = -1
+        setSelection(keep)
+        bump()
+        return true
     }
 
     function isSelected(id) {
