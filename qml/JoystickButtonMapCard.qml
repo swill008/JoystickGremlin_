@@ -15,6 +15,8 @@ Item {
     property var editorNodes: []
     property string photoOverride: ""
     readonly property var editorItem: _face.editorItem
+    readonly property real zoom: _face.zoom
+    function resetView() { _face.resetView() }
 
     property int axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)

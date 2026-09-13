@@ -218,11 +218,34 @@ Window {
                 }
                 Label {
                     visible: editing
+                    text: _cardLoader.item ? (Math.round(_cardLoader.item.zoom * 100) + "%") : "100%"
+                    color: "#E4E4E7"
+                    font.pixelSize: 12
+                }
+                Button {
+                    visible: editing
+                    text: "Reset view"
+                    enabled: _cardLoader.item && Math.abs(_cardLoader.item.zoom - 1) > 0.02
+                    onClicked: {
+                        if (_cardLoader.item)
+                            _cardLoader.item.resetView()
+                    }
+                }
+                Label {
+                    visible: editing
                     text: "control.hardware  " + _hw.path
                     color: "#A1A1AA"
                     font.pixelSize: 11
                     elide: Text.ElideMiddle
                     Layout.fillWidth: true
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+0"
+                    onActivated: {
+                        if (_cardLoader.item)
+                            _cardLoader.item.resetView()
+                    }
                 }
                 Item { Layout.fillWidth: true; visible: !editing }
             }

@@ -657,6 +657,21 @@ Item {
                 _ed.addSpineAt(hit.id || _ed.selectedId, m.x, m.y)
             }
         }
+        onWheel: (w) => {
+            if (!_ed.interactive || !face || !face.zoomAt) {
+                w.accepted = false
+                return
+            }
+            var dy = w.pixelDelta.y !== 0 ? w.pixelDelta.y : w.angleDelta.y
+            if (dy === 0) {
+                w.accepted = false
+                return
+            }
+            var vx = w.x * face.zoom + face.panX
+            var vy = w.y * face.zoom + face.panY
+            face.zoomAt(vx, vy, Math.pow(1.0012, dy))
+            w.accepted = true
+        }
     }
 
     Text {
@@ -667,6 +682,6 @@ Item {
         visible: _ed.interactive
         color: "#A1A1AA"
         font.pixelSize: 10
-        text: "Drag hotspot / chip / spine. Click a leader to add a spine. Add curve bows it. Del / right-click removes a spine."
+        text: "Wheel zoom (50–400%). Middle-drag pan. Drag hotspot / chip / spine. Click a leader to add a spine."
     }
 }

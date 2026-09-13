@@ -22,6 +22,11 @@ Item {
     property var destAxis: ({})
     property var destHat: ({})
     property int destTick: 0
+    property real zoom: 1
+    property real panX: 0
+    property real panY: 0
+    readonly property real zoomMin: 0.5
+    readonly property real zoomMax: 4.0
 
     readonly property real _pw: _img.paintedWidth
     readonly property real _ph: _img.paintedHeight
@@ -30,15 +35,42 @@ Item {
     readonly property real _layoutTok: _pw + _ph + _ox + _oy + width + height
 
     function photoPt(nx, ny) {
-        return _img.mapToItem(_face, _ox + nx * _pw, _oy + ny * _ph)
+        return _img.mapToItem(_world, _ox + nx * _pw, _oy + ny * _ph)
     }
 
     function toPhoto(mx, my) {
-        var p = _img.mapFromItem(_face, mx, my)
+        var p = _img.mapFromItem(_world, mx, my)
         if (_pw < 1 || _ph < 1) {
             return Qt.point(0, 0)
         }
         return Qt.point((p.x - _ox) / _pw, (p.y - _oy) / _ph)
+    }
+
+    function resetView() {
+        zoom = 1
+        panX = 0
+        panY = 0
+        pingEditor()
+    }
+
+    function zoomAt(vx, vy, factor) {
+        var z0 = zoom
+        if (z0 < 0.01) z0 = 1
+        var z1 = Math.max(zoomMin, Math.min(zoomMax, z0 * factor))
+        if (Math.abs(z1 - z0) < 0.0001) {
+            return
+        }
+        var cx = (vx - panX) / z0
+        var cy = (vy - panY) / z0
+        zoom = z1
+        panX = vx - cx * z1
+        panY = vy - cy * z1
+        if (Math.abs(zoom - 1) < 0.015) {
+            zoom = 1
+            panX = 0
+            panY = 0
+        }
+        pingEditor()
     }
 
     function hwButton(id) { return host && host.hwButton ? host.hwButton(id) : 0 }
@@ -87,7 +119,7 @@ Item {
         }
         var x = side === "right" ? item.width : (side === "left" ? 0 : item.width * 0.5)
         var y = side === "top" ? 0 : item.height * 0.5
-        return item.mapToItem(_face, x, y)
+        return item.mapToItem(_world, x, y)
     }
 
     // Place a chip column at the photo's ny so the leader stays near-horizontal.
@@ -96,7 +128,7 @@ Item {
             return 0
         }
         var p = photoPt(0.5, ny)
-        var loc = pane.mapFromItem(_face, 0, p.y)
+        var loc = pane.mapFromItem(_world, 0, p.y)
         var y = loc.y - h * 0.5
         if (y < 0) {
             y = 0
@@ -228,8 +260,31 @@ Item {
         }
     }
 
+    function pingEditor() {
+        if (typeof _editorLoader === "undefined" || !_editorLoader)
+            return
+        var ed = _editorLoader.item
+        if (!ed)
+            return
+        ed.bump()
+    }
+
     // Photo keeps gutter panes so chipFx/chipFy match the JSON window fractions.
     // Live chips and leaders come from qml/maps/vkb_evo_r.json via VkbRigEditor.
+    Item {
+        id: _viewport
+        anchors.fill: parent
+        clip: true
+
+        Item {
+            id: _world
+            width: parent.width
+            height: parent.height
+            x: _face.panX
+            y: _face.panY
+            transformOrigin: Item.TopLeft
+            scale: _face.zoom
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 8
@@ -409,15 +464,6 @@ Item {
         }
     }
 
-    function pingEditor() {
-        if (typeof _editorLoader === "undefined" || !_editorLoader)
-            return
-        var ed = _editorLoader.item
-        if (!ed)
-            return
-        ed.bump()
-    }
-
     Loader {
         id: _editorLoader
         anchors.fill: parent
@@ -445,6 +491,7 @@ Item {
             if (!_face.editing) {
                 ed.selectedId = ""
                 ed.selectedSpine = -1
+                _face.resetView()
             }
             ed.bump()
         }
@@ -496,6 +543,29 @@ Item {
             stroke(_p2324, 0.739, 0.798, "top")
         }
     }
+
+        } // _world
+
+        DragHandler {
+            acceptedButtons: Qt.MiddleButton
+            target: null
+            enabled: _face.editing
+            property real grabX: 0
+            property real grabY: 0
+            onActiveChanged: {
+                if (active) {
+                    grabX = _face.panX
+                    grabY = _face.panY
+                }
+            }
+            onTranslationChanged: {
+                if (!active)
+                    return
+                _face.panX = grabX + translation.x
+                _face.panY = grabY + translation.y
+            }
+        }
+    } // _viewport
 
     Timer {
         interval: 50
