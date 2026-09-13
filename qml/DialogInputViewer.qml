@@ -21,7 +21,7 @@ Window {
     color: Style.background
     Universal.theme: Style.theme
 
-    title: "vJoy / Xbox Pairing-Viewer"
+    title: "vJoy Pairing-Viewer"
 
     readonly property string oscGuid: "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
 
