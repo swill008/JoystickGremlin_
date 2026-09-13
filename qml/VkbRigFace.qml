@@ -185,6 +185,10 @@ Item {
         }
     }
 
+    // Chip zones (not hotspots). Dots stay on qml/vkb_evo_r_face_map.md JPEG pixels.
+    // L: H1, 11-15, 3, 6-10, 16-20, A1-A3 low by the shaft.
+    // R: 4, 21/22, 1/2, 5.
+    // B: 28, 27, 29, 25/26, A4, 23/24.
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 8
@@ -205,22 +209,25 @@ Item {
                     id: _left
                     anchors.top: parent.top
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 8
+                    spacing: 6
                     width: 292
 
                     Tag { id: _h1; kind: "hat"; hwId: 1; prefix: "H"; anchors.horizontalCenter: parent.horizontalCenter }
                     HatPlus { id: _p1115; up: 11; down: 13; leftId: 14; rightId: 12; center: 15; anchors.horizontalCenter: parent.horizontalCenter }
-                    HatPlus { id: _p610; up: 6; down: 8; leftId: 9; rightId: 7; center: 10; anchors.horizontalCenter: parent.horizontalCenter }
                     Tag { id: _b3; hwId: 3; anchors.horizontalCenter: parent.horizontalCenter }
+                    HatPlus { id: _p610; up: 6; down: 8; leftId: 9; rightId: 7; center: 10; anchors.horizontalCenter: parent.horizontalCenter }
                     HatPlus { id: _p1620; up: 16; down: 18; leftId: 19; rightId: 17; center: 20; anchors.horizontalCenter: parent.horizontalCenter }
-                    Column {
-                        id: _axes
-                        spacing: 3
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        Tag { kind: "axis"; hwId: 1; prefix: "A" }
-                        Tag { kind: "axis"; hwId: 2; prefix: "A" }
-                        Tag { kind: "axis"; hwId: 3; prefix: "A" }
-                    }
+                }
+
+                Column {
+                    id: _axes
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 4
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 3
+                    Tag { kind: "axis"; hwId: 1; prefix: "A" }
+                    Tag { kind: "axis"; hwId: 2; prefix: "A" }
+                    Tag { kind: "axis"; hwId: 3; prefix: "A" }
                 }
             }
 
@@ -244,8 +251,8 @@ Item {
 
             Column {
                 id: _right
-                Layout.preferredWidth: 200
-                Layout.maximumWidth: 200
+                Layout.preferredWidth: 160
+                Layout.maximumWidth: 160
                 Layout.fillHeight: true
                 spacing: 6
 
@@ -273,17 +280,17 @@ Item {
             Row {
                 id: _bottom
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 18
+                spacing: 16
 
+                Tag { id: _b28; hwId: 28; anchors.verticalCenter: parent.verticalCenter }
+                Tag { id: _b27; hwId: 27; anchors.verticalCenter: parent.verticalCenter }
+                Tag { id: _b29; hwId: 29; anchors.verticalCenter: parent.verticalCenter }
                 Column {
                     id: _p2526
                     spacing: 3
                     Tag { hwId: 25 }
                     Tag { hwId: 26 }
                 }
-                Tag { id: _b28; hwId: 28; anchors.verticalCenter: parent.verticalCenter }
-                Tag { id: _b27; hwId: 27; anchors.verticalCenter: parent.verticalCenter }
-                Tag { id: _b29; hwId: 29; anchors.verticalCenter: parent.verticalCenter }
                 Tag { id: _a4; kind: "axis"; hwId: 4; prefix: "A"; anchors.verticalCenter: parent.verticalCenter }
                 Column {
                     id: _p2324
@@ -324,18 +331,18 @@ Item {
             // Pixels from qml/vkb_evo_r_face_map.md on JPEG 899x920.
             stroke(_h1, 0.373, 0.183, "right")
             stroke(_p1115, 0.417, 0.183, "right")
-            stroke(_p610, 0.414, 0.235, "right")
             stroke(_b3, 0.346, 0.254, "right")
+            stroke(_p610, 0.414, 0.235, "right")
             stroke(_p1620, 0.400, 0.370, "right")
             stroke(_axes, 0.429, 0.575, "right")
             stroke(_b4, 0.613, 0.247, "left")
             stroke(_p2122, 0.656, 0.280, "left")
             stroke(_p12, 0.617, 0.301, "left")
             stroke(_b5, 0.605, 0.420, "left")
-            stroke(_p2526, 0.621, 0.770, "top")
             stroke(_b28, 0.594, 0.715, "top")
             stroke(_b27, 0.621, 0.709, "top")
             stroke(_b29, 0.654, 0.700, "top")
+            stroke(_p2526, 0.621, 0.770, "top")
             stroke(_a4, 0.656, 0.770, "top")
             stroke(_p2324, 0.710, 0.770, "top")
         }
