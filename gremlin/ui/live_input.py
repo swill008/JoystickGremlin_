@@ -210,3 +210,4 @@ class DeviceLiveState(QtCore.QObject):
 import gremlin.ui.input_pairing  # noqa: F401
 import gremlin.ui.pair_live  # noqa: F401
 import gremlin.ui.viewer_devices  # noqa: F401
+import gremlin.ui.xbox_viewer  # noqa: F401
