@@ -142,6 +142,6 @@ Item {
     Hotspot { nx: 0.728; ny: 0.650; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("a"); glow: "#4ade80"; fill: "#664ade80"; radius: width / 2 }
     Hotspot { nx: 0.672; ny: 0.581; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("x"); glow: "#60a5fa"; fill: "#6660a5fa"; radius: width / 2 }
 
-    Hotspot { nx: 0.452; ny: 0.582; nw: 0.026; nh: 0.020; lit: on("back"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
-    Hotspot { nx: 0.572; ny: 0.582; nw: 0.026; nh: 0.020; lit: on("start"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
+    Hotspot { nx: 0.432; ny: 0.575; nw: 0.032; nh: 0.022; lit: on("back"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
+    Hotspot { nx: 0.592; ny: 0.575; nw: 0.032; nh: 0.022; lit: on("start"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
 }
