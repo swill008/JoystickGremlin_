@@ -18,6 +18,7 @@ Item {
     property real dragOffY: 0
     property int tick: 0
     property bool seeded: false
+    property bool interactive: false
 
     signal nodesChanged()
     signal selectedChanged()
@@ -26,6 +27,15 @@ Item {
         tick++
         nodesChanged()
         _lines.requestPaint()
+    }
+
+    onInteractiveChanged: {
+        if (!interactive) {
+            selectedId = ""
+            selectedSpine = -1
+            dragKind = ""
+        }
+        bump()
     }
 
     function nodeAt(id) {
@@ -112,21 +122,6 @@ Item {
         var a = pinPt(n, item)
         var b = hotPt(n)
         n.spines = [{ fx: ((a.x + b.x) * 0.5) / Math.max(1, width), fy: ((a.y + b.y) * 0.5) / Math.max(1, height) }]
-    }
-
-    function seedSpines() {
-        if (seeded) {
-            return
-        }
-        var list = nodes || []
-        if (!list.length) {
-            return
-        }
-        for (var i = 0; i < list.length; i++) {
-            ensureMidSpine(list[i])
-        }
-        seeded = true
-        bump()
     }
 
     function hitTest(mx, my) {
@@ -414,8 +409,8 @@ Item {
                 var item = _chips.itemAt(i)
                 var a = _ed.pinPt(n, item)
                 var b = _ed.hotPt(n)
-                ctx.strokeStyle = _ed.selectedId === n.id ? "#FBBF24" : "#A1A1AA"
-                ctx.lineWidth = _ed.selectedId === n.id ? 1.6 : 1.1
+                ctx.strokeStyle = (_ed.interactive && _ed.selectedId === n.id) ? "#FBBF24" : "#A1A1AA"
+                ctx.lineWidth = (_ed.interactive && _ed.selectedId === n.id) ? 1.6 : 1.1
                 ctx.beginPath()
                 ctx.moveTo(a.x, a.y)
                 var spines = n.spines || []
@@ -426,15 +421,17 @@ Item {
                 ctx.stroke()
                 ctx.beginPath()
                 ctx.arc(b.x, b.y, 4.5, 0, 6.3)
-                ctx.fillStyle = _ed.selectedId === n.id ? "#FBBF24" : "#F4F4F5"
+                ctx.fillStyle = (_ed.interactive && _ed.selectedId === n.id) ? "#FBBF24" : "#F4F4F5"
                 ctx.fill()
-                for (s = 0; s < spines.length; s++) {
-                    var sx = spines[s].fx * width
-                    var sy = spines[s].fy * height
-                    ctx.beginPath()
-                    ctx.arc(sx, sy, 5, 0, 6.3)
-                    ctx.fillStyle = (_ed.selectedId === n.id && _ed.selectedSpine === s) ? "#F59E0B" : "#94A3B8"
-                    ctx.fill()
+                if (_ed.interactive) {
+                    for (s = 0; s < spines.length; s++) {
+                        var sx = spines[s].fx * width
+                        var sy = spines[s].fy * height
+                        ctx.beginPath()
+                        ctx.arc(sx, sy, 5, 0, 6.3)
+                        ctx.fillStyle = (_ed.selectedId === n.id && _ed.selectedSpine === s) ? "#F59E0B" : "#94A3B8"
+                        ctx.fill()
+                    }
                 }
             }
         }
@@ -443,7 +440,8 @@ Item {
     MouseArea {
         anchors.fill: parent
         z: 8
-        hoverEnabled: true
+        enabled: _ed.interactive
+        hoverEnabled: _ed.interactive
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         focus: true
         Keys.onDeletePressed: _ed.deleteSelection()
@@ -476,8 +474,10 @@ Item {
             _ed.selectedChanged()
             if (hit.kind === "chip") {
                 var n2 = _ed.nodeAt(hit.id)
-                _ed.dragOffX = m.x - n2.chipFx * width
-                _ed.dragOffY = m.y - n2.chipFy * height
+                if (n2) {
+                    _ed.dragOffX = m.x - n2.chipFx * width
+                    _ed.dragOffY = m.y - n2.chipFy * height
+                }
             }
             _ed.bump()
         }
@@ -513,18 +513,12 @@ Item {
         }
     }
 
-    Timer {
-        interval: 80
-        running: true
-        repeat: false
-        onTriggered: _ed.seedSpines()
-    }
-
     Text {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
         anchors.margins: 6
         z: 9
+        visible: _ed.interactive
         color: "#A1A1AA"
         font.pixelSize: 10
         text: "Drag hotspot / chip / spine. Click a leader to add a spine. Del or right-click spine to remove."
