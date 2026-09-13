@@ -1157,7 +1157,10 @@ Window {
                     Button {
                         text: "Delete chip"
                         Layout.fillWidth: true
+                        enabled: !nodeIsGroup(selectedNode)
                         onClicked: {
+                            if (nodeIsGroup(selectedNode))
+                                return
                             var e = _ed()
                             if (e) e.deleteSelection()
                             _chipPop.close()
