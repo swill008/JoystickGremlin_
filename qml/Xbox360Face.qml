@@ -50,43 +50,46 @@ Item {
         z: 4
     }
 
-    // Top LB bumper
-    Rectangle {
-        x: px(0.20); y: py(0.125); width: pw(0.18); height: ph(0.09); radius: 8
-        color: on("left_shoulder") ? "#6622C55E" : "#00000000"
-        border.width: on("left_shoulder") ? 2 : 0
-        border.color: "#86EFAC"
-    }
-    // Top RB bumper
-    Rectangle {
-        x: px(0.62); y: py(0.125); width: pw(0.18); height: ph(0.09); radius: 8
-        color: on("right_shoulder") ? "#6622C55E" : "#00000000"
-        border.width: on("right_shoulder") ? 2 : 0
-        border.color: "#86EFAC"
-    }
-    // Top LT paddle
-    Rectangle {
-        x: px(0.24); y: py(0.21); width: pw(0.07)
-        height: ph(0.10) + ph(0.06) * Math.min(1.0, Math.max(0.0, v("left_trigger")))
-        radius: 6
-        color: v("left_trigger") > 0.08 ? "#8838BDF8" : "#00000000"
-        border.width: v("left_trigger") > 0.08 ? 2 : 0
-        border.color: "#38BDF8"
-    }
-    // Top RT paddle
-    Rectangle {
-        x: px(0.69); y: py(0.21); width: pw(0.07)
-        height: ph(0.10) + ph(0.06) * Math.min(1.0, Math.max(0.0, v("right_trigger")))
-        radius: 6
-        color: v("right_trigger") > 0.08 ? "#8838BDF8" : "#00000000"
-        border.width: v("right_trigger") > 0.08 ? 2 : 0
-        border.color: "#38BDF8"
+    // Centered overlay: nx/ny are control centers on the photo.
+    component Hotspot: Rectangle {
+        property real nx
+        property real ny
+        property real nw
+        property real nh
+        property bool lit: false
+        property color glow: "#22C55E"
+        property color fill: "#00000000"
+
+        x: px(nx) - pw(nw) * 0.5
+        y: py(ny) - ph(nh) * 0.5
+        width: pw(nw)
+        height: ph(nh)
+        color: lit ? fill : "#00000000"
+        border.width: lit ? 3 : 0
+        border.color: glow
+        radius: Math.min(width, height) * 0.35
     }
 
-    // Front left stick
+    Hotspot { nx: 0.27; ny: 0.175; nw: 0.16; nh: 0.09; lit: on("left_shoulder"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 8 }
+    Hotspot { nx: 0.74; ny: 0.175; nw: 0.16; nh: 0.09; lit: on("right_shoulder"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 8 }
+
+    Hotspot {
+        nx: 0.295; ny: 0.30; nw: 0.075
+        nh: 0.12 + 0.06 * Math.min(1.0, Math.max(0.0, v("left_trigger")))
+        lit: v("left_trigger") > 0.08
+        glow: "#38BDF8"; fill: "#8838BDF8"; radius: 6
+    }
+    Hotspot {
+        nx: 0.735; ny: 0.30; nw: 0.075
+        nh: 0.12 + 0.06 * Math.min(1.0, Math.max(0.0, v("right_trigger")))
+        lit: v("right_trigger") > 0.08
+        glow: "#38BDF8"; fill: "#8838BDF8"; radius: 6
+    }
+
     Item {
-        x: px(0.168); y: py(0.50)
-        width: pw(0.115); height: pw(0.115)
+        x: px(0.30) - pw(0.125) * 0.5
+        y: py(0.555) - pw(0.125) * 0.5
+        width: pw(0.125); height: width
         Rectangle {
             anchors.fill: parent
             radius: width / 2
@@ -95,41 +98,20 @@ Item {
             border.color: "#22C55E"
         }
         Rectangle {
-            width: parent.width * 0.30
+            width: parent.width * 0.28
             height: width
             radius: width / 2
             color: "#e5e7eb"
             visible: stamp >= 0 && (Math.abs(v("left_stick_x")) > 0.06 || Math.abs(v("left_stick_y")) > 0.06 || on("left_thumb"))
-            x: parent.width * 0.35 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("left_stick_x")))
-            y: parent.height * 0.35 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("left_stick_y")))
+            x: parent.width * 0.36 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("left_stick_x")))
+            y: parent.height * 0.36 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("left_stick_y")))
         }
     }
 
-    // D-pad
-    Rectangle { x: px(0.268); y: py(0.655); width: pw(0.035); height: ph(0.04); radius: 3; color: on("dpad_up") ? "#ccf8fafc" : "#00000000" }
-    Rectangle { x: px(0.268); y: py(0.735); width: pw(0.035); height: ph(0.04); radius: 3; color: on("dpad_down") ? "#ccf8fafc" : "#00000000" }
-    Rectangle { x: px(0.230); y: py(0.695); width: pw(0.035); height: ph(0.04); radius: 3; color: on("dpad_left") ? "#ccf8fafc" : "#00000000" }
-    Rectangle { x: px(0.306); y: py(0.695); width: pw(0.035); height: ph(0.04); radius: 3; color: on("dpad_right") ? "#ccf8fafc" : "#00000000" }
-
-    // Guide
-    Rectangle {
-        x: px(0.445); y: py(0.528)
-        width: pw(0.11); height: pw(0.11); radius: width / 2
-        color: "#00000000"
-        border.width: on("guide") ? 4 : 0
-        border.color: "#4ade80"
-    }
-
-    // ABXY on front
-    Rectangle { x: px(0.678); y: py(0.488); width: pw(0.055); height: pw(0.055); radius: width / 2; color: on("y") ? "#99fde047" : "#00000000"; border.width: on("y") ? 3 : 0; border.color: "#facc15" }
-    Rectangle { x: px(0.732); y: py(0.548); width: pw(0.055); height: pw(0.055); radius: width / 2; color: on("b") ? "#99f87171" : "#00000000"; border.width: on("b") ? 3 : 0; border.color: "#f87171" }
-    Rectangle { x: px(0.678); y: py(0.608); width: pw(0.055); height: pw(0.055); radius: width / 2; color: on("a") ? "#994ade80" : "#00000000"; border.width: on("a") ? 3 : 0; border.color: "#4ade80" }
-    Rectangle { x: px(0.624); y: py(0.548); width: pw(0.055); height: pw(0.055); radius: width / 2; color: on("x") ? "#9960a5fa" : "#00000000"; border.width: on("x") ? 3 : 0; border.color: "#60a5fa" }
-
-    // Front right stick
     Item {
-        x: px(0.528); y: py(0.655)
-        width: pw(0.115); height: pw(0.115)
+        x: px(0.63) - pw(0.125) * 0.5
+        y: py(0.725) - pw(0.125) * 0.5
+        width: pw(0.125); height: width
         Rectangle {
             anchors.fill: parent
             radius: width / 2
@@ -138,27 +120,28 @@ Item {
             border.color: "#22C55E"
         }
         Rectangle {
-            width: parent.width * 0.30
+            width: parent.width * 0.28
             height: width
             radius: width / 2
             color: "#e5e7eb"
             visible: stamp >= 0 && (Math.abs(v("right_stick_x")) > 0.06 || Math.abs(v("right_stick_y")) > 0.06 || on("right_thumb"))
-            x: parent.width * 0.35 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("right_stick_x")))
-            y: parent.height * 0.35 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("right_stick_y")))
+            x: parent.width * 0.36 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("right_stick_x")))
+            y: parent.height * 0.36 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("right_stick_y")))
         }
     }
 
-    // Back / Start next to Guide
-    Rectangle {
-        x: px(0.395); y: py(0.555); width: pw(0.045); height: ph(0.03); radius: 6
-        color: on("back") ? "#9922C55E" : "#00000000"
-        border.width: on("back") ? 2 : 0
-        border.color: "#86EFAC"
-    }
-    Rectangle {
-        x: px(0.560); y: py(0.555); width: pw(0.045); height: ph(0.03); radius: 6
-        color: on("start") ? "#9922C55E" : "#00000000"
-        border.width: on("start") ? 2 : 0
-        border.color: "#86EFAC"
-    }
+    Hotspot { nx: 0.325; ny: 0.685; nw: 0.04; nh: 0.045; lit: on("dpad_up"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+    Hotspot { nx: 0.325; ny: 0.765; nw: 0.04; nh: 0.045; lit: on("dpad_down"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+    Hotspot { nx: 0.285; ny: 0.725; nw: 0.04; nh: 0.045; lit: on("dpad_left"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+    Hotspot { nx: 0.365; ny: 0.725; nw: 0.04; nh: 0.045; lit: on("dpad_right"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+
+    Hotspot { nx: 0.50; ny: 0.575; nw: 0.11; nh: 0.11 * _pw / _ph; lit: on("guide"); glow: "#4ade80"; fill: "#00000000"; radius: width / 2 }
+
+    Hotspot { nx: 0.723; ny: 0.520; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("y"); glow: "#facc15"; fill: "#99fde047"; radius: width / 2 }
+    Hotspot { nx: 0.779; ny: 0.579; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("b"); glow: "#f87171"; fill: "#99f87171"; radius: width / 2 }
+    Hotspot { nx: 0.723; ny: 0.638; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("a"); glow: "#4ade80"; fill: "#994ade80"; radius: width / 2 }
+    Hotspot { nx: 0.672; ny: 0.583; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("x"); glow: "#60a5fa"; fill: "#9960a5fa"; radius: width / 2 }
+
+    Hotspot { nx: 0.43; ny: 0.575; nw: 0.05; nh: 0.035; lit: on("back"); glow: "#86EFAC"; fill: "#9922C55E"; radius: 6 }
+    Hotspot { nx: 0.57; ny: 0.575; nw: 0.05; nh: 0.035; lit: on("start"); glow: "#86EFAC"; fill: "#9922C55E"; radius: 6 }
 }
