@@ -14,7 +14,7 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 1 | Red trigger half | Right | 610 | 250 | 0.679 | 0.272 | pair 1/2 |
 | 2 | Red trigger full | Right | 610 | 250 | 0.679 | 0.272 | pair 1/2 |
 | 3 | Red head button | Left | 311 | 234 | 0.346 | 0.254 | single |
-| 4 | White cap | Right | 575 | 195 | 0.640 | 0.212 | single |
+| 4 | White cap | Right | 551 | 227 | 0.613 | 0.247 | single |
 | 5 | Lower grip white | Right | 575 | 395 | 0.640 | 0.429 | single |
 | 6 | 5-way right of red, up | Left | 372 | 216 | 0.414 | 0.235 | plus 6-10 |
 | 7 | that 5-way, right | Left | 372 | 216 | 0.414 | 0.235 | plus 6-10 |
@@ -68,3 +68,4 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 - A3 is twist at the gimbal. A4 is the slider.
 - En1 = 25/26. En2 = 23/24.
 - Button 3 is the red head button centroid (311,234), not the 5-way to its right.
+- Button 4 is the white cap centroid (551,227), not the gray above the grip.
