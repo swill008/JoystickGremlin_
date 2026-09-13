@@ -24,8 +24,9 @@ Item {
     readonly property real _ox: (_img.width - _pw) * 0.5
     readonly property real _oy: (_img.height - _ph) * 0.5
 
-    function px(nx) { return _stage.x + _ox + nx * _pw }
-    function py(ny) { return _stage.y + _oy + ny * _ph }
+    function photoPt(nx, ny) {
+        return _img.mapToItem(_face, _ox + nx * _pw, _oy + ny * _ph)
+    }
 
     function hwButton(id) { return host && host.hwButton ? host.hwButton(id) : 0 }
     function hwAxis(id) { return host && host.hwAxis ? host.hwAxis(id) : 0 }
@@ -308,34 +309,35 @@ Item {
                 if (!item) {
                     return
                 }
-                var p = _face.pin(item, side)
+                var a = _face.pin(item, side)
+                var b = _face.photoPt(nx, ny)
                 ctx.beginPath()
-                ctx.moveTo(p.x, p.y)
-                ctx.lineTo(px(nx), py(ny))
+                ctx.moveTo(a.x, a.y)
+                ctx.lineTo(b.x, b.y)
                 ctx.stroke()
                 ctx.beginPath()
-                ctx.arc(px(nx), py(ny), 3.5, 0, 6.3)
+                ctx.arc(b.x, b.y, 3.5, 0, 6.3)
                 ctx.fillStyle = "#F4F4F5"
                 ctx.fill()
             }
 
-            // nx/ny from qml/vkb_evo_r_face_map.md (JPEG 899x920, not the window).
-            stroke(_h1, 0.378, 0.190, "right")
-            stroke(_p1115, 0.445, 0.185, "right")
-            stroke(_p610, 0.428, 0.245, "right")
+            // Pixels from qml/vkb_evo_r_face_map.md on JPEG 899x920.
+            stroke(_h1, 0.373, 0.183, "right")
+            stroke(_p1115, 0.417, 0.183, "right")
+            stroke(_p610, 0.414, 0.235, "right")
             stroke(_b3, 0.395, 0.250, "right")
             stroke(_p1620, 0.400, 0.370, "right")
-            stroke(_axes, 0.430, 0.575, "right")
+            stroke(_axes, 0.429, 0.575, "right")
             stroke(_b4, 0.640, 0.212, "left")
-            stroke(_p2122, 0.695, 0.277, "left")
-            stroke(_p12, 0.678, 0.272, "left")
+            stroke(_p2122, 0.703, 0.270, "left")
+            stroke(_p12, 0.679, 0.272, "left")
             stroke(_b5, 0.640, 0.429, "left")
-            stroke(_p2526, 0.595, 0.739, "top")
-            stroke(_b28, 0.545, 0.625, "top")
-            stroke(_b27, 0.590, 0.617, "top")
-            stroke(_b29, 0.634, 0.609, "top")
-            stroke(_a4, 0.640, 0.739, "top")
-            stroke(_p2324, 0.684, 0.739, "top")
+            stroke(_p2526, 0.621, 0.770, "top")
+            stroke(_b28, 0.634, 0.581, "top")
+            stroke(_b27, 0.656, 0.574, "top")
+            stroke(_b29, 0.678, 0.567, "top")
+            stroke(_a4, 0.656, 0.770, "top")
+            stroke(_p2324, 0.710, 0.770, "top")
         }
     }
 
