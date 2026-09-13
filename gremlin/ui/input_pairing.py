@@ -10,9 +10,7 @@ from PySide6 import QtCore
 import dill
 from gremlin import device_initialization, event_handler, shared_state
 from gremlin.types import InputType
-from gremlin.ui import xbox_maps
 import gremlin.ui.type_aliases as ta
-from vigem.xbox import XboxTarget
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -77,29 +75,6 @@ def _maps_for_item(item) -> list[tuple[int, object, int]]:
     return out
 
 
-def _xbox_maps_for_item(item) -> list[tuple[int, str]]:
-    return xbox_maps.xbox_maps_for_item(item)
-
-
-def _has_pair_maps(item) -> bool:
-    return bool(_maps_for_item(item) or _xbox_maps_for_item(item))
-
-
-def _xbox_label(target: str) -> str:
-    try:
-        return XboxTarget.from_string(target).label
-    except Exception:
-        return str(target or "Xbox")
-
-
-def _pair_label_for_items(items) -> str:
-    vjoy_ids = sorted({vid for item in items or [] for vid, _, _ in _maps_for_item(item)})
-    xbox_ids = sorted({pad for item in items or [] for pad, _ in _xbox_maps_for_item(item)})
-    parts = [f"vJoy Device {vid}" for vid in vjoy_ids]
-    parts.extend(f"Xbox 360 {pad}" for pad in xbox_ids)
-    return ", ".join(parts)
-
-
 def _items_for_guid(guid: str):
     profile = shared_state.current_profile
     if profile is None:
@@ -131,27 +106,6 @@ def _device_name(guid: str) -> str:
     return hardware
 
 
-def _source_label(input_type: InputType, identifier: int) -> str:
-    if input_type == InputType.JoystickAxis:
-        return AXIS_LABELS.get(identifier, f"A{identifier}")
-    if input_type == InputType.JoystickHat:
-        return f"H{identifier}"
-    return str(identifier)
-
-
-def _blank_dest() -> dict:
-    return {
-        "destKind": "",
-        "vjoyId": 0,
-        "vjoyInput": 0,
-        "vjoyLabel": "",
-        "vjoyGuid": "",
-        "xboxPad": 0,
-        "xboxTarget": "",
-        "xboxLabel": "",
-    }
-
-
 def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
     rows: list[dict] = []
     seen: set[tuple] = set()
@@ -162,68 +116,35 @@ def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
             identifier = int(item.input_id)
         except Exception:
             continue
-        src = _source_label(input_type, identifier)
         for vjoy_id, vtype, vinput in _maps_for_item(item):
-            key = ("vjoy", identifier, vjoy_id, vinput)
+            key = (identifier, vjoy_id, vinput)
             if key in seen:
                 continue
             seen.add(key)
+            if input_type == InputType.JoystickAxis:
+                src = AXIS_LABELS.get(identifier, f"A{identifier}")
+            elif input_type == InputType.JoystickHat:
+                src = f"H{identifier}"
+            else:
+                src = str(identifier)
             if vtype == InputType.JoystickAxis:
                 dest = AXIS_LABELS.get(int(vinput), f"A{vinput}")
             elif vtype == InputType.JoystickHat:
                 dest = f"H{vinput}"
             else:
                 dest = f"B{vinput}"
-            row = _blank_dest()
-            row.update(
+            rows.append(
                 {
                     "identifier": identifier,
                     "label": src,
-                    "destKind": "vjoy",
                     "vjoyId": int(vjoy_id),
                     "vjoyInput": int(vinput),
                     "vjoyLabel": f"vJoy {vjoy_id} {dest}",
                     "vjoyGuid": _vjoy_guid(vjoy_id),
                 }
             )
-            rows.append(row)
-        for pad, target in _xbox_maps_for_item(item):
-            key = ("xbox", identifier, pad, target)
-            if key in seen:
-                continue
-            seen.add(key)
-            row = _blank_dest()
-            row.update(
-                {
-                    "identifier": identifier,
-                    "label": src,
-                    "destKind": "xbox",
-                    "xboxPad": int(pad),
-                    "xboxTarget": str(target),
-                    "xboxLabel": f"Xbox {pad} {_xbox_label(target)}",
-                }
-            )
-            rows.append(row)
-    rows.sort(
-        key=lambda row: (
-            row["identifier"],
-            row["destKind"],
-            row["vjoyId"],
-            row["vjoyInput"],
-            row["xboxPad"],
-            row["xboxTarget"],
-        )
-    )
+    rows.sort(key=lambda row: (row["identifier"], row["vjoyId"], row["vjoyInput"]))
     return rows
-
-
-def _xbox_pads_for_guid(guid: str) -> list[int]:
-    pads = {
-        pad
-        for item in _items_for_guid(guid)
-        for pad, _ in _xbox_maps_for_item(item)
-    }
-    return sorted(pads)
 
 
 class _MappedModel(QtCore.QAbstractListModel):
@@ -234,10 +155,6 @@ class _MappedModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(b"vjoyInput"),
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"vjoyLabel"),
         QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"vjoyGuid"),
-        QtCore.Qt.ItemDataRole.UserRole + 7: QtCore.QByteArray(b"destKind"),
-        QtCore.Qt.ItemDataRole.UserRole + 8: QtCore.QByteArray(b"xboxPad"),
-        QtCore.Qt.ItemDataRole.UserRole + 9: QtCore.QByteArray(b"xboxTarget"),
-        QtCore.Qt.ItemDataRole.UserRole + 10: QtCore.QByteArray(b"xboxLabel"),
     }
 
     guidChanged = QtCore.Signal()
@@ -293,63 +210,6 @@ class MappedButtonModel(_MappedModel):
 
 
 @ta.QmlElement
-class MappedHatModel(_MappedModel):
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(InputType.JoystickHat, parent)
-
-
-@ta.QmlElement
-class MappedXboxPadModel(QtCore.QAbstractListModel):
-    roles = {
-        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"padId"),
-    }
-    guidChanged = QtCore.Signal()
-    countChanged = QtCore.Signal()
-
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(parent)
-        self._guid = ""
-        self._rows: list[dict] = []
-
-    def _reload(self) -> None:
-        self.beginResetModel()
-        self._rows = [{"padId": pad} for pad in _xbox_pads_for_guid(self._guid)]
-        self.endResetModel()
-        self.countChanged.emit()
-
-    def _get_guid(self) -> str:
-        return self._guid
-
-    def _set_guid(self, guid: str) -> None:
-        text = str(guid or "")
-        if text == self._guid:
-            return
-        self._guid = text
-        self._reload()
-        self.guidChanged.emit()
-
-    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._rows)
-
-    def data(self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole):
-        if not index.isValid() or not (0 <= index.row() < len(self._rows)):
-            return None
-        row = self._rows[index.row()]
-        key = bytes(self.roles.get(role, b"")).decode()
-        return row.get(key)
-
-    def roleNames(self) -> dict[int, QtCore.QByteArray]:
-        return self.roles
-
-    guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
-
-    def _get_count(self) -> int:
-        return len(self._rows)
-
-    count = QtCore.Property(int, fget=_get_count, notify=countChanged)
-
-
-@ta.QmlElement
 class PairDeviceModel(QtCore.QAbstractListModel):
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"guid"),
@@ -369,14 +229,21 @@ class PairDeviceModel(QtCore.QAbstractListModel):
         profile = shared_state.current_profile
         if profile is not None:
             for device_id, items in (profile.inputs or {}).items():
-                if not any(_has_pair_maps(item) for item in items or []):
+                if not any(_maps_for_item(item) for item in items or []):
                     continue
                 guid = str(device_id)
+                targets = sorted(
+                    {
+                        vid
+                        for item in items or []
+                        for vid, _, _ in _maps_for_item(item)
+                    }
+                )
                 self._rows.append(
                     {
                         "guid": guid,
                         "name": _device_name(guid),
-                        "pairLabel": _pair_label_for_items(items),
+                        "pairLabel": ", ".join(f"vJoy Device {vid}" for vid in targets),
                     }
                 )
         self._rows.sort(key=lambda row: row["name"].lower())
@@ -492,4 +359,7 @@ class InputPairing(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def pairedDeviceLabel(self, guid: str) -> str:
-        return _pair_label_for_items(_items_for_guid(guid))
+        ids = sorted({vid for item in _items_for_guid(guid) for vid, _, _ in _maps_for_item(item)})
+        if not ids:
+            return ""
+        return ", ".join(f"vJoy Device {vid}" for vid in ids)
