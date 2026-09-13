@@ -390,6 +390,16 @@ Window {
             return
         var e = _ed()
         var p = e ? e.mapToItem(_buttonMap.contentItem, x, y) : Qt.point(x, y)
+        if (_chipPop.width < 240)
+            _chipPop.width = 280
+        if (_chipPop.height < 200)
+            _chipPop.height = 480
+        var maxW = Math.max(240, _buttonMap.width - 16)
+        var maxH = Math.max(200, _buttonMap.height - 16)
+        if (_chipPop.width > maxW)
+            _chipPop.width = maxW
+        if (_chipPop.height > maxH)
+            _chipPop.height = maxH
         _chipPop.x = Math.max(8, Math.min(p.x, _buttonMap.width - _chipPop.width - 8))
         _chipPop.y = Math.max(8, Math.min(p.y, _buttonMap.height - _chipPop.height - 8))
         _chipPop.open()
@@ -873,20 +883,85 @@ Window {
     Popup {
         id: _chipPop
         parent: _buttonMap.contentItem
-        width: 272
-        height: Math.min(640, _buttonMap.height - 24)
+        width: 280
+        height: 480
         modal: false
         focus: true
         padding: 0
         closePolicy: Popup.CloseOnEscape
+        property real _rsx: 0
+        property real _rsy: 0
+        property real _rsw: 0
+        property real _rsh: 0
+        property real _rmx: 0
+        property real _rmy: 0
+        property string _redge: ""
+
+        function startResize(edge, mx, my, item) {
+            _redge = edge
+            _rsx = x
+            _rsy = y
+            _rsw = width
+            _rsh = height
+            var p = item.mapToItem(parent, mx, my)
+            _rmx = p.x
+            _rmy = p.y
+        }
+
+        function moveResize(mx, my, item) {
+            var p = item.mapToItem(parent, mx, my)
+            var dx = p.x - _rmx
+            var dy = p.y - _rmy
+            var nx = _rsx
+            var ny = _rsy
+            var nw = _rsw
+            var nh = _rsh
+            var e = _redge
+            if (e.indexOf("e") >= 0)
+                nw = _rsw + dx
+            if (e.indexOf("s") >= 0)
+                nh = _rsh + dy
+            if (e.indexOf("w") >= 0)
+                nw = _rsw - dx
+            if (e.indexOf("n") >= 0)
+                nh = _rsh - dy
+            var maxW = Math.max(240, parent.width - 16)
+            var maxH = Math.max(200, parent.height - 16)
+            nw = Math.max(240, Math.min(nw, maxW))
+            nh = Math.max(200, Math.min(nh, maxH))
+            if (e.indexOf("w") >= 0)
+                nx = _rsx + _rsw - nw
+            if (e.indexOf("n") >= 0)
+                ny = _rsy + _rsh - nh
+            nx = Math.max(8, Math.min(nx, parent.width - nw - 8))
+            ny = Math.max(8, Math.min(ny, parent.height - nh - 8))
+            x = nx
+            y = ny
+            width = nw
+            height = nh
+        }
+
         background: Rectangle {
             color: "#111113"
             border.color: "#3F3F46"
             radius: 8
         }
+
+        component Grip: MouseArea {
+            required property string edge
+            preventStealing: true
+            hoverEnabled: true
+            onPressed: (m) => _chipPop.startResize(edge, m.x, m.y, this)
+            onPositionChanged: (m) => {
+                if (pressed)
+                    _chipPop.moveResize(m.x, m.y, this)
+            }
+        }
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 10
+            anchors.bottomMargin: 14
+            anchors.rightMargin: 12
             spacing: 6
             RowLayout {
                 Layout.fillWidth: true
@@ -1077,6 +1152,26 @@ Window {
                     }
                 }
             }
+        }
+
+        Grip { edge: "n"; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
+        Grip { edge: "s"; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
+        Grip { edge: "w"; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
+        Grip { edge: "e"; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
+        Grip { edge: "nw"; width: 12; height: 12; anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
+        Grip { edge: "ne"; width: 12; height: 12; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
+        Grip { edge: "sw"; width: 12; height: 12; anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
+        Grip { edge: "se"; width: 14; height: 14; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor; z: 2 }
+
+        Item {
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: 3
+            width: 10
+            height: 10
+            opacity: 0.55
+            Rectangle { width: 8; height: 1; color: "#A1A1AA"; rotation: -45; x: 2; y: 7 }
+            Rectangle { width: 5; height: 1; color: "#A1A1AA"; rotation: -45; x: 5; y: 8 }
         }
     }
 
