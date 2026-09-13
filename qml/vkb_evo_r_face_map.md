@@ -31,8 +31,8 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 18 | that wheel, down | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 19 | that wheel, left | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 20 | that wheel, center | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
-| 21 | Ribbed paddle / upper trigger push | Right | 578 | 272 | 0.643 | 0.296 | pair 21/22 |
-| 22 | Ribbed paddle / upper trigger pull | Right | 578 | 272 | 0.643 | 0.296 | pair 21/22 |
+| 21 | Grey upper paddle push | Right | 628 | 250 | 0.699 | 0.272 | pair 21/22 |
+| 22 | Grey upper paddle pull | Right | 628 | 250 | 0.699 | 0.272 | pair 21/22 |
 | 23 | En2 right knob up | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
 | 24 | En2 right knob down | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
 | 25 | En1 left knob up | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
@@ -70,6 +70,6 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 - Button 3 is the red head button centroid (311,234), not the 5-way to its right.
 - Button 4 is the white cap centroid (551,227), not the gray above the grip.
 - Button 5 is the lower-grip white centroid (544,386), not the space to its right.
-- 21/22 is the paddle next to the red trigger (578,272), not the gray to the right of the grip.
+- 21/22 is the grey upper paddle stub right of the cap (628,250), not the red trigger.
 - 1/2 is the right-grip red trigger centroid (555,277).
 - 28/27/29 are the three squares above En1/slider/En2 (586,646 / 612,638 / 648,628).
