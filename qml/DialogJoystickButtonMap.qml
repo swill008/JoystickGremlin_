@@ -450,36 +450,148 @@ Window {
             Layout.fillWidth: true
             RowLayout {
                 anchors.fill: parent
+                spacing: 8
                 Button {
                     text: editing ? "Editing" : "Edit"
                     enabled: !editing
                     onClicked: enterEdit()
                 }
-                Button {
-                    text: "Save"
+                MenuBar {
                     visible: editing
-                    onClicked: saveEdit()
+                    Menu {
+                        title: "Menu"
+                        Menu {
+                            title: "Options"
+                            Menu {
+                                title: "Session"
+                                MenuItem { text: "Save"; onTriggered: saveEdit() }
+                                MenuItem { text: "Cancel"; onTriggered: cancelEdit() }
+                                MenuSeparator {}
+                                MenuItem { text: "Reset layout"; onTriggered: _resetDlg.open() }
+                            }
+                            Menu {
+                                title: "Group"
+                                MenuItem { text: "Group selected"; onTriggered: { var e = _ed(); if (e) e.groupSelection() } }
+                                MenuItem { text: "Ungroup"; onTriggered: { var e = _ed(); if (e) e.ungroupSelection() } }
+                                MenuSeparator {}
+                                MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
+                                MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
+                                MenuSeparator {}
+                                MenuItem { text: "Align left"; onTriggered: { var e = _ed(); if (e) e.setAlignH("left") } }
+                                MenuItem { text: "Align center"; onTriggered: { var e = _ed(); if (e) e.setAlignH("center") } }
+                                MenuItem { text: "Align right"; onTriggered: { var e = _ed(); if (e) e.setAlignH("right") } }
+                                MenuItem { text: "Free layout"; onTriggered: { var e = _ed(); if (e) e.setAlignH("free") } }
+                            }
+                            Menu {
+                                title: "Leader"
+                                MenuItem { text: "Add straight spine"; onTriggered: { var e = _ed(); if (e && selectedNode) { e.ensureMidSpine(selectedNode); e.bump() } } }
+                                MenuItem { text: "Add curved spine"; onTriggered: { var e = _ed(); if (e && selectedNode) e.addCurveSpine(selectedNode) } }
+                                MenuItem { text: "This segment curved"; onTriggered: { var e = _ed(); if (e) e.setSegCurve(e.currentLeader(e.nodeAt(e.selectedId)), Math.max(0, e.selectedSeg), true) } }
+                                MenuItem { text: "This segment straight"; onTriggered: { var e = _ed(); if (e) e.setSegCurve(e.currentLeader(e.nodeAt(e.selectedId)), Math.max(0, e.selectedSeg), false) } }
+                                MenuItem { text: "All segments curved"; onTriggered: { var e = _ed(); if (e) e.setAllSegCurve(true) } }
+                                MenuItem { text: "All segments straight"; onTriggered: { var e = _ed(); if (e) e.setAllSegCurve(false) } }
+                                MenuSeparator {}
+                                MenuItem { text: "Add leader (same chip / hotspot)"; onTriggered: { var e = _ed(); if (e) e.addLeader() } }
+                                MenuItem { text: "Branch from this end"; onTriggered: { var e = _ed(); if (e) e.addBranch() } }
+                                MenuItem { text: "Delete extra leader"; onTriggered: { var e = _ed(); if (e) e.deleteLeader() } }
+                                MenuSeparator {}
+                                MenuItem { text: "Detach chip end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("from") } }
+                                MenuItem { text: "Detach hotspot end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("to") } }
+                                MenuItem { text: "Reconnect to this chip"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("from") } }
+                                MenuItem { text: "Reconnect to this hotspot"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("to") } }
+                                MenuItem { text: "Delete selected spine"; onTriggered: { var e = _ed(); if (e) e.deleteSelection() } }
+                            }
+                            Menu {
+                                title: "Image"
+                                MenuItem { text: "Choose background…"; onTriggered: _imageDialog.open() }
+                                MenuItem {
+                                    text: "Clear image"
+                                    onTriggered: {
+                                        _hw.clearImage(targetName)
+                                        applyImage(stockImage)
+                                    }
+                                }
+                            }
+                            Menu {
+                                title: "View"
+                                MenuItem {
+                                    text: "Reset view"
+                                    onTriggered: {
+                                        if (_cardLoader.item)
+                                            _cardLoader.item.resetView()
+                                    }
+                                }
+                            }
+                            Menu {
+                                title: "Grid"
+                                MenuItem {
+                                    text: "Show grid"
+                                    checkable: true
+                                    checked: {
+                                        var e = _ed()
+                                        return e ? e.gridOn : true
+                                    }
+                                    onTriggered: {
+                                        var e = _ed()
+                                        if (e)
+                                            e.gridOn = checked
+                                    }
+                                }
+                                MenuItem {
+                                    text: "Snap to grid"
+                                    checkable: true
+                                    checked: {
+                                        var e = _ed()
+                                        return e ? e.snapOn : true
+                                    }
+                                    onTriggered: {
+                                        var e = _ed()
+                                        if (e)
+                                            e.snapOn = checked
+                                    }
+                                }
+                                MenuItem {
+                                    text: "Auto pan"
+                                    checkable: true
+                                    checked: {
+                                        var c = _cardLoader.item
+                                        return c ? c.autoPanOn === true : false
+                                    }
+                                    onTriggered: {
+                                        var c = _cardLoader.item
+                                        if (c)
+                                            c.autoPanOn = checked
+                                    }
+                                }
+                                MenuSeparator {}
+                                Menu {
+                                    title: "Size"
+                                    MenuItem { text: "4"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 4 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 4 } }
+                                    MenuItem { text: "8"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 8 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 8 } }
+                                    MenuItem { text: "12"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 12 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 12 } }
+                                    MenuItem { text: "16"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 16 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 16 } }
+                                    MenuItem { text: "24"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 24 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 24 } }
+                                    MenuItem { text: "32"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 32 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 32 } }
+                                    MenuItem { text: "48"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 48 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 48 } }
+                                    MenuItem { text: "64"; checkable: true; checked: { var e = _ed(); return e && e.gridSize === 64 }; onTriggered: { var e = _ed(); if (e) e.gridSize = 64 } }
+                                }
+                            }
+                        }
+                    }
                 }
-                Button {
-                    text: "Cancel"
+                Label {
                     visible: editing
-                    onClicked: cancelEdit()
+                    text: _cardLoader.item ? (Math.round(_cardLoader.item.zoom * 100) + "%") : "100%"
+                    color: "#E4E4E7"
+                    font.pixelSize: 12
                 }
-                Button {
-                    text: "Reset"
+                Label {
                     visible: editing
-                    onClicked: _resetDlg.open()
-                }
-                ToolSeparator { visible: editing }
-                Button {
-                    visible: editing
-                    text: "Group"
-                    onClicked: _groupMenu.popup()
-                }
-                Button {
-                    visible: editing
-                    text: "Leader"
-                    onClicked: _leadMenu.popup()
+                    text: "control.hardware  " + _hw.path
+                    color: "#A1A1AA"
+                    font.pixelSize: 11
+                    elide: Text.ElideMiddle
+                    Layout.fillWidth: true
                 }
                 Shortcut {
                     enabled: editing
@@ -491,105 +603,10 @@ Window {
                     sequence: "Ctrl+Shift+G"
                     onActivated: { var e = _ed(); if (e) e.ungroupSelection() }
                 }
-                ToolSeparator { visible: editing }
-                Button {
-                    text: "Image…"
-                    visible: editing
-                    onClicked: _imageDialog.open()
-                }
-                Button {
-                    text: "Clear image"
-                    visible: editing
-                    onClicked: {
-                        _hw.clearImage(targetName)
-                        applyImage(stockImage)
-                    }
-                }
-                Label {
-                    visible: editing
-                    text: _cardLoader.item ? (Math.round(_cardLoader.item.zoom * 100) + "%") : "100%"
-                    color: "#E4E4E7"
-                    font.pixelSize: 12
-                }
-                Button {
-                    visible: editing
-                    text: "Reset view"
-                    enabled: _cardLoader.item && Math.abs(_cardLoader.item.zoom - 1) > 0.02
-                    onClicked: {
-                        if (_cardLoader.item)
-                            _cardLoader.item.resetView()
-                    }
-                }
-                ToolSeparator { visible: editing }
-                CheckBox {
-                    visible: editing
-                    text: "Grid"
-                    checked: {
-                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                        return e ? e.gridOn : true
-                    }
-                    onToggled: {
-                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                        if (e)
-                            e.gridOn = checked
-                    }
-                }
-                CheckBox {
-                    visible: editing
-                    text: "Snap"
-                    checked: {
-                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                        return e ? e.snapOn : true
-                    }
-                    onToggled: {
-                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                        if (e)
-                            e.snapOn = checked
-                    }
-                }
-                CheckBox {
-                    visible: editing
-                    text: "Auto pan"
-                    checked: {
-                        var c = _cardLoader.item
-                        if (!c)
-                            return false
-                        return c.autoPanOn === true
-                    }
-                    onToggled: {
-                        var c = _cardLoader.item
-                        if (c)
-                            c.autoPanOn = checked
-                    }
-                }
-                Label {
-                    visible: editing
-                    text: "Size"
-                    color: "#A1A1AA"
-                }
-                SpinBox {
-                    visible: editing
-                    from: 4
-                    to: 64
-                    stepSize: 2
-                    editable: true
-                    value: {
-                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                        return e ? e.gridSize : 8
-                    }
-                    onValueModified: {
-                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                        if (e)
-                            e.gridSize = value
-                    }
-                }
-                Label {
-                    visible: editing
-                    text: "control.hardware  " + _hw.path
-                    color: "#A1A1AA"
-                    font.pixelSize: 11
-                    elide: Text.ElideMiddle
-                    Layout.fillWidth: true
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+S"
+                    onActivated: saveEdit()
                 }
                 Shortcut {
                     enabled: editing
