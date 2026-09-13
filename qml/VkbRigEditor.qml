@@ -236,8 +236,8 @@ Item {
             x: { _ed.tick; return modelData.chipFx * _ed.width }
             y: { _ed.tick; return modelData.chipFy * _ed.height }
             z: 3
-            width: _body.item ? _body.item.implicitWidth : 40
-            height: _body.item ? _body.item.implicitHeight : 20
+            width: { _ed.tick; return _body.item ? Math.max(8, _body.item.implicitWidth) : 40 }
+            height: { _ed.tick; return _body.item ? Math.max(8, _body.item.implicitHeight) : 20 }
 
             Loader {
                 id: _body
@@ -291,32 +291,37 @@ Item {
 
     Component {
         id: _stackComp
-        Column {
+        Item {
             property var node: ({ members: [] })
-            spacing: 3
-            implicitWidth: { _ed.tick; return childrenRect.width }
-            implicitHeight: { _ed.tick; return childrenRect.height }
-            Repeater {
-                model: { _ed.tick; return node.members || [] }
-                Rectangle {
-                    required property var modelData
-                    property bool on: _ed.litOf(node.kind === "axis_stack" ? "axis" : "btn", modelData.hwId)
-                    implicitWidth: t.implicitWidth + 10
-                    implicitHeight: Math.max(18, (node.fontSize || 10) + 10)
-                    radius: 4
-                    color: on && node.highlight ? (node.hlColor || "#14532D") : (node.color || "#18181B")
-                    border.color: {
-                        if (_ed.selectedId === node.id) return "#FBBF24"
-                        return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
-                    }
-                    Text {
-                        id: t
-                        anchors.centerIn: parent
-                        color: parent.on && node.highlight ? (node.hlText || "#BBF7D0") : (node.textColor || "#E4E4E7")
-                        font.pixelSize: node.fontSize || 10
-                        text: {
-                            _ed.tick
-                            return (node.kind === "axis_stack" ? "A" : "") + modelData.hwId + " → " + _ed.destOf(node.kind === "axis_stack" ? "axis" : "btn", modelData.hwId)
+            implicitWidth: { _ed.tick; return Math.max(8, _stackCol.childrenRect.width) }
+            implicitHeight: { _ed.tick; return Math.max(8, _stackCol.childrenRect.height) }
+            width: implicitWidth
+            height: implicitHeight
+            Column {
+                id: _stackCol
+                spacing: 3
+                Repeater {
+                    model: { _ed.tick; return node.members || [] }
+                    Rectangle {
+                        required property var modelData
+                        property bool on: _ed.litOf(node.kind === "axis_stack" ? "axis" : "btn", modelData.hwId)
+                        implicitWidth: t.implicitWidth + 10
+                        implicitHeight: Math.max(18, (node.fontSize || 10) + 10)
+                        radius: 4
+                        color: on && node.highlight ? (node.hlColor || "#14532D") : (node.color || "#18181B")
+                        border.color: {
+                            if (_ed.selectedId === node.id) return "#FBBF24"
+                            return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
+                        }
+                        Text {
+                            id: t
+                            anchors.centerIn: parent
+                            color: parent.on && node.highlight ? (node.hlText || "#BBF7D0") : (node.textColor || "#E4E4E7")
+                            font.pixelSize: node.fontSize || 10
+                            text: {
+                                _ed.tick
+                                return (node.kind === "axis_stack" ? "A" : "") + modelData.hwId + " → " + _ed.destOf(node.kind === "axis_stack" ? "axis" : "btn", modelData.hwId)
+                            }
                         }
                     }
                 }
@@ -326,14 +331,13 @@ Item {
 
     Component {
         id: _plusComp
-        Grid {
-            id: _plus
+        Item {
+            id: _plusRoot
             property var node: ({ members: [] })
-            columns: 3
-            rows: 3
-            spacing: 3
-            implicitWidth: { _ed.tick; return childrenRect.width }
-            implicitHeight: { _ed.tick; return childrenRect.height }
+            implicitWidth: { _ed.tick; return Math.max(8, _plus.childrenRect.width) }
+            implicitHeight: { _ed.tick; return Math.max(8, _plus.childrenRect.height) }
+            width: implicitWidth
+            height: implicitHeight
             function mem(role) {
                 var m = node.members || []
                 for (var i = 0; i < m.length; i++) {
@@ -342,18 +346,24 @@ Item {
                 return 0
             }
             function bindMini(item, role) {
-                item.node = Qt.binding(function() { return _plus.node })
-                item.hwId = Qt.binding(function() { return _plus.mem(role) })
+                item.node = Qt.binding(function() { return _plusRoot.node })
+                item.hwId = Qt.binding(function() { return _plusRoot.mem(role) })
             }
-            Item { width: 8; height: 8 }
-            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "up") }
-            Item { width: 8; height: 8 }
-            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "left") }
-            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "center") }
-            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "right") }
-            Item { width: 8; height: 8 }
-            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "down") }
-            Item { width: 8; height: 8 }
+            Grid {
+                id: _plus
+                columns: 3
+                rows: 3
+                spacing: 3
+                Item { width: 8; height: 8 }
+                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "up") }
+                Item { width: 8; height: 8 }
+                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "left") }
+                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "center") }
+                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "right") }
+                Item { width: 8; height: 8 }
+                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "down") }
+                Item { width: 8; height: 8 }
+            }
         }
     }
 
