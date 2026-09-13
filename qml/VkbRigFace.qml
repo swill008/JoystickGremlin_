@@ -36,6 +36,7 @@ Item {
         t = t.replace(/vJoy Device /g, "")
         t = t.replace(/vJoy /g, "")
         t = t.replace(/vJ\d+\s*/g, "")
+        t = t.replace(/^\d+\s+/, "")
         t = t.replace(/Xbox 360 Controller /g, "")
         t = t.replace(/Xbox /g, "")
         t = t.replace(/X360 \d+\s*/g, "")
@@ -194,7 +195,6 @@ Item {
             spacing: 8
 
             Item {
-                id: _leftPane
                 Layout.preferredWidth: 300
                 Layout.maximumWidth: 300
                 Layout.fillHeight: true
@@ -262,12 +262,6 @@ Item {
                     Tag { hwId: 2 }
                 }
                 Tag { id: _b5; hwId: 5 }
-                Column {
-                    id: _p2324
-                    spacing: 3
-                    Tag { hwId: 23 }
-                    Tag { hwId: 24 }
-                }
             }
         }
 
@@ -290,6 +284,12 @@ Item {
                 Tag { id: _b27; hwId: 27; anchors.verticalCenter: parent.verticalCenter }
                 Tag { id: _b29; hwId: 29; anchors.verticalCenter: parent.verticalCenter }
                 Tag { id: _a4; kind: "axis"; hwId: 4; prefix: "A"; anchors.verticalCenter: parent.verticalCenter }
+                Column {
+                    id: _p2324
+                    spacing: 3
+                    Tag { hwId: 23 }
+                    Tag { hwId: 24 }
+                }
             }
         }
     }
@@ -319,22 +319,23 @@ Item {
                 ctx.fill()
             }
 
-            stroke(_h1, 0.298, 0.108, "right")
-            stroke(_p1115, 0.448, 0.135, "right")
-            stroke(_p610, 0.392, 0.205, "right")
-            stroke(_b3, 0.318, 0.198, "right")
-            stroke(_p1620, 0.378, 0.365, "right")
-            stroke(_axes, 0.430, 0.590, "right")
-            stroke(_b4, 0.618, 0.168, "left")
-            stroke(_p2122, 0.688, 0.246, "left")
-            stroke(_p12, 0.655, 0.259, "left")
-            stroke(_b5, 0.628, 0.430, "left")
-            stroke(_p2324, 0.668, 0.795, "left")
-            stroke(_p2526, 0.582, 0.782, "top")
-            stroke(_b28, 0.558, 0.708, "top")
-            stroke(_b27, 0.598, 0.698, "top")
-            stroke(_b29, 0.638, 0.688, "top")
-            stroke(_a4, 0.628, 0.778, "top")
+            // Photo nx/ny retargeted from live screenshot XD3LA.
+            stroke(_h1, 0.355, 0.250, "right")
+            stroke(_p1115, 0.470, 0.275, "right")
+            stroke(_p610, 0.415, 0.345, "right")
+            stroke(_b3, 0.355, 0.360, "right")
+            stroke(_p1620, 0.400, 0.470, "right")
+            stroke(_axes, 0.455, 0.680, "right")
+            stroke(_b4, 0.625, 0.305, "left")
+            stroke(_p2122, 0.705, 0.385, "left")
+            stroke(_p12, 0.665, 0.385, "left")
+            stroke(_b5, 0.640, 0.520, "left")
+            stroke(_p2526, 0.575, 0.820, "top")
+            stroke(_b28, 0.555, 0.735, "top")
+            stroke(_b27, 0.600, 0.725, "top")
+            stroke(_b29, 0.645, 0.715, "top")
+            stroke(_a4, 0.635, 0.820, "top")
+            stroke(_p2324, 0.720, 0.820, "top")
         }
     }
 
