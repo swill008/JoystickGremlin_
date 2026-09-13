@@ -249,50 +249,45 @@ Window {
                     property bool hit: false
                 }
 
+                Component {
+                    id: _cardComp
+                    JoystickButtonMapCard {
+                        id: _card
+                        anchors.fill: parent
+                        deviceGuid: parent.dGuid
+                        title: _buttonMap.displayName(parent.dGuid, parent.dName)
+                        pairLabel: parent.dPair
+                        editing: _buttonMap.editing
+                        editorNodes: _buttonMap.editing ? _buttonMap.workNodes : _buttonMap.liveNodes
+                        photoOverride: _buttonMap.photoOverride
+                        Connections {
+                            target: _card.editorItem
+                            function onSelectedChanged() { _buttonMap.applySelected() }
+                            function onNodesChanged() { _buttonMap.applySelected() }
+                        }
+                        Component.onCompleted: _cardLoader.item = _card
+                    }
+                }
+
                 Repeater {
                     model: _devices
-
-                    Item {
+                    Loader {
+                        id: _slot
                         required property string guid
                         required property string name
                         required property string pairLabel
                         required property bool mapped
-
                         anchors.fill: parent
-                        visible: _buttonMap.isTarget(guid, name)
-
-                        onVisibleChanged: {
-                            if (visible) {
-                                _hasTarget.hit = true
-                            }
-                        }
-                        Component.onCompleted: {
-                            if (visible) {
-                                _hasTarget.hit = true
-                            }
-                        }
-
-                        JoystickButtonMapCard {
-                            id: _card
-                            anchors.fill: parent
-                            deviceGuid: guid
-                            title: _buttonMap.displayName(guid, name)
-                            pairLabel: pairLabel
-                            editing: _buttonMap.editing
-                            editorNodes: _buttonMap.editing ? _buttonMap.workNodes : _buttonMap.liveNodes
-                            photoOverride: _buttonMap.photoOverride
-
-                            Connections {
-                                target: _card.editorItem
-                                function onSelectedChanged() {
-                                    _buttonMap.applySelected()
-                                }
-                                function onNodesChanged() {
-                                    _buttonMap.applySelected()
-                                }
-                            }
-
-                            Component.onCompleted: _cardLoader.item = _card
+                        active: _buttonMap.isTarget(guid, name)
+                        visible: active
+                        property string dGuid: guid
+                        property string dName: name
+                        property string dPair: pairLabel
+                        sourceComponent: _cardComp
+                        onActiveChanged: if (active) _hasTarget.hit = true
+                        onLoaded: {
+                            _hasTarget.hit = true
+                            _cardLoader.item = item
                         }
                     }
                 }

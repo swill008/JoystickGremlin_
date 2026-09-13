@@ -313,18 +313,15 @@ Item {
                     cache: true
                     onStatusChanged: {
                         _lines.requestPaint()
-                        if (_editorLoader.item)
-                            _editorLoader.item.bump()
+                        _face.pingEditor()
                     }
                     onPaintedWidthChanged: {
                         _lines.requestPaint()
-                        if (_editorLoader.item)
-                            _editorLoader.item.bump()
+                        _face.pingEditor()
                     }
                     onPaintedHeightChanged: {
                         _lines.requestPaint()
-                        if (_editorLoader.item)
-                            _editorLoader.item.bump()
+                        _face.pingEditor()
                     }
                 }
             }
@@ -412,6 +409,15 @@ Item {
         }
     }
 
+    function pingEditor() {
+        if (typeof _editorLoader === "undefined" || !_editorLoader)
+            return
+        var ed = _editorLoader.item
+        if (!ed)
+            return
+        ed.bump()
+    }
+
     Loader {
         id: _editorLoader
         anchors.fill: parent
@@ -420,34 +426,27 @@ Item {
         visible: status === Loader.Ready
         source: "VkbRigEditor.qml"
         onStatusChanged: {
-            if (status === Loader.Error) {
+            if (status === Loader.Error)
                 console.warn("VkbRigEditor failed to load")
-            }
         }
-        onLoaded: {
-            item.face = _face
-            item.nodes = Qt.binding(function() { return _face.editorNodes })
-            item.interactive = Qt.binding(function() { return _face.editing })
-            Qt.callLater(function() {
-                if (_editorLoader.item)
-                    _editorLoader.item.bump()
-            })
-        }
-        Connections {
-            target: _face
-            function onEditorNodesChanged() {
-                if (_editorLoader.item)
-                    _editorLoader.item.bump()
+    }
+
+    Binding { target: _editorLoader.item; property: "face"; value: _face; when: _editorLoader.status === Loader.Ready }
+    Binding { target: _editorLoader.item; property: "nodes"; value: _face.editorNodes; when: _editorLoader.status === Loader.Ready }
+    Binding { target: _editorLoader.item; property: "interactive"; value: _face.editing; when: _editorLoader.status === Loader.Ready }
+
+    Connections {
+        target: _face
+        function onEditorNodesChanged() { _face.pingEditor() }
+        function onEditingChanged() {
+            var ed = _editorLoader.item
+            if (!ed)
+                return
+            if (!_face.editing) {
+                ed.selectedId = ""
+                ed.selectedSpine = -1
             }
-            function onEditingChanged() {
-                if (_editorLoader.item) {
-                    if (!_face.editing) {
-                        _editorLoader.item.selectedId = ""
-                        _editorLoader.item.selectedSpine = -1
-                    }
-                    _editorLoader.item.bump()
-                }
-            }
+            ed.bump()
         }
     }
 
@@ -509,23 +508,19 @@ Item {
         target: _face
         function onWidthChanged() {
             _lines.requestPaint()
-            if (_editorLoader.item)
-                _editorLoader.item.bump()
+            _face.pingEditor()
         }
         function onHeightChanged() {
             _lines.requestPaint()
-            if (_editorLoader.item)
-                _editorLoader.item.bump()
+            _face.pingEditor()
         }
         function onLiveStampChanged() {
             _lines.requestPaint()
-            if (_editorLoader.item)
-                _editorLoader.item.bump()
+            _face.pingEditor()
         }
         function onDestTickChanged() {
             _lines.requestPaint()
-            if (_editorLoader.item)
-                _editorLoader.item.bump()
+            _face.pingEditor()
         }
     }
 }

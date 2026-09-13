@@ -26,7 +26,8 @@ Item {
     function bump() {
         tick++
         selectedChanged()
-        _lines.requestPaint()
+        if (_lines)
+            _lines.requestPaint()
     }
 
     onInteractiveChanged: {
@@ -35,7 +36,8 @@ Item {
             selectedSpine = -1
             dragKind = ""
         }
-        bump()
+        if (_lines)
+            _lines.requestPaint()
     }
 
     function nodeAt(id) {
