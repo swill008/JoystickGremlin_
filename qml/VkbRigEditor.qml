@@ -19,6 +19,13 @@ Item {
     property int tick: 0
     property bool seeded: false
     property bool interactive: false
+    property var selectedIds: []
+    property bool banding: false
+    property bool bandAdd: false
+    property real bandX0: 0
+    property real bandY0: 0
+    property real bandX1: 0
+    property real bandY1: 0
 
     // Do NOT declare signal nodesChanged — property var nodes already has it.
     signal selectedChanged()
@@ -37,8 +44,10 @@ Item {
     onInteractiveChanged: {
         if (!interactive) {
             selectedId = ""
+            selectedIds = []
             selectedSpine = -1
             dragKind = ""
+            banding = false
         }
         if (_lines)
             _lines.requestPaint()
@@ -332,6 +341,280 @@ Item {
         }
     }
 
+    function isSelected(id) {
+        if (!id)
+            return false
+        if (selectedId === id)
+            return true
+        var s = selectedIds || []
+        for (var i = 0; i < s.length; i++) {
+            if (s[i] === id)
+                return true
+        }
+        return false
+    }
+
+    function setSelection(ids) {
+        selectedIds = ids || []
+        selectedId = selectedIds.length ? selectedIds[selectedIds.length - 1] : ""
+        selectedSpine = -1
+        selectedChanged()
+    }
+
+    function toggleSelected(id) {
+        var s = (selectedIds || []).slice()
+        var at = s.indexOf(id)
+        if (at >= 0)
+            s.splice(at, 1)
+        else
+            s.push(id)
+        setSelection(s)
+    }
+
+    function isGroup(n) {
+        if (!n)
+            return false
+        var k = n.kind
+        return k === "plus" || k === "pair" || k === "axis_stack" || k === "stack"
+    }
+
+    function canGroup() {
+        return (selectedIds || []).length >= 2
+    }
+
+    function canUngroup() {
+        return isGroup(nodeAt(selectedId)) && (selectedIds || []).length <= 1
+    }
+
+    function _uid(prefix) {
+        return prefix + "_" + Date.now().toString(36) + Math.floor(Math.random() * 1000)
+    }
+
+    function _styleOf(n) {
+        return {
+            color: n.color || "#18181B",
+            border: n.border || "#3F3F46",
+            textColor: n.textColor || "#E4E4E7",
+            highlight: n.highlight !== false,
+            hlColor: n.hlColor || "#14532D",
+            hlBorder: n.hlBorder || "#22C55E",
+            hlText: n.hlText || "#BBF7D0",
+            fontSize: n.fontSize || 10,
+            pin: n.pin || "right",
+            curve: n.curve !== false
+        }
+    }
+
+    function _partsFrom(n) {
+        var out = []
+        if (!n)
+            return out
+        if (isGroup(n)) {
+            var mem = n.members || []
+            var leaf = n.kind === "axis_stack" ? "axis" : "btn"
+            for (var i = 0; i < mem.length; i++)
+                out.push({ hwId: mem[i].hwId, kind: leaf, role: mem[i].role || "", src: n })
+        } else {
+            out.push({ hwId: n.hwId, kind: n.kind || "btn", role: "", src: n })
+        }
+        return out
+    }
+
+    function _plusMembers(parts) {
+        var leftover = parts.slice()
+        function take(score) {
+            var best = 0
+            var bestS = 1e9
+            for (var i = 0; i < leftover.length; i++) {
+                var s = score(leftover[i].src)
+                if (s < bestS) {
+                    bestS = s
+                    best = i
+                }
+            }
+            return leftover.splice(best, 1)[0]
+        }
+        var cx = 0
+        var cy = 0
+        var i
+        for (i = 0; i < parts.length; i++) {
+            cx += parts[i].src.chipFx
+            cy += parts[i].src.chipFy
+        }
+        cx /= Math.max(1, parts.length)
+        cy /= Math.max(1, parts.length)
+        var center = take(function(n) { return Math.hypot((n.chipFx || 0) - cx, (n.chipFy || 0) - cy) })
+        var up = take(function(n) { return n.chipFy || 0 })
+        var down = take(function(n) { return -(n.chipFy || 0) })
+        var left = take(function(n) { return n.chipFx || 0 })
+        var right = take(function(n) { return -(n.chipFx || 0) })
+        return [
+            { hwId: up.hwId, role: "up" },
+            { hwId: down.hwId, role: "down" },
+            { hwId: left.hwId, role: "left" },
+            { hwId: right.hwId, role: "right" },
+            { hwId: center.hwId, role: "center" }
+        ]
+    }
+
+    function groupSelection() {
+        var ids = selectedIds || []
+        if (ids.length < 2)
+            return
+        var parts = []
+        var i
+        var n
+        for (i = 0; i < ids.length; i++) {
+            var chunk = _partsFrom(nodeAt(ids[i]))
+            for (var p = 0; p < chunk.length; p++)
+                parts.push(chunk[p])
+        }
+        if (parts.length < 2)
+            return
+        var axisN = 0
+        for (i = 0; i < parts.length; i++) {
+            if (parts[i].kind === "axis")
+                axisN++
+        }
+        var kind = "stack"
+        if (axisN === parts.length)
+            kind = "axis_stack"
+        else if (parts.length === 5 && axisN === 0)
+            kind = "plus"
+        var members
+        if (kind === "plus") {
+            members = _plusMembers(parts)
+        } else {
+            parts.sort(function(a, b) {
+                var dy = (a.src.chipFy || 0) - (b.src.chipFy || 0)
+                return dy !== 0 ? dy : ((a.src.chipFx || 0) - (b.src.chipFx || 0))
+            })
+            members = []
+            for (i = 0; i < parts.length; i++)
+                members.push({ hwId: parts[i].hwId, role: parts[i].role || ("m" + i) })
+        }
+        var first = nodeAt(ids[0])
+        var st = _styleOf(first)
+        var fx = 0
+        var fy = 0
+        var nx = 0
+        var ny = 0
+        for (i = 0; i < ids.length; i++) {
+            n = nodeAt(ids[i])
+            fx += n.chipFx
+            fy += n.chipFy
+            nx += n.nx
+            ny += n.ny
+        }
+        var c = ids.length
+        var g = {
+            id: _uid("g"), kind: kind, members: members,
+            nx: nx / c, ny: ny / c, chipFx: fx / c, chipFy: fy / c,
+            pin: st.pin, spines: [], curve: st.curve,
+            color: st.color, border: st.border, textColor: st.textColor,
+            highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
+            hlText: st.hlText, fontSize: st.fontSize, label: ""
+        }
+        var drop = {}
+        for (i = 0; i < ids.length; i++)
+            drop[ids[i]] = true
+        var list = nodes || []
+        for (i = list.length - 1; i >= 0; i--) {
+            if (drop[list[i].id])
+                list.splice(i, 1)
+        }
+        list.push(g)
+        setSelection([g.id])
+        bump()
+    }
+
+    function ungroupSelection() {
+        var n = nodeAt(selectedId)
+        if (!isGroup(n))
+            return
+        var mem = n.members || []
+        if (!mem.length)
+            return
+        var st = _styleOf(n)
+        var leafKind = n.kind === "axis_stack" ? "axis" : "btn"
+        var prefix = n.kind === "axis_stack" ? "A" : ""
+        var created = []
+        var i
+        var dx
+        var dy
+        var role
+        for (i = 0; i < mem.length; i++) {
+            role = mem[i].role || ""
+            dx = 0
+            dy = (i - (mem.length - 1) * 0.5) * 0.028
+            if (n.kind === "plus") {
+                if (role === "up") { dx = 0; dy = -0.045 }
+                else if (role === "down") { dx = 0; dy = 0.045 }
+                else if (role === "left") { dx = -0.07; dy = 0 }
+                else if (role === "right") { dx = 0.07; dy = 0 }
+                else { dx = 0; dy = 0 }
+            }
+            created.push({
+                id: _uid("b"), kind: leafKind, hwId: mem[i].hwId, prefix: prefix, label: "",
+                nx: n.nx, ny: n.ny,
+                chipFx: Math.max(0.02, Math.min(0.9, n.chipFx + dx)),
+                chipFy: Math.max(0.02, Math.min(0.9, n.chipFy + dy)),
+                pin: st.pin, spines: [], curve: st.curve,
+                color: st.color, border: st.border, textColor: st.textColor,
+                highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
+                hlText: st.hlText, fontSize: st.fontSize
+            })
+        }
+        var list = nodes || []
+        var idx = nodeIndex(n.id)
+        if (idx < 0)
+            return
+        list.splice(idx, 1)
+        for (i = 0; i < created.length; i++)
+            list.splice(idx + i, 0, created[i])
+        var ids = []
+        for (i = 0; i < created.length; i++)
+            ids.push(created[i].id)
+        setSelection(ids)
+        bump()
+    }
+
+    function setGroupKind(kind) {
+        var n = nodeAt(selectedId)
+        if (!isGroup(n) || !kind)
+            return
+        n.kind = kind
+        var mem = n.members || []
+        if (kind === "plus" && mem.length === 5) {
+            var roles = ["up", "down", "left", "right", "center"]
+            for (var i = 0; i < 5; i++)
+                mem[i].role = roles[i]
+        }
+        bump()
+    }
+
+    function selectBand(add) {
+        var x0 = Math.min(bandX0, bandX1)
+        var y0 = Math.min(bandY0, bandY1)
+        var x1 = Math.max(bandX0, bandX1)
+        var y1 = Math.max(bandY0, bandY1)
+        var ids = add ? (selectedIds || []).slice() : []
+        var list = nodes || []
+        for (var i = 0; i < list.length; i++) {
+            var it = _chips.itemAt(i)
+            if (!it)
+                continue
+            var cx = it.x + it.width * 0.5
+            var cy = it.y + it.height * 0.5
+            if (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1) {
+                if (ids.indexOf(list[i].id) < 0)
+                    ids.push(list[i].id)
+            }
+        }
+        setSelection(ids)
+    }
+
+
     Connections {
         target: face
         function onLiveStampChanged() { _ed.tick++ }
@@ -342,7 +625,7 @@ Item {
 
     Repeater {
         id: _chips
-        model: (_ed.nodes || []).length
+        model: { _ed.tick; return (_ed.nodes || []).length }
         delegate: Item {
             id: _wrap
             required property int index
@@ -358,14 +641,28 @@ Item {
             width: { _ed.tick; return _body.item ? Math.max(8, _body.item.implicitWidth) : 40 }
             height: { _ed.tick; return _body.item ? Math.max(8, _body.item.implicitHeight) : 20 }
 
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -3
+                z: -1
+                radius: 6
+                color: "transparent"
+                border.width: 2
+                border.color: {
+                    _ed.tick
+                    return (_wrap.node && _ed.isSelected(_wrap.node.id)) ? "#FBBF24" : "transparent"
+                }
+            }
+
             Loader {
                 id: _body
                 sourceComponent: {
+                    _ed.tick
                     var n = _wrap.node
                     if (!n) return _tagComp
                     var k = n.kind
                     if (k === "plus") return _plusComp
-                    if (k === "pair" || k === "axis_stack") return _stackComp
+                    if (k === "pair" || k === "axis_stack" || k === "stack") return _stackComp
                     return _tagComp
                 }
                 onLoaded: {
@@ -597,6 +894,7 @@ Item {
         onPressed: (m) => {
             forceActiveFocus()
             var hit = _ed.hitTest(m.x, m.y)
+            var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
             if (m.button === Qt.RightButton && hit.kind === "spine") {
                 var n = _ed.nodeAt(hit.id)
                 if (n && n.spines) {
@@ -606,26 +904,57 @@ Item {
                 }
                 return
             }
-            if (hit.kind === "line") {
+            if (hit.kind === "line" && !shift) {
                 _ed.addSpineAt(hit.id, m.x, m.y)
                 return
             }
-            _ed.selectedId = hit.id
-            _ed.selectedSpine = hit.spine
-            _ed.dragKind = hit.kind
-            _ed.dragSpine = hit.spine
-            _ed.selectedChanged()
             if (hit.kind === "chip") {
+                if (shift)
+                    _ed.toggleSelected(hit.id)
+                else if (!_ed.isSelected(hit.id))
+                    _ed.setSelection([hit.id])
+                _ed.selectedId = hit.id
+                _ed.selectedSpine = -1
+                _ed.dragKind = "chip"
+                _ed.dragSpine = -1
                 var n2 = _ed.nodeAt(hit.id)
                 if (n2) {
                     _ed.dragOffX = m.x - n2.chipFx * width
                     _ed.dragOffY = m.y - n2.chipFy * height
                 }
+                _ed.bump()
+                return
             }
+            if (hit.kind === "hot" || hit.kind === "spine") {
+                if (!shift)
+                    _ed.setSelection([hit.id])
+                _ed.selectedId = hit.id
+                _ed.selectedSpine = hit.spine
+                _ed.dragKind = hit.kind
+                _ed.dragSpine = hit.spine
+                _ed.bump()
+                return
+            }
+            _ed.dragKind = "band"
+            _ed.banding = false
+            _ed.bandAdd = shift
+            _ed.bandX0 = m.x
+            _ed.bandY0 = m.y
+            _ed.bandX1 = m.x
+            _ed.bandY1 = m.y
+            if (!shift)
+                _ed.setSelection([])
             _ed.bump()
         }
         onPositionChanged: (m) => {
             if (!_ed.dragKind) {
+                return
+            }
+            if (_ed.dragKind === "band") {
+                _ed.bandX1 = m.x
+                _ed.bandY1 = m.y
+                if (!_ed.banding && Math.hypot(m.x - _ed.bandX0, m.y - _ed.bandY0) > 4)
+                    _ed.banding = true
                 return
             }
             var n = _ed.nodeAt(_ed.selectedId)
@@ -637,8 +966,18 @@ Item {
                 n.nx = Math.max(0, Math.min(1, p.x))
                 n.ny = Math.max(0, Math.min(1, p.y))
             } else if (_ed.dragKind === "chip") {
-                n.chipFx = Math.max(0.01, Math.min(0.92, (m.x - _ed.dragOffX) / Math.max(1, width)))
-                n.chipFy = Math.max(0.01, Math.min(0.92, (m.y - _ed.dragOffY) / Math.max(1, height)))
+                var fx = Math.max(0.01, Math.min(0.92, (m.x - _ed.dragOffX) / Math.max(1, width)))
+                var fy = Math.max(0.01, Math.min(0.92, (m.y - _ed.dragOffY) / Math.max(1, height)))
+                var dFx = fx - n.chipFx
+                var dFy = fy - n.chipFy
+                var ids = (_ed.selectedIds && _ed.selectedIds.length) ? _ed.selectedIds : [_ed.selectedId]
+                for (var i = 0; i < ids.length; i++) {
+                    var q = _ed.nodeAt(ids[i])
+                    if (!q)
+                        continue
+                    q.chipFx = Math.max(0.01, Math.min(0.92, q.chipFx + dFx))
+                    q.chipFy = Math.max(0.01, Math.min(0.92, q.chipFy + dFy))
+                }
             } else if (_ed.dragKind === "spine" && n.spines && _ed.dragSpine >= 0) {
                 n.spines[_ed.dragSpine].fx = Math.max(0, Math.min(1, m.x / Math.max(1, width)))
                 n.spines[_ed.dragSpine].fy = Math.max(0, Math.min(1, m.y / Math.max(1, height)))
@@ -646,6 +985,14 @@ Item {
             _ed.repaint()
         }
         onReleased: {
+            if (_ed.dragKind === "band") {
+                if (_ed.banding)
+                    _ed.selectBand(_ed.bandAdd)
+                _ed.banding = false
+                _ed.dragKind = ""
+                _ed.bump()
+                return
+            }
             if (_ed.dragKind) {
                 _ed.dragKind = ""
                 _ed.bump()
@@ -674,6 +1021,18 @@ Item {
         }
     }
 
+    Rectangle {
+        visible: _ed.banding
+        x: Math.min(_ed.bandX0, _ed.bandX1)
+        y: Math.min(_ed.bandY0, _ed.bandY1)
+        width: Math.abs(_ed.bandX1 - _ed.bandX0)
+        height: Math.abs(_ed.bandY1 - _ed.bandY0)
+        z: 9
+        color: "#33FBBF24"
+        border.color: "#FBBF24"
+        border.width: 1
+    }
+
     Text {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
@@ -682,6 +1041,6 @@ Item {
         visible: _ed.interactive
         color: "#A1A1AA"
         font.pixelSize: 10
-        text: "Wheel zoom (50–400%). Middle-drag pan. Drag hotspot / chip / spine. Click a leader to add a spine."
+        text: "Shift-click or drag-box to multi-select. Group / Ungroup in the inspector. Wheel zoom."
     }
 }

@@ -335,14 +335,76 @@ Window {
 
                     Label { text: "Chip"; font.bold: true; color: "#E4E4E7" }
                     Label {
-                        text: selectedNode ? selectedNode.id : "(select a chip or hotspot)"
+                        text: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            var n = e && e.selectedIds ? e.selectedIds.length : 0
+                            if (n > 1)
+                                return n + " selected"
+                            return selectedNode ? selectedNode.id : "(select a chip or hotspot)"
+                        }
                         color: "#A1A1AA"
+                    }
+                    Button {
+                        visible: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            return !!(e && e.selectedIds && e.selectedIds.length >= 2)
+                        }
+                        text: "Group"
+                        onClicked: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e)
+                                e.groupSelection()
+                        }
+                    }
+                    Button {
+                        visible: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (!e) return false
+                            var nsel = e.selectedIds ? e.selectedIds.length : 0
+                            var n = e.nodeAt ? e.nodeAt(e.selectedId) : null
+                            return nsel <= 1 && e.isGroup && e.isGroup(n)
+                        }
+                        text: "Ungroup"
+                        onClicked: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e)
+                                e.ungroupSelection()
+                        }
+                    }
+                    Button {
+                        visible: selectedNode && (selectedNode.kind === "plus" || selectedNode.kind === "pair" || selectedNode.kind === "axis_stack" || selectedNode.kind === "stack")
+                        text: selectedNode && selectedNode.kind === "plus" ? "Convert to stack" : "Convert to 5-way"
+                        enabled: selectedNode && selectedNode.kind === "plus" || (selectedNode && selectedNode.members && selectedNode.members.length === 5)
+                        onClicked: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (!e || !selectedNode)
+                                return
+                            e.setGroupKind(selectedNode.kind === "plus" ? "stack" : "plus")
+                        }
+                    }
+                    Shortcut {
+                        enabled: editing
+                        sequence: "Ctrl+G"
+                        onActivated: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e)
+                                e.groupSelection()
+                        }
+                    }
+                    Shortcut {
+                        enabled: editing
+                        sequence: "Ctrl+Shift+G"
+                        onActivated: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e)
+                                e.ungroupSelection()
+                        }
                     }
 
                     Label { text: "Name"; color: "#A1A1AA"; visible: selectedNode }
                     TextField {
                         Layout.fillWidth: true
-                        visible: selectedNode && selectedNode.kind !== "plus" && selectedNode.kind !== "pair" && selectedNode.kind !== "axis_stack"
+                        visible: selectedNode && selectedNode.kind !== "plus" && selectedNode.kind !== "pair" && selectedNode.kind !== "axis_stack" && selectedNode.kind !== "stack"
                         text: selectedNode && selectedNode.label ? selectedNode.label : ""
                         placeholderText: "blank = hardware id → dest"
                         onEditingFinished: {
@@ -356,7 +418,7 @@ Window {
 
                     Label { text: "Hardware id"; color: "#A1A1AA"; visible: selectedNode && selectedNode.hwId !== undefined }
                     SpinBox {
-                        visible: selectedNode && selectedNode.kind !== "plus" && selectedNode.kind !== "pair" && selectedNode.kind !== "axis_stack"
+                        visible: selectedNode && selectedNode.kind !== "plus" && selectedNode.kind !== "pair" && selectedNode.kind !== "axis_stack" && selectedNode.kind !== "stack"
                         from: 1
                         to: 64
                         value: selectedNode && selectedNode.hwId ? selectedNode.hwId : 1
