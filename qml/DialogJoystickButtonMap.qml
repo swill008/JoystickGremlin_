@@ -39,18 +39,24 @@ Window {
     property int _nameTick: 0
     property bool editing: false
     onEditingChanged: if (editing) Qt.callLater(refreshReservoir)
-    property var liveNodes: []
-    property var workNodes: []
+    property var liveNodes
+    property var workNodes
     property string photoOverride: ""
     property string storedImage: ""
     property string liveImage: ""
     property string selectedId: ""
     property var selectedNode: null
     property bool _allowClose: false
-    property var resItems: []
+    property var resItems
     property int resTick: 0
     property string poolFilter: ""
     onPoolFilterChanged: refreshReservoir()
+    property bool poolDrag: false
+    property string poolKind: "btn"
+    property int poolHw: 0
+    property string poolName: ""
+    property real poolX: 0
+    property real poolY: 0
     property real panelW: 0
     property real panelH: 160
     property bool panelFillW: true
@@ -134,11 +140,6 @@ Window {
         panelH = nh
         panelW = nw
     }
-    property string poolKind: "btn"
-    property int poolHw: 0
-    property string poolName: ""
-    property real poolX: 0
-    property real poolY: 0
 
     ViewerDeviceModel { id: _devices }
     HardwareProfile { id: _hw }
@@ -310,6 +311,9 @@ Window {
     }
 
     Component.onCompleted: {
+        liveNodes = []
+        workNodes = []
+        resItems = []
         if (_devices) {
             _devices.reload()
         }
@@ -797,6 +801,7 @@ Window {
             spacing: 0
 
             Item {
+                id: _mapHost
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
@@ -972,7 +977,7 @@ Window {
                                         color: lit ? "#14532D" : "#18181B"
                                         border.color: lit ? "#22C55E" : "#3F3F46"
                                         border.width: lit ? 2 : 1
-                                        opacity: (poolDrag && poolHw === (modelData ? modelData.hwId : -1) && poolKind === (modelData ? modelData.kind : "")) ? 0.35 : 1
+                                        opacity: (_buttonMap.poolDrag && _buttonMap.poolHw === (modelData ? modelData.hwId : -1) && _buttonMap.poolKind === (modelData ? modelData.kind : "")) ? 0.35 : 1
                                         Text {
                                             id: _chipLab
                                             anchors.centerIn: parent
@@ -986,23 +991,23 @@ Window {
                                             onPressed: (m) => {
                                                 if (!modelData)
                                                     return
-                                                poolKind = modelData.kind
-                                                poolHw = modelData.hwId
-                                                poolName = modelData.friendly
-                                                poolDrag = true
+                                                _buttonMap.poolKind = modelData.kind
+                                                _buttonMap.poolHw = modelData.hwId
+                                                _buttonMap.poolName = modelData.friendly
+                                                _buttonMap.poolDrag = true
                                                 var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
-                                                poolX = p.x
-                                                poolY = p.y
+                                                _buttonMap.poolX = p.x
+                                                _buttonMap.poolY = p.y
                                             }
                                             onPositionChanged: (m) => {
-                                                if (!poolDrag)
+                                                if (!_buttonMap.poolDrag)
                                                     return
                                                 var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
-                                                poolX = p.x
-                                                poolY = p.y
+                                                _buttonMap.poolX = p.x
+                                                _buttonMap.poolY = p.y
                                             }
                                             onReleased: (m) => {
-                                                if (!poolDrag)
+                                                if (!_buttonMap.poolDrag)
                                                     return
                                                 var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
                                                 dropPool(p.x, p.y)
@@ -1036,7 +1041,7 @@ Window {
                 }
 
                 Connections {
-                    target: parent
+                    target: _mapHost
                     function onWidthChanged() { if (editing) clampPool() }
                     function onHeightChanged() { if (editing) clampPool() }
                 }
@@ -1363,7 +1368,7 @@ Window {
     Rectangle {
         id: _poolGhost
         parent: _buttonMap.contentItem
-        visible: poolDrag
+        visible: _buttonMap.poolDrag
         z: 2000
         width: Math.max(36, _ghostLab.implicitWidth + 18)
         height: 26
