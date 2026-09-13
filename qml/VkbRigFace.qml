@@ -41,8 +41,11 @@ Item {
             12: {ax: 0.66, ay: 0.70, lx: 0.78, ly: 0.74},
             13: {ax: 0.58, ay: 0.78, lx: 0.01, ly: 0.94}
         }
-        return t[id] || {ax: 0.92, ay: 0.08 + (id % 12) * 0.06, lx: 0.78, ly: 0.06 + (id % 12) * 0.06}
+        return t[id] || null
     }
+    function hasBtn(id) { return btnSpot(id) !== null }
+    function hasAxis(id) { return axisSpot(id) !== null }
+    function hasHat(id) { return hatSpot(id) !== null }
     function axisSpot(id) {
         var t = {
             1: {ax: 0.42, ay: 0.58, lx: 0.01, ly: 0.74},
@@ -54,7 +57,7 @@ Item {
             7: {ax: 0.64, ay: 0.80, lx: 0.42, ly: 0.94},
             8: {ax: 0.70, ay: 0.78, lx: 0.78, ly: 0.82}
         }
-        return t[id] || {ax: 0.50, ay: 0.50, lx: 0.78, ly: 0.70}
+        return t[id] || null
     }
     function hatSpot(id) {
         var t = {
@@ -62,7 +65,7 @@ Item {
             2: {ax: 0.36, ay: 0.185, lx: 0.28, ly: 0.005},
             3: {ax: 0.335, ay: 0.235, lx: 0.01, ly: 0.11}
         }
-        return t[id] || {ax: 0.30, ay: 0.20, lx: 0.01, ly: 0.04}
+        return t[id] || null
     }
 
     Image {
@@ -145,10 +148,11 @@ Item {
         Callout {
             required property int identifier
             required property string vjoyLabel
-            ax: _face.btnSpot(identifier).ax
-            ay: _face.btnSpot(identifier).ay
-            lx: _face.btnSpot(identifier).lx
-            ly: _face.btnSpot(identifier).ly
+            visible: _face.hasBtn(identifier)
+            ax: visible ? _face.btnSpot(identifier).ax : 0
+            ay: visible ? _face.btnSpot(identifier).ay : 0
+            lx: visible ? _face.btnSpot(identifier).lx : 0
+            ly: visible ? _face.btnSpot(identifier).ly : 0
             hw: "HW " + identifier
             dest: vjoyLabel
             lit: _face.liveStamp, _face.hwButton(identifier) > 0.5
@@ -160,10 +164,11 @@ Item {
         Callout {
             required property int identifier
             required property string vjoyLabel
-            ax: _face.axisSpot(identifier).ax
-            ay: _face.axisSpot(identifier).ay
-            lx: _face.axisSpot(identifier).lx
-            ly: _face.axisSpot(identifier).ly
+            visible: _face.hasAxis(identifier)
+            ax: visible ? _face.axisSpot(identifier).ax : 0
+            ay: visible ? _face.axisSpot(identifier).ay : 0
+            lx: visible ? _face.axisSpot(identifier).lx : 0
+            ly: visible ? _face.axisSpot(identifier).ly : 0
             hw: "HW Axis " + identifier
             dest: vjoyLabel
             lit: _face.liveStamp, Math.abs(_face.hwAxis(identifier)) > 0.12
@@ -175,10 +180,11 @@ Item {
         Callout {
             required property int identifier
             required property string vjoyLabel
-            ax: _face.hatSpot(identifier).ax
-            ay: _face.hatSpot(identifier).ay
-            lx: _face.hatSpot(identifier).lx
-            ly: _face.hatSpot(identifier).ly
+            visible: _face.hasHat(identifier)
+            ax: visible ? _face.hatSpot(identifier).ax : 0
+            ay: visible ? _face.hatSpot(identifier).ay : 0
+            lx: visible ? _face.hatSpot(identifier).lx : 0
+            ly: visible ? _face.hatSpot(identifier).ly : 0
             hw: "HW Hat " + identifier
             dest: vjoyLabel
             lit: _face.liveStamp, _face.hwHat(identifier) > 0.5
