@@ -1250,7 +1250,7 @@ Item {
         var fs = (n && n.fontSize) ? n.fontSize : 10
         var s = mem ? friendlyOf(n, mem) : friendlyOf(n, null)
         var pad = Math.max(10, ((n && n.chipSize) || 18) * 0.55)
-        return Math.max(36, String(s).length * fs * 0.56 + pad)
+        return Math.max(36, String(s).length * fs * 0.50 + pad)
     }
 
     function memberHit(n, mx, my) {
@@ -1510,10 +1510,7 @@ Item {
                     return 40
                 if (_ed.isGroup(node))
                     return _ed.groupSpanW(node)
-                var it = _body.item
-                if (it)
-                    return Math.max(8, it.implicitWidth)
-                return _ed.chipWGuess(node, node)
+                return (_body.item && _body.item.implicitWidth > 1) ? _body.item.implicitWidth : _ed.chipWGuess(node, null)
             }
             height: {
                 _ed.tick
@@ -1521,13 +1518,14 @@ Item {
                     return 20
                 if (_ed.isGroup(node))
                     return _ed.groupSpanH(node)
-                var it = _body.item
-                if (it)
-                    return Math.max(8, it.implicitHeight)
-                return _ed.chipH(node)
+                return (_body.item && _body.item.implicitHeight > 1) ? _body.item.implicitHeight : _ed.chipH(node)
             }
 
             Rectangle {
+                visible: {
+                    _ed.tick
+                    return !!(node && _ed.isGroup(node) && _ed.isSelected(node.id))
+                }
                 x: -4
                 y: -4
                 width: parent.width + 8
@@ -1536,12 +1534,13 @@ Item {
                 radius: 8
                 color: "transparent"
                 border.width: 2
-                border.color: {
-                    _ed.tick
-                    return (_wrap.node && _ed.isSelected(_wrap.node.id)) ? "#FBBF24" : "transparent"
-                }
+                border.color: "#FBBF24"
             }
             Rectangle {
+                visible: {
+                    _ed.tick
+                    return !!(node && _ed.groupEditId === node.id)
+                }
                 x: -6
                 y: -6
                 width: parent.width + 12
@@ -1550,10 +1549,7 @@ Item {
                 radius: 8
                 color: "transparent"
                 border.width: 1
-                border.color: {
-                    _ed.tick
-                    return (_wrap.node && _ed.groupEditId === _wrap.node.id) ? "#38BDF8" : "transparent"
-                }
+                border.color: "#38BDF8"
             }
 
             Loader {
@@ -1629,6 +1625,8 @@ Item {
         Rectangle {
             property var node: ({ kind: "btn", hwId: 0 })
             property bool on: _ed.litOf(node.kind, node.hwId)
+            width: implicitWidth
+            height: implicitHeight
             implicitWidth: { _ed.tick; return _lab.implicitWidth + Math.max(10, (node.chipSize || 18) * 0.55) }
             implicitHeight: { _ed.tick; return _ed.chipH(node) }
             radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node)) }
@@ -1667,6 +1665,8 @@ Item {
             property int memberIndex: -1
             property string leafKind: "btn"
             property bool on: _ed.litOf(leafKind, hwId)
+            width: implicitWidth
+            height: implicitHeight
             implicitWidth: { _ed.tick; return t.implicitWidth + Math.max(10, (node.chipSize || 18) * 0.55) }
             implicitHeight: { _ed.tick; return _ed.chipH(node) }
             radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node)) }
