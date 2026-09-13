@@ -25,47 +25,51 @@ Item {
     function hwAxis(id) { return host && host.hwAxis ? host.hwAxis(id) : 0 }
     function hwHat(id) { return host && host.hwHat ? host.hwHat(id) : 0 }
 
+    function plusCell(hatAx, hatAy, cx, cy, dir) {
+        var dx = 0.155
+        var dy = 0.042
+        var lx = cx
+        var ly = cy
+        if (dir === "up") ly = cy - dy
+        else if (dir === "down") ly = cy + dy
+        else if (dir === "left") lx = cx - dx
+        else if (dir === "right") lx = cx + dx
+        var isCenter = (dir === "center")
+        return {ax: hatAx, ay: hatAy, lx: lx, ly: ly, line: isCenter, dot: isCenter}
+    }
+
     // Locked physical map on vkb_gladiator_rig.jpg (same grip, two poses).
-    // ax/ay = control on the photo. lx/ly = label box.
     function btnSpot(id) {
         var t = {
-            // Right pose — red trigger half / full
             1:  {ax: 0.655, ay: 0.250, lx: 0.80, ly: 0.210},
             2:  {ax: 0.655, ay: 0.268, lx: 0.80, ly: 0.268},
-            // Left pose — red head button
             3:  {ax: 0.318, ay: 0.198, lx: 0.01, ly: 0.175},
-            // Right pose — white cap
             4:  {ax: 0.618, ay: 0.168, lx: 0.80, ly: 0.120},
-            // Right pose — lower grip white button
             5:  {ax: 0.628, ay: 0.430, lx: 0.80, ly: 0.420},
-            // Left pose — 5-way immediately right of red (6 U, 7 R, 8 D, 9 L, 10 C)
-            6:  {ax: 0.392, ay: 0.188, lx: 0.01, ly: 0.040},
-            7:  {ax: 0.408, ay: 0.205, lx: 0.01, ly: 0.085},
-            8:  {ax: 0.392, ay: 0.222, lx: 0.01, ly: 0.130},
-            9:  {ax: 0.376, ay: 0.205, lx: 0.01, ly: 0.220},
-            10: {ax: 0.392, ay: 0.205, lx: 0.16, ly: 0.005},
-            // Left pose — top-right head 5-way (11 U, 12 R, 13 D, 14 L, 15 C)
-            11: {ax: 0.448, ay: 0.118, lx: 0.52, ly: 0.005},
-            12: {ax: 0.462, ay: 0.135, lx: 0.52, ly: 0.048},
-            13: {ax: 0.448, ay: 0.152, lx: 0.52, ly: 0.090},
-            14: {ax: 0.434, ay: 0.135, lx: 0.52, ly: 0.132},
-            15: {ax: 0.448, ay: 0.135, lx: 0.52, ly: 0.174},
-            // Left pose — silver side wheel 5-way (16 U, 17 R, 18 D, 19 L, 20 C)
-            16: {ax: 0.378, ay: 0.348, lx: 0.01, ly: 0.300},
-            17: {ax: 0.395, ay: 0.365, lx: 0.01, ly: 0.345},
-            18: {ax: 0.378, ay: 0.382, lx: 0.01, ly: 0.390},
-            19: {ax: 0.360, ay: 0.365, lx: 0.01, ly: 0.435},
-            20: {ax: 0.378, ay: 0.365, lx: 0.01, ly: 0.480},
-            // Right pose — ribbed paddle push / pull (not the red trigger)
+            // 5-way right of red: 6 U, 7 R, 8 D, 9 L, 10 C
+            6:  plusCell(0.392, 0.205, 0.155, 0.115, "up"),
+            7:  plusCell(0.392, 0.205, 0.155, 0.115, "right"),
+            8:  plusCell(0.392, 0.205, 0.155, 0.115, "down"),
+            9:  plusCell(0.392, 0.205, 0.155, 0.115, "left"),
+            10: plusCell(0.392, 0.205, 0.155, 0.115, "center"),
+            // 5-way top-right head: 11 U, 12 R, 13 D, 14 L, 15 C
+            11: plusCell(0.448, 0.135, 0.620, 0.055, "up"),
+            12: plusCell(0.448, 0.135, 0.620, 0.055, "right"),
+            13: plusCell(0.448, 0.135, 0.620, 0.055, "down"),
+            14: plusCell(0.448, 0.135, 0.620, 0.055, "left"),
+            15: plusCell(0.448, 0.135, 0.620, 0.055, "center"),
+            // Silver wheel 5-way: 16 U, 17 R, 18 D, 19 L, 20 C
+            16: plusCell(0.378, 0.365, 0.155, 0.365, "up"),
+            17: plusCell(0.378, 0.365, 0.155, 0.365, "right"),
+            18: plusCell(0.378, 0.365, 0.155, 0.365, "down"),
+            19: plusCell(0.378, 0.365, 0.155, 0.365, "left"),
+            20: plusCell(0.378, 0.365, 0.155, 0.365, "center"),
             21: {ax: 0.688, ay: 0.238, lx: 0.80, ly: 0.325},
             22: {ax: 0.688, ay: 0.255, lx: 0.80, ly: 0.375},
-            // Base En2 right knob clicks
             23: {ax: 0.668, ay: 0.785, lx: 0.80, ly: 0.740},
             24: {ax: 0.668, ay: 0.805, lx: 0.80, ly: 0.790},
-            // Base En1 left knob clicks
             25: {ax: 0.582, ay: 0.772, lx: 0.32, ly: 0.860},
             26: {ax: 0.582, ay: 0.792, lx: 0.32, ly: 0.910},
-            // Base pads mid / left / right
             27: {ax: 0.598, ay: 0.698, lx: 0.52, ly: 0.605},
             28: {ax: 0.558, ay: 0.708, lx: 0.32, ly: 0.640},
             29: {ax: 0.638, ay: 0.688, lx: 0.80, ly: 0.620}
@@ -75,20 +79,24 @@ Item {
     function hasBtn(id) { return btnSpot(id) !== null }
     function hasAxis(id) { return axisSpot(id) !== null }
     function hasHat(id) { return hatSpot(id) !== null }
+    function spotOn(id, key, fallback) {
+        var s = btnSpot(id)
+        if (!s || s[key] === undefined) {
+            return fallback
+        }
+        return s[key]
+    }
     function axisSpot(id) {
         var t = {
-            // Gimbal X / Y / Z twist — one home as marked on the photo
             1: {ax: 0.430, ay: 0.575, lx: 0.01, ly: 0.560},
             2: {ax: 0.430, ay: 0.590, lx: 0.01, ly: 0.610},
             3: {ax: 0.430, ay: 0.605, lx: 0.01, ly: 0.660},
-            // Base Z slider between En1 and En2
             4: {ax: 0.628, ay: 0.778, lx: 0.48, ly: 0.940}
         }
         return t[id] || null
     }
     function hatSpot(id) {
         var t = {
-            // Open-head analog ministick — 8-way hat only
             1: {ax: 0.298, ay: 0.108, lx: 0.01, ly: 0.005}
         }
         return t[id] || null
@@ -116,6 +124,8 @@ Item {
         property string hw: ""
         property string dest: "—"
         property bool lit: false
+        property bool showLine: true
+        property bool showDot: true
 
         anchors.fill: parent
         z: 2
@@ -123,6 +133,7 @@ Item {
         Canvas {
             id: _line
             anchors.fill: parent
+            visible: showLine
             onPaint: {
                 var ctx = getContext("2d")
                 ctx.reset()
@@ -142,6 +153,7 @@ Item {
         }
 
         Rectangle {
+            visible: showDot
             x: px(ax) - 4
             y: py(ay) - 4
             width: 8
@@ -182,6 +194,8 @@ Item {
             hw: "HW " + identifier
             dest: vjoyLabel
             lit: _face.liveStamp, _face.hwButton(identifier) > 0.5
+            showLine: visible ? _face.spotOn(identifier, "line", true) : true
+            showDot: visible ? _face.spotOn(identifier, "dot", true) : true
         }
     }
 
