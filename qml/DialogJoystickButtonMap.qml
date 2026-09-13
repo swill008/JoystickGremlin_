@@ -38,6 +38,7 @@ Window {
     readonly property string stockImage: "qml/images/vkb_gladiator_rig.jpg"
     property int _nameTick: 0
     property bool editing: false
+    onEditingChanged: if (editing) Qt.callLater(refreshReservoir)
     property var liveNodes: []
     property var workNodes: []
     property string photoOverride: ""
@@ -46,6 +47,8 @@ Window {
     property string selectedId: ""
     property var selectedNode: null
     property bool _allowClose: false
+    property var resItems: []
+    property bool resUnusedOnly: false
 
     ViewerDeviceModel { id: _devices }
     HardwareProfile { id: _hw }
@@ -120,6 +123,7 @@ Window {
         editing = true
         selectedId = ""
         selectedNode = null
+        Qt.callLater(refreshReservoir)
     }
 
     function saveEdit() {
@@ -274,6 +278,32 @@ Window {
         return _cardLoader.item ? _cardLoader.item.editorItem : null
     }
 
+    function refreshReservoir() {
+        var e = _ed()
+        var all = e ? e.catalog() : []
+        if (!resUnusedOnly) {
+            resItems = all
+            return
+        }
+        var u = []
+        for (var i = 0; i < all.length; i++) {
+            if (!all[i].placed)
+                u.push(all[i])
+        }
+        resItems = u
+    }
+
+    function pickReservoir(row) {
+        var e = _ed()
+        if (!e || !row)
+            return
+        if (row.placed)
+            e.setSelection([row.placedId])
+        else
+            e.addChiplet(row.kind, row.hwId)
+        refreshReservoir()
+    }
+
     Menu {
         id: _groupMenu
         MenuItem { text: "Group selected"; onTriggered: { var e = _ed(); if (e) e.groupSelection() } }
@@ -306,118 +336,6 @@ Window {
         MenuItem { text: "Reconnect to this chip"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("from") } }
         MenuItem { text: "Reconnect to this hotspot"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("to") } }
         MenuItem { text: "Delete selected spine"; onTriggered: { var e = _ed(); if (e) e.deleteSelection() } }
-    }
-
-    Menu {
-        id: _chipMenu
-        MenuItem {
-            text: "Reservoir…"
-            onTriggered: {
-                _resPop.refresh()
-                _resPop.open()
-            }
-        }
-    }
-
-    Popup {
-        id: _resPop
-        modal: false
-        dim: false
-        x: 12
-        y: 52
-        width: 360
-        height: Math.min(560, _buttonMap.height - 80)
-        padding: 0
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        property var items: []
-        property bool unusedOnly: false
-        function refresh() {
-            var e = _ed()
-            items = e ? e.catalog() : []
-        }
-        background: Rectangle {
-            color: "#111113"
-            border.color: "#3F3F46"
-            radius: 6
-        }
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 10
-            spacing: 8
-            Label {
-                text: "Chiplet reservoir"
-                font.bold: true
-                color: "#E4E4E7"
-            }
-            Label {
-                text: "Every hardware control. Add places it at the view center. Already-on-map rows select it."
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-                color: "#A1A1AA"
-                font.pixelSize: 11
-            }
-            CheckBox {
-                text: "Unused only"
-                checked: _resPop.unusedOnly
-                onToggled: _resPop.unusedOnly = checked
-            }
-            ListView {
-                id: _resList
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                spacing: 4
-                model: _resPop.items
-                delegate: Rectangle {
-                    required property var modelData
-                    width: _resList.width
-                    height: visible ? (_row.implicitHeight + 10) : 0
-                    visible: !_resPop.unusedOnly || !modelData.placed
-                    color: modelData.placed ? "#18181B" : "#0C0C0E"
-                    border.color: modelData.placed ? "#3F3F46" : "#14532D"
-                    radius: 4
-                    ColumnLayout {
-                        id: _row
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.margins: 6
-                        spacing: 2
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Label {
-                                text: modelData.friendly
-                                color: "#F4F4F5"
-                                font.pixelSize: 12
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-                            Button {
-                                text: modelData.placed ? "Select" : "Add"
-                                implicitHeight: 24
-                                onClicked: {
-                                    var e = _ed()
-                                    if (!e)
-                                        return
-                                    if (modelData.placed)
-                                        e.setSelection([modelData.placedId])
-                                    else
-                                        e.addChiplet(modelData.kind, modelData.hwId)
-                                    _resPop.refresh()
-                                }
-                            }
-                        }
-                        Label {
-                            text: modelData.fullName
-                            color: "#A1A1AA"
-                            font.pixelSize: 10
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
-                        }
-                    }
-                }
-            }
-        }
     }
 
     FileDialog {
@@ -466,11 +384,6 @@ Window {
                     visible: editing
                     text: "Leader"
                     onClicked: _leadMenu.popup()
-                }
-                Button {
-                    visible: editing
-                    text: "Chiplets"
-                    onClicked: _chipMenu.popup()
                 }
                 ToolSeparator { visible: editing }
                 Button {
@@ -584,7 +497,14 @@ Window {
             }
         }
 
+        SplitView {
+            orientation: Qt.Vertical
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
         RowLayout {
+            SplitView.fillHeight: true
+            SplitView.minimumHeight: 220
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
@@ -619,7 +539,10 @@ Window {
                         Connections {
                             target: _card.editorItem
                             function onSelectedChanged() { _buttonMap.applySelected() }
-                            function onNodesChanged() { _buttonMap.applySelected() }
+                            function onNodesChanged() {
+                                _buttonMap.applySelected()
+                                _buttonMap.refreshReservoir()
+                            }
                         }
                         Component.onCompleted: _cardLoader.item = _card
                     }
@@ -948,6 +871,87 @@ Window {
                         Layout.fillWidth: true
                         font.pixelSize: 10
                     }
+                    }
+                }
+            }
+        }
+
+            Rectangle {
+                id: _resDock
+                visible: editing
+                SplitView.preferredHeight: editing ? 250 : 0
+                SplitView.minimumHeight: editing ? 120 : 0
+                color: "#0C0C0E"
+                border.color: "#27272A"
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 6
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: "Chiplet reservoir"
+                            font.bold: true
+                            color: "#E4E4E7"
+                        }
+                        Label {
+                            text: resItems.length + " shown · click unused to add, click placed to select"
+                            color: "#71717A"
+                            font.pixelSize: 11
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                        }
+                        CheckBox {
+                            text: "Unused only"
+                            checked: resUnusedOnly
+                            onToggled: {
+                                resUnusedOnly = checked
+                                refreshReservoir()
+                            }
+                        }
+                    }
+                    Flickable {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        contentWidth: width
+                        contentHeight: _resFlow.implicitHeight
+                        boundsBehavior: Flickable.StopAtBounds
+                        Flow {
+                            id: _resFlow
+                            width: parent.width
+                            spacing: 6
+                            Repeater {
+                                model: resItems
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    property bool onMap: !!(modelData && modelData.placed)
+                                    implicitWidth: Math.min(280, _chipLab.implicitWidth + 20)
+                                    implicitHeight: 28
+                                    radius: 14
+                                    color: onMap ? "#18181B" : "#052E16"
+                                    border.color: onMap ? "#3F3F46" : "#16A34A"
+                                    border.width: 1
+                                    Text {
+                                        id: _chipLab
+                                        anchors.centerIn: parent
+                                        text: modelData ? modelData.friendly : ""
+                                        color: onMap ? "#A1A1AA" : "#BBF7D0"
+                                        font.pixelSize: 11
+                                    }
+                                    ToolTip.visible: _resHover.containsMouse
+                                    ToolTip.text: modelData ? (modelData.fullName + (onMap ? "  ·  on map" : "  ·  click to add")) : ""
+                                    ToolTip.delay: 400
+                                    MouseArea {
+                                        id: _resHover
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: pickReservoir(modelData)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
