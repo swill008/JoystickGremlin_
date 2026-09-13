@@ -10,13 +10,13 @@ Item {
     property var live: null
     property int stamp: 0
 
-    implicitWidth: 380
-    implicitHeight: 580
+    implicitWidth: 520
+    implicitHeight: 410
 
     readonly property real _ox: _img.x + (_img.width - _img.paintedWidth) * 0.5
     readonly property real _oy: _img.y + (_img.height - _img.paintedHeight) * 0.5
-    readonly property real _pw: _img.paintedWidth
-    readonly property real _ph: _img.paintedHeight
+    readonly property real _pw: Math.max(1, _img.paintedWidth)
+    readonly property real _ph: Math.max(1, _img.paintedHeight)
 
     function v(name) {
         if (!live || typeof live.xboxValue !== "function")
@@ -28,7 +28,8 @@ Item {
     }
     function px(nx) { return _ox + nx * _pw }
     function py(ny) { return _oy + ny * _ph }
-    function ps(n) { return n * Math.min(_pw, _ph) }
+    function pw(n) { return n * _pw }
+    function ph(n) { return n * _ph }
 
     Image {
         id: _img
@@ -42,53 +43,50 @@ Item {
 
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
-        y: 2
+        y: 0
         text: _img.status === Image.Error ? "Xbox face image missing" : ("Xbox 360  " + padId)
         color: "#94a3b8"
         font.pixelSize: 11
         z: 4
     }
 
-    Text { x: px(0.10); y: py(0.10); text: "LB"; color: on("left_shoulder") ? "#86EFAC" : "#94a3b8"; font.pixelSize: 10; font.bold: true }
-    Text { x: px(0.86); y: py(0.10); text: "RB"; color: on("right_shoulder") ? "#86EFAC" : "#94a3b8"; font.pixelSize: 10; font.bold: true }
-    Text { x: px(0.22); y: py(0.40); text: "LT"; color: v("left_trigger") > 0.08 ? "#7dd3fc" : "#94a3b8"; font.pixelSize: 10; font.bold: true }
-    Text { x: px(0.74); y: py(0.40); text: "RT"; color: v("right_trigger") > 0.08 ? "#7dd3fc" : "#94a3b8"; font.pixelSize: 10; font.bold: true }
-
+    // Top LB bumper
     Rectangle {
-        x: px(0.16); y: py(0.16); width: ps(0.16); height: ps(0.06); radius: 6
-        color: "#00000000"
-        border.width: on("left_shoulder") ? 3 : 0
-        border.color: "#22C55E"
+        x: px(0.20); y: py(0.125); width: pw(0.18); height: ph(0.09); radius: 8
+        color: on("left_shoulder") ? "#6622C55E" : "#00000000"
+        border.width: on("left_shoulder") ? 2 : 0
+        border.color: "#86EFAC"
     }
+    // Top RB bumper
     Rectangle {
-        x: px(0.68); y: py(0.16); width: ps(0.16); height: ps(0.06); radius: 6
-        color: "#00000000"
-        border.width: on("right_shoulder") ? 3 : 0
-        border.color: "#22C55E"
+        x: px(0.62); y: py(0.125); width: pw(0.18); height: ph(0.09); radius: 8
+        color: on("right_shoulder") ? "#6622C55E" : "#00000000"
+        border.width: on("right_shoulder") ? 2 : 0
+        border.color: "#86EFAC"
     }
-
+    // Top LT paddle
     Rectangle {
-        x: px(0.30); y: py(0.26)
-        width: ps(0.07)
-        height: ps(0.08) + ps(0.06) * Math.min(1.0, Math.max(0.0, v("left_trigger")))
+        x: px(0.24); y: py(0.21); width: pw(0.07)
+        height: ph(0.10) + ph(0.06) * Math.min(1.0, Math.max(0.0, v("left_trigger")))
         radius: 6
-        color: v("left_trigger") > 0.08 ? "#6638BDF8" : "#00000000"
+        color: v("left_trigger") > 0.08 ? "#8838BDF8" : "#00000000"
         border.width: v("left_trigger") > 0.08 ? 2 : 0
         border.color: "#38BDF8"
     }
+    // Top RT paddle
     Rectangle {
-        x: px(0.63); y: py(0.26)
-        width: ps(0.07)
-        height: ps(0.08) + ps(0.06) * Math.min(1.0, Math.max(0.0, v("right_trigger")))
+        x: px(0.69); y: py(0.21); width: pw(0.07)
+        height: ph(0.10) + ph(0.06) * Math.min(1.0, Math.max(0.0, v("right_trigger")))
         radius: 6
-        color: v("right_trigger") > 0.08 ? "#6638BDF8" : "#00000000"
+        color: v("right_trigger") > 0.08 ? "#8838BDF8" : "#00000000"
         border.width: v("right_trigger") > 0.08 ? 2 : 0
         border.color: "#38BDF8"
     }
 
+    // Front left stick
     Item {
-        x: px(0.236); y: py(0.598)
-        width: ps(0.12); height: ps(0.12)
+        x: px(0.168); y: py(0.50)
+        width: pw(0.115); height: pw(0.115)
         Rectangle {
             anchors.fill: parent
             radius: width / 2
@@ -97,50 +95,41 @@ Item {
             border.color: "#22C55E"
         }
         Rectangle {
-            width: parent.width * 0.28
+            width: parent.width * 0.30
             height: width
             radius: width / 2
             color: "#e5e7eb"
-            visible: Math.abs(v("left_stick_x")) > 0.06 || Math.abs(v("left_stick_y")) > 0.06 || on("left_thumb")
-            x: parent.width * 0.36 + parent.width * 0.28 * Math.max(-1, Math.min(1, v("left_stick_x")))
-            y: parent.height * 0.36 - parent.height * 0.28 * Math.max(-1, Math.min(1, v("left_stick_y")))
+            visible: stamp >= 0 && (Math.abs(v("left_stick_x")) > 0.06 || Math.abs(v("left_stick_y")) > 0.06 || on("left_thumb"))
+            x: parent.width * 0.35 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("left_stick_x")))
+            y: parent.height * 0.35 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("left_stick_y")))
         }
     }
 
-    Rectangle { x: px(0.318); y: py(0.718); width: ps(0.035); height: ps(0.035); radius: 3; color: on("dpad_up") ? "#ccf8fafc" : "#00000000" }
-    Rectangle { x: px(0.318); y: py(0.778); width: ps(0.035); height: ps(0.035); radius: 3; color: on("dpad_down") ? "#ccf8fafc" : "#00000000" }
-    Rectangle { x: px(0.286); y: py(0.748); width: ps(0.035); height: ps(0.035); radius: 3; color: on("dpad_left") ? "#ccf8fafc" : "#00000000" }
-    Rectangle { x: px(0.350); y: py(0.748); width: ps(0.035); height: ps(0.035); radius: 3; color: on("dpad_right") ? "#ccf8fafc" : "#00000000" }
+    // D-pad
+    Rectangle { x: px(0.268); y: py(0.655); width: pw(0.035); height: ph(0.04); radius: 3; color: on("dpad_up") ? "#ccf8fafc" : "#00000000" }
+    Rectangle { x: px(0.268); y: py(0.735); width: pw(0.035); height: ph(0.04); radius: 3; color: on("dpad_down") ? "#ccf8fafc" : "#00000000" }
+    Rectangle { x: px(0.230); y: py(0.695); width: pw(0.035); height: ph(0.04); radius: 3; color: on("dpad_left") ? "#ccf8fafc" : "#00000000" }
+    Rectangle { x: px(0.306); y: py(0.695); width: pw(0.035); height: ph(0.04); radius: 3; color: on("dpad_right") ? "#ccf8fafc" : "#00000000" }
 
+    // Guide
     Rectangle {
-        x: px(0.445); y: py(0.638)
-        width: ps(0.11); height: ps(0.11); radius: width / 2
+        x: px(0.445); y: py(0.528)
+        width: pw(0.11); height: pw(0.11); radius: width / 2
         color: "#00000000"
         border.width: on("guide") ? 4 : 0
         border.color: "#4ade80"
     }
 
-    Rectangle {
-        x: px(0.392); y: py(0.862); width: ps(0.07); height: ps(0.028); radius: 6
-        color: on("back") ? "#9922C55E" : "#00000000"
-        border.width: on("back") ? 2 : 0
-        border.color: "#86EFAC"
-    }
-    Rectangle {
-        x: px(0.538); y: py(0.862); width: ps(0.07); height: ps(0.028); radius: 6
-        color: on("start") ? "#9922C55E" : "#00000000"
-        border.width: on("start") ? 2 : 0
-        border.color: "#86EFAC"
-    }
+    // ABXY on front
+    Rectangle { x: px(0.678); y: py(0.488); width: pw(0.055); height: pw(0.055); radius: width / 2; color: on("y") ? "#99fde047" : "#00000000"; border.width: on("y") ? 3 : 0; border.color: "#facc15" }
+    Rectangle { x: px(0.732); y: py(0.548); width: pw(0.055); height: pw(0.055); radius: width / 2; color: on("b") ? "#99f87171" : "#00000000"; border.width: on("b") ? 3 : 0; border.color: "#f87171" }
+    Rectangle { x: px(0.678); y: py(0.608); width: pw(0.055); height: pw(0.055); radius: width / 2; color: on("a") ? "#994ade80" : "#00000000"; border.width: on("a") ? 3 : 0; border.color: "#4ade80" }
+    Rectangle { x: px(0.624); y: py(0.548); width: pw(0.055); height: pw(0.055); radius: width / 2; color: on("x") ? "#9960a5fa" : "#00000000"; border.width: on("x") ? 3 : 0; border.color: "#60a5fa" }
 
-    Rectangle { x: px(0.678); y: py(0.598); width: ps(0.055); height: ps(0.055); radius: width / 2; color: on("y") ? "#99fde047" : "#00000000"; border.width: on("y") ? 3 : 0; border.color: "#facc15" }
-    Rectangle { x: px(0.728); y: py(0.638); width: ps(0.055); height: ps(0.055); radius: width / 2; color: on("b") ? "#99f87171" : "#00000000"; border.width: on("b") ? 3 : 0; border.color: "#f87171" }
-    Rectangle { x: px(0.678); y: py(0.678); width: ps(0.055); height: ps(0.055); radius: width / 2; color: on("a") ? "#994ade80" : "#00000000"; border.width: on("a") ? 3 : 0; border.color: "#4ade80" }
-    Rectangle { x: px(0.628); y: py(0.638); width: ps(0.055); height: ps(0.055); radius: width / 2; color: on("x") ? "#9960a5fa" : "#00000000"; border.width: on("x") ? 3 : 0; border.color: "#60a5fa" }
-
+    // Front right stick
     Item {
-        x: px(0.568); y: py(0.718)
-        width: ps(0.12); height: ps(0.12)
+        x: px(0.528); y: py(0.655)
+        width: pw(0.115); height: pw(0.115)
         Rectangle {
             anchors.fill: parent
             radius: width / 2
@@ -149,13 +138,27 @@ Item {
             border.color: "#22C55E"
         }
         Rectangle {
-            width: parent.width * 0.28
+            width: parent.width * 0.30
             height: width
             radius: width / 2
             color: "#e5e7eb"
-            visible: Math.abs(v("right_stick_x")) > 0.06 || Math.abs(v("right_stick_y")) > 0.06 || on("right_thumb")
-            x: parent.width * 0.36 + parent.width * 0.28 * Math.max(-1, Math.min(1, v("right_stick_x")))
-            y: parent.height * 0.36 - parent.height * 0.28 * Math.max(-1, Math.min(1, v("right_stick_y")))
+            visible: stamp >= 0 && (Math.abs(v("right_stick_x")) > 0.06 || Math.abs(v("right_stick_y")) > 0.06 || on("right_thumb"))
+            x: parent.width * 0.35 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("right_stick_x")))
+            y: parent.height * 0.35 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("right_stick_y")))
         }
+    }
+
+    // Back / Start next to Guide
+    Rectangle {
+        x: px(0.395); y: py(0.555); width: pw(0.045); height: ph(0.03); radius: 6
+        color: on("back") ? "#9922C55E" : "#00000000"
+        border.width: on("back") ? 2 : 0
+        border.color: "#86EFAC"
+    }
+    Rectangle {
+        x: px(0.560); y: py(0.555); width: pw(0.045); height: ph(0.03); radius: 6
+        color: on("start") ? "#9922C55E" : "#00000000"
+        border.width: on("start") ? 2 : 0
+        border.color: "#86EFAC"
     }
 }

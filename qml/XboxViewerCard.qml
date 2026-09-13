@@ -96,7 +96,7 @@ ColumnLayout {
             Item {
                 visible: _xboxPads.count > 0
                 Layout.fillWidth: true
-                Layout.preferredHeight: 580
+                Layout.preferredHeight: 410
                 Column {
                     id: _faces
                     anchors.horizontalCenter: parent.horizontalCenter
