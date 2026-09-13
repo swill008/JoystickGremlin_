@@ -57,7 +57,7 @@ Window {
             spacing: 8
 
             JGText {
-                visible: _devices.count === 0
+                visible: !_devices || _devices.count === 0
                 text: "No Map to Xbox actions on connected devices."
                 opacity: 0.65
             }
