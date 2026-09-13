@@ -1,6 +1,9 @@
 # VKBsim Gladiator EVO R — Button Map lock
 
-Source of truth for `VkbRigFace.qml` leaders and plus groups.
+Live runtime for chips, hotspots, spines, and image:
+`qml/maps/vkb_evo_r.json` (`control.hardware`). Save in the Button Map editor is truth.
+
+This file is the measured JPEG inventory and the hardware-id lock.
 Photo: `qml/images/vkb_gladiator_rig.jpg` (899 x 920).
 Device name: `VKBsim Gladiator EVO R` only.
 ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base.
@@ -64,7 +67,8 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 
 ## Chip zones
 
-Label order only. Do not use this section to change nx/ny.
+Stock JSON seed only (`qml/maps/vkb_evo_r.json`). Live layout is whatever Save last wrote.
+Do not use this section to change nx/ny.
 
 Chips hug the photo and sit at hotspot Y so leaders stay near-horizontal. 5-ways stay plus groups (do not split).
 - Left, top to bottom by target Y (no cross): H1, 11-15, 6-10, 3. Then 16-20 at the wheel. A1-A3 at the gimbal.

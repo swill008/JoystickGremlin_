@@ -41,12 +41,12 @@ Any change to rules is written here. Do not keep a second unofficial list.
     19.6 After any write to a large file, confirm: byte size, not PLACEHOLDER, and required symbols (for device.py: class Device, InputIdentifier, map-to-vjoy, and map-to-xbox when that token is expected). Committed size must match the patched size before saying it landed.
     19.7 If a large file is truncated, restore from the last known good commit first (device.py: e592376, 60033 bytes) then re-apply only the missing hunk. Do not layer patches on a stub.
     19.8 Small files stay on the GitHub connector as today.
-20. EVO R Button Map lock lives in qml/vkb_evo_r_face_map.md. Read that file before moving any face leader or plus. Update that file in the same commit as any hotspot change.
+20. EVO R hardware lock and measured JPEG inventory live in qml/vkb_evo_r_face_map.md. Read that file before changing hardware ids or measured JPEG centroids. Chip / hotspot / spine placement at runtime is qml/maps/vkb_evo_r.json. When a measured centroid changes, update the md row and the JSON node nx/ny in the same commit.
 21. Face leaders — precision only. No guessing. No window-screenshot math.
     21.1 Root cause of missed leaders: (a) nx/ny were read off a GUI screenshot that includes gutters and chrome, but px/py are fractions of the painted JPEG only; (b) tag ends used mapToItem(_face) while photo ends used _stage.x, which is not face space. Do not repeat either.
     21.2 Measure on the source bitmap only. For EVO R that is qml/images/vkb_gladiator_rig.jpg (899 x 920). Pixel x,y of the control, then nx = x / width, ny = y / height.
     21.3 Prove the dots on a copy of that JPEG and show it in chat before changing QML. The user confirms the overlay, not a window screenshot.
-    21.4 Write the confirmed row into qml/vkb_evo_r_face_map.md and the matching stroke() in the same commit.
+    21.4 Write the confirmed row into qml/vkb_evo_r_face_map.md and the matching node nx/ny in qml/maps/vkb_evo_r.json in the same commit.
     21.5 Both ends of every leader must use the same item space:
          photoPt(nx, ny) = _img.mapToItem(_face, _ox + nx * _pw, _oy + ny * _ph)
          tagPt = item.mapToItem(_face, …)
@@ -71,4 +71,4 @@ Any change to rules is written here. Do not keep a second unofficial list.
     hat1 8-way ministick
     axes 1-3 gimbal X/Y/Z
     axis 4 Z slider
-25. Button Map editor: Edit on the map window. Save writes a control.hardware JSON to qml/maps/<device>.json (EVO R: qml/maps/vkb_evo_r.json). That file is a backup until we cut over; qml/vkb_evo_r_face_map.md remains live runtime truth.
+25. Button Map editor: Edit on the map window. Save writes control.hardware JSON to qml/maps/<device>.json (EVO R: qml/maps/vkb_evo_r.json). That JSON is live runtime truth for chips, hotspots, spines, and image. Cancel drops the session. qml/vkb_evo_r_face_map.md is the measured JPEG inventory and hardware lock, not live layout.
