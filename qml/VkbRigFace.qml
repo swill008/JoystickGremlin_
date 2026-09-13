@@ -26,8 +26,8 @@ Item {
     function hwHat(id) { return host && host.hwHat ? host.hwHat(id) : 0 }
 
     function plusCell(hatAx, hatAy, cx, cy, dir) {
-        var dx = 0.155
-        var dy = 0.042
+        var dx = 0.128
+        var dy = 0.040
         var lx = cx
         var ly = cy
         if (dir === "up") ly = cy - dy
@@ -38,41 +38,43 @@ Item {
         return {ax: hatAx, ay: hatAy, lx: lx, ly: ly, line: isCenter, dot: isCenter}
     }
 
-    // Locked physical map on vkb_gladiator_rig.jpg (same grip, two poses).
+    function pairCell(ax, ay, lx, ly0, which, count) {
+        var dy = 0.038
+        var ly = ly0 + which * dy
+        return {ax: ax, ay: ay, lx: lx, ly: ly, line: which === 0, dot: which === 0}
+    }
+
     function btnSpot(id) {
         var t = {
-            1:  {ax: 0.655, ay: 0.250, lx: 0.80, ly: 0.210},
-            2:  {ax: 0.655, ay: 0.268, lx: 0.80, ly: 0.268},
-            3:  {ax: 0.318, ay: 0.198, lx: 0.01, ly: 0.175},
-            4:  {ax: 0.618, ay: 0.168, lx: 0.80, ly: 0.120},
-            5:  {ax: 0.628, ay: 0.430, lx: 0.80, ly: 0.420},
-            // 5-way right of red: 6 U, 7 R, 8 D, 9 L, 10 C
-            6:  plusCell(0.392, 0.205, 0.155, 0.115, "up"),
-            7:  plusCell(0.392, 0.205, 0.155, 0.115, "right"),
-            8:  plusCell(0.392, 0.205, 0.155, 0.115, "down"),
-            9:  plusCell(0.392, 0.205, 0.155, 0.115, "left"),
-            10: plusCell(0.392, 0.205, 0.155, 0.115, "center"),
-            // 5-way top-right head: 11 U, 12 R, 13 D, 14 L, 15 C
-            11: plusCell(0.448, 0.135, 0.620, 0.055, "up"),
-            12: plusCell(0.448, 0.135, 0.620, 0.055, "right"),
-            13: plusCell(0.448, 0.135, 0.620, 0.055, "down"),
-            14: plusCell(0.448, 0.135, 0.620, 0.055, "left"),
-            15: plusCell(0.448, 0.135, 0.620, 0.055, "center"),
-            // Silver wheel 5-way: 16 U, 17 R, 18 D, 19 L, 20 C
-            16: plusCell(0.378, 0.365, 0.155, 0.365, "up"),
-            17: plusCell(0.378, 0.365, 0.155, 0.365, "right"),
-            18: plusCell(0.378, 0.365, 0.155, 0.365, "down"),
-            19: plusCell(0.378, 0.365, 0.155, 0.365, "left"),
-            20: plusCell(0.378, 0.365, 0.155, 0.365, "center"),
-            21: {ax: 0.688, ay: 0.238, lx: 0.80, ly: 0.325},
-            22: {ax: 0.688, ay: 0.255, lx: 0.80, ly: 0.375},
-            23: {ax: 0.668, ay: 0.785, lx: 0.80, ly: 0.740},
-            24: {ax: 0.668, ay: 0.805, lx: 0.80, ly: 0.790},
-            25: {ax: 0.582, ay: 0.772, lx: 0.32, ly: 0.860},
-            26: {ax: 0.582, ay: 0.792, lx: 0.32, ly: 0.910},
-            27: {ax: 0.598, ay: 0.698, lx: 0.52, ly: 0.605},
-            28: {ax: 0.558, ay: 0.708, lx: 0.32, ly: 0.640},
-            29: {ax: 0.638, ay: 0.688, lx: 0.80, ly: 0.620}
+            1:  pairCell(0.655, 0.259, 0.835, 0.300, 0),
+            2:  pairCell(0.655, 0.259, 0.835, 0.300, 1),
+            3:  {ax: 0.318, ay: 0.198, lx: 0.012, ly: 0.255},
+            4:  {ax: 0.618, ay: 0.168, lx: 0.835, ly: 0.085},
+            5:  {ax: 0.628, ay: 0.430, lx: 0.835, ly: 0.430},
+            6:  plusCell(0.392, 0.205, 0.145, 0.175, "up"),
+            7:  plusCell(0.392, 0.205, 0.145, 0.175, "right"),
+            8:  plusCell(0.392, 0.205, 0.145, 0.175, "down"),
+            9:  plusCell(0.392, 0.205, 0.145, 0.175, "left"),
+            10: plusCell(0.392, 0.205, 0.145, 0.175, "center"),
+            11: plusCell(0.448, 0.135, 0.145, 0.048, "up"),
+            12: plusCell(0.448, 0.135, 0.145, 0.048, "right"),
+            13: plusCell(0.448, 0.135, 0.145, 0.048, "down"),
+            14: plusCell(0.448, 0.135, 0.145, 0.048, "left"),
+            15: plusCell(0.448, 0.135, 0.145, 0.048, "center"),
+            16: plusCell(0.378, 0.365, 0.145, 0.330, "up"),
+            17: plusCell(0.378, 0.365, 0.145, 0.330, "right"),
+            18: plusCell(0.378, 0.365, 0.145, 0.330, "down"),
+            19: plusCell(0.378, 0.365, 0.145, 0.330, "left"),
+            20: plusCell(0.378, 0.365, 0.145, 0.330, "center"),
+            21: pairCell(0.688, 0.246, 0.835, 0.200, 0),
+            22: pairCell(0.688, 0.246, 0.835, 0.200, 1),
+            23: pairCell(0.668, 0.795, 0.835, 0.740, 0),
+            24: pairCell(0.668, 0.795, 0.835, 0.740, 1),
+            25: pairCell(0.582, 0.782, 0.145, 0.860, 0),
+            26: pairCell(0.582, 0.782, 0.145, 0.860, 1),
+            27: {ax: 0.598, ay: 0.698, lx: 0.560, ly: 0.605},
+            28: {ax: 0.558, ay: 0.708, lx: 0.400, ly: 0.605},
+            29: {ax: 0.638, ay: 0.688, lx: 0.720, ly: 0.605}
         }
         return t[id] || null
     }
@@ -88,18 +90,25 @@ Item {
     }
     function axisSpot(id) {
         var t = {
-            1: {ax: 0.430, ay: 0.575, lx: 0.01, ly: 0.560},
-            2: {ax: 0.430, ay: 0.590, lx: 0.01, ly: 0.610},
-            3: {ax: 0.430, ay: 0.605, lx: 0.01, ly: 0.660},
-            4: {ax: 0.628, ay: 0.778, lx: 0.48, ly: 0.940}
+            1: {ax: 0.430, ay: 0.590, lx: 0.012, ly: 0.520, line: true, dot: true},
+            2: {ax: 0.430, ay: 0.590, lx: 0.012, ly: 0.558, line: false, dot: false},
+            3: {ax: 0.430, ay: 0.590, lx: 0.012, ly: 0.596, line: false, dot: false},
+            4: {ax: 0.628, ay: 0.778, lx: 0.500, ly: 0.940}
         }
         return t[id] || null
     }
     function hatSpot(id) {
         var t = {
-            1: {ax: 0.298, ay: 0.108, lx: 0.01, ly: 0.005}
+            1: {ax: 0.298, ay: 0.108, lx: 0.012, ly: 0.005}
         }
         return t[id] || null
+    }
+    function axisFlag(id, key, fallback) {
+        var s = axisSpot(id)
+        if (!s || s[key] === undefined) {
+            return fallback
+        }
+        return s[key]
     }
 
     Image {
@@ -137,11 +146,11 @@ Item {
             onPaint: {
                 var ctx = getContext("2d")
                 ctx.reset()
-                ctx.strokeStyle = lit ? "#86EFAC" : "#D4D4D8"
-                ctx.lineWidth = 1.2
+                ctx.strokeStyle = lit ? "#86EFAC" : "#A1A1AA"
+                ctx.lineWidth = 1.15
                 ctx.beginPath()
                 ctx.moveTo(px(ax), py(ay))
-                ctx.lineTo(px(lx) + 6, py(ly) + 10)
+                ctx.lineTo(px(lx) + 8, py(ly) + 10)
                 ctx.stroke()
             }
             Connections {
@@ -212,6 +221,8 @@ Item {
             hw: "HW Axis " + identifier
             dest: vjoyLabel
             lit: _face.liveStamp, Math.abs(_face.hwAxis(identifier)) > 0.12
+            showLine: visible ? _face.axisFlag(identifier, "line", true) : true
+            showDot: visible ? _face.axisFlag(identifier, "dot", true) : true
         }
     }
 

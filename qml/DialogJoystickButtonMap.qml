@@ -12,9 +12,9 @@ import Gremlin.Style
 Window {
     id: _buttonMap
 
-    width: 980
+    width: 1180
     height: 980
-    minimumWidth: 720
+    minimumWidth: 880
     minimumHeight: 720
 
     color: Style.background
