@@ -37,9 +37,9 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 24 | En2 right knob down | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
 | 25 | En1 left knob up | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
 | 26 | En1 left knob down | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
-| 27 | Middle base pad | Base | 622 | 630 | 0.692 | 0.685 | pads |
-| 28 | Left base pad | Base | 583 | 642 | 0.648 | 0.698 | pads |
-| 29 | Right base pad | Base | 658 | 622 | 0.732 | 0.676 | pads |
+| 27 | Middle base pad | Base | 612 | 638 | 0.681 | 0.693 | pads |
+| 28 | Left base pad | Base | 586 | 646 | 0.652 | 0.702 | pads |
+| 29 | Right base pad | Base | 648 | 628 | 0.721 | 0.683 | pads |
 
 ## Hats
 
@@ -71,3 +71,4 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 - Button 4 is the white cap centroid (551,227), not the gray above the grip.
 - Button 5 is the lower-grip white centroid (544,386), not the space to its right.
 - 21/22 is the paddle next to the red trigger (578,272), not the gray to the right of the grip.
+- 28/27/29 are the three squares above En1/slider/En2 (586,646 / 612,638 / 648,628).
