@@ -676,30 +676,42 @@ Window {
                         }
                     }
 
-                    Label { text: "Idle color"; color: "#A1A1AA"; visible: selectedNode }
-                    TextField {
-                        Layout.fillWidth: true
+                    Label { text: "Colors"; color: "#A1A1AA"; visible: selectedNode }
+                    GridLayout {
                         visible: !!selectedNode
-                        text: selectedNode && selectedNode.color ? selectedNode.color : "#18181B"
-                        onEditingFinished: {
-                            if (selectedNode) {
-                                selectedNode.color = text
-                                if (_cardLoader.item && _cardLoader.item.editorItem)
-                                    _cardLoader.item.editorItem.bump()
-                            }
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: 8
+                        rowSpacing: 6
+                        Label { text: "Fill"; color: "#A1A1AA" }
+                        ColorSwatch {
+                            hex: selectedNode && selectedNode.color ? selectedNode.color : "#18181B"
+                            onPicked: _colorPop.openField("color", hex, this)
                         }
-                    }
-                    Label { text: "Highlight color"; color: "#A1A1AA"; visible: selectedNode }
-                    TextField {
-                        Layout.fillWidth: true
-                        visible: !!selectedNode
-                        text: selectedNode && selectedNode.hlColor ? selectedNode.hlColor : "#14532D"
-                        onEditingFinished: {
-                            if (selectedNode) {
-                                selectedNode.hlColor = text
-                                if (_cardLoader.item && _cardLoader.item.editorItem)
-                                    _cardLoader.item.editorItem.bump()
-                            }
+                        Label { text: "Border"; color: "#A1A1AA" }
+                        ColorSwatch {
+                            hex: selectedNode && selectedNode.border ? selectedNode.border : "#3F3F46"
+                            onPicked: _colorPop.openField("border", hex, this)
+                        }
+                        Label { text: "Text"; color: "#A1A1AA" }
+                        ColorSwatch {
+                            hex: selectedNode && selectedNode.textColor ? selectedNode.textColor : "#E4E4E7"
+                            onPicked: _colorPop.openField("textColor", hex, this)
+                        }
+                        Label { text: "Highlight"; color: "#A1A1AA" }
+                        ColorSwatch {
+                            hex: selectedNode && selectedNode.hlColor ? selectedNode.hlColor : "#14532D"
+                            onPicked: _colorPop.openField("hlColor", hex, this)
+                        }
+                        Label { text: "HL border"; color: "#A1A1AA" }
+                        ColorSwatch {
+                            hex: selectedNode && selectedNode.hlBorder ? selectedNode.hlBorder : "#22C55E"
+                            onPicked: _colorPop.openField("hlBorder", hex, this)
+                        }
+                        Label { text: "HL text"; color: "#A1A1AA" }
+                        ColorSwatch {
+                            hex: selectedNode && selectedNode.hlText ? selectedNode.hlText : "#BBF7D0"
+                            onPicked: _colorPop.openField("hlText", hex, this)
                         }
                     }
 
@@ -754,6 +766,230 @@ Window {
                         Layout.fillWidth: true
                         font.pixelSize: 10
                     }
+                    }
+                }
+            }
+        }
+    }
+
+    component ColorSwatch: Rectangle {
+        id: _sw
+        property string hex: "#18181B"
+        signal picked()
+        Layout.preferredWidth: 72
+        Layout.preferredHeight: 24
+        width: 72
+        height: 24
+        radius: 4
+        color: hex
+        border.color: "#52525B"
+        border.width: 1
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: _sw.picked()
+        }
+    }
+
+    function _toHex(c) {
+        var r = Math.round(c.r * 255)
+        var g = Math.round(c.g * 255)
+        var b = Math.round(c.b * 255)
+        if (r < 0) r = 0
+        if (r > 255) r = 255
+        if (g < 0) g = 0
+        if (g > 255) g = 255
+        if (b < 0) b = 0
+        if (b > 255) b = 255
+        var rs = r.toString(16)
+        var gs = g.toString(16)
+        var bs = b.toString(16)
+        if (rs.length < 2) rs = "0" + rs
+        if (gs.length < 2) gs = "0" + gs
+        if (bs.length < 2) bs = "0" + bs
+        return "#" + rs + gs + bs
+    }
+
+    Popup {
+        id: _colorPop
+        parent: _buttonMap.contentItem
+        width: 248
+        height: 330
+        modal: false
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: 10
+        property string field: "color"
+        property real hh: 0
+        property real ss: 0
+        property real vv: 0.12
+        readonly property color live: Qt.hsva(hh, ss, vv, 1)
+        background: Rectangle {
+            color: "#18181B"
+            border.color: "#3F3F46"
+            radius: 8
+        }
+
+        function openField(field, hex, anchorItem) {
+            _colorPop.field = field
+            var c = Qt.color(hex && hex.length ? hex : "#18181B")
+            hh = c.hsvHue < 0 ? 0 : c.hsvHue
+            ss = c.hsvSaturation
+            vv = c.hsvValue
+            if (anchorItem && parent) {
+                var p = anchorItem.mapToItem(parent, 0, anchorItem.height + 4)
+                x = Math.max(8, Math.min(parent.width - width - 8, p.x - width + anchorItem.width))
+                y = Math.max(8, Math.min(parent.height - height - 8, p.y))
+            }
+            open()
+        }
+
+        function pushLive() {
+            if (!visible)
+                return
+            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+            if (e)
+                e.applyField(field, _buttonMap._toHex(live))
+        }
+
+        onHhChanged: pushLive()
+        onSsChanged: pushLive()
+        onVvChanged: pushLive()
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 8
+            Label {
+                text: "Pick color"
+                color: "#E4E4E7"
+                font.bold: true
+            }
+            Item {
+                id: _sv
+                Layout.fillWidth: true
+                Layout.preferredHeight: 140
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 4
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0; color: "#FFFFFF" }
+                        GradientStop { position: 1; color: Qt.hsva(_colorPop.hh, 1, 1, 1) }
+                    }
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 4
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: "#00000000" }
+                        GradientStop { position: 1; color: "#FF000000" }
+                    }
+                }
+                Rectangle {
+                    width: 12
+                    height: 12
+                    radius: 6
+                    color: "transparent"
+                    border.color: "#FFFFFF"
+                    border.width: 2
+                    x: _colorPop.ss * _sv.width - 6
+                    y: (1 - _colorPop.vv) * _sv.height - 6
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        radius: 4
+                        color: "transparent"
+                        border.color: "#111111"
+                        border.width: 1
+                    }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    preventStealing: true
+                    function take(mx, my) {
+                        _colorPop.ss = Math.max(0, Math.min(1, mx / Math.max(1, _sv.width)))
+                        _colorPop.vv = Math.max(0, Math.min(1, 1 - my / Math.max(1, _sv.height)))
+                    }
+                    onPressed: (m) => take(m.x, m.y)
+                    onPositionChanged: (m) => { if (pressed) take(m.x, m.y) }
+                }
+            }
+            Item {
+                id: _hue
+                Layout.fillWidth: true
+                Layout.preferredHeight: 16
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 4
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: "#FF0000" }
+                        GradientStop { position: 0.17; color: "#FFFF00" }
+                        GradientStop { position: 0.33; color: "#00FF00" }
+                        GradientStop { position: 0.50; color: "#00FFFF" }
+                        GradientStop { position: 0.67; color: "#0000FF" }
+                        GradientStop { position: 0.83; color: "#FF00FF" }
+                        GradientStop { position: 1.0; color: "#FF0000" }
+                    }
+                }
+                Rectangle {
+                    width: 6
+                    height: parent.height + 4
+                    y: -2
+                    x: _colorPop.hh * _hue.width - 3
+                    radius: 2
+                    color: "transparent"
+                    border.color: "#FFFFFF"
+                    border.width: 2
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    preventStealing: true
+                    function take(mx) {
+                        _colorPop.hh = Math.max(0, Math.min(1, mx / Math.max(1, _hue.width)))
+                    }
+                    onPressed: (m) => take(m.x)
+                    onPositionChanged: (m) => { if (pressed) take(m.x) }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Rectangle {
+                    width: 36
+                    height: 24
+                    radius: 4
+                    color: _colorPop.live
+                    border.color: "#52525B"
+                }
+                Label {
+                    Layout.fillWidth: true
+                    text: _buttonMap._toHex(_colorPop.live)
+                    color: "#E4E4E7"
+                    font.family: "Consolas"
+                    font.pixelSize: 13
+                }
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: 4
+                Repeater {
+                    model: ["#18181B", "#3F3F46", "#E4E4E7", "#14532D", "#22C55E", "#BBF7D0", "#1D4ED8", "#7C2D12", "#831843", "#0F766E", "#FBBF24", "#000000", "#FFFFFF", "#7F1D1D"]
+                    Rectangle {
+                        required property string modelData
+                        width: 16
+                        height: 16
+                        radius: 3
+                        color: modelData
+                        border.color: "#52525B"
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                var c = Qt.color(modelData)
+                                _colorPop.hh = c.hsvHue < 0 ? 0 : c.hsvHue
+                                _colorPop.ss = c.hsvSaturation
+                                _colorPop.vv = c.hsvValue
+                            }
+                        }
                     }
                 }
             }
