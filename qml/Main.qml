@@ -366,7 +366,7 @@ ApplicationWindow {
             }
 
             JGToolButton {
-                text: "\uF3F3"
+                text: "\uF2D4"
                 tooltip: qsTr("Toggle Xbox Pairing-Viewer")
                 caption: "Xbox Pairing"
 
