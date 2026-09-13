@@ -37,9 +37,9 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 24 | En2 right knob down | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
 | 25 | En1 left knob up | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
 | 26 | En1 left knob down | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
-| 27 | Middle base pad | Base | 604 | 640 | 0.672 | 0.696 | pads |
-| 28 | Left base pad | Base | 586 | 648 | 0.652 | 0.704 | pads |
-| 29 | Right base pad | Base | 618 | 636 | 0.687 | 0.691 | pads |
+| 27 | Middle base pad | Base | 558 | 652 | 0.621 | 0.709 | pads |
+| 28 | Left base pad | Base | 534 | 658 | 0.594 | 0.715 | pads |
+| 29 | Right base pad | Base | 588 | 644 | 0.654 | 0.700 | pads |
 
 ## Hats
 
@@ -72,4 +72,4 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 - Button 5 is the lower-grip white centroid (544,386), not the space to its right.
 - 21/22 is the grey flipper face right of the red trigger (590,258). Not the red trigger. Not past the flipper tip in the background.
 - 1/2 is the right-grip red trigger centroid (555,277).
-- 28/27/29 are 3x-zoom centers on the three squares (586,648 / 604,640 / 618,636). Do not space them equally — perspective packs 29 left of En2.
+- 28 = far-left square (534,658). 27 = middle square (558,652). 29 = right square (588,644). Do not pile them on the right pad.
