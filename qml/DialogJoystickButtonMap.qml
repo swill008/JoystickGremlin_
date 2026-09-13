@@ -427,6 +427,32 @@ Window {
                         }
                     }
                     Button {
+                        visible: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (!e) return false
+                            var n = e.nodeAt ? e.nodeAt(e.selectedId) : null
+                            return e.isGroup && e.isGroup(n) && e.groupEditId !== (n && n.id)
+                        }
+                        text: "Edit group"
+                        onClicked: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e)
+                                e.beginGroupEdit(e.selectedId)
+                        }
+                    }
+                    Button {
+                        visible: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            return !!(e && e.groupEditId)
+                        }
+                        text: "Done editing group"
+                        onClicked: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e)
+                                e.endGroupEdit()
+                        }
+                    }
+                    Button {
                         visible: selectedNode && (selectedNode.kind === "plus" || selectedNode.kind === "pair" || selectedNode.kind === "axis_stack" || selectedNode.kind === "stack")
                         text: selectedNode && selectedNode.kind === "plus" ? "Convert to stack" : "Convert to 5-way"
                         enabled: selectedNode && selectedNode.kind === "plus" || (selectedNode && selectedNode.members && selectedNode.members.length === 5)

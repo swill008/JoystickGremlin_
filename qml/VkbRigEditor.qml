@@ -30,6 +30,9 @@ Item {
     property bool snapOn: true
     property int gridSize: 8
     property bool altHeld: false
+    property string groupEditId: ""
+    property int selectedMember: -1
+    property int dragMember: -1
 
     // Do NOT declare signal nodesChanged — property var nodes already has it.
     signal selectedChanged()
@@ -96,6 +99,10 @@ Item {
             var sp = snapPos(mx, my, altOff)
             n.spines[dragSpine].fx = Math.max(0, Math.min(1, sp.x / Math.max(1, width)))
             n.spines[dragSpine].fy = Math.max(0, Math.min(1, sp.y / Math.max(1, height)))
+        } else if (dragKind === "member" && n.members && dragMember >= 0 && dragMember < n.members.length) {
+            var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
+            n.members[dragMember].ox = mp.x / Math.max(1, width) - n.chipFx
+            n.members[dragMember].oy = mp.y / Math.max(1, height) - n.chipFy
         }
         repaint()
     }
@@ -139,6 +146,9 @@ Item {
             selectedSpine = -1
             dragKind = ""
             banding = false
+            groupEditId = ""
+            selectedMember = -1
+            dragMember = -1
         }
         if (_lines)
             _lines.requestPaint()
@@ -471,6 +481,17 @@ Item {
             }
         }
         for (i = 0; i < list.length; i++) {
+            n = list[i]
+            if (isGroup(n) && groupEditId === n.id) {
+                var mi = memberHit(n, mx, my)
+                if (mi >= 0)
+                    return { kind: "member", id: n.id, spine: -1, member: mi }
+            }
+        }
+        for (i = 0; i < list.length; i++) {
+            n = list[i]
+            if (isGroup(n) && memberHit(n, mx, my) >= 0)
+                return { kind: "chip", id: n.id, spine: -1 }
             var it = _chips.itemAt(i)
             if (!it) {
                 continue
@@ -606,6 +627,82 @@ Item {
         return k === "plus" || k === "pair" || k === "axis_stack" || k === "stack"
     }
 
+    function beginGroupEdit(id) {
+        var n = nodeAt(id || selectedId)
+        if (!isGroup(n))
+            return
+        ensureMemberOffsets(n)
+        groupEditId = n.id
+        selectedMember = 0
+        setSelection([n.id])
+        bump()
+    }
+
+    function endGroupEdit() {
+        groupEditId = ""
+        selectedMember = -1
+        dragMember = -1
+        if (dragKind === "member")
+            dragKind = ""
+        bump()
+    }
+
+    function ensureMemberOffsets(n) {
+        var mem = n.members || []
+        var i
+        var any = false
+        for (i = 0; i < mem.length; i++) {
+            if (mem[i].ox !== undefined || mem[i].oy !== undefined) {
+                any = true
+                break
+            }
+        }
+        if (any) {
+            for (i = 0; i < mem.length; i++) {
+                if (mem[i].ox === undefined) mem[i].ox = 0
+                if (mem[i].oy === undefined) mem[i].oy = 0
+            }
+            return
+        }
+        for (i = 0; i < mem.length; i++) {
+            var role = mem[i].role || ""
+            var dx = 0
+            var dy = (i - (mem.length - 1) * 0.5) * 0.028
+            if (n.kind === "plus") {
+                if (role === "up") { dx = 0; dy = -0.045 }
+                else if (role === "down") { dx = 0; dy = 0.045 }
+                else if (role === "left") { dx = -0.07; dy = 0 }
+                else if (role === "right") { dx = 0.07; dy = 0 }
+                else { dx = 0; dy = 0 }
+            }
+            mem[i].ox = dx
+            mem[i].oy = dy
+        }
+    }
+
+    function chipWGuess(n, mem) {
+        var fs = (n && n.fontSize) ? n.fontSize : 10
+        var leaf = (n && n.kind === "axis_stack") ? "axis" : "btn"
+        var d = destOf(leaf, mem && mem.hwId ? mem.hwId : 0)
+        var s = ((leaf === "axis") ? "A" : "") + String(mem && mem.hwId ? mem.hwId : 0) + " → " + d
+        return Math.max(36, s.length * fs * 0.62 + Math.max(10, ((n && n.chipSize) || 18) * 0.55))
+    }
+
+    function memberHit(n, mx, my) {
+        if (!isGroup(n))
+            return -1
+        var mem = n.members || []
+        for (var i = mem.length - 1; i >= 0; i--) {
+            var x = (n.chipFx + (mem[i].ox || 0)) * width
+            var y = (n.chipFy + (mem[i].oy || 0)) * height
+            var h = chipH(n)
+            var w = chipWGuess(n, mem[i])
+            if (mx >= x && mx <= x + w && my >= y && my <= y + h)
+                return i
+        }
+        return -1
+    }
+
     function canGroup() {
         return (selectedIds || []).length >= 2
     }
@@ -683,11 +780,11 @@ Item {
         var left = take(function(n) { return n.chipFx || 0 })
         var right = take(function(n) { return -(n.chipFx || 0) })
         return [
-            { hwId: up.hwId, role: "up" },
-            { hwId: down.hwId, role: "down" },
-            { hwId: left.hwId, role: "left" },
-            { hwId: right.hwId, role: "right" },
-            { hwId: center.hwId, role: "center" }
+            { hwId: up.hwId, role: "up", ox: 0, oy: 0, src: up.src },
+            { hwId: down.hwId, role: "down", ox: 0, oy: 0, src: down.src },
+            { hwId: left.hwId, role: "left", ox: 0, oy: 0, src: left.src },
+            { hwId: right.hwId, role: "right", ox: 0, oy: 0, src: right.src },
+            { hwId: center.hwId, role: "center", ox: 0, oy: 0, src: center.src }
         ]
     }
 
@@ -715,18 +812,6 @@ Item {
             kind = "axis_stack"
         else if (parts.length === 5 && axisN === 0)
             kind = "plus"
-        var members
-        if (kind === "plus") {
-            members = _plusMembers(parts)
-        } else {
-            parts.sort(function(a, b) {
-                var dy = (a.src.chipFy || 0) - (b.src.chipFy || 0)
-                return dy !== 0 ? dy : ((a.src.chipFx || 0) - (b.src.chipFx || 0))
-            })
-            members = []
-            for (i = 0; i < parts.length; i++)
-                members.push({ hwId: parts[i].hwId, role: parts[i].role || ("m" + i) })
-        }
         var first = nodeAt(ids[0])
         var st = _styleOf(first)
         var fx = 0
@@ -741,9 +826,37 @@ Item {
             ny += n.ny
         }
         var c = ids.length
+        var ox0 = fx / c
+        var oy0 = fy / c
+        var members
+        if (kind === "plus") {
+            members = _plusMembers(parts)
+            for (i = 0; i < members.length; i++) {
+                var src = members[i].src
+                members[i] = {
+                    hwId: members[i].hwId,
+                    role: members[i].role,
+                    ox: src ? (src.chipFx - ox0) : 0,
+                    oy: src ? (src.chipFy - oy0) : 0
+                }
+            }
+        } else {
+            parts.sort(function(a, b) {
+                var dy = (a.src.chipFy || 0) - (b.src.chipFy || 0)
+                return dy !== 0 ? dy : ((a.src.chipFx || 0) - (b.src.chipFx || 0))
+            })
+            members = []
+            for (i = 0; i < parts.length; i++)
+                members.push({
+                    hwId: parts[i].hwId,
+                    role: parts[i].role || ("m" + i),
+                    ox: parts[i].src.chipFx - ox0,
+                    oy: parts[i].src.chipFy - oy0
+                })
+        }
         var g = {
             id: _uid("g"), kind: kind, members: members,
-            nx: nx / c, ny: ny / c, chipFx: fx / c, chipFy: fy / c,
+            nx: nx / c, ny: ny / c, chipFx: ox0, chipFy: oy0,
             pin: st.pin, spines: [], curve: st.curve,
             color: st.color, border: st.border, textColor: st.textColor,
             highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
@@ -778,16 +891,8 @@ Item {
         var dy
         var role
         for (i = 0; i < mem.length; i++) {
-            role = mem[i].role || ""
-            dx = 0
-            dy = (i - (mem.length - 1) * 0.5) * 0.028
-            if (n.kind === "plus") {
-                if (role === "up") { dx = 0; dy = -0.045 }
-                else if (role === "down") { dx = 0; dy = 0.045 }
-                else if (role === "left") { dx = -0.07; dy = 0 }
-                else if (role === "right") { dx = 0.07; dy = 0 }
-                else { dx = 0; dy = 0 }
-            }
+            dx = (mem[i].ox !== undefined) ? mem[i].ox : 0
+            dy = (mem[i].oy !== undefined) ? mem[i].oy : ((i - (mem.length - 1) * 0.5) * 0.028)
             created.push({
                 id: _uid("b"), kind: leafKind, hwId: mem[i].hwId, prefix: prefix, label: "",
                 nx: n.nx, ny: n.ny,
@@ -897,13 +1002,64 @@ Item {
                     var n = _wrap.node
                     if (!n) return _tagComp
                     var k = n.kind
-                    if (k === "plus") return _plusComp
-                    if (k === "pair" || k === "axis_stack" || k === "stack") return _stackComp
+                    if (k === "plus" || k === "pair" || k === "axis_stack" || k === "stack")
+                        return _groupComp
                     return _tagComp
                 }
                 onLoaded: {
                     item.node = Qt.binding(function() { return _wrap.node })
+                    if (_wrap.node && _ed.isGroup(_wrap.node))
+                        _ed.ensureMemberOffsets(_wrap.node)
                 }
+            }
+        }
+    }
+
+    Component {
+        id: _groupComp
+        Item {
+            id: _grp
+            property var node: ({ members: [] })
+            implicitWidth: { _ed.tick; return Math.max(8, childrenRect.width) }
+            implicitHeight: { _ed.tick; return Math.max(8, childrenRect.height) }
+            width: implicitWidth
+            height: implicitHeight
+            Repeater {
+                model: { _ed.tick; return (_grp.node && _grp.node.members) ? _grp.node.members.length : 0 }
+                delegate: Loader {
+                    required property int index
+                    x: {
+                        _ed.tick
+                        var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
+                        return m ? ((m.ox || 0) * _ed.width) : 0
+                    }
+                    y: {
+                        _ed.tick
+                        var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
+                        return m ? ((m.oy || 0) * _ed.height) : 0
+                    }
+                    sourceComponent: _mini
+                    onLoaded: {
+                        item.node = Qt.binding(function() { return _grp.node })
+                        item.memberIndex = index
+                        item.hwId = Qt.binding(function() {
+                            var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
+                            return m && m.hwId ? m.hwId : 0
+                        })
+                        item.leafKind = Qt.binding(function() {
+                            return (_grp.node && _grp.node.kind === "axis_stack") ? "axis" : "btn"
+                        })
+                    }
+                }
+            }
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -5
+                z: -1
+                radius: 8
+                color: "transparent"
+                border.width: _ed.groupEditId === (_grp.node && _grp.node.id) ? 1 : 0
+                border.color: "#38BDF8"
             }
         }
     }
@@ -1027,7 +1183,9 @@ Item {
         Rectangle {
             property int hwId: 0
             property var node: ({})
-            property bool on: _ed.litOf("btn", hwId)
+            property int memberIndex: -1
+            property string leafKind: "btn"
+            property bool on: _ed.litOf(leafKind, hwId)
             implicitWidth: { _ed.tick; return t.implicitWidth + Math.max(10, (node.chipSize || 18) * 0.55) }
             implicitHeight: { _ed.tick; return _ed.chipH(node) }
             radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node)) }
@@ -1038,10 +1196,11 @@ Item {
             }
             border.color: {
                 _ed.tick
+                if (_ed.groupEditId === node.id && _ed.selectedMember === memberIndex) return "#38BDF8"
                 if (_ed.isSelected(node.id)) return "#FBBF24"
                 return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
             }
-            border.width: { _ed.tick; return (_ed.isSelected(node.id) || _ed.chipIsHollow(node)) ? 2 : 1 }
+            border.width: { _ed.tick; return (_ed.isSelected(node.id) || _ed.chipIsHollow(node) || (_ed.groupEditId === node.id && _ed.selectedMember === memberIndex)) ? 2 : 1 }
             Text {
                 id: t
                 anchors.centerIn: parent
@@ -1050,7 +1209,7 @@ Item {
                     return parent.on && node.highlight ? (node.hlText || "#BBF7D0") : (node.textColor || "#E4E4E7")
                 }
                 font.pixelSize: { _ed.tick; return node.fontSize || 10 }
-                text: { _ed.tick; return hwId + " → " + _ed.destOf("btn", hwId) }
+                text: { _ed.tick; return (leafKind === "axis" ? "A" : "") + hwId + " → " + _ed.destOf(leafKind, hwId) }
             }
         }
     }
@@ -1180,6 +1339,9 @@ Item {
         Keys.onPressed: (e) => {
             if (e.key === Qt.Key_Backspace) {
                 _ed.deleteSelection()
+            } else if (e.key === Qt.Key_Escape) {
+                _ed.endGroupEdit()
+                e.accepted = true
             }
         }
 
@@ -1187,13 +1349,25 @@ Item {
             forceActiveFocus()
             var hit = _ed.hitTest(m.x, m.y)
             var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
-            if (m.button === Qt.RightButton && hit.kind === "spine") {
-                var n = _ed.nodeAt(hit.id)
-                if (n && n.spines) {
-                    n.spines.splice(hit.spine, 1)
-                    _ed.selectedSpine = -1
-                    _ed.bump()
+            if (m.button === Qt.RightButton) {
+                if (hit.kind === "spine") {
+                    var n = _ed.nodeAt(hit.id)
+                    if (n && n.spines) {
+                        n.spines.splice(hit.spine, 1)
+                        _ed.selectedSpine = -1
+                        _ed.bump()
+                    }
+                    return
                 }
+                if (hit.kind === "chip" || hit.kind === "member" || hit.kind === "hot") {
+                    if (hit.id)
+                        _ed.setSelection([hit.id])
+                    _ctx.nodeId = hit.id
+                    _ctx.popup()
+                    return
+                }
+                _ctx.nodeId = ""
+                _ctx.popup()
                 return
             }
             if (hit.kind === "line" && !shift) {
@@ -1212,6 +1386,22 @@ Item {
                     var fr = { type: "free", fx: ep.x / Math.max(1, width), fy: ep.y / Math.max(1, height) }
                     if (hit.kind === "to") ne.to = fr
                     else ne.from = fr
+                }
+                _ed.bump()
+                return
+            }
+            if (hit.kind === "member") {
+                _ed.setSelection([hit.id])
+                _ed.selectedId = hit.id
+                _ed.selectedMember = hit.member
+                _ed.selectedSpine = -1
+                _ed.dragKind = "member"
+                _ed.dragMember = hit.member
+                var nm = _ed.nodeAt(hit.id)
+                if (nm && nm.members && nm.members[hit.member]) {
+                    var mm = nm.members[hit.member]
+                    _ed.dragOffX = m.x - (nm.chipFx + (mm.ox || 0)) * width
+                    _ed.dragOffY = m.y - (nm.chipFy + (mm.oy || 0)) * height
                 }
                 _ed.bump()
                 return
@@ -1342,6 +1532,36 @@ Item {
         visible: _ed.interactive
         color: "#A1A1AA"
         font.pixelSize: 10
-        text: "Grid snap in the toolbar. Alt-drag to ignore snap. Shift-click or drag-box to multi-select."
+        text: "Right-click a group to Edit group and move members. Esc ends group edit."
+    }
+
+    Menu {
+        id: _ctx
+        property string nodeId: ""
+        MenuItem {
+            text: "Edit group"
+            enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
+            visible: _ed.groupEditId !== _ctx.nodeId
+            onTriggered: _ed.beginGroupEdit(_ctx.nodeId)
+        }
+        MenuItem {
+            text: "Done editing group"
+            visible: _ctx.nodeId !== "" && _ed.groupEditId === _ctx.nodeId
+            onTriggered: _ed.endGroupEdit()
+        }
+        MenuItem {
+            text: "Ungroup"
+            enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
+            onTriggered: {
+                _ed.setSelection([_ctx.nodeId])
+                _ed.ungroupSelection()
+            }
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: "Group selected"
+            enabled: _ed.canGroup()
+            onTriggered: _ed.groupSelection()
+        }
     }
 }
