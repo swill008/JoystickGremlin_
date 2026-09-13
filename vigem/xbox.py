@@ -161,9 +161,24 @@ def _trigger_to_byte(value: float) -> int:
 def _as_hat(value: Any) -> HatDirection:
     if isinstance(value, HatDirection):
         return value
+    if value is None:
+        return HatDirection.Center
+    if isinstance(value, bool):
+        return HatDirection.North if value else HatDirection.Center
     if isinstance(value, tuple):
-        return HatDirection.to_enum(value)
-    return HatDirection.to_enum(str(value))
+        try:
+            return HatDirection.to_enum(value)
+        except Exception:
+            return HatDirection.Center
+    text = str(value).strip().lower()
+    if text in {"", "false", "none", "center", "0", "off"}:
+        return HatDirection.Center
+    if text in {"true", "1", "on"}:
+        return HatDirection.North
+    try:
+        return HatDirection.to_enum(text)
+    except Exception:
+        return HatDirection.Center
 
 
 class XboxPad:

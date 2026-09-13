@@ -61,7 +61,7 @@ class MapToXboxFunctor(AbstractFunctor):
                 pad.apply(target, pressed)
             else:
                 pad.apply(target, value.current)
-        except XboxError as exc:
+        except Exception as exc:
             _LOG.error("Map to Xbox failed: %s", exc)
 
 
