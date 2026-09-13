@@ -62,6 +62,14 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 - 11-15: 11 up, 13 down, 14 left, 12 right, 15 center
 - 16-20: 16 up, 18 down, 19 left, 17 right, 20 center
 
+## Chip zones
+
+Label order only. Do not use this section to change nx/ny.
+
+- Left, top to bottom: H1, 11-15, 3, 6-10, 16-20. A1-A3 anchored low in the left pane beside the shaft.
+- Right, top to bottom: 4, 21/22, 1/2, 5.
+- Bottom, left to right: 28, 27, 29, 25/26, A4, 23/24.
+
 ## Do not
 
 - Do not measure nx/ny from a window screenshot.
