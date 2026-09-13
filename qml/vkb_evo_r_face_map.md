@@ -66,8 +66,9 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 
 Label order only. Do not use this section to change nx/ny.
 
-- Left, top to bottom: H1, 11-15, 3, 6-10, 16-20. A1-A3 anchored low in the left pane beside the shaft.
-- Right, top to bottom: 4, 21/22, 1/2, 5.
+Chips hug the photo and sit at hotspot Y so leaders stay near-horizontal. 5-ways stay plus groups (do not split).
+- Left, top to bottom by target Y (no cross): H1, 11-15, 6-10, 3. Then 16-20 at the wheel. A1-A3 at the gimbal.
+- Right, top to bottom: 4, 21/22, 1/2 at the closed grip. 5 at the lower white.
 - Bottom, left to right: 28, 27, 29, 25/26, A4, 23/24.
 
 ## Do not

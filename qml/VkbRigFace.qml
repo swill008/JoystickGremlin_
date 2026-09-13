@@ -23,6 +23,7 @@ Item {
     readonly property real _ph: _img.paintedHeight
     readonly property real _ox: (_img.width - _pw) * 0.5
     readonly property real _oy: (_img.height - _ph) * 0.5
+    readonly property real _layoutTok: _pw + _ph + _ox + _oy + width + height
 
     function photoPt(nx, ny) {
         return _img.mapToItem(_face, _ox + nx * _pw, _oy + ny * _ph)
@@ -75,6 +76,34 @@ Item {
         var x = side === "right" ? item.width : (side === "left" ? 0 : item.width * 0.5)
         var y = side === "top" ? 0 : item.height * 0.5
         return item.mapToItem(_face, x, y)
+    }
+
+    // Place a chip column at the photo's ny so the leader stays near-horizontal.
+    function followY(pane, ny, h) {
+        if (!pane || _ph < 8) {
+            return 0
+        }
+        var p = photoPt(0.5, ny)
+        var loc = pane.mapFromItem(_face, 0, p.y)
+        var y = loc.y - h * 0.5
+        if (y < 0) {
+            y = 0
+        }
+        if (y + h > pane.height) {
+            y = Math.max(0, pane.height - h)
+        }
+        return y
+    }
+
+    function below(item, gap, pane, ny, h) {
+        var y = followY(pane, ny, h)
+        if (item) {
+            y = Math.max(y, item.y + item.height + gap)
+        }
+        if (pane && y + h > pane.height) {
+            y = Math.max(0, pane.height - h)
+        }
+        return y
     }
 
     Repeater {
@@ -165,6 +194,8 @@ Item {
 
         implicitWidth: _g.implicitWidth
         implicitHeight: _g.implicitHeight
+        width: implicitWidth
+        height: implicitHeight
 
         Grid {
             id: _g
@@ -185,49 +216,73 @@ Item {
         }
     }
 
-    // Chip zones (not hotspots). Dots stay on qml/vkb_evo_r_face_map.md JPEG pixels.
-    // L: H1, 11-15, 3, 6-10, 16-20, A1-A3 low by the shaft.
-    // R: 4, 21/22, 1/2, 5.
-    // B: 28, 27, 29, 25/26, A4, 23/24.
+    // Chip zones hug the photo at hotspot Y. 5-ways stay plus groups.
+    // Head stack order follows target Y so leaders do not cross:
+    // H1, 11-15, 6-10, 3. Then 16-20 at the wheel. A1-A3 at the gimbal.
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 8
-        spacing: 8
+        spacing: 4
 
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 8
+            spacing: 6
 
             Item {
-                Layout.preferredWidth: 300
-                Layout.maximumWidth: 300
+                id: _leftPane
+                Layout.preferredWidth: 280
+                Layout.maximumWidth: 280
                 Layout.fillHeight: true
                 clip: true
 
                 Column {
-                    id: _left
-                    anchors.top: parent.top
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    id: _leftHead
+                    anchors.right: parent.right
+                    anchors.rightMargin: 2
                     spacing: 6
-                    width: 292
+                    y: {
+                        _face._layoutTok
+                        return _face.followY(_leftPane, 0.210, height)
+                    }
+                    onYChanged: _lines.requestPaint()
+                    onHeightChanged: _lines.requestPaint()
 
-                    Tag { id: _h1; kind: "hat"; hwId: 1; prefix: "H"; anchors.horizontalCenter: parent.horizontalCenter }
-                    HatPlus { id: _p1115; up: 11; down: 13; leftId: 14; rightId: 12; center: 15; anchors.horizontalCenter: parent.horizontalCenter }
-                    Tag { id: _b3; hwId: 3; anchors.horizontalCenter: parent.horizontalCenter }
-                    HatPlus { id: _p610; up: 6; down: 8; leftId: 9; rightId: 7; center: 10; anchors.horizontalCenter: parent.horizontalCenter }
-                    HatPlus { id: _p1620; up: 16; down: 18; leftId: 19; rightId: 17; center: 20; anchors.horizontalCenter: parent.horizontalCenter }
+                    Tag { id: _h1; kind: "hat"; hwId: 1; prefix: "H"; anchors.right: parent.right }
+                    HatPlus { id: _p1115; up: 11; down: 13; leftId: 14; rightId: 12; center: 15; anchors.right: parent.right }
+                    HatPlus { id: _p610; up: 6; down: 8; leftId: 9; rightId: 7; center: 10; anchors.right: parent.right }
+                    Tag { id: _b3; hwId: 3; anchors.right: parent.right }
+                }
+
+                HatPlus {
+                    id: _p1620
+                    anchors.right: parent.right
+                    anchors.rightMargin: 2
+                    up: 16; down: 18; leftId: 19; rightId: 17; center: 20
+                    y: {
+                        _face._layoutTok
+                        _leftHead.y
+                        _leftHead.height
+                        return _face.below(_leftHead, 10, _leftPane, 0.370, height)
+                    }
+                    onYChanged: _lines.requestPaint()
                 }
 
                 Column {
                     id: _axes
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 4
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.right: parent.right
+                    anchors.rightMargin: 2
                     spacing: 3
-                    Tag { kind: "axis"; hwId: 1; prefix: "A" }
-                    Tag { kind: "axis"; hwId: 2; prefix: "A" }
-                    Tag { kind: "axis"; hwId: 3; prefix: "A" }
+                    y: {
+                        _face._layoutTok
+                        _p1620.y
+                        _p1620.height
+                        return _face.below(_p1620, 10, _leftPane, 0.575, height)
+                    }
+                    onYChanged: _lines.requestPaint()
+                    Tag { kind: "axis"; hwId: 1; prefix: "A"; anchors.right: parent.right }
+                    Tag { kind: "axis"; hwId: 2; prefix: "A"; anchors.right: parent.right }
+                    Tag { kind: "axis"; hwId: 3; prefix: "A"; anchors.right: parent.right }
                 }
             }
 
@@ -249,38 +304,64 @@ Item {
                 }
             }
 
-            Column {
-                id: _right
+            Item {
+                id: _rightPane
                 Layout.preferredWidth: 160
                 Layout.maximumWidth: 160
                 Layout.fillHeight: true
-                spacing: 6
+                clip: true
 
-                Tag { id: _b4; hwId: 4 }
                 Column {
-                    id: _p2122
-                    spacing: 3
-                    Tag { hwId: 21 }
-                    Tag { hwId: 22 }
+                    id: _rightGrip
+                    anchors.left: parent.left
+                    anchors.leftMargin: 2
+                    spacing: 6
+                    y: {
+                        _face._layoutTok
+                        return _face.followY(_rightPane, 0.276, height)
+                    }
+                    onYChanged: _lines.requestPaint()
+                    onHeightChanged: _lines.requestPaint()
+
+                    Tag { id: _b4; hwId: 4 }
+                    Column {
+                        id: _p2122
+                        spacing: 3
+                        Tag { hwId: 21 }
+                        Tag { hwId: 22 }
+                    }
+                    Column {
+                        id: _p12
+                        spacing: 3
+                        Tag { hwId: 1 }
+                        Tag { hwId: 2 }
+                    }
                 }
-                Column {
-                    id: _p12
-                    spacing: 3
-                    Tag { hwId: 1 }
-                    Tag { hwId: 2 }
+
+                Tag {
+                    id: _b5
+                    hwId: 5
+                    anchors.left: parent.left
+                    anchors.leftMargin: 2
+                    y: {
+                        _face._layoutTok
+                        _rightGrip.y
+                        _rightGrip.height
+                        return _face.below(_rightGrip, 10, _rightPane, 0.420, height)
+                    }
+                    onYChanged: _lines.requestPaint()
                 }
-                Tag { id: _b5; hwId: 5 }
             }
         }
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 52
+            Layout.preferredHeight: 48
 
             Row {
                 id: _bottom
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 16
+                spacing: 14
 
                 Tag { id: _b28; hwId: 28; anchors.verticalCenter: parent.verticalCenter }
                 Tag { id: _b27; hwId: 27; anchors.verticalCenter: parent.verticalCenter }
@@ -331,8 +412,8 @@ Item {
             // Pixels from qml/vkb_evo_r_face_map.md on JPEG 899x920.
             stroke(_h1, 0.345, 0.180, "right")
             stroke(_p1115, 0.425, 0.182, "right")
-            stroke(_b3, 0.346, 0.254, "right")
             stroke(_p610, 0.423, 0.237, "right")
+            stroke(_b3, 0.346, 0.254, "right")
             stroke(_p1620, 0.400, 0.370, "right")
             stroke(_axes, 0.429, 0.575, "right")
             stroke(_b4, 0.613, 0.247, "left")
