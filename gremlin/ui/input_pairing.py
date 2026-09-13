@@ -9,6 +9,7 @@ from PySide6 import QtCore
 
 import dill
 from gremlin import device_initialization, event_handler, shared_state
+from gremlin.signal import signal
 from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
 
@@ -60,19 +61,60 @@ def _maps_for_item(item) -> list[tuple[int, object, int]]:
         if root is None:
             continue
         for action in _walk_actions(root):
-            if getattr(action, "tag", "") != "map-to-vjoy":
-                continue
-            try:
-                out.append(
-                    (
-                        int(action.vjoy_device_id),
-                        getattr(action, "vjoy_input_type", None),
-                        int(action.vjoy_input_id),
+            tag = getattr(action, "tag", "")
+            if tag == "map-to-vjoy":
+                try:
+                    out.append(
+                        (
+                            int(action.vjoy_device_id),
+                            getattr(action, "vjoy_input_type", None),
+                            int(action.vjoy_input_id),
+                        )
                     )
-                )
-            except Exception:
-                continue
+                except Exception:
+                    continue
+            elif tag == "map-to-xbox":
+                # Count as mapped so ViewerDeviceModel includes the device.
+                try:
+                    out.append((int(getattr(action, "xbox_device_id", 1)), None, 0))
+                except Exception:
+                    out.append((1, None, 0))
     return out
+
+
+def _dest_labels_for_item(item) -> list[str]:
+    labels: list[str] = []
+    if item is None:
+        return labels
+    for seq in getattr(item, "action_sequences", []) or []:
+        root = getattr(seq, "root_action", None)
+        if root is None:
+            continue
+        for action in _walk_actions(root):
+            tag = getattr(action, "tag", "")
+            if tag == "map-to-vjoy":
+                try:
+                    vjoy_id = int(action.vjoy_device_id)
+                    vtype = getattr(action, "vjoy_input_type", None)
+                    vinput = int(action.vjoy_input_id)
+                except Exception:
+                    continue
+                if vtype == InputType.JoystickAxis:
+                    dest = AXIS_LABELS.get(vinput, f"A{vinput}")
+                elif vtype == InputType.JoystickHat:
+                    dest = f"H{vinput}"
+                else:
+                    dest = f"B{vinput}"
+                labels.append(f"vJoy {vjoy_id} {dest}")
+            elif tag == "map-to-xbox":
+                try:
+                    xid = int(getattr(action, "xbox_device_id", 1))
+                except Exception:
+                    xid = 1
+                target = getattr(action, "xbox_target", None)
+                pretty = getattr(target, "label", None) or str(target or "").replace("_", " ")
+                labels.append(f"Xbox {xid} {pretty}")
+    return labels
 
 
 def _items_for_guid(guid: str):
@@ -108,7 +150,7 @@ def _device_name(guid: str) -> str:
 
 def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
     rows: list[dict] = []
-    seen: set[tuple] = set()
+    seen: set[int] = set()
     for item in _items_for_guid(guid):
         if getattr(item, "input_type", None) != input_type:
             continue
@@ -116,33 +158,34 @@ def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
             identifier = int(item.input_id)
         except Exception:
             continue
-        for vjoy_id, vtype, vinput in _maps_for_item(item):
-            key = (identifier, vjoy_id, vinput)
-            if key in seen:
-                continue
-            seen.add(key)
-            if input_type == InputType.JoystickAxis:
-                src = AXIS_LABELS.get(identifier, f"A{identifier}")
-            elif input_type == InputType.JoystickHat:
-                src = f"H{identifier}"
-            else:
-                src = str(identifier)
-            if vtype == InputType.JoystickAxis:
-                dest = AXIS_LABELS.get(int(vinput), f"A{vinput}")
-            elif vtype == InputType.JoystickHat:
-                dest = f"H{vinput}"
-            else:
-                dest = f"B{vinput}"
-            rows.append(
-                {
-                    "identifier": identifier,
-                    "label": src,
-                    "vjoyId": int(vjoy_id),
-                    "vjoyInput": int(vinput),
-                    "vjoyLabel": f"vJoy {vjoy_id} {dest}",
-                    "vjoyGuid": _vjoy_guid(vjoy_id),
-                }
-            )
+        dests = _dest_labels_for_item(item)
+        vjoy_maps = [
+            m for m in _maps_for_item(item)
+            if m[1] is not None
+        ]
+        if not dests and not vjoy_maps:
+            continue
+        if identifier in seen:
+            continue
+        seen.add(identifier)
+        if input_type == InputType.JoystickAxis:
+            src = AXIS_LABELS.get(identifier, f"A{identifier}")
+        elif input_type == InputType.JoystickHat:
+            src = f"H{identifier}"
+        else:
+            src = str(identifier)
+        vjoy_id = int(vjoy_maps[0][0]) if vjoy_maps else 0
+        vinput = int(vjoy_maps[0][2]) if vjoy_maps else 0
+        rows.append(
+            {
+                "identifier": identifier,
+                "label": src,
+                "vjoyId": vjoy_id,
+                "vjoyInput": vinput,
+                "vjoyLabel": " + ".join(dests) if dests else "",
+                "vjoyGuid": _vjoy_guid(vjoy_id) if vjoy_id else "",
+            }
+        )
     rows.sort(key=lambda row: (row["identifier"], row["vjoyId"], row["vjoyInput"]))
     return rows
 
@@ -164,6 +207,10 @@ class _MappedModel(QtCore.QAbstractListModel):
         self._input_type = input_type
         self._guid = ""
         self._rows: list[dict] = []
+        try:
+            signal.profileChanged.connect(self._reload)
+        except Exception:
+            pass
 
     def _reload(self) -> None:
         self.beginResetModel()
