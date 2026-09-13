@@ -326,6 +326,7 @@ class XboxProxy(metaclass=SingletonMetaclass):
             "dpad_down": _btn(XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN),
             "dpad_left": _btn(XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT),
             "dpad_right": _btn(XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT),
+            "dpad": 1.0 if buttons & _DPAD_MASK else 0.0,
         }
 
     def reset(self) -> None:

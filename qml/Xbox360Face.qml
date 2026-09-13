@@ -50,7 +50,6 @@ Item {
         z: 4
     }
 
-    // Centered overlay: nx/ny are control centers on the photo.
     component Hotspot: Rectangle {
         property real nx
         property real ny
@@ -130,10 +129,10 @@ Item {
         }
     }
 
-    Hotspot { nx: 0.325; ny: 0.685; nw: 0.04; nh: 0.045; lit: on("dpad_up"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
-    Hotspot { nx: 0.325; ny: 0.765; nw: 0.04; nh: 0.045; lit: on("dpad_down"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
-    Hotspot { nx: 0.285; ny: 0.725; nw: 0.04; nh: 0.045; lit: on("dpad_left"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
-    Hotspot { nx: 0.365; ny: 0.725; nw: 0.04; nh: 0.045; lit: on("dpad_right"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+    Hotspot { nx: 0.36; ny: 0.69; nw: 0.04; nh: 0.045; lit: on("dpad_up"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+    Hotspot { nx: 0.36; ny: 0.77; nw: 0.04; nh: 0.045; lit: on("dpad_down"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+    Hotspot { nx: 0.32; ny: 0.73; nw: 0.04; nh: 0.045; lit: on("dpad_left"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+    Hotspot { nx: 0.40; ny: 0.73; nw: 0.04; nh: 0.045; lit: on("dpad_right"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
 
     Hotspot { nx: 0.50; ny: 0.575; nw: 0.11; nh: 0.11 * _pw / _ph; lit: on("guide"); glow: "#4ade80"; fill: "#00000000"; radius: width / 2 }
 
@@ -142,6 +141,6 @@ Item {
     Hotspot { nx: 0.723; ny: 0.638; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("a"); glow: "#4ade80"; fill: "#994ade80"; radius: width / 2 }
     Hotspot { nx: 0.672; ny: 0.583; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("x"); glow: "#60a5fa"; fill: "#9960a5fa"; radius: width / 2 }
 
-    Hotspot { nx: 0.43; ny: 0.575; nw: 0.05; nh: 0.035; lit: on("back"); glow: "#86EFAC"; fill: "#9922C55E"; radius: 6 }
-    Hotspot { nx: 0.57; ny: 0.575; nw: 0.05; nh: 0.035; lit: on("start"); glow: "#86EFAC"; fill: "#9922C55E"; radius: 6 }
+    Hotspot { nx: 0.445; ny: 0.565; nw: 0.045; nh: 0.032; lit: on("back"); glow: "#86EFAC"; fill: "#9922C55E"; radius: 6 }
+    Hotspot { nx: 0.555; ny: 0.565; nw: 0.045; nh: 0.032; lit: on("start"); glow: "#86EFAC"; fill: "#9922C55E"; radius: 6 }
 }
