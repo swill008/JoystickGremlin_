@@ -19,7 +19,10 @@ function createComponent(componentSpec)
     }
     else if((component.status == Component.Ready))
     {
-        let window = component.createObject(_root, {"x": 100, "y": 300});
+        // Parent null + transientParent null: independent top-level window.
+        // Stays up when the main Joystick Gremlin window is minimized.
+        let window = component.createObject(null, {"x": 100, "y": 300});
+        window.transientParent = null
         window.closing.connect(function() {
             if (_openWindows[componentSpec] === window) {
                 delete _openWindows[componentSpec]
