@@ -28,9 +28,11 @@ Window {
     readonly property string stockImage: "qml/images/vkb_gladiator_rig.jpg"
     property int _nameTick: 0
     property bool editing: false
+    property var liveNodes: []
     property var workNodes: []
     property string photoOverride: ""
     property string storedImage: stockImage
+    property string liveImage: stockImage
     property string selectedId: ""
     property var selectedNode: null
 
@@ -83,14 +85,27 @@ Window {
         photoOverride = _hw.imageUrl(storedImage)
     }
 
-    function enterEdit() {
+    function loadLive() {
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
-        if (!doc) {
+        if (!doc || !doc.nodes || !doc.nodes.length) {
+            return false
+        }
+        liveNodes = JSON.parse(JSON.stringify(doc.nodes))
+        liveImage = doc.image && doc.image.length ? doc.image : stockImage
+        applyImage(liveImage)
+        return true
+    }
+
+    function enterEdit() {
+        if (!liveNodes.length) {
+            loadLive()
+        }
+        if (!liveNodes.length) {
             return
         }
-        workNodes = JSON.parse(JSON.stringify(doc.nodes))
-        applyImage(doc.image || stockImage)
+        workNodes = JSON.parse(JSON.stringify(liveNodes))
+        applyImage(liveImage)
         editing = true
         selectedId = ""
         selectedNode = null
@@ -99,19 +114,23 @@ Window {
     function saveEdit() {
         var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
         var nodes = (ed && ed.nodes && ed.nodes.length) ? ed.nodes : workNodes
+        var image = storedImage.length ? storedImage : stockImage
         var doc = {
             kind: "control.hardware",
             device: targetName,
-            image: storedImage.length ? storedImage : stockImage,
+            image: image,
             imageWidth: 899,
             imageHeight: 920,
             nodes: nodes
         }
         if (_hw.save(targetName, JSON.stringify(doc))) {
+            liveNodes = JSON.parse(JSON.stringify(nodes))
+            liveImage = image
+            applyImage(liveImage)
             editing = false
+            workNodes = []
             selectedId = ""
             selectedNode = null
-            photoOverride = ""
         }
     }
 
@@ -120,8 +139,7 @@ Window {
         workNodes = []
         selectedId = ""
         selectedNode = null
-        photoOverride = ""
-        storedImage = stockImage
+        applyImage(liveImage)
     }
 
     function currentNode() {
@@ -142,6 +160,7 @@ Window {
         if (_devices) {
             _devices.reload()
         }
+        loadLive()
     }
 
     FileDialog {
@@ -257,7 +276,7 @@ Window {
                             title: _buttonMap.displayName(guid, name)
                             pairLabel: pairLabel
                             editing: _buttonMap.editing
-                            editorNodes: _buttonMap.workNodes
+                            editorNodes: _buttonMap.editing ? _buttonMap.workNodes : _buttonMap.liveNodes
                             photoOverride: _buttonMap.photoOverride
 
                             Connections {
@@ -408,7 +427,7 @@ Window {
 
                     Item { Layout.fillHeight: true }
                     Label {
-                        text: "Live map still uses the lock file.\nSave writes control.hardware JSON."
+                        text: "Save is the live map.\nCancel drops this session."
                         color: "#71717A"
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
