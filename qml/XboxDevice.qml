@@ -36,8 +36,8 @@ Item {
             ComboBox {
                 id: _pad
                 model: [1, 2, 3, 4]
-                currentIndex: Math.max(0, _model.padId - 1)
-                onActivated: _model.padId = model[currentIndex]
+                currentIndex: Math.max(0, (_model ? _model.padId : 1) - 1)
+                onActivated: if (_model) _model.padId = model[currentIndex]
             }
 
             Item { Layout.fillWidth: true }
@@ -46,8 +46,8 @@ Item {
         Label {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
-            text: _model.statusText
-            color: _model.available ? Style.foreground : "#F97316"
+            text: _model ? _model.statusText : ""
+            color: (_model && _model.available) ? Style.foreground : "#F97316"
             opacity: 0.9
         }
 
