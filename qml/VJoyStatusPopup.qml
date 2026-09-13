@@ -62,7 +62,8 @@ Popup {
             model: [
                 {"key": "keyboard", "label": "Keyboard"},
                 {"key": "logical", "label": "Logical Device"},
-                {"key": "osc", "label": "OSC"}
+                {"key": "osc", "label": "OSC"},
+                {"key": "xbox", "label": "Xbox 360 Controller"}
             ]
 
             CheckBox {
