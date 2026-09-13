@@ -329,10 +329,10 @@ Item {
             }
 
             // Pixels from qml/vkb_evo_r_face_map.md on JPEG 899x920.
-            stroke(_h1, 0.356, 0.183, "right")
-            stroke(_p1115, 0.434, 0.183, "right")
+            stroke(_h1, 0.345, 0.180, "right")
+            stroke(_p1115, 0.425, 0.182, "right")
             stroke(_b3, 0.346, 0.254, "right")
-            stroke(_p610, 0.434, 0.237, "right")
+            stroke(_p610, 0.423, 0.237, "right")
             stroke(_p1620, 0.400, 0.370, "right")
             stroke(_axes, 0.429, 0.575, "right")
             stroke(_b4, 0.613, 0.247, "left")
