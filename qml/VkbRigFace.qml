@@ -246,8 +246,8 @@ Item {
                 Layout.maximumWidth: 280
                 Layout.fillHeight: true
                 clip: true
-                opacity: 0
-                enabled: false
+                opacity: _editorLoader.item ? 0 : 1
+                enabled: !_editorLoader.item
 
                 Column {
                     id: _leftHead
@@ -335,8 +335,8 @@ Item {
                 Layout.maximumWidth: 160
                 Layout.fillHeight: true
                 clip: true
-                opacity: 0
-                enabled: false
+                opacity: _editorLoader.item ? 0 : 1
+                enabled: !_editorLoader.item
 
                 Column {
                     id: _rightGrip
@@ -384,8 +384,8 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 48
-            opacity: 0
-            enabled: false
+            opacity: _editorLoader.item ? 0 : 1
+            enabled: !_editorLoader.item
 
             Row {
                 id: _bottom
@@ -417,24 +417,30 @@ Item {
         anchors.fill: parent
         z: 5
         active: true
-        visible: true
+        visible: status === Loader.Ready
         source: "VkbRigEditor.qml"
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                console.warn("VkbRigEditor failed to load")
+            }
+        }
         onLoaded: {
             item.face = _face
-            item.nodes = _face.editorNodes
-            item.interactive = _face.editing
+            item.nodes = Qt.binding(function() { return _face.editorNodes })
+            item.interactive = Qt.binding(function() { return _face.editing })
+            Qt.callLater(function() {
+                if (_editorLoader.item)
+                    _editorLoader.item.bump()
+            })
         }
         Connections {
             target: _face
             function onEditorNodesChanged() {
-                if (_editorLoader.item) {
-                    _editorLoader.item.nodes = _face.editorNodes
+                if (_editorLoader.item)
                     _editorLoader.item.bump()
-                }
             }
             function onEditingChanged() {
                 if (_editorLoader.item) {
-                    _editorLoader.item.interactive = _face.editing
                     if (!_face.editing) {
                         _editorLoader.item.selectedId = ""
                         _editorLoader.item.selectedSpine = -1
@@ -449,7 +455,7 @@ Item {
         id: _lines
         anchors.fill: parent
         z: 1
-        visible: false
+        visible: !_editorLoader.item
         onPaint: {
             var ctx = getContext("2d")
             ctx.reset()

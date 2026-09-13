@@ -31,8 +31,8 @@ Window {
     property var liveNodes: []
     property var workNodes: []
     property string photoOverride: ""
-    property string storedImage: stockImage
-    property string liveImage: stockImage
+    property string storedImage: ""
+    property string liveImage: ""
     property string selectedId: ""
     property var selectedNode: null
 
@@ -156,11 +156,14 @@ Window {
         selectedId = n ? n.id : ""
     }
 
-    Component.onCompleted: () => {
+    Component.onCompleted: {
         if (_devices) {
             _devices.reload()
         }
-        loadLive()
+        if (!loadLive()) {
+            liveImage = stockImage
+            storedImage = stockImage
+        }
     }
 
     FileDialog {

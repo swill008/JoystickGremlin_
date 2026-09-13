@@ -20,12 +20,12 @@ Item {
     property bool seeded: false
     property bool interactive: false
 
-    signal nodesChanged()
+    // Do NOT declare signal nodesChanged — property var nodes already has it.
     signal selectedChanged()
 
     function bump() {
         tick++
-        nodesChanged()
+        selectedChanged()
         _lines.requestPaint()
     }
 
@@ -247,7 +247,9 @@ Item {
                     if (k === "pair" || k === "axis_stack") return _stackComp
                     return _tagComp
                 }
-                onLoaded: item.node = modelData
+                onLoaded: {
+                    item.node = Qt.binding(function() { return modelData })
+                }
             }
         }
     }
@@ -325,6 +327,7 @@ Item {
     Component {
         id: _plusComp
         Grid {
+            id: _plus
             property var node: ({ members: [] })
             columns: 3
             rows: 3
@@ -338,29 +341,18 @@ Item {
                 }
                 return 0
             }
-            Item { width: 8; height: 8 }
-            Loader {
-                sourceComponent: _mini
-                onLoaded: { item.hwId = parent.mem("up"); item.node = parent.node }
+            function bindMini(item, role) {
+                item.node = Qt.binding(function() { return _plus.node })
+                item.hwId = Qt.binding(function() { return _plus.mem(role) })
             }
             Item { width: 8; height: 8 }
-            Loader {
-                sourceComponent: _mini
-                onLoaded: { item.hwId = parent.mem("left"); item.node = parent.node }
-            }
-            Loader {
-                sourceComponent: _mini
-                onLoaded: { item.hwId = parent.mem("center"); item.node = parent.node }
-            }
-            Loader {
-                sourceComponent: _mini
-                onLoaded: { item.hwId = parent.mem("right"); item.node = parent.node }
-            }
+            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "up") }
             Item { width: 8; height: 8 }
-            Loader {
-                sourceComponent: _mini
-                onLoaded: { item.hwId = parent.mem("down"); item.node = parent.node }
-            }
+            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "left") }
+            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "center") }
+            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "right") }
+            Item { width: 8; height: 8 }
+            Loader { sourceComponent: _mini; onLoaded: _plus.bindMini(item, "down") }
             Item { width: 8; height: 8 }
         }
     }
@@ -393,6 +385,29 @@ Item {
                 font.pixelSize: { _ed.tick; return node.fontSize || 10 }
                 text: { _ed.tick; return hwId + " → " + _ed.destOf("btn", hwId) }
             }
+        }
+    }
+
+    onWidthChanged: _lines.requestPaint()
+    onHeightChanged: _lines.requestPaint()
+    onTickChanged: _lines.requestPaint()
+    onNodesChanged: {
+        seeded = false
+        _lines.requestPaint()
+        _seedTimer.restart()
+    }
+
+    Timer {
+        id: _seedTimer
+        interval: 80
+        repeat: false
+        onTriggered: {
+            var list = _ed.nodes || []
+            for (var i = 0; i < list.length; i++) {
+                _ed.ensureMidSpine(list[i])
+            }
+            _ed.seeded = true
+            _ed.bump()
         }
     }
 
