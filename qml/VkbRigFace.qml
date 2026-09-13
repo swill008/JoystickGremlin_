@@ -228,10 +228,8 @@ Item {
         }
     }
 
-    // Chip zones hug the photo at hotspot Y. 5-ways stay plus groups.
-    // Head stack order follows target Y so leaders do not cross:
-    // H1, 11-15, 6-10, 3. Then 16-20 at the wheel. A1-A3 at the gimbal.
-    // Edit mode hides live chips but keeps pane space so the JPEG does not jump.
+    // Photo keeps gutter panes so chipFx/chipFy match the JSON window fractions.
+    // Live chips and leaders come from qml/maps/vkb_evo_r.json via VkbRigEditor.
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 8
@@ -248,8 +246,8 @@ Item {
                 Layout.maximumWidth: 280
                 Layout.fillHeight: true
                 clip: true
-                opacity: _face.editing ? 0 : 1
-                enabled: !_face.editing
+                opacity: 0
+                enabled: false
 
                 Column {
                     id: _leftHead
@@ -309,13 +307,25 @@ Item {
                 Image {
                     id: _img
                     anchors.fill: parent
-                    source: (_face.editing && _face.photoOverride.length) ? _face.photoOverride : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+                    source: _face.photoOverride.length ? _face.photoOverride : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     cache: true
-                    onStatusChanged: _lines.requestPaint()
-                    onPaintedWidthChanged: _lines.requestPaint()
-                    onPaintedHeightChanged: _lines.requestPaint()
+                    onStatusChanged: {
+                        _lines.requestPaint()
+                        if (_editorLoader.item)
+                            _editorLoader.item.bump()
+                    }
+                    onPaintedWidthChanged: {
+                        _lines.requestPaint()
+                        if (_editorLoader.item)
+                            _editorLoader.item.bump()
+                    }
+                    onPaintedHeightChanged: {
+                        _lines.requestPaint()
+                        if (_editorLoader.item)
+                            _editorLoader.item.bump()
+                    }
                 }
             }
 
@@ -325,8 +335,8 @@ Item {
                 Layout.maximumWidth: 160
                 Layout.fillHeight: true
                 clip: true
-                opacity: _face.editing ? 0 : 1
-                enabled: !_face.editing
+                opacity: 0
+                enabled: false
 
                 Column {
                     id: _rightGrip
@@ -374,8 +384,8 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 48
-            opacity: _face.editing ? 0 : 1
-            enabled: !_face.editing
+            opacity: 0
+            enabled: false
 
             Row {
                 id: _bottom
@@ -406,18 +416,29 @@ Item {
         id: _editorLoader
         anchors.fill: parent
         z: 5
-        active: _face.editing
-        visible: _face.editing
+        active: true
+        visible: true
         source: "VkbRigEditor.qml"
         onLoaded: {
             item.face = _face
             item.nodes = _face.editorNodes
+            item.interactive = _face.editing
         }
         Connections {
             target: _face
             function onEditorNodesChanged() {
                 if (_editorLoader.item) {
                     _editorLoader.item.nodes = _face.editorNodes
+                    _editorLoader.item.bump()
+                }
+            }
+            function onEditingChanged() {
+                if (_editorLoader.item) {
+                    _editorLoader.item.interactive = _face.editing
+                    if (!_face.editing) {
+                        _editorLoader.item.selectedId = ""
+                        _editorLoader.item.selectedSpine = -1
+                    }
                     _editorLoader.item.bump()
                 }
             }
@@ -428,7 +449,7 @@ Item {
         id: _lines
         anchors.fill: parent
         z: 1
-        visible: !_face.editing
+        visible: false
         onPaint: {
             var ctx = getContext("2d")
             ctx.reset()
@@ -480,9 +501,25 @@ Item {
 
     Connections {
         target: _face
-        function onWidthChanged() { _lines.requestPaint() }
-        function onHeightChanged() { _lines.requestPaint() }
-        function onLiveStampChanged() { _lines.requestPaint() }
-        function onDestTickChanged() { _lines.requestPaint() }
+        function onWidthChanged() {
+            _lines.requestPaint()
+            if (_editorLoader.item)
+                _editorLoader.item.bump()
+        }
+        function onHeightChanged() {
+            _lines.requestPaint()
+            if (_editorLoader.item)
+                _editorLoader.item.bump()
+        }
+        function onLiveStampChanged() {
+            _lines.requestPaint()
+            if (_editorLoader.item)
+                _editorLoader.item.bump()
+        }
+        function onDestTickChanged() {
+            _lines.requestPaint()
+            if (_editorLoader.item)
+                _editorLoader.item.bump()
+        }
     }
 }
