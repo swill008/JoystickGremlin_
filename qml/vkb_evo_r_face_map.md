@@ -37,9 +37,9 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 24 | En2 right knob down | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
 | 25 | En1 left knob up | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
 | 26 | En1 left knob down | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
-| 27 | Middle base pad | Base | 590 | 528 | 0.656 | 0.574 | pads |
-| 28 | Left base pad | Base | 570 | 535 | 0.634 | 0.581 | pads |
-| 29 | Right base pad | Base | 610 | 522 | 0.678 | 0.567 | pads |
+| 27 | Middle base pad | Base | 622 | 630 | 0.692 | 0.685 | pads |
+| 28 | Left base pad | Base | 583 | 642 | 0.648 | 0.698 | pads |
+| 29 | Right base pad | Base | 658 | 622 | 0.732 | 0.676 | pads |
 
 ## Hats
 
