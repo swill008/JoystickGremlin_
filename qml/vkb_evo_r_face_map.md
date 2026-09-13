@@ -31,8 +31,8 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 18 | that wheel, down | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 19 | that wheel, left | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 20 | that wheel, center | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
-| 21 | Grey upper paddle push | Right | 628 | 250 | 0.699 | 0.272 | pair 21/22 |
-| 22 | Grey upper paddle pull | Right | 628 | 250 | 0.699 | 0.272 | pair 21/22 |
+| 21 | Grey upper paddle / flipper push | Right | 590 | 258 | 0.656 | 0.280 | pair 21/22 |
+| 22 | Grey upper paddle / flipper pull | Right | 590 | 258 | 0.656 | 0.280 | pair 21/22 |
 | 23 | En2 right knob up | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
 | 24 | En2 right knob down | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
 | 25 | En1 left knob up | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
@@ -70,6 +70,6 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 - Button 3 is the red head button centroid (311,234), not the 5-way to its right.
 - Button 4 is the white cap centroid (551,227), not the gray above the grip.
 - Button 5 is the lower-grip white centroid (544,386), not the space to its right.
-- 21/22 is the grey upper paddle stub right of the cap (628,250), not the red trigger.
+- 21/22 is the grey flipper face right of the red trigger (590,258). Not the red trigger. Not past the flipper tip in the background.
 - 1/2 is the right-grip red trigger centroid (555,277).
 - 28/27/29 are 3x-zoom centers on the three squares (586,648 / 604,640 / 618,636). Do not space them equally — perspective packs 29 left of En2.
