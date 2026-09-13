@@ -24,6 +24,16 @@ Window {
 
     title: "Joystick Button Map — VKBsim Gladiator EVO R"
 
+    onClosing: (e) => {
+        if (_allowClose || !editing)
+            return
+        if (!isDirty())
+            return
+        e.accepted = false
+        _leaveDlg.kind = "close"
+        _leaveDlg.open()
+    }
+
     readonly property string targetName: "VKBsim Gladiator EVO R"
     readonly property string stockImage: "qml/images/vkb_gladiator_rig.jpg"
     property int _nameTick: 0
@@ -35,6 +45,7 @@ Window {
     property string liveImage: ""
     property string selectedId: ""
     property var selectedNode: null
+    property bool _allowClose: false
 
     ViewerDeviceModel { id: _devices }
     HardwareProfile { id: _hw }
@@ -134,12 +145,58 @@ Window {
         }
     }
 
-    function cancelEdit() {
+    function editorNodesNow() {
+        var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
+        if (ed && ed.nodes && ed.nodes.length)
+            return ed.nodes
+        return workNodes
+    }
+
+    function isDirty() {
+        if (!editing)
+            return false
+        var image = storedImage.length ? storedImage : stockImage
+        var live = liveImage.length ? liveImage : stockImage
+        try {
+            return JSON.stringify({ image: image, nodes: editorNodesNow() }) !== JSON.stringify({ image: live, nodes: liveNodes })
+        } catch (e) {
+            return true
+        }
+    }
+
+    function discardEdit() {
         editing = false
         workNodes = []
         selectedId = ""
         selectedNode = null
         applyImage(liveImage)
+    }
+
+    function cancelEdit() {
+        if (isDirty()) {
+            _leaveDlg.kind = "cancel"
+            _leaveDlg.open()
+            return
+        }
+        discardEdit()
+    }
+
+    function confirmLeaveSave() {
+        saveEdit()
+        _leaveDlg.close()
+        if (!editing && _leaveDlg.kind === "close") {
+            _allowClose = true
+            close()
+        }
+    }
+
+    function confirmLeaveDiscard() {
+        discardEdit()
+        _leaveDlg.close()
+        if (_leaveDlg.kind === "close") {
+            _allowClose = true
+            close()
+        }
     }
 
     function currentNode() {
@@ -164,6 +221,53 @@ Window {
             liveImage = stockImage
             storedImage = stockImage
         }
+    }
+
+    Dialog {
+        id: _leaveDlg
+        property string kind: "cancel"
+        title: "Unsaved changes"
+        modal: true
+        anchors.centerIn: parent
+        width: 440
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 12
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: "#FBBF24"
+                text: "Caution: you have unsaved editor changes. If you leave without Save, this work will be lost."
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: "#A1A1AA"
+                text: "Save writes the control.hardware profile and the live map. Discard restores the last saved map."
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+                Button {
+                    text: "Stay"
+                    onClicked: _leaveDlg.close()
+                }
+                Button {
+                    text: "Discard"
+                    onClicked: _buttonMap.confirmLeaveDiscard()
+                }
+                Button {
+                    text: "Save"
+                    highlighted: true
+                    onClicked: _buttonMap.confirmLeaveSave()
+                }
+            }
+        }
+
+        onRejected: close()
     }
 
     FileDialog {
