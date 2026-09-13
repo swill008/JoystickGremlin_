@@ -10,7 +10,7 @@ from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
-from gremlin import event_handler, util
+from gremlin import event_handler, signal, util
 from gremlin.base_classes import AbstractActionData, AbstractFunctor, UserFeedback, Value
 from gremlin.profile import Library
 from gremlin.types import ActionProperty, InputType, PropertyType
@@ -29,6 +29,13 @@ def _default_target(behavior: InputType) -> XboxTarget:
     if behavior == InputType.JoystickHat:
         return XboxTarget.DPAD
     return XboxTarget.A
+
+
+def _read_xml_property(node: ElementTree.Element, name: str, ptype: PropertyType, default):
+    try:
+        return util.read_property(node, name, ptype)
+    except Exception:
+        return default
 
 
 class MapToXboxFunctor(AbstractFunctor):
@@ -84,6 +91,14 @@ class MapToXboxModel(ActionModel):
             self._parent_sequence_index.index
         ).actionBehavior
 
+    def _notify_item(self) -> None:
+        try:
+            signal.signal.inputItemChanged.emit(
+                self._binding_model.parent().enumeration_index
+            )
+        except Exception:
+            pass
+
     def _get_xbox_device_id(self) -> int:
         return self._data.xbox_device_id
 
@@ -93,6 +108,7 @@ class MapToXboxModel(ActionModel):
             return
         self._data.xbox_device_id = ident
         self.xboxDeviceIdChanged.emit()
+        self._notify_item()
 
     def _get_xbox_target(self) -> str:
         return self._data.xbox_target.value
@@ -103,6 +119,7 @@ class MapToXboxModel(ActionModel):
             return
         self._data.xbox_target = parsed
         self.xboxTargetChanged.emit()
+        self._notify_item()
 
     def _get_xbox_target_kind(self) -> str:
         return self._data.xbox_target.kind
@@ -115,6 +132,7 @@ class MapToXboxModel(ActionModel):
             return
         self._data.button_inverted = button_inverted
         self.buttonInvertedChanged.emit()
+        self._notify_item()
 
     def _get_target_choices(self) -> list:
         return [{"value": item.value, "label": item.label} for item in XboxTarget]
@@ -171,15 +189,23 @@ class MapToXboxData(AbstractActionData):
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:
         self._id = util.read_action_id(node)
-        self.xbox_device_id = util.read_property(
-            node, "xbox-device-id", PropertyType.Int
+        ident = _read_xml_property(node, "xbox-device-id", PropertyType.Int, 1)
+        try:
+            ident = int(ident)
+        except Exception:
+            ident = 1
+        self.xbox_device_id = max(1, min(4, ident))
+        raw_target = _read_xml_property(
+            node, "xbox-target", PropertyType.String, _default_target(self.behavior_type).value
         )
-        self.xbox_target = XboxTarget.from_string(
-            util.read_property(node, "xbox-target", PropertyType.String)
+        try:
+            self.xbox_target = XboxTarget.from_string(str(raw_target))
+        except Exception:
+            self.xbox_target = _default_target(self.behavior_type)
+        inverted = _read_xml_property(
+            node, "button-inverted", PropertyType.Bool, False
         )
-        self.button_inverted = util.read_property(
-            node, "button-inverted", PropertyType.Bool
-        )
+        self.button_inverted = bool(inverted)
 
     @override
     def _to_xml(self) -> ElementTree.Element:
@@ -203,10 +229,12 @@ class MapToXboxData(AbstractActionData):
 
     @override
     def user_feedback(self) -> List[UserFeedback]:
+        # Warning only. An Error makes is_valid() false and Library.to_xml()
+        # silently drops the action, so Xbox binds never reached profile.xml.
         if not XboxProxy().available():
             return [
                 UserFeedback(
-                    UserFeedback.FeedbackType.Error,
+                    UserFeedback.FeedbackType.Warning,
                     "ViGEmBus / ViGEmClient.dll not available. "
                     "Install ViGEmBus 1.22.0 and place ViGEmClient.dll in vigem/.",
                 )
