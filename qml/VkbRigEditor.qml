@@ -37,6 +37,11 @@ Item {
     property int selectedSeg: -1
     property int dragLeader: 0
 
+    TextMetrics {
+        id: _chipTm
+        font.pixelSize: 10
+    }
+
     // Do NOT declare signal nodesChanged — property var nodes already has it.
     signal selectedChanged()
 
@@ -448,7 +453,7 @@ Item {
         var ew = Math.max(1, _ed.width)
         var eh = Math.max(1, _ed.height)
         if (!mem.length)
-            return { minx: 0, miny: 0, width: 24, height: 18 }
+            return Qt.rect(0, 0, 24, 18)
         var minx = 1e9
         var miny = 1e9
         var maxx = -1e9
@@ -461,12 +466,9 @@ Item {
             maxx = Math.max(maxx, x + chipWGuess(n, mem[i]))
             maxy = Math.max(maxy, y + chipH(n))
         }
-        return {
-            minx: minx,
-            miny: miny,
-            width: Math.max(8, maxx - minx),
-            height: Math.max(8, maxy - miny)
-        }
+        // Qt.rect so QML bindings can read .x/.y/.width/.height (plain
+        // JS objects drop .minx in wrap bindings — box stayed at origin).
+        return Qt.rect(minx, miny, Math.max(8, maxx - minx), Math.max(8, maxy - miny))
     }
 
     function groupSize(n) {
@@ -933,7 +935,13 @@ Item {
         var leaf = (n && n.kind === "axis_stack") ? "axis" : "btn"
         var d = destOf(leaf, mem && mem.hwId ? mem.hwId : 0)
         var s = ((leaf === "axis") ? "A" : "") + String(mem && mem.hwId ? mem.hwId : 0) + " → " + d
-        return Math.max(36, s.length * fs * 0.62 + Math.max(10, ((n && n.chipSize) || 18) * 0.55))
+        var pad = Math.max(10, ((n && n.chipSize) || 18) * 0.55)
+        _chipTm.font.pixelSize = fs
+        _chipTm.text = s
+        var tw = _chipTm.width
+        if (!(tw > 0))
+            tw = s.length * fs * 0.52
+        return Math.max(36, tw + pad)
     }
 
     function memberHit(n, mx, my) {
@@ -1171,7 +1179,7 @@ Item {
                     return 0
                 var x = node.chipFx * _ed.width
                 if (_ed.isGroup(node))
-                    x += _ed.groupBounds(node).minx
+                    x += _ed.groupBounds(node).x
                 return x
             }
             y: {
@@ -1180,7 +1188,7 @@ Item {
                     return 0
                 var y = node.chipFy * _ed.height
                 if (_ed.isGroup(node))
-                    y += _ed.groupBounds(node).miny
+                    y += _ed.groupBounds(node).y
                 return y
             }
             z: 3
@@ -1205,9 +1213,9 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                anchors.margins: -3
+                anchors.margins: -4
                 z: -1
-                radius: 6
+                radius: 8
                 color: "transparent"
                 border.width: 2
                 border.color: {
@@ -1253,14 +1261,14 @@ Item {
                         var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
                         if (!m)
                             return 0
-                        return (m.ox || 0) * _ed.width - _ed.groupBounds(_grp.node).minx
+                        return (m.ox || 0) * _ed.width - _ed.groupBounds(_grp.node).x
                     }
                     y: {
                         _ed.tick
                         var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
                         if (!m)
                             return 0
-                        return (m.oy || 0) * _ed.height - _ed.groupBounds(_grp.node).miny
+                        return (m.oy || 0) * _ed.height - _ed.groupBounds(_grp.node).y
                     }
                     sourceComponent: _mini
                     onLoaded: {
