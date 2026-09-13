@@ -359,17 +359,11 @@ Window {
     function resetLayout() {
         workNodes = []
         var e = _ed()
-        if (e) {
-            if (e.clearLayout)
-                e.clearLayout()
-            else {
-                e.nodes = []
-                e.bump()
-            }
-        }
+        if (e)
+            e.clearLayout()
         selectedId = ""
         selectedNode = null
-        refreshReservoir()
+        Qt.callLater(refreshReservoir)
     }
 
     function nodeIsGroup(n) {

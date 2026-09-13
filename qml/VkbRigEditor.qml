@@ -53,7 +53,6 @@ Item {
     }
 
     function clearLayout() {
-        nodes = []
         setSelection([])
         groupEditId = ""
         selectedMember = -1
