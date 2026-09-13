@@ -73,14 +73,14 @@ Item {
     Hotspot { nx: 0.74; ny: 0.175; nw: 0.16; nh: 0.09; lit: on("right_shoulder"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 8 }
 
     Hotspot {
-        nx: 0.295; ny: 0.30; nw: 0.075
-        nh: 0.12 + 0.06 * Math.min(1.0, Math.max(0.0, v("left_trigger")))
+        nx: 0.235; ny: 0.295; nw: 0.055
+        nh: 0.11 + 0.05 * Math.min(1.0, Math.max(0.0, v("left_trigger")))
         lit: v("left_trigger") > 0.08
         glow: "#38BDF8"; fill: "#8838BDF8"; radius: 6
     }
     Hotspot {
-        nx: 0.735; ny: 0.30; nw: 0.075
-        nh: 0.12 + 0.06 * Math.min(1.0, Math.max(0.0, v("right_trigger")))
+        nx: 0.775; ny: 0.295; nw: 0.055
+        nh: 0.11 + 0.05 * Math.min(1.0, Math.max(0.0, v("right_trigger")))
         lit: v("right_trigger") > 0.08
         glow: "#38BDF8"; fill: "#8838BDF8"; radius: 6
     }
