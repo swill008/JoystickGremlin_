@@ -49,6 +49,7 @@ Window {
     property bool _allowClose: false
     property var resItems: []
     property bool resUnusedOnly: false
+    property int resTick: 0
 
     ViewerDeviceModel { id: _devices }
     HardwareProfile { id: _hw }
@@ -102,7 +103,7 @@ Window {
     function loadLive() {
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
-        if (!doc || !doc.nodes || !doc.nodes.length) {
+        if (!doc || !doc.nodes) {
             return false
         }
         liveNodes = JSON.parse(JSON.stringify(doc.nodes))
@@ -112,14 +113,9 @@ Window {
     }
 
     function enterEdit() {
-        if (!liveNodes.length) {
-            loadLive()
-        }
-        if (!liveNodes.length) {
-            return
-        }
-        workNodes = JSON.parse(JSON.stringify(liveNodes))
-        applyImage(liveImage)
+        loadLive()
+        workNodes = JSON.parse(JSON.stringify(liveNodes || []))
+        applyImage(liveImage.length ? liveImage : stockImage)
         editing = true
         selectedId = ""
         selectedNode = null
@@ -128,7 +124,11 @@ Window {
 
     function saveEdit() {
         var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
-        var nodes = (ed && ed.nodes && ed.nodes.length) ? ed.nodes : workNodes
+        var nodes = []
+        if (ed && ed.nodes)
+            nodes = ed.nodes
+        else if (workNodes)
+            nodes = workNodes
         var image = storedImage.length ? storedImage : stockImage
         var doc = {
             kind: "control.hardware",
@@ -274,6 +274,49 @@ Window {
         onRejected: close()
     }
 
+    Dialog {
+        id: _resetDlg
+        title: "Reset layout"
+        modal: true
+        anchors.centerIn: parent
+        width: 460
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 12
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: "#FBBF24"
+                text: "Clear every chip, leader, and hotspot from the map?"
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: "#A1A1AA"
+                text: "Joystick mappings are not changed. Pressed buttons still light in the reservoir. Save after reset if you want the empty layout to become the live map."
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+                Button {
+                    text: "Keep map"
+                    onClicked: _resetDlg.close()
+                }
+                Button {
+                    text: "Reset layout"
+                    highlighted: true
+                    onClicked: {
+                        _buttonMap.resetLayout()
+                        _resetDlg.close()
+                    }
+                }
+            }
+        }
+        onRejected: close()
+    }
+
     function _ed() {
         return _cardLoader.item ? _cardLoader.item.editorItem : null
     }
@@ -301,6 +344,22 @@ Window {
             e.setSelection([row.placedId])
         else
             e.addChiplet(row.kind, row.hwId)
+        refreshReservoir()
+    }
+
+    function resetLayout() {
+        workNodes = []
+        var e = _ed()
+        if (e) {
+            if (e.clearLayout)
+                e.clearLayout()
+            else {
+                e.nodes = []
+                e.bump()
+            }
+        }
+        selectedId = ""
+        selectedNode = null
         refreshReservoir()
     }
 
@@ -373,6 +432,11 @@ Window {
                     text: "Cancel"
                     visible: editing
                     onClicked: cancelEdit()
+                }
+                Button {
+                    text: "Reset"
+                    visible: editing
+                    onClicked: _resetDlg.open()
                 }
                 ToolSeparator { visible: editing }
                 Button {
@@ -539,6 +603,7 @@ Window {
                         Connections {
                             target: _card.editorItem
                             function onSelectedChanged() { _buttonMap.applySelected() }
+                            function onTickChanged() { _buttonMap.resTick++ }
                             function onNodesChanged() {
                                 _buttonMap.applySelected()
                                 _buttonMap.refreshReservoir()
@@ -909,6 +974,10 @@ Window {
                                 refreshReservoir()
                             }
                         }
+                        Button {
+                            text: "Reset layout"
+                            onClicked: _resetDlg.open()
+                        }
                     }
                     Flickable {
                         Layout.fillWidth: true
@@ -926,17 +995,24 @@ Window {
                                 delegate: Rectangle {
                                     required property var modelData
                                     property bool onMap: !!(modelData && modelData.placed)
+                                    property bool lit: {
+                                        var t = _buttonMap.resTick
+                                        var e = _ed()
+                                        if (!e || !modelData)
+                                            return false
+                                        return e.litOf(modelData.kind, modelData.hwId)
+                                    }
                                     implicitWidth: Math.min(280, _chipLab.implicitWidth + 20)
                                     implicitHeight: 28
                                     radius: 14
-                                    color: onMap ? "#18181B" : "#052E16"
-                                    border.color: onMap ? "#3F3F46" : "#16A34A"
-                                    border.width: 1
+                                    color: lit ? "#14532D" : (onMap ? "#18181B" : "#052E16")
+                                    border.color: lit ? "#22C55E" : (onMap ? "#3F3F46" : "#16A34A")
+                                    border.width: lit ? 2 : 1
                                     Text {
                                         id: _chipLab
                                         anchors.centerIn: parent
                                         text: modelData ? modelData.friendly : ""
-                                        color: onMap ? "#A1A1AA" : "#BBF7D0"
+                                        color: lit ? "#BBF7D0" : (onMap ? "#A1A1AA" : "#D1FAE5")
                                         font.pixelSize: 11
                                     }
                                     ToolTip.visible: _resHover.containsMouse

@@ -56,6 +56,17 @@ Item {
         selectedChanged()
     }
 
+    function clearLayout() {
+        nodes = []
+        setSelection([])
+        groupEditId = ""
+        selectedMember = -1
+        selectedLeader = 0
+        selectedSeg = -1
+        dragKind = ""
+        bump()
+    }
+
     function reportCursor(wx, wy, inside) {
         if (!face || !face.setAutoCursor)
             return
