@@ -49,6 +49,8 @@ Window {
     property bool _allowClose: false
     property var resItems: []
     property int resTick: 0
+    property string poolFilter: ""
+    onPoolFilterChanged: refreshReservoir()
     property bool poolDrag: false
     property string poolKind: "btn"
     property int poolHw: 0
@@ -329,12 +331,24 @@ Window {
     function refreshReservoir() {
         var e = _ed()
         var all = e ? e.catalog() : []
+        var q = (poolFilter || "").trim().toLowerCase()
         var u = []
         for (var i = 0; i < all.length; i++) {
-            if (!all[i].placed)
-                u.push(all[i])
+            var row = all[i]
+            if (row.placed)
+                continue
+            if (q.length) {
+                var hay = ((row.friendly || "") + " " + (row.fullName || "") + " " + (row.kind || "") + " " + String(row.hwId)).toLowerCase()
+                if (hay.indexOf(q) < 0)
+                    continue
+            }
+            u.push(row)
         }
         resItems = u
+    }
+
+    function clearPoolFilter() {
+        poolFilter = ""
     }
 
     function dropPool(vx, vy) {
@@ -665,12 +679,12 @@ Window {
 
                 Item {
                     id: _poolFloat
-                    visible: editing && resItems.length > 0
+                    visible: editing
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.margins: 12
-                    height: Math.min(132, _resFlow.implicitHeight + 16)
+                    height: 50 + Math.min(120, Math.max(28, _resFlow.implicitHeight))
                     z: 30
                     Rectangle {
                         anchors.fill: parent
@@ -678,68 +692,115 @@ Window {
                         color: "#CC0C0C0E"
                         border.color: "#3F3F46"
                     }
-                    Flickable {
+                    ColumnLayout {
+                        id: _poolCol
                         anchors.fill: parent
                         anchors.margins: 8
-                        clip: true
-                        contentWidth: width
-                        contentHeight: _resFlow.implicitHeight
-                        boundsBehavior: Flickable.StopAtBounds
-                        Flow {
-                            id: _resFlow
-                            width: parent.width
+                        spacing: 6
+                        RowLayout {
+                            Layout.fillWidth: true
                             spacing: 6
-                            Repeater {
-                                model: resItems
-                                delegate: Rectangle {
-                                    required property var modelData
-                                    property bool lit: {
-                                        var t = _buttonMap.resTick
-                                        var e = _ed()
-                                        if (!e || !modelData)
-                                            return false
-                                        return e.litOf(modelData.kind, modelData.hwId)
+                            Item {
+                                Layout.fillWidth: true
+                                implicitHeight: 28
+                                TextField {
+                                    id: _poolSearch
+                                    anchors.fill: parent
+                                    placeholderText: "Filter"
+                                    text: poolFilter
+                                    rightPadding: 26
+                                    onTextChanged: {
+                                        if (poolFilter !== text)
+                                            poolFilter = text
                                     }
-                                    implicitWidth: Math.min(260, _chipLab.implicitWidth + 18)
-                                    implicitHeight: 26
-                                    radius: 13
-                                    color: lit ? "#14532D" : "#18181B"
-                                    border.color: lit ? "#22C55E" : "#3F3F46"
-                                    border.width: lit ? 2 : 1
-                                    opacity: (poolDrag && poolHw === (modelData ? modelData.hwId : -1) && poolKind === (modelData ? modelData.kind : "")) ? 0.35 : 1
-                                    Text {
-                                        id: _chipLab
-                                        anchors.centerIn: parent
-                                        text: modelData ? modelData.friendly : ""
-                                        color: lit ? "#BBF7D0" : "#E4E4E7"
-                                        font.pixelSize: 11
-                                    }
+                                }
+                                Text {
+                                    visible: poolFilter.length > 0
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "×"
+                                    color: "#A1A1AA"
+                                    font.pixelSize: 16
+                                    z: 2
                                     MouseArea {
                                         anchors.fill: parent
-                                        cursorShape: Qt.OpenHandCursor
-                                        onPressed: (m) => {
-                                            if (!modelData)
-                                                return
-                                            poolKind = modelData.kind
-                                            poolHw = modelData.hwId
-                                            poolName = modelData.friendly
-                                            poolDrag = true
-                                            var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
-                                            poolX = p.x
-                                            poolY = p.y
+                                        anchors.margins: -6
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: clearPoolFilter()
+                                    }
+                                }
+                            }
+                            Button {
+                                text: "Reset"
+                                implicitHeight: 28
+                                onClicked: clearPoolFilter()
+                            }
+                        }
+                        Flickable {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(28, _resFlow.implicitHeight)
+                            Layout.maximumHeight: 120
+                            clip: true
+                            contentWidth: width
+                            contentHeight: _resFlow.implicitHeight
+                            boundsBehavior: Flickable.StopAtBounds
+                            Flow {
+                                id: _resFlow
+                                width: parent.width
+                                spacing: 6
+                                Repeater {
+                                    model: resItems
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        property bool lit: {
+                                            var t = _buttonMap.resTick
+                                            var e = _ed()
+                                            if (!e || !modelData)
+                                                return false
+                                            return e.litOf(modelData.kind, modelData.hwId)
                                         }
-                                        onPositionChanged: (m) => {
-                                            if (!poolDrag)
-                                                return
-                                            var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
-                                            poolX = p.x
-                                            poolY = p.y
+                                        implicitWidth: Math.min(260, _chipLab.implicitWidth + 18)
+                                        implicitHeight: 26
+                                        radius: 13
+                                        color: lit ? "#14532D" : "#18181B"
+                                        border.color: lit ? "#22C55E" : "#3F3F46"
+                                        border.width: lit ? 2 : 1
+                                        opacity: (poolDrag && poolHw === (modelData ? modelData.hwId : -1) && poolKind === (modelData ? modelData.kind : "")) ? 0.35 : 1
+                                        Text {
+                                            id: _chipLab
+                                            anchors.centerIn: parent
+                                            text: modelData ? modelData.friendly : ""
+                                            color: lit ? "#BBF7D0" : "#E4E4E7"
+                                            font.pixelSize: 11
                                         }
-                                        onReleased: (m) => {
-                                            if (!poolDrag)
-                                                return
-                                            var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
-                                            dropPool(p.x, p.y)
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.OpenHandCursor
+                                            onPressed: (m) => {
+                                                if (!modelData)
+                                                    return
+                                                poolKind = modelData.kind
+                                                poolHw = modelData.hwId
+                                                poolName = modelData.friendly
+                                                poolDrag = true
+                                                var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
+                                                poolX = p.x
+                                                poolY = p.y
+                                            }
+                                            onPositionChanged: (m) => {
+                                                if (!poolDrag)
+                                                    return
+                                                var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
+                                                poolX = p.x
+                                                poolY = p.y
+                                            }
+                                            onReleased: (m) => {
+                                                if (!poolDrag)
+                                                    return
+                                                var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
+                                                dropPool(p.x, p.y)
+                                            }
                                         }
                                     }
                                 }
