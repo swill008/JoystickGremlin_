@@ -1435,6 +1435,9 @@ Item {
                     return 40
                 if (_ed.isGroup(node))
                     return _ed.groupSpanW(node)
+                var it = _body.item
+                if (it)
+                    return Math.max(8, it.implicitWidth)
                 return _ed.chipWGuess(node, node)
             }
             height: {
@@ -1443,12 +1446,17 @@ Item {
                     return 20
                 if (_ed.isGroup(node))
                     return _ed.groupSpanH(node)
+                var it = _body.item
+                if (it)
+                    return Math.max(8, it.implicitHeight)
                 return _ed.chipH(node)
             }
 
             Rectangle {
-                anchors.fill: parent
-                anchors.margins: -4
+                x: -4
+                y: -4
+                width: parent.width + 8
+                height: parent.height + 8
                 z: -1
                 radius: 8
                 color: "transparent"
@@ -1459,8 +1467,10 @@ Item {
                 }
             }
             Rectangle {
-                anchors.fill: parent
-                anchors.margins: -6
+                x: -6
+                y: -6
+                width: parent.width + 12
+                height: parent.height + 12
                 z: -1
                 radius: 8
                 color: "transparent"
@@ -1473,6 +1483,18 @@ Item {
 
             Loader {
                 id: _body
+                width: {
+                    _ed.tick
+                    if (_wrap.node && _ed.isGroup(_wrap.node))
+                        return _wrap.width
+                    return item ? item.implicitWidth : 0
+                }
+                height: {
+                    _ed.tick
+                    if (_wrap.node && _ed.isGroup(_wrap.node))
+                        return _wrap.height
+                    return item ? item.implicitHeight : 0
+                }
                 sourceComponent: {
                     var n = _wrap.node
                     if (!n) return _tagComp
