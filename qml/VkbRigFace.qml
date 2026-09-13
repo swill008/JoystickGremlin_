@@ -333,9 +333,9 @@ Item {
             stroke(_p12, 0.679, 0.272, "left")
             stroke(_b5, 0.640, 0.429, "left")
             stroke(_p2526, 0.621, 0.770, "top")
-            stroke(_b28, 0.634, 0.581, "top")
-            stroke(_b27, 0.656, 0.574, "top")
-            stroke(_b29, 0.678, 0.567, "top")
+            stroke(_b28, 0.648, 0.698, "top")
+            stroke(_b27, 0.692, 0.685, "top")
+            stroke(_b29, 0.732, 0.676, "top")
             stroke(_a4, 0.656, 0.770, "top")
             stroke(_p2324, 0.710, 0.770, "top")
         }
