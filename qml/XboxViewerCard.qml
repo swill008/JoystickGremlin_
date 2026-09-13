@@ -54,7 +54,7 @@ ColumnLayout {
         border.color: pairActive ? "#22C55E" : Style.accent
         border.width: pairActive ? 2 : 1
         radius: 6
-        clip: true
+        clip: false
 
         ColumnLayout {
             id: _inner
@@ -84,10 +84,19 @@ ColumnLayout {
                 }
             }
 
+            JGText {
+                visible: !pairActive && _xboxPads.count > 0
+                text: "Activate Gremlin to plug the virtual pad and light this face."
+                color: "#F97316"
+                font.pointSize: 10
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
             Item {
                 visible: _xboxPads.count > 0
                 Layout.fillWidth: true
-                Layout.preferredHeight: _faces.implicitHeight
+                Layout.preferredHeight: 580
                 Column {
                     id: _faces
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -171,8 +180,8 @@ ColumnLayout {
                             required property string xboxTarget
                             required property string xboxLabel
                             required property string xboxChip
-                            property bool hwOn: hwButton(identifier) > 0.5
-                            property bool xbOn: xb(xboxPad, xboxTarget) > 0.5
+                            property bool hwOn: buttonStamp >= 0 && hwButton(identifier) > 0.5
+                            property bool xbOn: xboxStamp >= 0 && xb(xboxPad, xboxTarget) > 0.5
                             width: 48; height: 18; radius: 3
                             color: Style.background
                             border.color: (hwOn || xbOn) ? "#22C55E" : Style.medColor
