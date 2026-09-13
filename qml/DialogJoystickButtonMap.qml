@@ -50,6 +50,10 @@ Window {
     MappedHatModel { id: hats1; guid: _buttonMap.guid1 }
     MappedHatModel { id: hats2; guid: _buttonMap.guid2 }
 
+    function _isVjoyName(name) {
+        return String(name || "").toLowerCase().indexOf("vjoy") === 0
+    }
+
     function pickDevice() {
         guid0 = ""; guid1 = ""; guid2 = ""
         if (!_devices || !_devices.listRows) {
@@ -60,20 +64,23 @@ Window {
         var fallback = []
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i]
-            if (!row || !row.mapped) {
+            if (!row || !row.guid) {
                 continue
             }
             var name = String(row.name || "")
-            if (/vkb|gladiator|evo|ste?cs|gunfighter/i.test(name)) {
-                picked.push(row.guid)
+            if (_isVjoyName(name) || name === "Keyboard" || name === "Logical Device" || name === "OSC") {
+                continue
+            }
+            if (/vkb|gladiator|evo|ste?cs|gunfighter|sem/i.test(name)) {
+                picked.push(String(row.guid))
             } else if (fallback.length < 3) {
-                fallback.push(row.guid)
+                fallback.push(String(row.guid))
             }
         }
         var use = picked.length ? picked : fallback
-        if (use.length > 0) guid0 = String(use[0] || "")
-        if (use.length > 1) guid1 = String(use[1] || "")
-        if (use.length > 2) guid2 = String(use[2] || "")
+        if (use.length > 0) guid0 = use[0]
+        if (use.length > 1) guid1 = use[1]
+        if (use.length > 2) guid2 = use[2]
     }
 
     function _dest(model, id) {
