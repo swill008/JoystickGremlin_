@@ -48,8 +48,13 @@ Window {
     property var selectedNode: null
     property bool _allowClose: false
     property var resItems: []
-    property bool resUnusedOnly: false
     property int resTick: 0
+    property bool poolDrag: false
+    property string poolKind: "btn"
+    property int poolHw: 0
+    property string poolName: ""
+    property real poolX: 0
+    property real poolY: 0
 
     ViewerDeviceModel { id: _devices }
     HardwareProfile { id: _hw }
@@ -324,10 +329,6 @@ Window {
     function refreshReservoir() {
         var e = _ed()
         var all = e ? e.catalog() : []
-        if (!resUnusedOnly) {
-            resItems = all
-            return
-        }
         var u = []
         for (var i = 0; i < all.length; i++) {
             if (!all[i].placed)
@@ -336,14 +337,22 @@ Window {
         resItems = u
     }
 
-    function pickReservoir(row) {
-        var e = _ed()
-        if (!e || !row)
+    function dropPool(vx, vy) {
+        var kind = poolKind
+        var hw = poolHw
+        poolDrag = false
+        var ed = _ed()
+        if (!ed)
             return
-        if (row.placed)
-            e.setSelection([row.placedId])
-        else
-            e.addChiplet(row.kind, row.hwId)
+        if (_poolFloat && _poolFloat.visible) {
+            var lp = _poolFloat.mapFromItem(_buttonMap.contentItem, vx, vy)
+            if (lp.x >= 0 && lp.y >= 0 && lp.x <= _poolFloat.width && lp.y <= _poolFloat.height)
+                return
+        }
+        var local = ed.mapFromItem(_buttonMap.contentItem, vx, vy)
+        if (local.x < 0 || local.y < 0 || local.x > ed.width || local.y > ed.height)
+            return
+        ed.addChiplet(kind, hw, local.x, local.y)
         refreshReservoir()
     }
 
@@ -561,14 +570,7 @@ Window {
             }
         }
 
-        SplitView {
-            orientation: Qt.Vertical
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-
         RowLayout {
-            SplitView.fillHeight: true
-            SplitView.minimumHeight: 220
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
@@ -639,6 +641,91 @@ Window {
                 QtObject {
                     id: _cardLoader
                     property var item: null
+                }
+
+                Item {
+                    id: _poolFloat
+                    visible: editing && resItems.length > 0
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.margins: 12
+                    height: Math.min(132, _resFlow.implicitHeight + 16)
+                    z: 30
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 12
+                        color: "#CC0C0C0E"
+                        border.color: "#3F3F46"
+                    }
+                    Flickable {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        clip: true
+                        contentWidth: width
+                        contentHeight: _resFlow.implicitHeight
+                        boundsBehavior: Flickable.StopAtBounds
+                        Flow {
+                            id: _resFlow
+                            width: parent.width
+                            spacing: 6
+                            Repeater {
+                                model: resItems
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    property bool lit: {
+                                        var t = _buttonMap.resTick
+                                        var e = _ed()
+                                        if (!e || !modelData)
+                                            return false
+                                        return e.litOf(modelData.kind, modelData.hwId)
+                                    }
+                                    implicitWidth: Math.min(260, _chipLab.implicitWidth + 18)
+                                    implicitHeight: 26
+                                    radius: 13
+                                    color: lit ? "#14532D" : "#18181B"
+                                    border.color: lit ? "#22C55E" : "#3F3F46"
+                                    border.width: lit ? 2 : 1
+                                    opacity: (poolDrag && poolHw === (modelData ? modelData.hwId : -1) && poolKind === (modelData ? modelData.kind : "")) ? 0.35 : 1
+                                    Text {
+                                        id: _chipLab
+                                        anchors.centerIn: parent
+                                        text: modelData ? modelData.friendly : ""
+                                        color: lit ? "#BBF7D0" : "#E4E4E7"
+                                        font.pixelSize: 11
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.OpenHandCursor
+                                        onPressed: (m) => {
+                                            if (!modelData)
+                                                return
+                                            poolKind = modelData.kind
+                                            poolHw = modelData.hwId
+                                            poolName = modelData.friendly
+                                            poolDrag = true
+                                            var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
+                                            poolX = p.x
+                                            poolY = p.y
+                                        }
+                                        onPositionChanged: (m) => {
+                                            if (!poolDrag)
+                                                return
+                                            var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
+                                            poolX = p.x
+                                            poolY = p.y
+                                        }
+                                        onReleased: (m) => {
+                                            if (!poolDrag)
+                                                return
+                                            var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
+                                            dropPool(p.x, p.y)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -940,97 +1027,27 @@ Window {
                 }
             }
         }
+    }
 
-            Rectangle {
-                id: _resDock
-                visible: editing
-                SplitView.preferredHeight: editing ? 250 : 0
-                SplitView.minimumHeight: editing ? 120 : 0
-                color: "#0C0C0E"
-                border.color: "#27272A"
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    spacing: 6
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Label {
-                            text: "Chiplet reservoir"
-                            font.bold: true
-                            color: "#E4E4E7"
-                        }
-                        Label {
-                            text: resItems.length + " shown · click unused to add, click placed to select"
-                            color: "#71717A"
-                            font.pixelSize: 11
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                        }
-                        CheckBox {
-                            text: "Unused only"
-                            checked: resUnusedOnly
-                            onToggled: {
-                                resUnusedOnly = checked
-                                refreshReservoir()
-                            }
-                        }
-                        Button {
-                            text: "Reset layout"
-                            onClicked: _resetDlg.open()
-                        }
-                    }
-                    Flickable {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
-                        contentWidth: width
-                        contentHeight: _resFlow.implicitHeight
-                        boundsBehavior: Flickable.StopAtBounds
-                        Flow {
-                            id: _resFlow
-                            width: parent.width
-                            spacing: 6
-                            Repeater {
-                                model: resItems
-                                delegate: Rectangle {
-                                    required property var modelData
-                                    property bool onMap: !!(modelData && modelData.placed)
-                                    property bool lit: {
-                                        var t = _buttonMap.resTick
-                                        var e = _ed()
-                                        if (!e || !modelData)
-                                            return false
-                                        return e.litOf(modelData.kind, modelData.hwId)
-                                    }
-                                    implicitWidth: Math.min(280, _chipLab.implicitWidth + 20)
-                                    implicitHeight: 28
-                                    radius: 14
-                                    color: lit ? "#14532D" : (onMap ? "#18181B" : "#052E16")
-                                    border.color: lit ? "#22C55E" : (onMap ? "#3F3F46" : "#16A34A")
-                                    border.width: lit ? 2 : 1
-                                    Text {
-                                        id: _chipLab
-                                        anchors.centerIn: parent
-                                        text: modelData ? modelData.friendly : ""
-                                        color: lit ? "#BBF7D0" : (onMap ? "#A1A1AA" : "#D1FAE5")
-                                        font.pixelSize: 11
-                                    }
-                                    ToolTip.visible: _resHover.containsMouse
-                                    ToolTip.text: modelData ? (modelData.fullName + (onMap ? "  ·  on map" : "  ·  click to add")) : ""
-                                    ToolTip.delay: 400
-                                    MouseArea {
-                                        id: _resHover
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: pickReservoir(modelData)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    Rectangle {
+        id: _poolGhost
+        parent: _buttonMap.contentItem
+        visible: poolDrag
+        z: 2000
+        width: Math.max(36, _ghostLab.implicitWidth + 18)
+        height: 26
+        radius: 13
+        x: poolX - width * 0.5
+        y: poolY - height * 0.5
+        color: "#14532D"
+        border.color: "#4ADE80"
+        border.width: 1
+        Text {
+            id: _ghostLab
+            anchors.centerIn: parent
+            text: poolName
+            color: "#BBF7D0"
+            font.pixelSize: 11
         }
     }
 

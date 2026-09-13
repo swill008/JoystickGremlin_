@@ -380,7 +380,7 @@ Item {
         return toPhoto(wx, wy)
     }
 
-    function addChiplet(kind, hwId) {
+    function addChiplet(kind, hwId, wx, wy) {
         kind = leafKind(kind)
         hwId = parseInt(hwId, 10)
         if (!(hwId > 0))
@@ -391,7 +391,11 @@ Item {
             bump()
             return
         }
-        var p = viewCenterPhoto()
+        var p
+        if (wx !== undefined && wy !== undefined && wx !== null && wy !== null)
+            p = toPhoto(wx, wy)
+        else
+            p = viewCenterPhoto()
         var st = _styleOf({})
         var n = {
             id: _uid(kind === "btn" ? "b" : kind.charAt(0)),
@@ -402,8 +406,8 @@ Item {
             friendly: defaultFriendly(kind, hwId),
             nx: Math.max(0.02, Math.min(0.98, p.x)),
             ny: Math.max(0.02, Math.min(0.98, p.y)),
-            chipFx: p.x < 0.5 ? 0.18 : 0.84,
-            chipFy: Math.max(0.08, Math.min(0.90, p.y)),
+            chipFx: Math.max(0.04, Math.min(0.92, p.x)),
+            chipFy: Math.max(0.04, Math.min(0.94, p.y)),
             pin: p.x < 0.5 ? "right" : "left",
             spines: [],
             curve: st.curve,
