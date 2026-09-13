@@ -41,3 +41,4 @@ Any change to rules is written here. Do not keep a second unofficial list.
     19.6 After any write to a large file, confirm: byte size, not PLACEHOLDER, and required symbols (for device.py: class Device, InputIdentifier, map-to-vjoy, and map-to-xbox when that token is expected). Committed size must match the patched size before saying it landed.
     19.7 If a large file is truncated, restore from the last known good commit first (device.py: e592376, 60033 bytes) then re-apply only the missing hunk. Do not layer patches on a stub.
     19.8 Small files stay on the GitHub connector as today.
+20. EVO R Button Map lock lives in qml/vkb_evo_r_face_map.md. Read that file before moving any face leader or plus. Update that file in the same commit as any hotspot change.
