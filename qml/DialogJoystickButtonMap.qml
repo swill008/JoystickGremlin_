@@ -408,7 +408,7 @@ Window {
     Menu {
         id: _groupMenu
         MenuItem { text: "Group selected"; onTriggered: { var e = _ed(); if (e) e.groupSelection() } }
-        MenuItem { text: "Ungroup"; onTriggered: { var e = _ed(); if (e) e.ungroupSelection() } }
+        MenuItem { text: "Break group"; onTriggered: { var e = _ed(); if (e) e.ungroupSelection() } }
         MenuSeparator {}
         MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
         MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
@@ -482,7 +482,7 @@ Window {
                             Menu {
                                 title: "Group"
                                 MenuItem { text: "Group selected"; onTriggered: { var e = _ed(); if (e) e.groupSelection() } }
-                                MenuItem { text: "Ungroup"; onTriggered: { var e = _ed(); if (e) e.ungroupSelection() } }
+                                MenuItem { text: "Break group"; onTriggered: { var e = _ed(); if (e) e.ungroupSelection() } }
                                 MenuSeparator {}
                                 MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
                                 MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
@@ -976,6 +976,19 @@ Window {
                     text: "Group"
                     implicitHeight: 24
                     onClicked: _groupMenu.popup()
+                }
+                Button {
+                    text: "Break group"
+                    implicitHeight: 24
+                    visible: nodeIsGroup(selectedNode)
+                    onClicked: {
+                        var e = _ed()
+                        if (e)
+                            e.ungroupSelection()
+                        applySelected()
+                        refreshReservoir()
+                        _chipPop.close()
+                    }
                 }
                 Button {
                     text: "Leader"
