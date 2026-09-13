@@ -13,11 +13,10 @@ Item {
     property var axes: null
     property var hats: null
 
-    // Photo lives in the center. Labels use full-face 0..1 so they stay in the gutters.
-    readonly property real _gutterL: 0.22
+    readonly property real _gutterL: 0.28
     readonly property real _gutterR: 0.22
-    readonly property real _gutterT: 0.02
-    readonly property real _gutterB: 0.18
+    readonly property real _gutterT: 0.04
+    readonly property real _gutterB: 0.20
 
     readonly property real _pw: _img.paintedWidth
     readonly property real _ph: _img.paintedHeight
@@ -49,8 +48,8 @@ Item {
     }
 
     function plusCell(hatAx, hatAy, cx, cy, dir) {
-        var dx = 0.095
-        var dy = 0.036
+        var dx = 0.078
+        var dy = 0.034
         var lx = cx
         var ly = cy
         if (dir === "up") ly = cy - dy
@@ -62,41 +61,41 @@ Item {
     }
 
     function pairCell(ax, ay, lx, ly0, which) {
-        var dy = 0.034
+        var dy = 0.032
         return {ax: ax, ay: ay, lx: lx, ly: ly0 + which * dy, line: which === 0, dot: which === 0}
     }
 
     function btnSpot(id) {
         var t = {
-            1:  pairCell(0.655, 0.259, 0.825, 0.300, 0),
-            2:  pairCell(0.655, 0.259, 0.825, 0.300, 1),
-            3:  {ax: 0.318, ay: 0.198, lx: 0.015, ly: 0.255},
-            4:  {ax: 0.618, ay: 0.168, lx: 0.825, ly: 0.070},
-            5:  {ax: 0.628, ay: 0.430, lx: 0.825, ly: 0.400},
-            6:  plusCell(0.392, 0.205, 0.110, 0.200, "up"),
-            7:  plusCell(0.392, 0.205, 0.110, 0.200, "right"),
-            8:  plusCell(0.392, 0.205, 0.110, 0.200, "down"),
-            9:  plusCell(0.392, 0.205, 0.110, 0.200, "left"),
-            10: plusCell(0.392, 0.205, 0.110, 0.200, "center"),
-            11: plusCell(0.448, 0.135, 0.110, 0.065, "up"),
-            12: plusCell(0.448, 0.135, 0.110, 0.065, "right"),
-            13: plusCell(0.448, 0.135, 0.110, 0.065, "down"),
-            14: plusCell(0.448, 0.135, 0.110, 0.065, "left"),
-            15: plusCell(0.448, 0.135, 0.110, 0.065, "center"),
-            16: plusCell(0.378, 0.365, 0.110, 0.355, "up"),
-            17: plusCell(0.378, 0.365, 0.110, 0.355, "right"),
-            18: plusCell(0.378, 0.365, 0.110, 0.355, "down"),
-            19: plusCell(0.378, 0.365, 0.110, 0.355, "left"),
-            20: plusCell(0.378, 0.365, 0.110, 0.355, "center"),
-            21: pairCell(0.688, 0.246, 0.825, 0.175, 0),
-            22: pairCell(0.688, 0.246, 0.825, 0.175, 1),
-            23: pairCell(0.668, 0.795, 0.825, 0.620, 0),
-            24: pairCell(0.668, 0.795, 0.825, 0.620, 1),
-            25: pairCell(0.582, 0.782, 0.015, 0.860, 0),
-            26: pairCell(0.582, 0.782, 0.015, 0.860, 1),
-            27: {ax: 0.598, ay: 0.698, lx: 0.500, ly: 0.835},
-            28: {ax: 0.558, ay: 0.708, lx: 0.320, ly: 0.835},
-            29: {ax: 0.638, ay: 0.688, lx: 0.680, ly: 0.835}
+            1:  pairCell(0.655, 0.259, 0.845, 0.250, 0),
+            2:  pairCell(0.655, 0.259, 0.845, 0.250, 1),
+            3:  {ax: 0.318, ay: 0.198, lx: 0.018, ly: 0.325},
+            4:  {ax: 0.618, ay: 0.168, lx: 0.845, ly: 0.055},
+            5:  {ax: 0.628, ay: 0.430, lx: 0.845, ly: 0.345},
+            6:  plusCell(0.392, 0.205, 0.118, 0.245, "up"),
+            7:  plusCell(0.392, 0.205, 0.118, 0.245, "right"),
+            8:  plusCell(0.392, 0.205, 0.118, 0.245, "down"),
+            9:  plusCell(0.392, 0.205, 0.118, 0.245, "left"),
+            10: plusCell(0.392, 0.205, 0.118, 0.245, "center"),
+            11: plusCell(0.448, 0.135, 0.118, 0.085, "up"),
+            12: plusCell(0.448, 0.135, 0.118, 0.085, "right"),
+            13: plusCell(0.448, 0.135, 0.118, 0.085, "down"),
+            14: plusCell(0.448, 0.135, 0.118, 0.085, "left"),
+            15: plusCell(0.448, 0.135, 0.118, 0.085, "center"),
+            16: plusCell(0.378, 0.365, 0.118, 0.405, "up"),
+            17: plusCell(0.378, 0.365, 0.118, 0.405, "right"),
+            18: plusCell(0.378, 0.365, 0.118, 0.405, "down"),
+            19: plusCell(0.378, 0.365, 0.118, 0.405, "left"),
+            20: plusCell(0.378, 0.365, 0.118, 0.405, "center"),
+            21: pairCell(0.688, 0.246, 0.845, 0.145, 0),
+            22: pairCell(0.688, 0.246, 0.845, 0.145, 1),
+            23: pairCell(0.668, 0.795, 0.845, 0.430, 0),
+            24: pairCell(0.668, 0.795, 0.845, 0.430, 1),
+            25: pairCell(0.582, 0.782, 0.018, 0.875, 0),
+            26: pairCell(0.582, 0.782, 0.018, 0.875, 1),
+            27: {ax: 0.598, ay: 0.698, lx: 0.480, ly: 0.845},
+            28: {ax: 0.558, ay: 0.708, lx: 0.300, ly: 0.845},
+            29: {ax: 0.638, ay: 0.688, lx: 0.660, ly: 0.845}
         }
         return t[id] || null
     }
@@ -112,16 +111,16 @@ Item {
     }
     function axisSpot(id) {
         var t = {
-            1: {ax: 0.430, ay: 0.590, lx: 0.015, ly: 0.500, line: true, dot: true},
-            2: {ax: 0.430, ay: 0.590, lx: 0.015, ly: 0.534, line: false, dot: false},
-            3: {ax: 0.430, ay: 0.590, lx: 0.015, ly: 0.568, line: false, dot: false},
-            4: {ax: 0.628, ay: 0.778, lx: 0.500, ly: 0.910}
+            1: {ax: 0.430, ay: 0.590, lx: 0.018, ly: 0.500, line: true, dot: true},
+            2: {ax: 0.430, ay: 0.590, lx: 0.018, ly: 0.534, line: false, dot: false},
+            3: {ax: 0.430, ay: 0.590, lx: 0.018, ly: 0.568, line: false, dot: false},
+            4: {ax: 0.628, ay: 0.778, lx: 0.480, ly: 0.915}
         }
         return t[id] || null
     }
     function hatSpot(id) {
         var t = {
-            1: {ax: 0.298, ay: 0.108, lx: 0.015, ly: 0.005}
+            1: {ax: 0.298, ay: 0.108, lx: 0.018, ly: 0.012}
         }
         return t[id] || null
     }
