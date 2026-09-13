@@ -113,6 +113,7 @@ Item {
             }
             n.spines = Ls.spines
         } else if (dragKind === "member" && n.members && dragMember >= 0 && dragMember < n.members.length) {
+            bakeAlignToFree(n)
             var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
             n.members[dragMember].ox = mp.x / Math.max(1, width) - n.chipFx
             n.members[dragMember].oy = mp.y / Math.max(1, height) - n.chipFy
@@ -675,7 +676,59 @@ Item {
         bump()
     }
 
+    function groupAlignH(n) {
+        var a = n && n.alignH ? String(n.alignH) : "center"
+        if (a === "left" || a === "right" || a === "free")
+            return a
+        return "center"
+    }
+
+    function setAlignH(mode) {
+        var n = nodeAt(selectedId)
+        if (!isGroup(n))
+            return
+        if (mode === "free")
+            bakeAlignToFree(n)
+        else
+            n.alignH = (mode === "left" || mode === "right") ? mode : "center"
+        bump()
+    }
+
+    function bakeAlignToFree(n) {
+        if (!isGroup(n) || groupAlignH(n) === "free")
+            return
+        var mem = n.members || []
+        var ew = Math.max(1, _ed.width)
+        var eh = Math.max(1, _ed.height)
+        for (var i = 0; i < mem.length; i++) {
+            mem[i].ox = memberLocalX(n, mem[i]) / ew
+            mem[i].oy = memberLocalY(n, mem[i]) / eh
+        }
+        n.alignH = "free"
+    }
+
+    function memberLocalX(n, mem) {
+        var ew = Math.max(1, _ed.width)
+        var a = groupAlignH(n)
+        var w = chipWGuess(n, mem)
+        var span = groupSpanW(n)
+        if (a === "center")
+            return Math.max(0, (span - w) * 0.5)
+        if (a === "right")
+            return Math.max(0, span - w)
+        if (a === "left")
+            return 0
+        return (mem.ox || 0) * ew - groupMinX(n)
+    }
+
+    function memberLocalY(n, mem) {
+        var eh = Math.max(1, _ed.height)
+        return (mem.oy || 0) * eh - groupMinY(n)
+    }
+
     function groupMinX(n) {
+        if (groupAlignH(n) !== "free")
+            return 0
         var mem = (n && n.members) ? n.members : []
         var ew = Math.max(1, _ed.width)
         var minx = 1e9
@@ -695,13 +748,19 @@ Item {
 
     function groupSpanW(n) {
         var mem = (n && n.members) ? n.members : []
-        var ew = Math.max(1, _ed.width)
         if (!mem.length)
             return 40
+        if (groupAlignH(n) !== "free") {
+            var maxw = 8
+            for (var i = 0; i < mem.length; i++)
+                maxw = Math.max(maxw, chipWGuess(n, mem[i]))
+            return maxw
+        }
+        var ew = Math.max(1, _ed.width)
         var minx = groupMinX(n)
         var maxx = minx
-        for (var i = 0; i < mem.length; i++)
-            maxx = Math.max(maxx, (mem[i].ox || 0) * ew + chipWGuess(n, mem[i]))
+        for (var j = 0; j < mem.length; j++)
+            maxx = Math.max(maxx, (mem[j].ox || 0) * ew + chipWGuess(n, mem[j]))
         return Math.max(8, maxx - minx)
     }
 
@@ -1183,8 +1242,8 @@ Item {
             return -1
         var mem = n.members || []
         for (var i = mem.length - 1; i >= 0; i--) {
-            var x = (n.chipFx + (mem[i].ox || 0)) * width
-            var y = (n.chipFy + (mem[i].oy || 0)) * height
+            var x = n.chipFx * width + groupMinX(n) + memberLocalX(n, mem[i])
+            var y = n.chipFy * height + groupMinY(n) + memberLocalY(n, mem[i])
             var h = chipH(n)
             var w = chipWGuess(n, mem[i])
             if (mx >= x && mx <= x + w && my >= y && my <= y + h)
@@ -1295,7 +1354,7 @@ Item {
         var g = {
             id: _uid("g"), kind: kind, members: members,
             nx: nx / c, ny: ny / c, chipFx: ox0, chipFy: oy0,
-            pin: st.pin, spines: [], curve: st.curve,
+            pin: st.pin, spines: [], curve: st.curve, alignH: "center",
             color: st.color, border: st.border, textColor: st.textColor,
             highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
             hlText: st.hlText, fontSize: st.fontSize, label: "", chipSize: st.chipSize, chipShape: st.chipShape, chipFill: st.chipFill, hotSize: st.hotSize, hotShape: st.hotShape, hotFill: st.hotFill
@@ -1523,14 +1582,14 @@ Item {
                         var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
                         if (!m)
                             return 0
-                        return (m.ox || 0) * _ed.width - _ed.groupMinX(_grp.node)
+                        return _ed.memberLocalX(_grp.node, m)
                     }
                     y: {
                         _ed.tick
                         var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
                         if (!m)
                             return 0
-                        return (m.oy || 0) * _ed.height - _ed.groupMinY(_grp.node)
+                        return _ed.memberLocalY(_grp.node, m)
                     }
                     sourceComponent: _mini
                     onLoaded: {

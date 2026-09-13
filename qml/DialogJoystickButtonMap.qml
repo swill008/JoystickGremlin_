@@ -281,6 +281,11 @@ Window {
         MenuSeparator {}
         MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
         MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
+        MenuSeparator {}
+        MenuItem { text: "Align left"; onTriggered: { var e = _ed(); if (e) e.setAlignH("left") } }
+        MenuItem { text: "Align center"; onTriggered: { var e = _ed(); if (e) e.setAlignH("center") } }
+        MenuItem { text: "Align right"; onTriggered: { var e = _ed(); if (e) e.setAlignH("right") } }
+        MenuItem { text: "Free layout"; onTriggered: { var e = _ed(); if (e) e.setAlignH("free") } }
     }
 
     Menu {
@@ -742,6 +747,41 @@ Window {
                                 if (_cardLoader.item && _cardLoader.item.editorItem)
                                     _cardLoader.item.editorItem.bump()
                             }
+                        }
+                    }
+
+                    Label {
+                        text: "Group align"
+                        color: "#A1A1AA"
+                        visible: selectedNode && (selectedNode.kind === "plus" || selectedNode.kind === "pair" || selectedNode.kind === "axis_stack" || selectedNode.kind === "stack")
+                    }
+                    RowLayout {
+                        visible: selectedNode && (selectedNode.kind === "plus" || selectedNode.kind === "pair" || selectedNode.kind === "axis_stack" || selectedNode.kind === "stack")
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Button {
+                            text: "Left"
+                            checkable: true
+                            checked: selectedNode && selectedNode.alignH === "left"
+                            onClicked: { var e = _ed(); if (e) e.setAlignH("left") }
+                        }
+                        Button {
+                            text: "Center"
+                            checkable: true
+                            checked: !selectedNode || !selectedNode.alignH || selectedNode.alignH === "center"
+                            onClicked: { var e = _ed(); if (e) e.setAlignH("center") }
+                        }
+                        Button {
+                            text: "Right"
+                            checkable: true
+                            checked: selectedNode && selectedNode.alignH === "right"
+                            onClicked: { var e = _ed(); if (e) e.setAlignH("right") }
+                        }
+                        Button {
+                            text: "Free"
+                            checkable: true
+                            checked: selectedNode && selectedNode.alignH === "free"
+                            onClicked: { var e = _ed(); if (e) e.setAlignH("free") }
                         }
                     }
 
