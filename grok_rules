@@ -11,7 +11,7 @@ Any change to rules is written here. Do not keep a second unofficial list.
 6. Do not touch feature/osc-streamdeck unless you say so.
 7. Stay on JoystickGremlin_, not JoystickGremlinEx_.
 8. Warn before high CPU / memory / perf changes. Suggest cheaper options first.
-9. You pull/fetch locally (GitHub Desktop). Pushes go through the GitHub API. You run with:
+9. You pull/fetch locally (GitHub Desktop). All pushes use the user's GitHub PAT against the Contents API (PUT), any file, any size. Do not use MCP create_or_update_file or push_files. You run with:
    poetry run python joystick_gremlin.py
    from E:\Users\Stacie\Documents\GitHub\JoystickGremlin_
 10. Merge to “the program” only after you test.
@@ -23,24 +23,13 @@ Any change to rules is written here. Do not keep a second unofficial list.
 16. Keep older R15 XML profiles loadable. Xbox-only nodes (map-to-xbox) are extra; stock R15 will not understand them.
 17. Standing rules live in this file (grok_rules) at the program folder root. Recall this file. Any rule change is written here.
 18. All images generated for the user to view must be displayed in chat using image generation.
-19. Large files
-    19.1 A file is large if it is over 20,000 bytes, or if a previous push of that file was truncated. Today that includes gremlin/ui/device.py (~60k) and any later file of that size.
-    19.2 Do not send a large file through create_or_update_file or push_files. Those tools require the whole body in the tool call and have truncated device.py to PLACEHOLDER or ~2k bytes.
-    19.3 For a large-file change, ask the user for a session Personal Access Token and give the create / copy commands below. Use that token only in this chat, via Python requests against the GitHub API: fetch the last good copy, apply a hunk, PUT the full patched file, then verify size.
-         Create a fine-grained token (browser):
-           GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.
-           Resource owner: swill008. Repository access: only JoystickGremlin_. Permissions: Contents Read and write. Short expiry.
-         Or copy a GitHub CLI token already on the PC:
-           gh auth status
-           gh auth token
-         Paste the token in chat for this session only. Do not commit it. Do not put it in this file.
-    19.4 If the user refuses a session token, use this fallback:
-         19.4.1 Edit by hunk only: exact old text and exact new text. Copy / replace / paste. Do not rewrite or move the file.
-         19.4.2 The user applies the hunk locally (GitHub Desktop / git) and pushes. Grok then inspects size and key symbols on the branch.
-    19.5 Never store a token in grok_rules, the repo, artifacts, or project memory. Session tokens die with the chat. Prefer revoke after use.
-    19.6 After any write to a large file, confirm: byte size, not PLACEHOLDER, and required symbols (for device.py: class Device, InputIdentifier, map-to-vjoy, and map-to-xbox when that token is expected). Committed size must match the patched size before saying it landed.
-    19.7 If a large file is truncated, restore from the last known good commit first (device.py: e592376, 60033 bytes) then re-apply only the missing hunk. Do not layer patches on a stub.
-    19.8 Small files stay on the GitHub connector as today.
+19. GitHub uploads — PAT, no size gate. Until the user says otherwise:
+    19.1 Use the user's GitHub PAT for every push. Contents API PUT of the full file. Any size. One or many files. Do not ask for a new token. Do not wait on the GitHub MCP file tools.
+    19.2 Skip the 20k size check. Skip MCP create_or_update_file and push_files. Those truncated files and took too long.
+    19.3 Method: Python requests, Authorization Bearer <PAT>, PUT https://api.github.com/repos/swill008/JoystickGremlin_/contents/<path> with message, content (base64), sha, branch. Branch for Button Map is VKB-joystick-Button-Map.
+    19.4 Never write the PAT into grok_rules, the repo, commit messages, or artifacts. It lives in project instructions / this chat only.
+    19.5 After a PUT, confirm the committed size matches the local file and the file is not PLACEHOLDER / empty. For device.py also confirm class Device, InputIdentifier, map-to-vjoy (and map-to-xbox when that token is expected). Last known good device.py: e592376, 60033 bytes.
+    19.6 This PAT rule stands until the user says otherwise.
 20. EVO R hardware lock and measured JPEG inventory live in qml/vkb_evo_r_face_map.md. Read that file before changing hardware ids or measured JPEG centroids. Chip / hotspot / spine placement at runtime is qml/maps/vkb_evo_r.json. When a measured centroid changes, update the md row and the JSON node nx/ny in the same commit.
 21. Face leaders — precision only. No guessing. No window-screenshot math.
     21.1 Root cause of missed leaders: (a) nx/ny were read off a GUI screenshot that includes gutters and chrome, but px/py are fractions of the painted JPEG only; (b) tag ends used mapToItem(_face) while photo ends used _stage.x, which is not face space. Do not repeat either.
