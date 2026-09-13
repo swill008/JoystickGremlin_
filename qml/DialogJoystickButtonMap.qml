@@ -376,10 +376,17 @@ Window {
                 color: "#111113"
                 border.color: "#27272A"
 
-                ColumnLayout {
+                Flickable {
                     anchors.fill: parent
                     anchors.margins: 10
-                    spacing: 8
+                    clip: true
+                    contentWidth: width
+                    contentHeight: _insp.implicitHeight
+                    boundsBehavior: Flickable.StopAtBounds
+                    ColumnLayout {
+                        id: _insp
+                        width: parent.width
+                        spacing: 8
 
                     Label { text: "Chip"; font.bold: true; color: "#E4E4E7" }
                     Label {
@@ -486,11 +493,147 @@ Window {
                         to: 22
                         value: selectedNode && selectedNode.fontSize ? selectedNode.fontSize : 10
                         onValueModified: {
-                            if (selectedNode) {
-                                selectedNode.fontSize = value
-                                if (_cardLoader.item && _cardLoader.item.editorItem)
-                                    _cardLoader.item.editorItem.bump()
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.applyField("fontSize", value)
+                        }
+                    }
+
+                    Label { text: "Chip size"; color: "#A1A1AA"; visible: selectedNode }
+                    SpinBox {
+                        visible: !!selectedNode
+                        from: 12
+                        to: 48
+                        value: selectedNode && selectedNode.chipSize ? selectedNode.chipSize : 18
+                        onValueModified: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.applyField("chipSize", value)
+                        }
+                    }
+                    Label { text: "Chip shape"; color: "#A1A1AA"; visible: selectedNode }
+                    ComboBox {
+                        Layout.fillWidth: true
+                        visible: !!selectedNode
+                        model: ["Round", "Square"]
+                        currentIndex: selectedNode && selectedNode.chipShape === "square" ? 1 : 0
+                        onActivated: (idx) => {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.applyField("chipShape", idx === 1 ? "square" : "round")
+                        }
+                    }
+                    Label { text: "Chip fill"; color: "#A1A1AA"; visible: selectedNode }
+                    ComboBox {
+                        Layout.fillWidth: true
+                        visible: !!selectedNode
+                        model: ["Filled", "Hollow"]
+                        currentIndex: selectedNode && selectedNode.chipFill === "hollow" ? 1 : 0
+                        onActivated: (idx) => {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.applyField("chipFill", idx === 1 ? "hollow" : "filled")
+                        }
+                    }
+
+                    Label { text: "Hotspot size"; color: "#A1A1AA"; visible: selectedNode }
+                    SpinBox {
+                        visible: !!selectedNode
+                        from: 4
+                        to: 28
+                        value: selectedNode && selectedNode.hotSize ? selectedNode.hotSize : 9
+                        onValueModified: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.applyField("hotSize", value)
+                        }
+                    }
+                    Label { text: "Hotspot shape"; color: "#A1A1AA"; visible: selectedNode }
+                    ComboBox {
+                        Layout.fillWidth: true
+                        visible: !!selectedNode
+                        model: ["Round", "Square"]
+                        currentIndex: selectedNode && selectedNode.hotShape === "square" ? 1 : 0
+                        onActivated: (idx) => {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.applyField("hotShape", idx === 1 ? "square" : "round")
+                        }
+                    }
+                    Label { text: "Hotspot fill"; color: "#A1A1AA"; visible: selectedNode }
+                    ComboBox {
+                        Layout.fillWidth: true
+                        visible: !!selectedNode
+                        model: ["Filled", "Hollow"]
+                        currentIndex: selectedNode && selectedNode.hotFill === "hollow" ? 1 : 0
+                        onActivated: (idx) => {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.applyField("hotFill", idx === 1 ? "hollow" : "filled")
+                        }
+                    }
+
+                    Label { text: "Leader"; font.bold: true; color: "#E4E4E7"; visible: selectedNode }
+                    Label {
+                        visible: !!selectedNode
+                        color: "#A1A1AA"
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                        text: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (!e || !selectedNode) return ""
+                            var f = e.fromEnd(selectedNode)
+                            var tt = e.toEnd(selectedNode)
+                            var a = !f ? "?" : (f.type === "free" ? "free" : ((f.type || "?") + " " + (f.id || "") + (f.pin ? (" / " + f.pin) : "")))
+                            var b = !tt ? "?" : (tt.type === "free" ? "free" : ((tt.type || "?") + " " + (tt.id || "") + (tt.pin ? (" / " + tt.pin) : "")))
+                            return a + "  →  " + b
+                        }
+                    }
+                    Label { text: "Chip pin"; color: "#A1A1AA"; visible: selectedNode }
+                    ComboBox {
+                        Layout.fillWidth: true
+                        visible: !!selectedNode
+                        model: ["right", "left", "top", "bottom"]
+                        currentIndex: {
+                            var p = selectedNode && selectedNode.pin ? selectedNode.pin : "right"
+                            var m = ["right", "left", "top", "bottom"]
+                            var i = m.indexOf(p)
+                            return i < 0 ? 0 : i
+                        }
+                        onActivated: (idx) => {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (!e || !selectedNode) return
+                            var pin = model[idx]
+                            e.applyField("pin", pin)
+                            if (selectedNode.from && selectedNode.from.type === "chip") {
+                                selectedNode.from.pin = pin
+                                e.bump()
                             }
+                        }
+                    }
+                    Button {
+                        visible: !!selectedNode
+                        text: "Detach chip end"
+                        onClicked: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.detachEnd("from")
+                        }
+                    }
+                    Button {
+                        visible: !!selectedNode
+                        text: "Detach hotspot end"
+                        onClicked: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.detachEnd("to")
+                        }
+                    }
+                    Button {
+                        visible: !!selectedNode
+                        text: "Reconnect to this chip"
+                        onClicked: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.attachEndToSelf("from")
+                        }
+                    }
+                    Button {
+                        visible: !!selectedNode
+                        text: "Reconnect to this hotspot"
+                        onClicked: {
+                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (e) e.attachEndToSelf("to")
                         }
                     }
 
@@ -578,13 +721,13 @@ Window {
                         }
                     }
 
-                    Item { Layout.fillHeight: true }
                     Label {
                         text: "Save is the live map.\nCancel drops this session."
                         color: "#71717A"
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                         font.pixelSize: 10
+                    }
                     }
                 }
             }

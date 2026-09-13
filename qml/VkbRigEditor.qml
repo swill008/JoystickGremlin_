@@ -44,6 +44,16 @@ Item {
         selectedChanged()
     }
 
+    function applyField(key, val) {
+        var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
+        for (var i = 0; i < ids.length; i++) {
+            var n = nodeAt(ids[i])
+            if (n)
+                n[key] = val
+        }
+        bump()
+    }
+
     function snapPx(v) {
         var g = gridSize
         if (!snapOn || g < 2)
@@ -121,18 +131,18 @@ Item {
         return Qt.point(n.chipFx * width, n.chipFy * height)
     }
 
-    function pinPt(n, item) {
+    function pinPt(n, item, side) {
         if (!item) {
             return chipXY(n)
         }
-        var side = n.pin || "right"
-        var x = side === "right" ? item.width : (side === "left" ? 0 : item.width * 0.5)
-        var y = side === "top" ? 0 : item.height * 0.5
+        var pin = side || (n ? n.pin : "right") || "right"
+        var x = pin === "right" ? item.width : (pin === "left" ? 0 : item.width * 0.5)
+        var y = pin === "top" ? 0 : (pin === "bottom" ? item.height : item.height * 0.5)
         return item.mapToItem(_ed, x, y)
     }
 
     function hotPt(n) {
-        if (!face || !face.photoPt) {
+        if (!n || !face || !face.photoPt) {
             return Qt.point(0, 0)
         }
         return face.photoPt(n.nx, n.ny)
@@ -145,15 +155,138 @@ Item {
         return face.toPhoto(mx, my)
     }
 
+    function fromEnd(n) {
+        if (n && n.from && n.from.type)
+            return n.from
+        return { type: "chip", id: n ? n.id : "", pin: n && n.pin ? n.pin : "right" }
+    }
+
+    function toEnd(n) {
+        if (n && n.to && n.to.type)
+            return n.to
+        return { type: "hot", id: n ? n.id : "" }
+    }
+
+    function endPt(end) {
+        if (!end)
+            return Qt.point(0, 0)
+        if (end.type === "free")
+            return Qt.point((end.fx || 0) * width, (end.fy || 0) * height)
+        if (end.type === "chip") {
+            var cn = nodeAt(end.id)
+            var it = _chips.itemAt(nodeIndex(end.id))
+            return pinPt(cn, it, end.pin)
+        }
+        if (end.type === "hot") {
+            return hotPt(nodeAt(end.id))
+        }
+        return Qt.point(0, 0)
+    }
+
     function pathPts(n) {
-        var item = _chips.itemAt(nodeIndex(n.id))
-        var pts = [pinPt(n, item)]
+        var pts = [endPt(fromEnd(n))]
         var spines = n.spines || []
         for (var s = 0; s < spines.length; s++) {
             pts.push(Qt.point(spines[s].fx * width, spines[s].fy * height))
         }
-        pts.push(hotPt(n))
+        pts.push(endPt(toEnd(n)))
         return pts
+    }
+
+    function chipH(n) {
+        return Math.max(n && n.chipSize ? n.chipSize : 18, ((n && n.fontSize) || 10) + 8)
+    }
+
+    function chipR(n, h) {
+        return ((n && n.chipShape) || "round") === "square" ? 0 : Math.max(2, h * 0.5)
+    }
+
+    function chipIsHollow(n) {
+        return ((n && n.chipFill) || "filled") === "hollow"
+    }
+
+    function hotSz(n) {
+        return (n && n.hotSize) ? n.hotSize : 9
+    }
+
+    function drawMark(ctx, x, y, size, shape, fill, color) {
+        var r = Math.max(2, size * 0.5)
+        ctx.beginPath()
+        if (shape === "square")
+            ctx.rect(x - r, y - r, r * 2, r * 2)
+        else
+            ctx.arc(x, y, r, 0, 6.2832)
+        if (fill === "hollow") {
+            ctx.strokeStyle = color
+            ctx.lineWidth = 2
+            ctx.stroke()
+        } else {
+            ctx.fillStyle = color
+            ctx.fill()
+        }
+    }
+
+    function nearestPin(item, mx, my) {
+        if (!item)
+            return "right"
+        var p = item.mapFromItem(_ed, mx, my)
+        var dl = Math.abs(p.x)
+        var dr = Math.abs(item.width - p.x)
+        var dt = Math.abs(p.y)
+        var db = Math.abs(item.height - p.y)
+        var m = Math.min(dl, dr, dt, db)
+        if (m === dt) return "top"
+        if (m === db) return "bottom"
+        if (m === dl) return "left"
+        return "right"
+    }
+
+    function attachNear(x, y) {
+        var list = nodes || []
+        var best = { type: "free", fx: x / Math.max(1, width), fy: y / Math.max(1, height) }
+        var bestD = 16
+        var i
+        for (i = 0; i < list.length; i++) {
+            var h = hotPt(list[i])
+            var hd = Math.hypot(x - h.x, y - h.y)
+            var lim = hotSz(list[i]) * 0.5 + 10
+            if (hd < lim && hd < bestD) {
+                bestD = hd
+                best = { type: "hot", id: list[i].id }
+            }
+        }
+        for (i = 0; i < list.length; i++) {
+            var it = _chips.itemAt(i)
+            if (!it)
+                continue
+            var p = it.mapFromItem(_ed, x, y)
+            var dx = p.x < 0 ? -p.x : (p.x > it.width ? p.x - it.width : 0)
+            var dy = p.y < 0 ? -p.y : (p.y > it.height ? p.y - it.height : 0)
+            var cd = Math.hypot(dx, dy)
+            if (cd < 14 && cd < bestD) {
+                bestD = cd
+                best = { type: "chip", id: list[i].id, pin: nearestPin(it, x, y) }
+            }
+        }
+        return best
+    }
+
+    function detachEnd(which) {
+        var n = nodeAt(selectedId)
+        if (!n) return
+        var p = endPt(which === "to" ? toEnd(n) : fromEnd(n))
+        var free = { type: "free", fx: p.x / Math.max(1, width), fy: p.y / Math.max(1, height) }
+        if (which === "to") n.to = free
+        else n.from = free
+        bump()
+    }
+
+    function attachEndToSelf(which) {
+        var n = nodeAt(selectedId)
+        if (!n) return
+        if (which === "to") n.to = { type: "hot", id: n.id }
+        else n.from = { type: "chip", id: n.id, pin: n.pin || "right" }
+        bump()
     }
 
     function _clampPt(pts, i) {
@@ -198,18 +331,16 @@ Item {
         if (n.spines && n.spines.length) {
             return
         }
-        var item = _chips.itemAt(nodeIndex(n.id))
-        var a = pinPt(n, item)
-        var b = hotPt(n)
+        var a = endPt(fromEnd(n))
+        var b = endPt(toEnd(n))
         n.spines = [{ fx: ((a.x + b.x) * 0.5) / Math.max(1, width), fy: ((a.y + b.y) * 0.5) / Math.max(1, height) }]
     }
 
     function addCurveSpine(n) {
         if (!n) return
         n.curve = true
-        var item = _chips.itemAt(nodeIndex(n.id))
-        var a = pinPt(n, item)
-        var b = hotPt(n)
+        var a = endPt(fromEnd(n))
+        var b = endPt(toEnd(n))
         var spines = n.spines || []
         if (spines.length) {
             a = Qt.point(spines[spines.length - 1].fx * width, spines[spines.length - 1].fy * height)
@@ -243,8 +374,23 @@ Item {
         var n
         for (i = 0; i < list.length; i++) {
             n = list[i]
+            var fp = endPt(fromEnd(n))
+            if (Math.hypot(mx - fp.x, my - fp.y) < 9) {
+                return { kind: "from", id: n.id, spine: -1 }
+            }
+        }
+        for (i = 0; i < list.length; i++) {
+            n = list[i]
+            var te = toEnd(n)
+            var tp = endPt(te)
+            if (te.type !== "hot" && Math.hypot(mx - tp.x, my - tp.y) < 9) {
+                return { kind: "to", id: n.id, spine: -1 }
+            }
+        }
+        for (i = 0; i < list.length; i++) {
+            n = list[i]
             var h = hotPt(n)
-            if (Math.hypot(mx - h.x, my - h.y) < 10) {
+            if (Math.hypot(mx - h.x, my - h.y) < (hotSz(n) * 0.5 + 5)) {
                 return { kind: "hot", id: n.id, spine: -1 }
             }
         }
@@ -418,7 +564,13 @@ Item {
             hlText: n.hlText || "#BBF7D0",
             fontSize: n.fontSize || 10,
             pin: n.pin || "right",
-            curve: n.curve !== false
+            curve: n.curve !== false,
+            chipSize: n.chipSize || 18,
+            chipShape: n.chipShape || "round",
+            chipFill: n.chipFill || "filled",
+            hotSize: n.hotSize || 9,
+            hotShape: n.hotShape || "round",
+            hotFill: n.hotFill || "filled"
         }
     }
 
@@ -530,7 +682,7 @@ Item {
             pin: st.pin, spines: [], curve: st.curve,
             color: st.color, border: st.border, textColor: st.textColor,
             highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
-            hlText: st.hlText, fontSize: st.fontSize, label: ""
+            hlText: st.hlText, fontSize: st.fontSize, label: "", chipSize: st.chipSize, chipShape: st.chipShape, chipFill: st.chipFill, hotSize: st.hotSize, hotShape: st.hotShape, hotFill: st.hotFill
         }
         var drop = {}
         for (i = 0; i < ids.length; i++)
@@ -579,7 +731,7 @@ Item {
                 pin: st.pin, spines: [], curve: st.curve,
                 color: st.color, border: st.border, textColor: st.textColor,
                 highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
-                hlText: st.hlText, fontSize: st.fontSize
+                hlText: st.hlText, fontSize: st.fontSize, chipSize: st.chipSize, chipShape: st.chipShape, chipFill: st.chipFill, hotSize: st.hotSize, hotShape: st.hotShape, hotFill: st.hotFill
             })
         }
         var list = nodes || []
@@ -694,19 +846,20 @@ Item {
         Rectangle {
             property var node: ({ kind: "btn", hwId: 0 })
             property bool on: _ed.litOf(node.kind, node.hwId)
-            implicitWidth: { _ed.tick; return _lab.implicitWidth + 10 }
-            implicitHeight: { _ed.tick; return Math.max(18, (node.fontSize || 10) + 10) }
-            radius: 4
+            implicitWidth: { _ed.tick; return _lab.implicitWidth + Math.max(10, (node.chipSize || 18) * 0.55) }
+            implicitHeight: { _ed.tick; return _ed.chipH(node) }
+            radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node)) }
             color: {
                 _ed.tick
+                if (_ed.chipIsHollow(node)) return "transparent"
                 return on && node.highlight ? (node.hlColor || "#14532D") : (node.color || "#18181B")
             }
             border.color: {
                 _ed.tick
-                if (_ed.selectedId === node.id) return "#FBBF24"
+                if (_ed.isSelected(node.id)) return "#FBBF24"
                 return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
             }
-            border.width: _ed.selectedId === node.id ? 2 : 1
+            border.width: { _ed.tick; return (_ed.isSelected(node.id) || _ed.chipIsHollow(node)) ? 2 : 1 }
             Text {
                 id: _lab
                 anchors.centerIn: parent
@@ -808,18 +961,20 @@ Item {
             property int hwId: 0
             property var node: ({})
             property bool on: _ed.litOf("btn", hwId)
-            implicitWidth: { _ed.tick; return t.implicitWidth + 10 }
-            implicitHeight: { _ed.tick; return Math.max(18, (node.fontSize || 10) + 10) }
-            radius: 4
+            implicitWidth: { _ed.tick; return t.implicitWidth + Math.max(10, (node.chipSize || 18) * 0.55) }
+            implicitHeight: { _ed.tick; return _ed.chipH(node) }
+            radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node)) }
             color: {
                 _ed.tick
+                if (_ed.chipIsHollow(node)) return "transparent"
                 return on && node.highlight ? (node.hlColor || "#14532D") : (node.color || "#18181B")
             }
             border.color: {
                 _ed.tick
-                if (_ed.selectedId === node.id) return "#FBBF24"
+                if (_ed.isSelected(node.id)) return "#FBBF24"
                 return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
             }
+            border.width: { _ed.tick; return (_ed.isSelected(node.id) || _ed.chipIsHollow(node)) ? 2 : 1 }
             Text {
                 id: t
                 anchors.centerIn: parent
@@ -912,26 +1067,33 @@ Item {
             var list = _ed.nodes || []
             for (var i = 0; i < list.length; i++) {
                 var n = list[i]
-                var item = _chips.itemAt(i)
-                var b = _ed.hotPt(n)
-                ctx.strokeStyle = (_ed.interactive && _ed.selectedId === n.id) ? "#FBBF24" : "#A1A1AA"
-                ctx.lineWidth = (_ed.interactive && _ed.selectedId === n.id) ? 1.6 : 1.1
+                var sel = _ed.interactive && _ed.isSelected(n.id)
+                ctx.strokeStyle = sel ? "#FBBF24" : "#A1A1AA"
+                ctx.lineWidth = sel ? 1.6 : 1.1
                 ctx.lineJoin = "round"
                 ctx.lineCap = "round"
                 var pts = _ed.pathPts(n)
                 _ed.strokeLeader(ctx, n, pts)
-                var spines = n.spines || []
-                ctx.beginPath()
-                ctx.arc(b.x, b.y, 4.5, 0, 6.3)
-                ctx.fillStyle = (_ed.interactive && _ed.selectedId === n.id) ? "#FBBF24" : "#F4F4F5"
-                ctx.fill()
+                var hot = _ed.hotPt(n)
+                var hs = _ed.hotSz(n)
+                var hShape = n.hotShape || "round"
+                var hFill = n.hotFill || "filled"
+                _ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : "#F4F4F5")
                 if (_ed.interactive) {
+                    var a = _ed.endPt(_ed.fromEnd(n))
+                    _ed.drawMark(ctx, a.x, a.y, 8, "round", "filled", sel ? "#38BDF8" : "#64748B")
+                    var te = _ed.toEnd(n)
+                    if (te.type !== "hot") {
+                        var tp = _ed.endPt(te)
+                        _ed.drawMark(ctx, tp.x, tp.y, 8, "round", "filled", sel ? "#FB923C" : "#94A3B8")
+                    }
+                    var spines = n.spines || []
                     for (var s = 0; s < spines.length; s++) {
                         var sx = spines[s].fx * width
                         var sy = spines[s].fy * height
                         ctx.beginPath()
                         ctx.arc(sx, sy, 5, 0, 6.3)
-                        ctx.fillStyle = (_ed.selectedId === n.id && _ed.selectedSpine === s) ? "#F59E0B" : "#94A3B8"
+                        ctx.fillStyle = (sel && _ed.selectedSpine === s) ? "#F59E0B" : "#94A3B8"
                         ctx.fill()
                     }
                 }
@@ -969,6 +1131,22 @@ Item {
             }
             if (hit.kind === "line" && !shift) {
                 _ed.addSpineAt(hit.id, m.x, m.y)
+                return
+            }
+            if (hit.kind === "from" || hit.kind === "to") {
+                if (!shift)
+                    _ed.setSelection([hit.id])
+                _ed.selectedId = hit.id
+                _ed.selectedSpine = -1
+                _ed.dragKind = hit.kind
+                var ne = _ed.nodeAt(hit.id)
+                if (ne) {
+                    var ep = _ed.endPt(hit.kind === "to" ? _ed.toEnd(ne) : _ed.fromEnd(ne))
+                    var fr = { type: "free", fx: ep.x / Math.max(1, width), fy: ep.y / Math.max(1, height) }
+                    if (hit.kind === "to") ne.to = fr
+                    else ne.from = fr
+                }
+                _ed.bump()
                 return
             }
             if (hit.kind === "chip") {
@@ -1025,7 +1203,12 @@ Item {
                 return
             }
             var altOff = !!(m.modifiers & Qt.AltModifier)
-            if (_ed.dragKind === "hot") {
+            if (_ed.dragKind === "from" || _ed.dragKind === "to") {
+                var ep2 = _ed.snapPos(m.x, m.y, altOff)
+                var fr2 = { type: "free", fx: ep2.x / Math.max(1, width), fy: ep2.y / Math.max(1, height) }
+                if (_ed.dragKind === "to") n.to = fr2
+                else n.from = fr2
+            } else if (_ed.dragKind === "hot") {
                 var hp = _ed.snapPos(m.x, m.y, altOff)
                 var p = _ed.toPhoto(hp.x, hp.y)
                 n.nx = Math.max(0, Math.min(1, p.x))
@@ -1051,11 +1234,26 @@ Item {
             }
             _ed.repaint()
         }
-        onReleased: {
+        onReleased: (m) => {
             if (_ed.dragKind === "band") {
                 if (_ed.banding)
                     _ed.selectBand(_ed.bandAdd)
                 _ed.banding = false
+                _ed.dragKind = ""
+                _ed.bump()
+                return
+            }
+            if (_ed.dragKind === "from" || _ed.dragKind === "to") {
+                var n3 = _ed.nodeAt(_ed.selectedId)
+                if (n3) {
+                    var hooked = _ed.attachNear(m.x, m.y)
+                    if (_ed.dragKind === "to") n3.to = hooked
+                    else {
+                        n3.from = hooked
+                        if (hooked.type === "chip" && hooked.id === n3.id)
+                            n3.pin = hooked.pin || n3.pin
+                    }
+                }
                 _ed.dragKind = ""
                 _ed.bump()
                 return
