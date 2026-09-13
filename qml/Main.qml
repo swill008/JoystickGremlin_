@@ -55,11 +55,18 @@ ApplicationWindow {
         }
     }
 
+    function deactivateThenQuit() {
+        if (backend && backend.gremlinActive) {
+            backend.toggleActiveState()
+        }
+        Qt.quit()
+    }
+
     function quitGremlin() {
         if (backend && backend.profileContainsUnsavedChanges) {
             _saveBeforeQuitDialog.open()
         } else {
-            Qt.quit()
+            deactivateThenQuit()
         }
     }
 
@@ -113,14 +120,14 @@ ApplicationWindow {
                         _saveProfileFileDialog.open()
                     } else {
                         if (backend.saveProfile(fpath)) {
-                            Qt.quit()
+                            deactivateThenQuit()
                         } else {
                             showSaveResult(false, fpath)
                         }
                     }
                     break
                 case MessageDialog.Discard:
-                    Qt.quit()
+                    deactivateThenQuit()
                     break
                 case MessageDialog.Cancel:
                     break
@@ -173,7 +180,7 @@ ApplicationWindow {
             if (quitAfterSave) {
                 quitAfterSave = false
                 if (ok) {
-                    Qt.quit()
+                    deactivateThenQuit()
                 } else {
                     showSaveResult(false, "")
                 }
