@@ -9,13 +9,10 @@ import gremlin.ui.type_aliases as ta
 from gremlin import shared_state
 from gremlin.signal import signal
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
-from gremlin.ui.input_pairing import _device_name, _xbox_maps_for_item
-from vigem.xbox import (
-    XBOX_TAB_GUID,
-    XboxProxy,
-    XboxTarget,
-    vigem_client_error,
-)
+from gremlin.ui.input_pairing import _device_name
+from gremlin.ui.xbox_maps import xbox_maps_for_item
+from vigem.ids import XBOX_TAB_GUID, vigem_client_error
+from vigem.xbox import XboxProxy, XboxTarget
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
@@ -30,7 +27,7 @@ def _incoming_for(pad_id: int, target: XboxTarget) -> str:
         for item in items or []:
             if not any(
                 pid == pad_id and value == target.value
-                for pid, value in _xbox_maps_for_item(item)
+                for pid, value in xbox_maps_for_item(item)
             ):
                 continue
             kind = getattr(item.input_type, "name", str(item.input_type))
