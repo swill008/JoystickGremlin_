@@ -46,10 +46,72 @@ Item {
         return Qt.point((p.x - _ox) / _pw, (p.y - _oy) / _ph)
     }
 
+    property real autoVx: -1
+    property real autoVy: -1
+    property bool autoHover: false
+
     function resetView() {
         zoom = 1
         panX = 0
         panY = 0
+        pingEditor()
+    }
+
+    function setAutoCursor(vx, vy, inside) {
+        autoVx = vx
+        autoVy = vy
+        autoHover = !!(inside && editing)
+    }
+
+    function _edgePush(pos, size) {
+        var band = size * 0.20
+        if (band < 1)
+            return 0
+        if (pos < band) {
+            var t = (band - pos) / band
+            if (t < 0) t = 0
+            if (t > 1) t = 1
+            return -t * t
+        }
+        if (pos > size - band) {
+            var u = (pos - (size - band)) / band
+            if (u < 0) u = 0
+            if (u > 1) u = 1
+            return u * u
+        }
+        return 0
+    }
+
+    function clampPan() {
+        var vw = _viewport.width
+        var vh = _viewport.height
+        if (vw < 8 || vh < 8)
+            return
+        var ww = _world.width * zoom
+        var hh = _world.height * zoom
+        var mx = vw * 0.20
+        var my = vh * 0.20
+        panX = Math.min(panX, vw - mx)
+        panX = Math.max(panX, mx - ww)
+        panY = Math.min(panY, vh - my)
+        panY = Math.max(panY, my - hh)
+    }
+
+    function autoPanTick() {
+        if (!editing || !autoHover)
+            return
+        if (typeof _midPan !== "undefined" && _midPan && _midPan.active)
+            return
+        var vw = _viewport.width
+        var vh = _viewport.height
+        var nx = _edgePush(autoVx, vw)
+        var ny = _edgePush(autoVy, vh)
+        if (nx === 0 && ny === 0)
+            return
+        var speed = 14
+        panX -= nx * speed
+        panY -= ny * speed
+        clampPan()
         pingEditor()
     }
 
@@ -546,7 +608,24 @@ Item {
 
         } // _world
 
+        HoverHandler {
+            enabled: _face.editing
+            onPointChanged: _face.setAutoCursor(point.position.x, point.position.y, true)
+            onHoveredChanged: {
+                if (!hovered)
+                    _face.setAutoCursor(-1, -1, false)
+            }
+        }
+
+        Timer {
+            interval: 16
+            repeat: true
+            running: _face.editing && _face.autoHover
+            onTriggered: _face.autoPanTick()
+        }
+
         DragHandler {
+            id: _midPan
             acceptedButtons: Qt.MiddleButton
             target: null
             enabled: _face.editing

@@ -29,6 +29,7 @@ Item {
     property bool gridOn: true
     property bool snapOn: true
     property int gridSize: 8
+    property bool altHeld: false
 
     // Do NOT declare signal nodesChanged — property var nodes already has it.
     signal selectedChanged()
@@ -42,6 +43,70 @@ Item {
     function bump() {
         repaint()
         selectedChanged()
+    }
+
+    function reportCursor(wx, wy, inside) {
+        if (!face || !face.setAutoCursor)
+            return
+        var z = face.zoom || 1
+        var vx = wx * z + (face.panX || 0)
+        var vy = wy * z + (face.panY || 0)
+        face.setAutoCursor(vx, vy, inside)
+    }
+
+    function worldFromView() {
+        if (!face)
+            return Qt.point(0, 0)
+        var z = face.zoom || 1
+        if (z < 0.01) z = 1
+        return Qt.point((face.autoVx - face.panX) / z, (face.autoVy - face.panY) / z)
+    }
+
+    function applyPointer(mx, my, altOff) {
+        if (!dragKind || dragKind === "band")
+            return
+        var n = nodeAt(selectedId)
+        if (!n)
+            return
+        if (dragKind === "from" || dragKind === "to") {
+            var ep2 = snapPos(mx, my, altOff)
+            var fr2 = { type: "free", fx: ep2.x / Math.max(1, width), fy: ep2.y / Math.max(1, height) }
+            if (dragKind === "to") n.to = fr2
+            else n.from = fr2
+        } else if (dragKind === "hot") {
+            var hp = snapPos(mx, my, altOff)
+            var p = toPhoto(hp.x, hp.y)
+            n.nx = Math.max(0, Math.min(1, p.x))
+            n.ny = Math.max(0, Math.min(1, p.y))
+        } else if (dragKind === "chip") {
+            var cp = snapPos(mx - dragOffX, my - dragOffY, altOff)
+            var fx = Math.max(0.01, Math.min(0.92, cp.x / Math.max(1, width)))
+            var fy = Math.max(0.01, Math.min(0.92, cp.y / Math.max(1, height)))
+            var dFx = fx - n.chipFx
+            var dFy = fy - n.chipFy
+            var ids = (selectedIds && selectedIds.length) ? selectedIds : [selectedId]
+            for (var i = 0; i < ids.length; i++) {
+                var q = nodeAt(ids[i])
+                if (!q)
+                    continue
+                q.chipFx = Math.max(0.01, Math.min(0.92, q.chipFx + dFx))
+                q.chipFy = Math.max(0.01, Math.min(0.92, q.chipFy + dFy))
+            }
+        } else if (dragKind === "spine" && n.spines && dragSpine >= 0) {
+            var sp = snapPos(mx, my, altOff)
+            n.spines[dragSpine].fx = Math.max(0, Math.min(1, sp.x / Math.max(1, width)))
+            n.spines[dragSpine].fy = Math.max(0, Math.min(1, sp.y / Math.max(1, height)))
+        }
+        repaint()
+    }
+
+    function followAutoPan() {
+        if (!dragKind || dragKind === "band")
+            return
+        if (!face || !face.autoHover)
+            return
+        var w = worldFromView()
+        applyPointer(w.x, w.y, altHeld)
     }
 
     function applyField(key, val) {
@@ -788,8 +853,10 @@ Item {
         target: face
         function onLiveStampChanged() { _ed.tick++ }
         function onDestTickChanged() { _ed.tick++ }
-        function onWidthChanged() { _lines.requestPaint() }
-        function onHeightChanged() { _lines.requestPaint() }
+        function onWidthChanged() { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
+        function onHeightChanged() { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
+        function onPanXChanged() { _ed.followAutoPan() }
+        function onPanYChanged() { _ed.followAutoPan() }
     }
 
     Repeater {
@@ -1188,6 +1255,8 @@ Item {
             _ed.bump()
         }
         onPositionChanged: (m) => {
+            _ed.altHeld = !!(m.modifiers & Qt.AltModifier)
+            _ed.reportCursor(m.x, m.y, true)
             if (!_ed.dragKind) {
                 return
             }
@@ -1198,41 +1267,7 @@ Item {
                     _ed.banding = true
                 return
             }
-            var n = _ed.nodeAt(_ed.selectedId)
-            if (!n) {
-                return
-            }
-            var altOff = !!(m.modifiers & Qt.AltModifier)
-            if (_ed.dragKind === "from" || _ed.dragKind === "to") {
-                var ep2 = _ed.snapPos(m.x, m.y, altOff)
-                var fr2 = { type: "free", fx: ep2.x / Math.max(1, width), fy: ep2.y / Math.max(1, height) }
-                if (_ed.dragKind === "to") n.to = fr2
-                else n.from = fr2
-            } else if (_ed.dragKind === "hot") {
-                var hp = _ed.snapPos(m.x, m.y, altOff)
-                var p = _ed.toPhoto(hp.x, hp.y)
-                n.nx = Math.max(0, Math.min(1, p.x))
-                n.ny = Math.max(0, Math.min(1, p.y))
-            } else if (_ed.dragKind === "chip") {
-                var cp = _ed.snapPos(m.x - _ed.dragOffX, m.y - _ed.dragOffY, altOff)
-                var fx = Math.max(0.01, Math.min(0.92, cp.x / Math.max(1, width)))
-                var fy = Math.max(0.01, Math.min(0.92, cp.y / Math.max(1, height)))
-                var dFx = fx - n.chipFx
-                var dFy = fy - n.chipFy
-                var ids = (_ed.selectedIds && _ed.selectedIds.length) ? _ed.selectedIds : [_ed.selectedId]
-                for (var i = 0; i < ids.length; i++) {
-                    var q = _ed.nodeAt(ids[i])
-                    if (!q)
-                        continue
-                    q.chipFx = Math.max(0.01, Math.min(0.92, q.chipFx + dFx))
-                    q.chipFy = Math.max(0.01, Math.min(0.92, q.chipFy + dFy))
-                }
-            } else if (_ed.dragKind === "spine" && n.spines && _ed.dragSpine >= 0) {
-                var sp = _ed.snapPos(m.x, m.y, altOff)
-                n.spines[_ed.dragSpine].fx = Math.max(0, Math.min(1, sp.x / Math.max(1, width)))
-                n.spines[_ed.dragSpine].fy = Math.max(0, Math.min(1, sp.y / Math.max(1, height)))
-            }
-            _ed.repaint()
+            _ed.applyPointer(m.x, m.y, _ed.altHeld)
         }
         onReleased: (m) => {
             if (_ed.dragKind === "band") {
@@ -1269,6 +1304,7 @@ Item {
                 _ed.addSpineAt(hit.id || _ed.selectedId, m.x, m.y)
             }
         }
+        onExited: _ed.reportCursor(-1, -1, false)
         onWheel: (w) => {
             if (!_ed.interactive || !face || !face.zoomAt) {
                 w.accepted = false
