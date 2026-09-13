@@ -4,6 +4,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal
+import QtQuick.Dialogs
+import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.Device
@@ -23,9 +25,17 @@ Window {
     title: "Joystick Button Map — VKBsim Gladiator EVO R"
 
     readonly property string targetName: "VKBsim Gladiator EVO R"
+    readonly property string stockImage: "qml/images/vkb_gladiator_rig.jpg"
     property int _nameTick: 0
+    property bool editing: false
+    property var workNodes: []
+    property string photoOverride: ""
+    property string storedImage: stockImage
+    property string selectedId: ""
+    property var selectedNode: null
 
     ViewerDeviceModel { id: _devices }
+    HardwareProfile { id: _hw }
 
     DeviceNames {
         id: _names
@@ -59,56 +69,351 @@ Window {
         return isRight(a) || isRight(b)
     }
 
+    function parseDoc(text) {
+        try {
+            var d = JSON.parse(text)
+            return (d && d.nodes) ? d : null
+        } catch (e) {
+            return null
+        }
+    }
+
+    function applyImage(rel) {
+        storedImage = rel && rel.length ? rel : stockImage
+        photoOverride = _hw.imageUrl(storedImage)
+    }
+
+    function enterEdit() {
+        var text = _hw.load(targetName)
+        var doc = parseDoc(text)
+        if (!doc) {
+            return
+        }
+        workNodes = JSON.parse(JSON.stringify(doc.nodes))
+        applyImage(doc.image || stockImage)
+        editing = true
+        selectedId = ""
+        selectedNode = null
+    }
+
+    function saveEdit() {
+        var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
+        var nodes = (ed && ed.nodes && ed.nodes.length) ? ed.nodes : workNodes
+        var doc = {
+            kind: "control.hardware",
+            device: targetName,
+            image: storedImage.length ? storedImage : stockImage,
+            imageWidth: 899,
+            imageHeight: 920,
+            nodes: nodes
+        }
+        if (_hw.save(targetName, JSON.stringify(doc))) {
+            editing = false
+            selectedId = ""
+            selectedNode = null
+            photoOverride = ""
+        }
+    }
+
+    function cancelEdit() {
+        editing = false
+        workNodes = []
+        selectedId = ""
+        selectedNode = null
+        photoOverride = ""
+        storedImage = stockImage
+    }
+
+    function currentNode() {
+        var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
+        if (ed && ed.selectedId) {
+            return ed.nodeAt(ed.selectedId)
+        }
+        return null
+    }
+
+    function applySelected() {
+        var n = currentNode()
+        selectedNode = n
+        selectedId = n ? n.id : ""
+    }
+
     Component.onCompleted: () => {
         if (_devices) {
             _devices.reload()
         }
     }
 
-    JGText {
-        anchors.centerIn: parent
-        visible: !_hasTarget.hit
-        text: "Connect VKBsim Gladiator EVO R"
-        opacity: 0.65
+    FileDialog {
+        id: _imageDialog
+        title: "Choose background image"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
+        onAccepted: {
+            var rel = _hw.copyImage(selectedFile, targetName)
+            if (rel.length) {
+                applyImage(rel)
+            }
+        }
     }
 
-    QtObject {
-        id: _hasTarget
-        property bool hit: false
-    }
-
-    Item {
+    ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
+        spacing: 0
 
-        Repeater {
-            model: _devices
+        ToolBar {
+            Layout.fillWidth: true
+            RowLayout {
+                anchors.fill: parent
+                Button {
+                    text: editing ? "Editing" : "Edit"
+                    enabled: !editing
+                    onClicked: enterEdit()
+                }
+                Button {
+                    text: "Save"
+                    visible: editing
+                    onClicked: saveEdit()
+                }
+                Button {
+                    text: "Cancel"
+                    visible: editing
+                    onClicked: cancelEdit()
+                }
+                ToolSeparator { visible: editing }
+                Button {
+                    text: "Image…"
+                    visible: editing
+                    onClicked: _imageDialog.open()
+                }
+                Button {
+                    text: "Clear image"
+                    visible: editing
+                    onClicked: {
+                        _hw.clearImage(targetName)
+                        applyImage(stockImage)
+                    }
+                }
+                Label {
+                    visible: editing
+                    text: "control.hardware  " + _hw.path
+                    color: "#A1A1AA"
+                    font.pixelSize: 11
+                    elide: Text.ElideMiddle
+                    Layout.fillWidth: true
+                }
+                Item { Layout.fillWidth: true; visible: !editing }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
 
             Item {
-                required property string guid
-                required property string name
-                required property string pairLabel
-                required property bool mapped
+                Layout.fillWidth: true
+                Layout.fillHeight: true
 
-                anchors.fill: parent
-                visible: _buttonMap.isTarget(guid, name)
-
-                onVisibleChanged: {
-                    if (visible) {
-                        _hasTarget.hit = true
-                    }
-                }
-                Component.onCompleted: {
-                    if (visible) {
-                        _hasTarget.hit = true
-                    }
+                JGText {
+                    anchors.centerIn: parent
+                    visible: !_hasTarget.hit
+                    text: "Connect VKBsim Gladiator EVO R"
+                    opacity: 0.65
                 }
 
-                JoystickButtonMapCard {
+                QtObject {
+                    id: _hasTarget
+                    property bool hit: false
+                }
+
+                Repeater {
+                    model: _devices
+
+                    Item {
+                        required property string guid
+                        required property string name
+                        required property string pairLabel
+                        required property bool mapped
+
+                        anchors.fill: parent
+                        visible: _buttonMap.isTarget(guid, name)
+
+                        onVisibleChanged: {
+                            if (visible) {
+                                _hasTarget.hit = true
+                            }
+                        }
+                        Component.onCompleted: {
+                            if (visible) {
+                                _hasTarget.hit = true
+                            }
+                        }
+
+                        JoystickButtonMapCard {
+                            id: _card
+                            anchors.fill: parent
+                            deviceGuid: guid
+                            title: _buttonMap.displayName(guid, name)
+                            pairLabel: pairLabel
+                            editing: _buttonMap.editing
+                            editorNodes: _buttonMap.workNodes
+                            photoOverride: _buttonMap.photoOverride
+
+                            Connections {
+                                target: _card.editorItem
+                                function onSelectedChanged() {
+                                    _buttonMap.applySelected()
+                                }
+                                function onNodesChanged() {
+                                    _buttonMap.applySelected()
+                                }
+                            }
+
+                            Component.onCompleted: _cardLoader.item = _card
+                        }
+                    }
+                }
+
+                QtObject {
+                    id: _cardLoader
+                    property var item: null
+                }
+            }
+
+            Rectangle {
+                visible: editing
+                Layout.preferredWidth: 260
+                Layout.fillHeight: true
+                color: "#111113"
+                border.color: "#27272A"
+
+                ColumnLayout {
                     anchors.fill: parent
-                    deviceGuid: guid
-                    title: _buttonMap.displayName(guid, name)
-                    pairLabel: pairLabel
+                    anchors.margins: 10
+                    spacing: 8
+
+                    Label { text: "Chip"; font.bold: true; color: "#E4E4E7" }
+                    Label {
+                        text: selectedNode ? selectedNode.id : "(select a chip or hotspot)"
+                        color: "#A1A1AA"
+                    }
+
+                    Label { text: "Name"; color: "#A1A1AA"; visible: selectedNode }
+                    TextField {
+                        Layout.fillWidth: true
+                        visible: selectedNode && selectedNode.kind !== "plus" && selectedNode.kind !== "pair" && selectedNode.kind !== "axis_stack"
+                        text: selectedNode && selectedNode.label ? selectedNode.label : ""
+                        placeholderText: "blank = hardware id → dest"
+                        onEditingFinished: {
+                            if (selectedNode) {
+                                selectedNode.label = text
+                                if (_cardLoader.item && _cardLoader.item.editorItem)
+                                    _cardLoader.item.editorItem.bump()
+                            }
+                        }
+                    }
+
+                    Label { text: "Hardware id"; color: "#A1A1AA"; visible: selectedNode && selectedNode.hwId !== undefined }
+                    SpinBox {
+                        visible: selectedNode && selectedNode.kind !== "plus" && selectedNode.kind !== "pair" && selectedNode.kind !== "axis_stack"
+                        from: 1
+                        to: 64
+                        value: selectedNode && selectedNode.hwId ? selectedNode.hwId : 1
+                        onValueModified: {
+                            if (selectedNode) {
+                                selectedNode.hwId = value
+                                if (_cardLoader.item && _cardLoader.item.editorItem)
+                                    _cardLoader.item.editorItem.bump()
+                            }
+                        }
+                    }
+
+                    Label { text: "Font size"; color: "#A1A1AA"; visible: selectedNode }
+                    SpinBox {
+                        visible: !!selectedNode
+                        from: 8
+                        to: 22
+                        value: selectedNode && selectedNode.fontSize ? selectedNode.fontSize : 10
+                        onValueModified: {
+                            if (selectedNode) {
+                                selectedNode.fontSize = value
+                                if (_cardLoader.item && _cardLoader.item.editorItem)
+                                    _cardLoader.item.editorItem.bump()
+                            }
+                        }
+                    }
+
+                    CheckBox {
+                        visible: !!selectedNode
+                        text: "Highlight on press"
+                        checked: selectedNode ? selectedNode.highlight !== false : true
+                        onToggled: {
+                            if (selectedNode) {
+                                selectedNode.highlight = checked
+                                if (_cardLoader.item && _cardLoader.item.editorItem)
+                                    _cardLoader.item.editorItem.bump()
+                            }
+                        }
+                    }
+
+                    Label { text: "Idle color"; color: "#A1A1AA"; visible: selectedNode }
+                    TextField {
+                        Layout.fillWidth: true
+                        visible: !!selectedNode
+                        text: selectedNode && selectedNode.color ? selectedNode.color : "#18181B"
+                        onEditingFinished: {
+                            if (selectedNode) {
+                                selectedNode.color = text
+                                if (_cardLoader.item && _cardLoader.item.editorItem)
+                                    _cardLoader.item.editorItem.bump()
+                            }
+                        }
+                    }
+                    Label { text: "Highlight color"; color: "#A1A1AA"; visible: selectedNode }
+                    TextField {
+                        Layout.fillWidth: true
+                        visible: !!selectedNode
+                        text: selectedNode && selectedNode.hlColor ? selectedNode.hlColor : "#14532D"
+                        onEditingFinished: {
+                            if (selectedNode) {
+                                selectedNode.hlColor = text
+                                if (_cardLoader.item && _cardLoader.item.editorItem)
+                                    _cardLoader.item.editorItem.bump()
+                            }
+                        }
+                    }
+
+                    Button {
+                        visible: !!selectedNode
+                        text: "Add spine"
+                        onClicked: {
+                            var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (ed && selectedNode) {
+                                ed.ensureMidSpine(selectedNode)
+                                ed.bump()
+                            }
+                        }
+                    }
+                    Button {
+                        visible: !!selectedNode
+                        text: "Delete selected spine"
+                        onClicked: {
+                            var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (ed) {
+                                ed.deleteSelection()
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillHeight: true }
+                    Label {
+                        text: "Live map still uses the lock file.\nSave writes control.hardware JSON."
+                        color: "#71717A"
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                        font.pixelSize: 10
+                    }
                 }
             }
         }

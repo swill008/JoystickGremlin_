@@ -11,6 +11,10 @@ Item {
     property string deviceGuid: ""
     property string title: ""
     property string pairLabel: ""
+    property bool editing: false
+    property var editorNodes: []
+    property string photoOverride: ""
+    readonly property var editorItem: _face.editorItem
 
     property int axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
@@ -57,11 +61,15 @@ Item {
     }
 
     VkbRigFace {
+        id: _face
         anchors.fill: parent
         host: _root
         liveStamp: _root.liveStamp
         buttons: _buttons
         axes: _axes
         hats: _hats
+        editing: _root.editing
+        editorNodes: _root.editorNodes
+        photoOverride: _root.photoOverride
     }
 }

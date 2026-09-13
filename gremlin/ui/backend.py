@@ -41,6 +41,7 @@ from gremlin.ui.device import InputIdentifier
 from gremlin.ui.profile import InputItemModel
 from gremlin.ui.script import ScriptListModel
 from gremlin.ui.util import to_local_path
+import gremlin.ui.hardware_profile  # noqa: F401
 
 QML_IMPORT_NAME = "Gremlin.UI"
 QML_IMPORT_MAJOR_VERSION = 1

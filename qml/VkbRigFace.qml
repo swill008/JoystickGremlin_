@@ -13,6 +13,10 @@ Item {
     property var buttons: null
     property var axes: null
     property var hats: null
+    property bool editing: false
+    property var editorNodes: []
+    property string photoOverride: ""
+    readonly property var editorItem: _editorLoader.item
 
     property var destBtn: ({})
     property var destAxis: ({})
@@ -27,6 +31,14 @@ Item {
 
     function photoPt(nx, ny) {
         return _img.mapToItem(_face, _ox + nx * _pw, _oy + ny * _ph)
+    }
+
+    function toPhoto(mx, my) {
+        var p = _img.mapFromItem(_face, mx, my)
+        if (_pw < 1 || _ph < 1) {
+            return Qt.point(0, 0)
+        }
+        return Qt.point((p.x - _ox) / _pw, (p.y - _oy) / _ph)
     }
 
     function hwButton(id) { return host && host.hwButton ? host.hwButton(id) : 0 }
@@ -219,6 +231,7 @@ Item {
     // Chip zones hug the photo at hotspot Y. 5-ways stay plus groups.
     // Head stack order follows target Y so leaders do not cross:
     // H1, 11-15, 6-10, 3. Then 16-20 at the wheel. A1-A3 at the gimbal.
+    // Edit mode hides live chips but keeps pane space so the JPEG does not jump.
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 8
@@ -235,6 +248,8 @@ Item {
                 Layout.maximumWidth: 280
                 Layout.fillHeight: true
                 clip: true
+                opacity: _face.editing ? 0 : 1
+                enabled: !_face.editing
 
                 Column {
                     id: _leftHead
@@ -294,7 +309,7 @@ Item {
                 Image {
                     id: _img
                     anchors.fill: parent
-                    source: Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+                    source: (_face.editing && _face.photoOverride.length) ? _face.photoOverride : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     cache: true
@@ -310,6 +325,8 @@ Item {
                 Layout.maximumWidth: 160
                 Layout.fillHeight: true
                 clip: true
+                opacity: _face.editing ? 0 : 1
+                enabled: !_face.editing
 
                 Column {
                     id: _rightGrip
@@ -357,6 +374,8 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 48
+            opacity: _face.editing ? 0 : 1
+            enabled: !_face.editing
 
             Row {
                 id: _bottom
@@ -383,10 +402,33 @@ Item {
         }
     }
 
+    Loader {
+        id: _editorLoader
+        anchors.fill: parent
+        z: 5
+        active: _face.editing
+        visible: _face.editing
+        source: "VkbRigEditor.qml"
+        onLoaded: {
+            item.face = _face
+            item.nodes = _face.editorNodes
+        }
+        Connections {
+            target: _face
+            function onEditorNodesChanged() {
+                if (_editorLoader.item) {
+                    _editorLoader.item.nodes = _face.editorNodes
+                    _editorLoader.item.bump()
+                }
+            }
+        }
+    }
+
     Canvas {
         id: _lines
         anchors.fill: parent
         z: 1
+        visible: !_face.editing
         onPaint: {
             var ctx = getContext("2d")
             ctx.reset()

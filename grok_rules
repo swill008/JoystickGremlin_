@@ -71,3 +71,4 @@ Any change to rules is written here. Do not keep a second unofficial list.
     hat1 8-way ministick
     axes 1-3 gimbal X/Y/Z
     axis 4 Z slider
+25. Button Map editor: Edit on the map window. Save writes a control.hardware JSON to qml/maps/<device>.json (EVO R: qml/maps/vkb_evo_r.json). That file is a backup until we cut over; qml/vkb_evo_r_face_map.md remains live runtime truth.
