@@ -37,9 +37,9 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 24 | En2 right knob down | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
 | 25 | En1 left knob up | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
 | 26 | En1 left knob down | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
-| 27 | Middle base pad | Base | 612 | 638 | 0.681 | 0.693 | pads |
-| 28 | Left base pad | Base | 586 | 646 | 0.652 | 0.702 | pads |
-| 29 | Right base pad | Base | 648 | 628 | 0.721 | 0.683 | pads |
+| 27 | Middle base pad | Base | 604 | 640 | 0.672 | 0.696 | pads |
+| 28 | Left base pad | Base | 586 | 648 | 0.652 | 0.704 | pads |
+| 29 | Right base pad | Base | 618 | 636 | 0.687 | 0.691 | pads |
 
 ## Hats
 
@@ -72,4 +72,4 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 - Button 5 is the lower-grip white centroid (544,386), not the space to its right.
 - 21/22 is the grey upper paddle stub right of the cap (628,250), not the red trigger.
 - 1/2 is the right-grip red trigger centroid (555,277).
-- 28/27/29 are the three squares above En1/slider/En2 (586,646 / 612,638 / 648,628).
+- 28/27/29 are 3x-zoom centers on the three squares (586,648 / 604,640 / 618,636). Do not space them equally — perspective packs 29 left of En2.
