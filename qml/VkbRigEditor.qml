@@ -36,9 +36,10 @@ Item {
     property int selectedLeader: 0
     property int selectedSeg: -1
     property int dragLeader: 0
+    signal selectedChanged()
+    signal chipMenuRequested(real x, real y)
 
     // Do NOT declare signal nodesChanged — property var nodes already has it.
-    signal selectedChanged()
 
     function repaint() {
         tick++
@@ -1866,10 +1867,9 @@ Item {
                 if (hit.kind === "chip" || hit.kind === "member" || hit.kind === "hot") {
                     if (hit.id)
                         _ed.setSelection([hit.id])
-                    _ctx.nodeId = hit.id
-                    _ctx.seg = -1
-                    _ctx.leader = 0
-                    _ctx.popup()
+                    if (hit.kind === "member")
+                        _ed.selectedMember = hit.member
+                    _ed.chipMenuRequested(m.x, m.y)
                     return
                 }
                 _ctx.nodeId = ""

@@ -372,6 +372,21 @@ Window {
         refreshReservoir()
     }
 
+    function nodeIsGroup(n) {
+        return !!(n && (n.kind === "plus" || n.kind === "pair" || n.kind === "axis_stack" || n.kind === "stack" || (n.members && n.members.length)))
+    }
+
+    function openChipMenu(x, y) {
+        applySelected()
+        if (!selectedNode)
+            return
+        var e = _ed()
+        var p = e ? e.mapToItem(_buttonMap.contentItem, x, y) : Qt.point(x, y)
+        _chipPop.x = Math.max(8, Math.min(p.x, _buttonMap.width - _chipPop.width - 8))
+        _chipPop.y = Math.max(8, Math.min(p.y, _buttonMap.height - _chipPop.height - 8))
+        _chipPop.open()
+    }
+
     Menu {
         id: _groupMenu
         MenuItem { text: "Group selected"; onTriggered: { var e = _ed(); if (e) e.groupSelection() } }
@@ -457,6 +472,16 @@ Window {
                     visible: editing
                     text: "Leader"
                     onClicked: _leadMenu.popup()
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+G"
+                    onActivated: { var e = _ed(); if (e) e.groupSelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Shift+G"
+                    onActivated: { var e = _ed(); if (e) e.ungroupSelection() }
                 }
                 ToolSeparator { visible: editing }
                 Button {
@@ -606,6 +631,7 @@ Window {
                             target: _card.editorItem
                             function onSelectedChanged() { _buttonMap.applySelected() }
                             function onTickChanged() { _buttonMap.resTick++ }
+                            function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
                             function onNodesChanged() {
                                 _buttonMap.applySelected()
                                 _buttonMap.refreshReservoir()
@@ -729,300 +755,213 @@ Window {
                 }
             }
 
-            Rectangle {
-                visible: editing
-                Layout.preferredWidth: 260
+        }
+    }
+
+    Popup {
+        id: _chipPop
+        parent: _buttonMap.contentItem
+        width: 272
+        height: Math.min(640, _buttonMap.height - 24)
+        modal: false
+        focus: true
+        padding: 0
+        closePolicy: Popup.CloseOnEscape
+        background: Rectangle {
+            color: "#111113"
+            border.color: "#3F3F46"
+            radius: 8
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 6
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    text: selectedNode ? (selectedNode.friendly || selectedNode.id || "Chip") : "Chip"
+                    font.bold: true
+                    color: "#E4E4E7"
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+                Button {
+                    text: "Group"
+                    implicitHeight: 24
+                    onClicked: _groupMenu.popup()
+                }
+                Button {
+                    text: "Leader"
+                    implicitHeight: 24
+                    onClicked: _leadMenu.popup()
+                }
+                Button {
+                    text: "×"
+                    implicitWidth: 28
+                    implicitHeight: 24
+                    onClicked: _chipPop.close()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: "#A1A1AA"
+                font.pixelSize: 11
+                text: {
+                    var e = _ed()
+                    var n = selectedNode
+                    if (!n || !e)
+                        return ""
+                    if (n.members && n.members.length) {
+                        var parts = []
+                        var lk = n.kind === "axis_stack" ? "axis" : "btn"
+                        for (var i = 0; i < n.members.length; i++)
+                            parts.push(e.fullNameOf(lk, n.members[i].hwId))
+                        return parts.join("\n")
+                    }
+                    return e.fullNameOf(n.kind, n.hwId)
+                }
+            }
+            Flickable {
+                Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: "#111113"
-                border.color: "#27272A"
+                clip: true
+                contentWidth: width
+                contentHeight: _chipForm.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                ColumnLayout {
+                    id: _chipForm
+                    width: parent.width
+                    spacing: 6
 
-                Flickable {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    clip: true
-                    contentWidth: width
-                    contentHeight: _insp.implicitHeight
-                    boundsBehavior: Flickable.StopAtBounds
-                    ColumnLayout {
-                        id: _insp
-                        width: parent.width
-                        spacing: 8
-
-                    Label { text: "Chip"; font.bold: true; color: "#E4E4E7" }
-                    Label {
-                        text: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            var n = e && e.selectedIds ? e.selectedIds.length : 0
-                            if (n > 1)
-                                return n + " selected"
-                            return selectedNode ? selectedNode.id : "(select a chip or hotspot)"
-                        }
-                        color: "#A1A1AA"
-                    }
-                    Label {
-                        visible: !!selectedNode
-                        color: "#71717A"
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                        text: "Group / Leader actions are in the toolbar menus (and right-click)."
-                        font.pixelSize: 11
-                    }
-                    Shortcut {
-                        enabled: editing
-                        sequence: "Ctrl+G"
-                        onActivated: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e)
-                                e.groupSelection()
-                        }
-                    }
-                    Shortcut {
-                        enabled: editing
-                        sequence: "Ctrl+Shift+G"
-                        onActivated: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e)
-                                e.ungroupSelection()
-                        }
-                    }
-
-                    Label { text: "Full name"; color: "#A1A1AA"; visible: selectedNode }
-                    Label {
-                        visible: selectedNode
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: "#E4E4E7"
-                        font.pixelSize: 12
-                        text: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            var n = selectedNode
-                            if (!n || !e)
-                                return ""
-                            if (n.members && n.members.length) {
-                                var parts = []
-                                var lk = n.kind === "axis_stack" ? "axis" : "btn"
-                                for (var i = 0; i < n.members.length; i++)
-                                    parts.push(e.fullNameOf(lk, n.members[i].hwId))
-                                return parts.join("\n")
-                            }
-                            return e.fullNameOf(n.kind, n.hwId)
-                        }
-                    }
-
-                    Label { text: "Friendly name"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Friendly name"; color: "#A1A1AA" }
                     TextField {
                         Layout.fillWidth: true
-                        visible: !!selectedNode
                         text: selectedNode && selectedNode.friendly ? selectedNode.friendly : (selectedNode && selectedNode.label ? selectedNode.label : "")
                         placeholderText: "shown on the chip"
                         onEditingFinished: {
                             if (selectedNode) {
                                 selectedNode.friendly = text
                                 selectedNode.label = text
-                                if (_cardLoader.item && _cardLoader.item.editorItem)
-                                    _cardLoader.item.editorItem.bump()
+                                var e = _ed()
+                                if (e) e.bump()
                             }
                         }
                     }
 
-                    Label {
-                        text: "Group align"
-                        color: "#A1A1AA"
-                        visible: selectedNode && (selectedNode.kind === "plus" || selectedNode.kind === "pair" || selectedNode.kind === "axis_stack" || selectedNode.kind === "stack")
-                    }
+                    Label { text: "Group align"; color: "#A1A1AA"; visible: nodeIsGroup(selectedNode) }
                     RowLayout {
-                        visible: selectedNode && (selectedNode.kind === "plus" || selectedNode.kind === "pair" || selectedNode.kind === "axis_stack" || selectedNode.kind === "stack")
+                        visible: nodeIsGroup(selectedNode)
                         Layout.fillWidth: true
                         spacing: 4
-                        Button {
-                            text: "Left"
-                            checkable: true
-                            checked: selectedNode && selectedNode.alignH === "left"
-                            onClicked: { var e = _ed(); if (e) e.setAlignH("left") }
-                        }
-                        Button {
-                            text: "Center"
-                            checkable: true
-                            checked: !selectedNode || !selectedNode.alignH || selectedNode.alignH === "center"
-                            onClicked: { var e = _ed(); if (e) e.setAlignH("center") }
-                        }
-                        Button {
-                            text: "Right"
-                            checkable: true
-                            checked: selectedNode && selectedNode.alignH === "right"
-                            onClicked: { var e = _ed(); if (e) e.setAlignH("right") }
-                        }
-                        Button {
-                            text: "Free"
-                            checkable: true
-                            checked: selectedNode && selectedNode.alignH === "free"
-                            onClicked: { var e = _ed(); if (e) e.setAlignH("free") }
-                        }
+                        Button { text: "Left"; checkable: true; checked: selectedNode && selectedNode.alignH === "left"; onClicked: { var e = _ed(); if (e) e.setAlignH("left") } }
+                        Button { text: "Center"; checkable: true; checked: !selectedNode || !selectedNode.alignH || selectedNode.alignH === "center"; onClicked: { var e = _ed(); if (e) e.setAlignH("center") } }
+                        Button { text: "Right"; checkable: true; checked: selectedNode && selectedNode.alignH === "right"; onClicked: { var e = _ed(); if (e) e.setAlignH("right") } }
+                        Button { text: "Free"; checkable: true; checked: selectedNode && selectedNode.alignH === "free"; onClicked: { var e = _ed(); if (e) e.setAlignH("free") } }
                     }
 
-                    Label { text: "Hardware id"; color: "#A1A1AA"; visible: selectedNode && selectedNode.hwId !== undefined }
+                    Label { text: "Hardware id"; color: "#A1A1AA"; visible: selectedNode && selectedNode.hwId !== undefined && !nodeIsGroup(selectedNode) }
                     SpinBox {
-                        visible: selectedNode && selectedNode.kind !== "plus" && selectedNode.kind !== "pair" && selectedNode.kind !== "axis_stack" && selectedNode.kind !== "stack"
+                        visible: selectedNode && selectedNode.hwId !== undefined && !nodeIsGroup(selectedNode)
                         from: 1
                         to: 64
                         value: selectedNode && selectedNode.hwId ? selectedNode.hwId : 1
                         onValueModified: {
                             if (selectedNode) {
                                 selectedNode.hwId = value
-                                if (_cardLoader.item && _cardLoader.item.editorItem)
-                                    _cardLoader.item.editorItem.bump()
+                                var e = _ed()
+                                if (e) e.bump()
                             }
                         }
                     }
 
-                    Label { text: "Font size"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Font size"; color: "#A1A1AA" }
                     SpinBox {
-                        visible: !!selectedNode
                         from: 8
                         to: 22
                         value: selectedNode && selectedNode.fontSize ? selectedNode.fontSize : 10
-                        onValueModified: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.applyField("fontSize", value)
-                        }
+                        onValueModified: { var e = _ed(); if (e) e.applyField("fontSize", value) }
                     }
-
-                    Label { text: "Chip size"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Chip size"; color: "#A1A1AA" }
                     SpinBox {
-                        visible: !!selectedNode
                         from: 12
                         to: 48
                         value: selectedNode && selectedNode.chipSize ? selectedNode.chipSize : 18
-                        onValueModified: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.applyField("chipSize", value)
-                        }
+                        onValueModified: { var e = _ed(); if (e) e.applyField("chipSize", value) }
                     }
-                    Label { text: "Chip shape"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Chip shape"; color: "#A1A1AA" }
                     ComboBox {
                         Layout.fillWidth: true
-                        visible: !!selectedNode
                         model: ["Round", "Square"]
                         currentIndex: selectedNode && selectedNode.chipShape === "square" ? 1 : 0
-                        onActivated: (idx) => {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.applyField("chipShape", idx === 1 ? "square" : "round")
-                        }
+                        onActivated: (idx) => { var e = _ed(); if (e) e.applyField("chipShape", idx === 1 ? "square" : "round") }
                     }
-                    Label { text: "Chip fill"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Chip fill"; color: "#A1A1AA" }
                     ComboBox {
                         Layout.fillWidth: true
-                        visible: !!selectedNode
                         model: ["Filled", "Hollow"]
                         currentIndex: selectedNode && selectedNode.chipFill === "hollow" ? 1 : 0
-                        onActivated: (idx) => {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.applyField("chipFill", idx === 1 ? "hollow" : "filled")
-                        }
+                        onActivated: (idx) => { var e = _ed(); if (e) e.applyField("chipFill", idx === 1 ? "hollow" : "filled") }
                     }
-
-                    Label { text: "Hotspot size"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Hotspot size"; color: "#A1A1AA" }
                     SpinBox {
-                        visible: !!selectedNode
                         from: 4
                         to: 28
                         value: selectedNode && selectedNode.hotSize ? selectedNode.hotSize : 9
-                        onValueModified: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.applyField("hotSize", value)
-                        }
+                        onValueModified: { var e = _ed(); if (e) e.applyField("hotSize", value) }
                     }
-                    Label { text: "Hotspot shape"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Hotspot shape"; color: "#A1A1AA" }
                     ComboBox {
                         Layout.fillWidth: true
-                        visible: !!selectedNode
                         model: ["Round", "Square"]
                         currentIndex: selectedNode && selectedNode.hotShape === "square" ? 1 : 0
-                        onActivated: (idx) => {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.applyField("hotShape", idx === 1 ? "square" : "round")
-                        }
+                        onActivated: (idx) => { var e = _ed(); if (e) e.applyField("hotShape", idx === 1 ? "square" : "round") }
                     }
-                    Label { text: "Hotspot fill"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Hotspot fill"; color: "#A1A1AA" }
                     ComboBox {
                         Layout.fillWidth: true
-                        visible: !!selectedNode
                         model: ["Filled", "Hollow"]
                         currentIndex: selectedNode && selectedNode.hotFill === "hollow" ? 1 : 0
-                        onActivated: (idx) => {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.applyField("hotFill", idx === 1 ? "hollow" : "filled")
-                        }
+                        onActivated: (idx) => { var e = _ed(); if (e) e.applyField("hotFill", idx === 1 ? "hollow" : "filled") }
                     }
-
                     CheckBox {
-                        visible: !!selectedNode
                         text: "Highlight on press"
                         checked: selectedNode ? selectedNode.highlight !== false : true
                         onToggled: {
                             if (selectedNode) {
                                 selectedNode.highlight = checked
-                                if (_cardLoader.item && _cardLoader.item.editorItem)
-                                    _cardLoader.item.editorItem.bump()
+                                var e = _ed()
+                                if (e) e.bump()
                             }
                         }
                     }
-
-                    Label { text: "Colors"; color: "#A1A1AA"; visible: selectedNode }
+                    Label { text: "Colors"; color: "#A1A1AA" }
                     GridLayout {
-                        visible: !!selectedNode
                         Layout.fillWidth: true
                         columns: 2
                         columnSpacing: 8
                         rowSpacing: 6
                         Label { text: "Fill"; color: "#A1A1AA" }
-                        ColorSwatch {
-                            hex: selectedNode && selectedNode.color ? selectedNode.color : "#18181B"
-                            onPicked: _colorPop.openField("color", hex, this)
-                        }
+                        ColorSwatch { hex: selectedNode && selectedNode.color ? selectedNode.color : "#18181B"; onPicked: _colorPop.openField("color", hex, this) }
                         Label { text: "Border"; color: "#A1A1AA" }
-                        ColorSwatch {
-                            hex: selectedNode && selectedNode.border ? selectedNode.border : "#3F3F46"
-                            onPicked: _colorPop.openField("border", hex, this)
-                        }
+                        ColorSwatch { hex: selectedNode && selectedNode.border ? selectedNode.border : "#3F3F46"; onPicked: _colorPop.openField("border", hex, this) }
                         Label { text: "Text"; color: "#A1A1AA" }
-                        ColorSwatch {
-                            hex: selectedNode && selectedNode.textColor ? selectedNode.textColor : "#E4E4E7"
-                            onPicked: _colorPop.openField("textColor", hex, this)
-                        }
+                        ColorSwatch { hex: selectedNode && selectedNode.textColor ? selectedNode.textColor : "#E4E4E7"; onPicked: _colorPop.openField("textColor", hex, this) }
                         Label { text: "Highlight"; color: "#A1A1AA" }
-                        ColorSwatch {
-                            hex: selectedNode && selectedNode.hlColor ? selectedNode.hlColor : "#14532D"
-                            onPicked: _colorPop.openField("hlColor", hex, this)
-                        }
+                        ColorSwatch { hex: selectedNode && selectedNode.hlColor ? selectedNode.hlColor : "#14532D"; onPicked: _colorPop.openField("hlColor", hex, this) }
                         Label { text: "HL border"; color: "#A1A1AA" }
-                        ColorSwatch {
-                            hex: selectedNode && selectedNode.hlBorder ? selectedNode.hlBorder : "#22C55E"
-                            onPicked: _colorPop.openField("hlBorder", hex, this)
-                        }
+                        ColorSwatch { hex: selectedNode && selectedNode.hlBorder ? selectedNode.hlBorder : "#22C55E"; onPicked: _colorPop.openField("hlBorder", hex, this) }
                         Label { text: "HL text"; color: "#A1A1AA" }
-                        ColorSwatch {
-                            hex: selectedNode && selectedNode.hlText ? selectedNode.hlText : "#BBF7D0"
-                            onPicked: _colorPop.openField("hlText", hex, this)
+                        ColorSwatch { hex: selectedNode && selectedNode.hlText ? selectedNode.hlText : "#BBF7D0"; onPicked: _colorPop.openField("hlText", hex, this) }
+                    }
+                    Button {
+                        text: "Delete chip"
+                        Layout.fillWidth: true
+                        onClicked: {
+                            var e = _ed()
+                            if (e) e.deleteSelection()
+                            _chipPop.close()
                         }
-                    }
-
-                    Label {
-                        visible: !!selectedNode
-                        color: "#71717A"
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                        font.pixelSize: 11
-                        text: "Double-click a leader segment to switch curve/straight."
-                    }
-
-                    Label {
-                        text: "Save is the live map.\nCancel drops this session."
-                        color: "#71717A"
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                        font.pixelSize: 10
-                    }
                     }
                 }
             }
