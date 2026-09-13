@@ -131,7 +131,7 @@ Item {
 
     Hotspot { nx: 0.36; ny: 0.69; nw: 0.04; nh: 0.045; lit: on("dpad_up"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
     Hotspot { nx: 0.36; ny: 0.77; nw: 0.04; nh: 0.045; lit: on("dpad_down"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
-    Hotspot { nx: 0.32; ny: 0.73; nw: 0.04; nh: 0.045; lit: on("dpad_left"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+    Hotspot { nx: 0.335; ny: 0.73; nw: 0.04; nh: 0.045; lit: on("dpad_left"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
     Hotspot { nx: 0.40; ny: 0.73; nw: 0.04; nh: 0.045; lit: on("dpad_right"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
 
     Hotspot { nx: 0.50; ny: 0.575; nw: 0.11; nh: 0.11 * _pw / _ph; lit: on("guide"); glow: "#4ade80"; fill: "#00000000"; radius: width / 2 }
