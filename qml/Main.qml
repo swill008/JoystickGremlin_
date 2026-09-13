@@ -262,6 +262,12 @@ ApplicationWindow {
                 }
             }
             MenuItem {
+                text: qsTr("Xbox Pairing-Viewer")
+                onTriggered: () => {
+                    Helpers.toggleComponent("DialogXboxViewer.qml")
+                }
+            }
+            MenuItem {
                 text: qsTr("Device Viewer")
                 onTriggered: () => {
                     Helpers.toggleComponent("DialogDeviceViewer.qml")
@@ -356,6 +362,16 @@ ApplicationWindow {
 
                 onClicked: () => {
                     Helpers.toggleComponent("DialogInputViewer.qml")
+                }
+            }
+
+            JGToolButton {
+                text: "\uF3F3"
+                tooltip: qsTr("Toggle Xbox Pairing-Viewer")
+                caption: "Xbox Pairing"
+
+                onClicked: () => {
+                    Helpers.toggleComponent("DialogXboxViewer.qml")
                 }
             }
 
