@@ -3,21 +3,22 @@ Standing rules — Joystick Gremlin
 Source of truth for Grok on this repo. Recall this file when asked.
 Any change to rules is written here. Do not keep a second unofficial list.
 
-1. Plan first. No code until you say go.
-2. Announce every git push.
-3. Branch: only Xbox_integration_ViGEmClient_dll for Xbox work. Optimization line stays on R15-OSC-Optimization. Do not mix Xbox commits onto Optimization unless you say merge.
-4. Do not touch feature/osc-streamdeck unless you say so.
-5. Stay on JoystickGremlin_, not JoystickGremlinEx_.
-6. Warn before high CPU / memory / perf changes. Suggest cheaper options first.
-7. You pull/fetch locally (GitHub Desktop). Pushes go through the GitHub API. You run with:
+1. Do not move large files. Edit files using copy/replace/paste and patch operations. Keep the structure of the program. Warn the user if a change could break a previous version.
+2. Plan first. No code until you say go.
+3. Announce every git push.
+4. Branch: only Xbox_integration_ViGEmClient_dll for Xbox work. Optimization line stays on R15-OSC-Optimization. Do not mix Xbox commits onto Optimization unless you say merge.
+5. Do not touch feature/osc-streamdeck unless you say so.
+6. Stay on JoystickGremlin_, not JoystickGremlinEx_.
+7. Warn before high CPU / memory / perf changes. Suggest cheaper options first.
+8. You pull/fetch locally (GitHub Desktop). Pushes go through the GitHub API. You run with:
    poetry run python joystick_gremlin.py
    from E:\Users\Stacie\Documents\GitHub\JoystickGremlin_
-8. Merge to “the program” only after you test.
-9. Portable zip only, not a Program Files installer.
-10. Do not reintroduce custom dill.dll loaders.
-11. Do not commit ViGEmClient.dll to the repo from here (you already pushed it; that was your call).
-12. Show generated / planned images before wiring new faces into QML, unless you already said go.
-13. Xbox tab is labeled layout + incoming sources, not a DILL input device. Hardware maps with Map to Xbox.
-14. Keep older R15 XML profiles loadable. Xbox-only nodes (map-to-xbox) are extra; stock R15 will not understand them.
-15. Standing rules live in this file (grok_rules) at the program folder root. Recall from this file. Any rule change is written here.
-16. All images generated for the user to view must be displayed in chat using image generation.
+9. Merge to “the program” only after you test.
+10. Portable zip only, not a Program Files installer.
+11. Do not reintroduce custom dill.dll loaders.
+12. Do not commit ViGEmClient.dll to the repo from here (you already pushed it; that was your call).
+13. Show generated / planned images before wiring new faces into QML, unless you already said go.
+14. Xbox tab is labeled layout + incoming sources, not a DILL input device. Hardware maps with Map to Xbox.
+15. Keep older R15 XML profiles loadable. Xbox-only nodes (map-to-xbox) are extra; stock R15 will not understand them.
+16. Standing rules live in this file (grok_rules) at the program folder root. Recall from this file. Any rule change is written here.
+17. All images generated for the user to view must be displayed in chat using image generation.
