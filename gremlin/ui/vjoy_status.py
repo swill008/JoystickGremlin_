@@ -10,6 +10,7 @@ from gremlin.config import Configuration
 from gremlin.types import PropertyType
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from vjoy import vjoy
+import gremlin.ui.xbox_device_model  # noqa: F401
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
