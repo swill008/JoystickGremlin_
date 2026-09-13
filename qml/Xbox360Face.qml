@@ -143,5 +143,5 @@ Item {
     Hotspot { nx: 0.672; ny: 0.581; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("x"); glow: "#60a5fa"; fill: "#6660a5fa"; radius: width / 2 }
 
     Hotspot { nx: 0.428; ny: 0.592; nw: 0.045; nh: 0.032; lit: on("back"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
-    Hotspot { nx: 0.582; ny: 0.578; nw: 0.045; nh: 0.032; lit: on("start"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
+    Hotspot { nx: 0.596; ny: 0.592; nw: 0.045; nh: 0.032; lit: on("start"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
 }
