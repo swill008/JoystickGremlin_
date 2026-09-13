@@ -116,6 +116,55 @@ Item {
         return face.toPhoto(mx, my)
     }
 
+    function pathPts(n) {
+        var item = _chips.itemAt(nodeIndex(n.id))
+        var pts = [pinPt(n, item)]
+        var spines = n.spines || []
+        for (var s = 0; s < spines.length; s++) {
+            pts.push(Qt.point(spines[s].fx * width, spines[s].fy * height))
+        }
+        pts.push(hotPt(n))
+        return pts
+    }
+
+    function _clampPt(pts, i) {
+        if (i < 0) return pts[0]
+        if (i >= pts.length) return pts[pts.length - 1]
+        return pts[i]
+    }
+
+    function _bezierCtrl(pts, i) {
+        var p0 = _clampPt(pts, i - 1)
+        var p1 = pts[i]
+        var p2 = pts[i + 1]
+        var p3 = _clampPt(pts, i + 2)
+        return {
+            c1x: p1.x + (p2.x - p0.x) / 6.0,
+            c1y: p1.y + (p2.y - p0.y) / 6.0,
+            c2x: p2.x - (p3.x - p1.x) / 6.0,
+            c2y: p2.y - (p3.y - p1.y) / 6.0,
+            x: p2.x,
+            y: p2.y
+        }
+    }
+
+    function strokeLeader(ctx, n, pts) {
+        if (!pts || pts.length < 2) return
+        ctx.beginPath()
+        ctx.moveTo(pts[0].x, pts[0].y)
+        if (n.curve === false || pts.length === 2) {
+            for (var i = 1; i < pts.length; i++) {
+                ctx.lineTo(pts[i].x, pts[i].y)
+            }
+        } else {
+            for (var j = 0; j < pts.length - 1; j++) {
+                var c = _bezierCtrl(pts, j)
+                ctx.bezierCurveTo(c.c1x, c.c1y, c.c2x, c.c2y, c.x, c.y)
+            }
+        }
+        ctx.stroke()
+    }
+
     function ensureMidSpine(n) {
         if (n.spines && n.spines.length) {
             return
@@ -124,6 +173,39 @@ Item {
         var a = pinPt(n, item)
         var b = hotPt(n)
         n.spines = [{ fx: ((a.x + b.x) * 0.5) / Math.max(1, width), fy: ((a.y + b.y) * 0.5) / Math.max(1, height) }]
+    }
+
+    function addCurveSpine(n) {
+        if (!n) return
+        n.curve = true
+        var item = _chips.itemAt(nodeIndex(n.id))
+        var a = pinPt(n, item)
+        var b = hotPt(n)
+        var spines = n.spines || []
+        if (spines.length) {
+            a = Qt.point(spines[spines.length - 1].fx * width, spines[spines.length - 1].fy * height)
+        }
+        var dx = b.x - a.x
+        var dy = b.y - a.y
+        var len = Math.hypot(dx, dy) || 1
+        var ox = -dy / len * 36
+        var oy = dx / len * 36
+        var mx = (a.x + b.x) * 0.5
+        var my = (a.y + b.y) * 0.5
+        var cx = width * 0.5
+        var cy = height * 0.5
+        var dPos = Math.hypot(mx + ox - cx, my + oy - cy)
+        var dNeg = Math.hypot(mx - ox - cx, my - oy - cy)
+        if (dPos > dNeg) {
+            ox = -ox
+            oy = -oy
+        }
+        if (!n.spines) n.spines = []
+        n.spines.push({ fx: (mx + ox) / Math.max(1, width), fy: (my + oy) / Math.max(1, height) })
+        selectedId = n.id
+        selectedSpine = n.spines.length - 1
+        selectedChanged()
+        bump()
     }
 
     function hitTest(mx, my) {
@@ -167,16 +249,32 @@ Item {
     }
 
     function _nearLeader(n, mx, my) {
-        var item = _chips.itemAt(nodeIndex(n.id))
-        var pts = [pinPt(n, item)]
-        var spines = n.spines || []
-        for (var s = 0; s < spines.length; s++) {
-            pts.push(Qt.point(spines[s].fx * width, spines[s].fy * height))
+        var pts = pathPts(n)
+        if (n.curve === false || pts.length < 3) {
+            for (var i = 0; i < pts.length - 1; i++) {
+                if (_distSeg(mx, my, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y) < 6) {
+                    return true
+                }
+            }
+            return false
         }
-        pts.push(hotPt(n))
-        for (var i = 0; i < pts.length - 1; i++) {
-            if (_distSeg(mx, my, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y) < 6) {
-                return true
+        var steps = 8
+        for (var j = 0; j < pts.length - 1; j++) {
+            var c = _bezierCtrl(pts, j)
+            var p1x = pts[j].x
+            var p1y = pts[j].y
+            var prevx = p1x
+            var prevy = p1y
+            for (var s = 1; s <= steps; s++) {
+                var tt = s / steps
+                var u = 1 - tt
+                var x = u*u*u*p1x + 3*u*u*tt*c.c1x + 3*u*tt*tt*c.c2x + tt*tt*tt*c.x
+                var y = u*u*u*p1y + 3*u*u*tt*c.c1y + 3*u*tt*tt*c.c2y + tt*tt*tt*c.y
+                if (_distSeg(mx, my, prevx, prevy, x, y) < 6) {
+                    return true
+                }
+                prevx = x
+                prevy = y
             }
         }
         return false
@@ -201,9 +299,19 @@ Item {
         if (!n.spines) {
             n.spines = []
         }
-        n.spines.push({ fx: mx / Math.max(1, width), fy: my / Math.max(1, height) })
+        var pts = pathPts(n)
+        var best = 0
+        var bestD = 1e9
+        for (var i = 0; i < pts.length - 1; i++) {
+            var d = _distSeg(mx, my, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y)
+            if (d < bestD) {
+                bestD = d
+                best = i
+            }
+        }
+        n.spines.splice(best, 0, { fx: mx / Math.max(1, width), fy: my / Math.max(1, height) })
         selectedId = id
-        selectedSpine = n.spines.length - 1
+        selectedSpine = best
         selectedChanged()
         bump()
     }
@@ -434,24 +542,20 @@ Item {
             for (var i = 0; i < list.length; i++) {
                 var n = list[i]
                 var item = _chips.itemAt(i)
-                var a = _ed.pinPt(n, item)
                 var b = _ed.hotPt(n)
                 ctx.strokeStyle = (_ed.interactive && _ed.selectedId === n.id) ? "#FBBF24" : "#A1A1AA"
                 ctx.lineWidth = (_ed.interactive && _ed.selectedId === n.id) ? 1.6 : 1.1
-                ctx.beginPath()
-                ctx.moveTo(a.x, a.y)
+                ctx.lineJoin = "round"
+                ctx.lineCap = "round"
+                var pts = _ed.pathPts(n)
+                _ed.strokeLeader(ctx, n, pts)
                 var spines = n.spines || []
-                for (var s = 0; s < spines.length; s++) {
-                    ctx.lineTo(spines[s].fx * width, spines[s].fy * height)
-                }
-                ctx.lineTo(b.x, b.y)
-                ctx.stroke()
                 ctx.beginPath()
                 ctx.arc(b.x, b.y, 4.5, 0, 6.3)
                 ctx.fillStyle = (_ed.interactive && _ed.selectedId === n.id) ? "#FBBF24" : "#F4F4F5"
                 ctx.fill()
                 if (_ed.interactive) {
-                    for (s = 0; s < spines.length; s++) {
+                    for (var s = 0; s < spines.length; s++) {
                         var sx = spines[s].fx * width
                         var sy = spines[s].fy * height
                         ctx.beginPath()
@@ -548,6 +652,6 @@ Item {
         visible: _ed.interactive
         color: "#A1A1AA"
         font.pixelSize: 10
-        text: "Drag hotspot / chip / spine. Click a leader to add a spine. Del or right-click spine to remove."
+        text: "Drag hotspot / chip / spine. Click a leader to add a spine. Add curve bows it. Del / right-click removes a spine."
     }
 }

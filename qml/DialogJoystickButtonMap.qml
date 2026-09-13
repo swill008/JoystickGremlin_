@@ -401,6 +401,18 @@ Window {
                         }
                     }
 
+                    CheckBox {
+                        visible: !!selectedNode
+                        text: "Curved leader"
+                        checked: selectedNode ? selectedNode.curve !== false : true
+                        onToggled: {
+                            if (selectedNode) {
+                                selectedNode.curve = checked
+                                if (_cardLoader.item && _cardLoader.item.editorItem)
+                                    _cardLoader.item.editorItem.bump()
+                            }
+                        }
+                    }
                     Button {
                         visible: !!selectedNode
                         text: "Add spine"
@@ -409,6 +421,16 @@ Window {
                             if (ed && selectedNode) {
                                 ed.ensureMidSpine(selectedNode)
                                 ed.bump()
+                            }
+                        }
+                    }
+                    Button {
+                        visible: !!selectedNode
+                        text: "Add curve"
+                        onClicked: {
+                            var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
+                            if (ed && selectedNode) {
+                                ed.addCurveSpine(selectedNode)
                             }
                         }
                     }
