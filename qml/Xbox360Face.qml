@@ -50,6 +50,7 @@ Item {
         z: 4
     }
 
+    // Always-visible outline; fills only when live.
     component Hotspot: Rectangle {
         property real nx
         property real ny
@@ -57,15 +58,15 @@ Item {
         property real nh
         property bool lit: false
         property color glow: "#22C55E"
-        property color fill: "#00000000"
+        property color fill: "#6622C55E"
 
         x: px(nx) - pw(nw) * 0.5
         y: py(ny) - ph(nh) * 0.5
         width: pw(nw)
         height: ph(nh)
         color: lit ? fill : "#00000000"
-        border.width: lit ? 3 : 0
-        border.color: glow
+        border.width: lit ? 3 : 2
+        border.color: lit ? glow : Qt.rgba(glow.r, glow.g, glow.b, 0.55)
         radius: Math.min(width, height) * 0.35
     }
 
@@ -92,18 +93,18 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: width / 2
-            color: "#00000000"
-            border.width: on("left_thumb") ? 3 : 0
-            border.color: "#22C55E"
+            color: on("left_thumb") ? "#3322C55E" : "#00000000"
+            border.width: on("left_thumb") ? 3 : 2
+            border.color: on("left_thumb") ? "#22C55E" : "#99EAB308"
         }
         Rectangle {
-            width: parent.width * 0.28
+            width: parent.width * 0.22
             height: width
             radius: width / 2
-            color: "#e5e7eb"
-            visible: stamp >= 0 && (Math.abs(v("left_stick_x")) > 0.06 || Math.abs(v("left_stick_y")) > 0.06 || on("left_thumb"))
-            x: parent.width * 0.36 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("left_stick_x")))
-            y: parent.height * 0.36 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("left_stick_y")))
+            color: "#f8fafc"
+            opacity: 0.9
+            x: parent.width * 0.39 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("left_stick_x")))
+            y: parent.height * 0.39 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("left_stick_y")))
         }
     }
 
@@ -114,33 +115,33 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: width / 2
-            color: "#00000000"
-            border.width: on("right_thumb") ? 3 : 0
-            border.color: "#22C55E"
+            color: on("right_thumb") ? "#3322C55E" : "#00000000"
+            border.width: on("right_thumb") ? 3 : 2
+            border.color: on("right_thumb") ? "#22C55E" : "#99EAB308"
         }
         Rectangle {
-            width: parent.width * 0.28
+            width: parent.width * 0.22
             height: width
             radius: width / 2
-            color: "#e5e7eb"
-            visible: stamp >= 0 && (Math.abs(v("right_stick_x")) > 0.06 || Math.abs(v("right_stick_y")) > 0.06 || on("right_thumb"))
-            x: parent.width * 0.36 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("right_stick_x")))
-            y: parent.height * 0.36 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("right_stick_y")))
+            color: "#f8fafc"
+            opacity: 0.9
+            x: parent.width * 0.39 + parent.width * 0.26 * Math.max(-1, Math.min(1, v("right_stick_x")))
+            y: parent.height * 0.39 - parent.height * 0.26 * Math.max(-1, Math.min(1, v("right_stick_y")))
         }
     }
 
-    Hotspot { nx: 0.36; ny: 0.69; nw: 0.04; nh: 0.045; lit: on("dpad_up"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
-    Hotspot { nx: 0.36; ny: 0.77; nw: 0.04; nh: 0.045; lit: on("dpad_down"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
-    Hotspot { nx: 0.335; ny: 0.73; nw: 0.04; nh: 0.045; lit: on("dpad_left"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
-    Hotspot { nx: 0.40; ny: 0.73; nw: 0.04; nh: 0.045; lit: on("dpad_right"); glow: "#f8fafc"; fill: "#ccf8fafc"; radius: 3 }
+    Hotspot { nx: 0.36; ny: 0.69; nw: 0.04; nh: 0.045; lit: on("dpad_up"); glow: "#f8fafc"; fill: "#66f8fafc"; radius: 3 }
+    Hotspot { nx: 0.36; ny: 0.77; nw: 0.04; nh: 0.045; lit: on("dpad_down"); glow: "#f8fafc"; fill: "#66f8fafc"; radius: 3 }
+    Hotspot { nx: 0.335; ny: 0.73; nw: 0.04; nh: 0.045; lit: on("dpad_left"); glow: "#f8fafc"; fill: "#66f8fafc"; radius: 3 }
+    Hotspot { nx: 0.40; ny: 0.73; nw: 0.04; nh: 0.045; lit: on("dpad_right"); glow: "#f8fafc"; fill: "#66f8fafc"; radius: 3 }
 
     Hotspot { nx: 0.50; ny: 0.575; nw: 0.11; nh: 0.11 * _pw / _ph; lit: on("guide"); glow: "#4ade80"; fill: "#00000000"; radius: width / 2 }
 
-    Hotspot { nx: 0.723; ny: 0.520; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("y"); glow: "#facc15"; fill: "#99fde047"; radius: width / 2 }
-    Hotspot { nx: 0.779; ny: 0.579; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("b"); glow: "#f87171"; fill: "#99f87171"; radius: width / 2 }
-    Hotspot { nx: 0.723; ny: 0.638; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("a"); glow: "#4ade80"; fill: "#994ade80"; radius: width / 2 }
-    Hotspot { nx: 0.672; ny: 0.583; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("x"); glow: "#60a5fa"; fill: "#9960a5fa"; radius: width / 2 }
+    Hotspot { nx: 0.723; ny: 0.520; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("y"); glow: "#facc15"; fill: "#66fde047"; radius: width / 2 }
+    Hotspot { nx: 0.779; ny: 0.579; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("b"); glow: "#f87171"; fill: "#66f87171"; radius: width / 2 }
+    Hotspot { nx: 0.723; ny: 0.638; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("a"); glow: "#4ade80"; fill: "#664ade80"; radius: width / 2 }
+    Hotspot { nx: 0.672; ny: 0.583; nw: 0.055; nh: 0.055 * _pw / _ph; lit: on("x"); glow: "#60a5fa"; fill: "#6660a5fa"; radius: width / 2 }
 
-    Hotspot { nx: 0.445; ny: 0.565; nw: 0.045; nh: 0.032; lit: on("back"); glow: "#86EFAC"; fill: "#9922C55E"; radius: 6 }
-    Hotspot { nx: 0.555; ny: 0.565; nw: 0.045; nh: 0.032; lit: on("start"); glow: "#86EFAC"; fill: "#9922C55E"; radius: 6 }
+    Hotspot { nx: 0.445; ny: 0.565; nw: 0.045; nh: 0.032; lit: on("back"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
+    Hotspot { nx: 0.555; ny: 0.565; nw: 0.045; nh: 0.032; lit: on("start"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
 }
