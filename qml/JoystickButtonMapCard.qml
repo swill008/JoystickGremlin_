@@ -115,9 +115,10 @@ ColumnLayout {
             }
 
             VkbRigFace {
+                visible: /gladiator|vkb|evo|ste?cs|gunfighter/i.test(_root.title)
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
-                Layout.preferredHeight: 520
+                Layout.preferredHeight: visible ? 520 : 0
                 pairLabel: _root.pairLabel
                 live: _live
                 buttonStamp: _root.buttonStamp
