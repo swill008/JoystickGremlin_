@@ -270,6 +270,47 @@ Window {
         onRejected: close()
     }
 
+    function _ed() {
+        return _cardLoader.item ? _cardLoader.item.editorItem : null
+    }
+
+    Menu {
+        id: _groupMenu
+        MenuItem { text: "Group selected"; onTriggered: { var e = _ed(); if (e) e.groupSelection() } }
+        MenuItem { text: "Ungroup"; onTriggered: { var e = _ed(); if (e) e.ungroupSelection() } }
+        MenuSeparator {}
+        MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
+        MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
+        MenuItem {
+            text: "Convert to stack / 5-way"
+            onTriggered: {
+                var e = _ed()
+                if (!e || !selectedNode) return
+                e.setGroupKind(selectedNode.kind === "plus" ? "stack" : "plus")
+            }
+        }
+    }
+
+    Menu {
+        id: _leadMenu
+        MenuItem { text: "Add straight spine"; onTriggered: { var e = _ed(); if (e && selectedNode) { e.ensureMidSpine(selectedNode); e.bump() } } }
+        MenuItem { text: "Add curved spine"; onTriggered: { var e = _ed(); if (e && selectedNode) e.addCurveSpine(selectedNode) } }
+        MenuItem { text: "This segment curved"; onTriggered: { var e = _ed(); if (e) e.setSegCurve(e.currentLeader(e.nodeAt(e.selectedId)), Math.max(0, e.selectedSeg), true) } }
+        MenuItem { text: "This segment straight"; onTriggered: { var e = _ed(); if (e) e.setSegCurve(e.currentLeader(e.nodeAt(e.selectedId)), Math.max(0, e.selectedSeg), false) } }
+        MenuItem { text: "All segments curved"; onTriggered: { var e = _ed(); if (e) e.setAllSegCurve(true) } }
+        MenuItem { text: "All segments straight"; onTriggered: { var e = _ed(); if (e) e.setAllSegCurve(false) } }
+        MenuSeparator {}
+        MenuItem { text: "Add leader (same chip / hotspot)"; onTriggered: { var e = _ed(); if (e) e.addLeader() } }
+        MenuItem { text: "Branch from this end"; onTriggered: { var e = _ed(); if (e) e.addBranch() } }
+        MenuItem { text: "Delete extra leader"; onTriggered: { var e = _ed(); if (e) e.deleteLeader() } }
+        MenuSeparator {}
+        MenuItem { text: "Detach chip end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("from") } }
+        MenuItem { text: "Detach hotspot end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("to") } }
+        MenuItem { text: "Reconnect to this chip"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("from") } }
+        MenuItem { text: "Reconnect to this hotspot"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("to") } }
+        MenuItem { text: "Delete selected spine"; onTriggered: { var e = _ed(); if (e) e.deleteSelection() } }
+    }
+
     FileDialog {
         id: _imageDialog
         title: "Choose background image"
@@ -305,6 +346,17 @@ Window {
                     text: "Cancel"
                     visible: editing
                     onClicked: cancelEdit()
+                }
+                ToolSeparator { visible: editing }
+                Button {
+                    visible: editing
+                    text: "Group"
+                    onClicked: _groupMenu.popup()
+                }
+                Button {
+                    visible: editing
+                    text: "Leader"
+                    onClicked: _leadMenu.popup()
                 }
                 ToolSeparator { visible: editing }
                 Button {
@@ -365,7 +417,7 @@ Window {
                 CheckBox {
                     visible: editing
                     text: "Auto pan"
-                    checked: _cardLoader.item ? _cardLoader.item.autoPanOn : true
+                    checked: _cardLoader.item ? _cardLoader.item.autoPanOn : false
                     onToggled: {
                         if (_cardLoader.item)
                             _cardLoader.item.autoPanOn = checked
@@ -512,69 +564,13 @@ Window {
                         }
                         color: "#A1A1AA"
                     }
-                    Button {
-                        visible: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            return !!(e && e.selectedIds && e.selectedIds.length >= 2)
-                        }
-                        text: "Group"
-                        onClicked: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e)
-                                e.groupSelection()
-                        }
-                    }
-                    Button {
-                        visible: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (!e) return false
-                            var nsel = e.selectedIds ? e.selectedIds.length : 0
-                            var n = e.nodeAt ? e.nodeAt(e.selectedId) : null
-                            return nsel <= 1 && e.isGroup && e.isGroup(n)
-                        }
-                        text: "Ungroup"
-                        onClicked: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e)
-                                e.ungroupSelection()
-                        }
-                    }
-                    Button {
-                        visible: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (!e) return false
-                            var n = e.nodeAt ? e.nodeAt(e.selectedId) : null
-                            return e.isGroup && e.isGroup(n) && e.groupEditId !== (n && n.id)
-                        }
-                        text: "Edit group"
-                        onClicked: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e)
-                                e.beginGroupEdit(e.selectedId)
-                        }
-                    }
-                    Button {
-                        visible: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            return !!(e && e.groupEditId)
-                        }
-                        text: "Done editing group"
-                        onClicked: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e)
-                                e.endGroupEdit()
-                        }
-                    }
-                    Button {
-                        visible: selectedNode && (selectedNode.kind === "plus" || selectedNode.kind === "pair" || selectedNode.kind === "axis_stack" || selectedNode.kind === "stack")
-                        text: selectedNode && selectedNode.kind === "plus" ? "Convert to stack" : "Convert to 5-way"
-                        enabled: selectedNode && selectedNode.kind === "plus" || (selectedNode && selectedNode.members && selectedNode.members.length === 5)
-                        onClicked: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (!e || !selectedNode)
-                                return
-                            e.setGroupKind(selectedNode.kind === "plus" ? "stack" : "plus")
-                        }
+                    Label {
+                        visible: !!selectedNode
+                        color: "#71717A"
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                        text: "Group / Leader actions are in the toolbar menus (and right-click)."
+                        font.pixelSize: 11
                     }
                     Shortcut {
                         enabled: editing
@@ -705,77 +701,6 @@ Window {
                         }
                     }
 
-                    Label { text: "Leader"; font.bold: true; color: "#E4E4E7"; visible: selectedNode }
-                    Label {
-                        visible: !!selectedNode
-                        color: "#A1A1AA"
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                        text: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (!e || !selectedNode) return ""
-                            var f = e.fromEnd(selectedNode)
-                            var tt = e.toEnd(selectedNode)
-                            var a = !f ? "?" : (f.type === "free" ? "free" : ((f.type || "?") + " " + (f.id || "") + (f.pin ? (" / " + f.pin) : "")))
-                            var b = !tt ? "?" : (tt.type === "free" ? "free" : ((tt.type || "?") + " " + (tt.id || "") + (tt.pin ? (" / " + tt.pin) : "")))
-                            return a + "  →  " + b
-                        }
-                    }
-                    Label { text: "Chip pin"; color: "#A1A1AA"; visible: selectedNode }
-                    ComboBox {
-                        Layout.fillWidth: true
-                        visible: !!selectedNode
-                        model: ["right", "left", "top", "bottom"]
-                        currentIndex: {
-                            var p = selectedNode && selectedNode.pin ? selectedNode.pin : "right"
-                            var m = ["right", "left", "top", "bottom"]
-                            var i = m.indexOf(p)
-                            return i < 0 ? 0 : i
-                        }
-                        onActivated: (idx) => {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (!e || !selectedNode) return
-                            var pin = model[idx]
-                            e.applyField("pin", pin)
-                            if (selectedNode.from && selectedNode.from.type === "chip") {
-                                selectedNode.from.pin = pin
-                                e.bump()
-                            }
-                        }
-                    }
-                    Button {
-                        visible: !!selectedNode
-                        text: "Detach chip end"
-                        onClicked: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.detachEnd("from")
-                        }
-                    }
-                    Button {
-                        visible: !!selectedNode
-                        text: "Detach hotspot end"
-                        onClicked: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.detachEnd("to")
-                        }
-                    }
-                    Button {
-                        visible: !!selectedNode
-                        text: "Reconnect to this chip"
-                        onClicked: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.attachEndToSelf("from")
-                        }
-                    }
-                    Button {
-                        visible: !!selectedNode
-                        text: "Reconnect to this hotspot"
-                        onClicked: {
-                            var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (e) e.attachEndToSelf("to")
-                        }
-                    }
-
                     CheckBox {
                         visible: !!selectedNode
                         text: "Highlight on press"
@@ -828,48 +753,13 @@ Window {
                         }
                     }
 
-                    CheckBox {
+                    Label {
                         visible: !!selectedNode
-                        text: "Curved leader"
-                        checked: selectedNode ? selectedNode.curve !== false : true
-                        onToggled: {
-                            if (selectedNode) {
-                                selectedNode.curve = checked
-                                if (_cardLoader.item && _cardLoader.item.editorItem)
-                                    _cardLoader.item.editorItem.bump()
-                            }
-                        }
-                    }
-                    Button {
-                        visible: !!selectedNode
-                        text: "Add spine"
-                        onClicked: {
-                            var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (ed && selectedNode) {
-                                ed.ensureMidSpine(selectedNode)
-                                ed.bump()
-                            }
-                        }
-                    }
-                    Button {
-                        visible: !!selectedNode
-                        text: "Add curve"
-                        onClicked: {
-                            var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (ed && selectedNode) {
-                                ed.addCurveSpine(selectedNode)
-                            }
-                        }
-                    }
-                    Button {
-                        visible: !!selectedNode
-                        text: "Delete selected spine"
-                        onClicked: {
-                            var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
-                            if (ed) {
-                                ed.deleteSelection()
-                            }
-                        }
+                        color: "#71717A"
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                        font.pixelSize: 11
+                        text: "Double-click a leader segment to switch curve/straight."
                     }
 
                     Label {

@@ -33,6 +33,9 @@ Item {
     property string groupEditId: ""
     property int selectedMember: -1
     property int dragMember: -1
+    property int selectedLeader: 0
+    property int selectedSeg: -1
+    property int dragLeader: 0
 
     // Do NOT declare signal nodesChanged — property var nodes already has it.
     signal selectedChanged()
@@ -74,8 +77,13 @@ Item {
         if (dragKind === "from" || dragKind === "to") {
             var ep2 = snapPos(mx, my, altOff)
             var fr2 = { type: "free", fx: ep2.x / Math.max(1, width), fy: ep2.y / Math.max(1, height) }
-            if (dragKind === "to") n.to = fr2
-            else n.from = fr2
+            var Ld = currentLeader(n)
+            if (dragKind === "to") Ld.to = fr2
+            else Ld.from = fr2
+            if (selectedLeader === 0) {
+                if (dragKind === "to") n.to = fr2
+                else n.from = fr2
+            }
         } else if (dragKind === "hot") {
             var hp = snapPos(mx, my, altOff)
             var p = toPhoto(hp.x, hp.y)
@@ -95,10 +103,15 @@ Item {
                 q.chipFx = Math.max(0.01, Math.min(0.92, q.chipFx + dFx))
                 q.chipFy = Math.max(0.01, Math.min(0.92, q.chipFy + dFy))
             }
-        } else if (dragKind === "spine" && n.spines && dragSpine >= 0) {
-            var sp = snapPos(mx, my, altOff)
-            n.spines[dragSpine].fx = Math.max(0, Math.min(1, sp.x / Math.max(1, width)))
-            n.spines[dragSpine].fy = Math.max(0, Math.min(1, sp.y / Math.max(1, height)))
+        } else if (dragKind === "spine" && dragSpine >= 0) {
+            var Ls = currentLeader(n)
+            if (!Ls.spines) Ls.spines = []
+            if (dragSpine < Ls.spines.length) {
+                var sp = snapPos(mx, my, altOff)
+                Ls.spines[dragSpine].fx = Math.max(0, Math.min(1, sp.x / Math.max(1, width)))
+                Ls.spines[dragSpine].fy = Math.max(0, Math.min(1, sp.y / Math.max(1, height)))
+            }
+            n.spines = Ls.spines
         } else if (dragKind === "member" && n.members && dragMember >= 0 && dragMember < n.members.length) {
             var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
             n.members[dragMember].ox = mp.x / Math.max(1, width) - n.chipFx
@@ -258,14 +271,191 @@ Item {
         return Qt.point(0, 0)
     }
 
-    function pathPts(n) {
-        var pts = [endPt(fromEnd(n))]
-        var spines = n.spines || []
+    function _legacyLeader(n) {
+        return {
+            id: ((n && n.id) ? n.id : "n") + "_L0",
+            from: fromEnd(n),
+            to: toEnd(n),
+            spines: (n && n.spines) ? n.spines : [],
+            curve: n ? n.curve : true,
+            fromCurve: n ? n.fromCurve : undefined
+        }
+    }
+
+    function leaderList(n) {
+        if (n && n.leaders && n.leaders.length)
+            return n.leaders
+        return [_legacyLeader(n)]
+    }
+
+    function ensureLeaders(n) {
+        if (!n)
+            return []
+        if (!n.leaders || !n.leaders.length)
+            n.leaders = [_legacyLeader(n)]
+        return n.leaders
+    }
+
+    function currentLeader(n) {
+        var ls = ensureLeaders(n)
+        var i = selectedLeader
+        if (i < 0 || i >= ls.length)
+            i = 0
+        return ls[i]
+    }
+
+    function pathPtsL(L) {
+        if (!L)
+            return []
+        var pts = [endPt(L.from)]
+        var spines = L.spines || []
         for (var s = 0; s < spines.length; s++) {
             pts.push(Qt.point(spines[s].fx * width, spines[s].fy * height))
         }
-        pts.push(endPt(toEnd(n)))
+        pts.push(endPt(L.to))
         return pts
+    }
+
+    function pathPts(n) {
+        return pathPtsL(leaderList(n)[0])
+    }
+
+    function segIsCurve(L, j) {
+        if (!L)
+            return true
+        if (j <= 0) {
+            if (L.fromCurve !== undefined)
+                return L.fromCurve !== false
+            return L.curve !== false
+        }
+        var sp = (L.spines || [])[j - 1]
+        if (sp && sp.curve !== undefined)
+            return sp.curve !== false
+        return L.curve !== false
+    }
+
+    function setSegCurve(L, j, on) {
+        if (!L)
+            return
+        if (j <= 0)
+            L.fromCurve = on
+        else if (L.spines && L.spines[j - 1])
+            L.spines[j - 1].curve = on
+        bump()
+    }
+
+    function toggleSegCurve() {
+        var n = nodeAt(selectedId)
+        if (!n)
+            return
+        var L = currentLeader(n)
+        var j = selectedSeg
+        if (j < 0)
+            j = (selectedSpine >= 0) ? (selectedSpine + 1) : 0
+        setSegCurve(L, j, !segIsCurve(L, j))
+    }
+
+    function setAllSegCurve(on) {
+        var n = nodeAt(selectedId)
+        if (!n)
+            return
+        var L = currentLeader(n)
+        L.curve = on
+        L.fromCurve = on
+        var s = L.spines || []
+        for (var i = 0; i < s.length; i++)
+            s[i].curve = on
+        if (selectedLeader === 0)
+            n.curve = on
+        bump()
+    }
+
+    function addLeader() {
+        var n = nodeAt(selectedId)
+        if (!n)
+            return
+        var ls = ensureLeaders(n)
+        var src = ls[selectedLeader] || ls[0]
+        var a = endPt(src.from)
+        ls.push({
+            id: _uid("L"),
+            from: {
+                type: src.from && src.from.type ? src.from.type : "chip",
+                id: src.from ? src.from.id : n.id,
+                pin: src.from ? src.from.pin : (n.pin || "right"),
+                fx: src.from ? src.from.fx : 0,
+                fy: src.from ? src.from.fy : 0
+            },
+            to: {
+                type: "free",
+                fx: Math.max(0.02, Math.min(0.95, (a.x + 48) / Math.max(1, width))),
+                fy: Math.max(0.02, Math.min(0.95, (a.y + 36) / Math.max(1, height)))
+            },
+            spines: [],
+            curve: false,
+            fromCurve: false
+        })
+        selectedLeader = ls.length - 1
+        selectedSeg = 0
+        bump()
+    }
+
+    function addBranch() {
+        var n = nodeAt(selectedId)
+        if (!n)
+            return
+        var ls = ensureLeaders(n)
+        var src = ls[selectedLeader] || ls[0]
+        var origin = (src.to && src.to.type === "free") ? src.to : src.from
+        var p = endPt(origin)
+        ls.push({
+            id: _uid("L"),
+            from: {
+                type: origin && origin.type ? origin.type : "free",
+                id: origin ? origin.id : "",
+                pin: origin ? origin.pin : "",
+                fx: origin ? origin.fx : (p.x / Math.max(1, width)),
+                fy: origin ? origin.fy : (p.y / Math.max(1, height))
+            },
+            to: {
+                type: "free",
+                fx: Math.max(0.02, Math.min(0.95, (p.x + 56) / Math.max(1, width))),
+                fy: Math.max(0.02, Math.min(0.95, (p.y - 44) / Math.max(1, height)))
+            },
+            spines: [],
+            curve: true,
+            fromCurve: true
+        })
+        selectedLeader = ls.length - 1
+        selectedSeg = 0
+        bump()
+    }
+
+    function deleteLeader() {
+        var n = nodeAt(selectedId)
+        if (!n)
+            return
+        var ls = ensureLeaders(n)
+        if (ls.length < 2)
+            return
+        ls.splice(selectedLeader, 1)
+        selectedLeader = Math.max(0, selectedLeader - 1)
+        bump()
+    }
+
+    function groupSize(n) {
+        var mem = (n && n.members) ? n.members : []
+        var maxx = 24
+        var maxy = 18
+        var ew = Math.max(1, _ed.width)
+        var eh = Math.max(1, _ed.height)
+        for (var i = 0; i < mem.length; i++) {
+            var x = (mem[i].ox || 0) * ew
+            var y = (mem[i].oy || 0) * eh
+            maxx = Math.max(maxx, x + chipWGuess(n, mem[i]))
+            maxy = Math.max(maxy, y + chipH(n))
+        }
+        return Qt.size(maxx, maxy)
     }
 
     function chipH(n) {
@@ -349,18 +539,28 @@ Item {
     function detachEnd(which) {
         var n = nodeAt(selectedId)
         if (!n) return
-        var p = endPt(which === "to" ? toEnd(n) : fromEnd(n))
+        var L = currentLeader(n)
+        var p = endPt(which === "to" ? L.to : L.from)
         var free = { type: "free", fx: p.x / Math.max(1, width), fy: p.y / Math.max(1, height) }
-        if (which === "to") n.to = free
-        else n.from = free
+        if (which === "to") L.to = free
+        else L.from = free
+        if (selectedLeader === 0) {
+            if (which === "to") n.to = free
+            else n.from = free
+        }
         bump()
     }
 
     function attachEndToSelf(which) {
         var n = nodeAt(selectedId)
         if (!n) return
-        if (which === "to") n.to = { type: "hot", id: n.id }
-        else n.from = { type: "chip", id: n.id, pin: n.pin || "right" }
+        var L = currentLeader(n)
+        if (which === "to") L.to = { type: "hot", id: n.id }
+        else L.from = { type: "chip", id: n.id, pin: n.pin || "right" }
+        if (selectedLeader === 0) {
+            n.to = L.to
+            n.from = L.from
+        }
         bump()
     }
 
@@ -385,18 +585,18 @@ Item {
         }
     }
 
-    function strokeLeader(ctx, n, pts) {
+    function strokeLeader(ctx, n, pts, L) {
         if (!pts || pts.length < 2) return
+        if (!L)
+            L = leaderList(n)[0]
         ctx.beginPath()
         ctx.moveTo(pts[0].x, pts[0].y)
-        if (n.curve === false || pts.length === 2) {
-            for (var i = 1; i < pts.length; i++) {
-                ctx.lineTo(pts[i].x, pts[i].y)
-            }
-        } else {
-            for (var j = 0; j < pts.length - 1; j++) {
+        for (var j = 0; j < pts.length - 1; j++) {
+            if (pts.length > 2 && segIsCurve(L, j)) {
                 var c = _bezierCtrl(pts, j)
                 ctx.bezierCurveTo(c.c1x, c.c1y, c.c2x, c.c2y, c.x, c.y)
+            } else {
+                ctx.lineTo(pts[j + 1].x, pts[j + 1].y)
             }
         }
         ctx.stroke()
@@ -406,17 +606,22 @@ Item {
         if (n.spines && n.spines.length) {
             return
         }
-        var a = endPt(fromEnd(n))
-        var b = endPt(toEnd(n))
-        n.spines = [{ fx: ((a.x + b.x) * 0.5) / Math.max(1, width), fy: ((a.y + b.y) * 0.5) / Math.max(1, height) }]
+        var L = currentLeader(n)
+        var a = endPt(L.from)
+        var b = endPt(L.to)
+        if (L.spines && L.spines.length)
+            return
+        L.spines = [{ fx: ((a.x + b.x) * 0.5) / Math.max(1, width), fy: ((a.y + b.y) * 0.5) / Math.max(1, height), curve: L.curve !== false }]
+        n.spines = L.spines
     }
 
     function addCurveSpine(n) {
         if (!n) return
-        n.curve = true
-        var a = endPt(fromEnd(n))
-        var b = endPt(toEnd(n))
-        var spines = n.spines || []
+        var L = currentLeader(n)
+        L.curve = true
+        var a = endPt(L.from)
+        var b = endPt(L.to)
+        var spines = L.spines || []
         if (spines.length) {
             a = Qt.point(spines[spines.length - 1].fx * width, spines[spines.length - 1].fy * height)
         }
@@ -435,10 +640,12 @@ Item {
             ox = -ox
             oy = -oy
         }
-        if (!n.spines) n.spines = []
-        n.spines.push({ fx: (mx + ox) / Math.max(1, width), fy: (my + oy) / Math.max(1, height) })
+        if (!L.spines) L.spines = []
+        L.spines.push({ fx: (mx + ox) / Math.max(1, width), fy: (my + oy) / Math.max(1, height), curve: true })
+        n.spines = L.spines
         selectedId = n.id
-        selectedSpine = n.spines.length - 1
+        selectedSpine = L.spines.length - 1
+        selectedLeader = Math.max(0, selectedLeader)
         selectedChanged()
         bump()
     }
@@ -449,17 +656,23 @@ Item {
         var n
         for (i = 0; i < list.length; i++) {
             n = list[i]
-            var fp = endPt(fromEnd(n))
-            if (Math.hypot(mx - fp.x, my - fp.y) < 9) {
-                return { kind: "from", id: n.id, spine: -1 }
+            var ls = leaderList(n)
+            for (var li = 0; li < ls.length; li++) {
+                var fp = endPt(ls[li].from)
+                if (Math.hypot(mx - fp.x, my - fp.y) < 9) {
+                    return { kind: "from", id: n.id, spine: -1, leader: li }
+                }
             }
         }
         for (i = 0; i < list.length; i++) {
             n = list[i]
-            var te = toEnd(n)
-            var tp = endPt(te)
-            if (te.type !== "hot" && Math.hypot(mx - tp.x, my - tp.y) < 9) {
-                return { kind: "to", id: n.id, spine: -1 }
+            var ls2 = leaderList(n)
+            for (var lj = 0; lj < ls2.length; lj++) {
+                var te = ls2[lj].to || { type: "hot", id: n.id }
+                var tp = endPt(te)
+                if (te.type !== "hot" && Math.hypot(mx - tp.x, my - tp.y) < 9) {
+                    return { kind: "to", id: n.id, spine: -1, leader: lj }
+                }
             }
         }
         for (i = 0; i < list.length; i++) {
@@ -471,12 +684,15 @@ Item {
         }
         for (i = 0; i < list.length; i++) {
             n = list[i]
-            var spines = n.spines || []
-            for (var s = 0; s < spines.length; s++) {
-                var sx = spines[s].fx * width
-                var sy = spines[s].fy * height
-                if (Math.hypot(mx - sx, my - sy) < 9) {
-                    return { kind: "spine", id: n.id, spine: s }
+            var lss = leaderList(n)
+            for (var lk = 0; lk < lss.length; lk++) {
+                var spines = lss[lk].spines || []
+                for (var s = 0; s < spines.length; s++) {
+                    var sx = spines[s].fx * width
+                    var sy = spines[s].fy * height
+                    if (Math.hypot(mx - sx, my - sy) < 9) {
+                        return { kind: "spine", id: n.id, spine: s, leader: lk }
+                    }
                 }
             }
         }
@@ -502,43 +718,60 @@ Item {
             }
         }
         for (i = 0; i < list.length; i++) {
-            if (_nearLeader(list[i], mx, my)) {
-                return { kind: "line", id: list[i].id, spine: -1 }
+            var seg = _nearLeader(list[i], mx, my)
+            if (seg && seg.seg >= 0) {
+                return { kind: "line", id: list[i].id, spine: -1, leader: seg.leader, seg: seg.seg }
             }
         }
         return { kind: "", id: "", spine: -1 }
     }
 
     function _nearLeader(n, mx, my) {
-        var pts = pathPts(n)
-        if (n.curve === false || pts.length < 3) {
-            for (var i = 0; i < pts.length - 1; i++) {
-                if (_distSeg(mx, my, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y) < 6) {
-                    return true
+        var ls = leaderList(n)
+        var best = { leader: -1, seg: -1 }
+        var bestD = 6
+        var li
+        for (li = 0; li < ls.length; li++) {
+            var L = ls[li]
+            var pts = pathPtsL(L)
+            if (pts.length < 2)
+                continue
+            for (var j = 0; j < pts.length - 1; j++) {
+                var d
+                if (pts.length > 2 && segIsCurve(L, j)) {
+                    d = _distBezier(mx, my, pts, j)
+                } else {
+                    d = _distSeg(mx, my, pts[j].x, pts[j].y, pts[j + 1].x, pts[j + 1].y)
+                }
+                if (d < bestD) {
+                    bestD = d
+                    best = { leader: li, seg: j }
                 }
             }
-            return false
         }
+        return best
+    }
+
+    function _distBezier(mx, my, pts, j) {
+        var c = _bezierCtrl(pts, j)
+        var p1x = pts[j].x
+        var p1y = pts[j].y
+        var prevx = p1x
+        var prevy = p1y
+        var best = 1e9
         var steps = 8
-        for (var j = 0; j < pts.length - 1; j++) {
-            var c = _bezierCtrl(pts, j)
-            var p1x = pts[j].x
-            var p1y = pts[j].y
-            var prevx = p1x
-            var prevy = p1y
-            for (var s = 1; s <= steps; s++) {
-                var tt = s / steps
-                var u = 1 - tt
-                var x = u*u*u*p1x + 3*u*u*tt*c.c1x + 3*u*tt*tt*c.c2x + tt*tt*tt*c.x
-                var y = u*u*u*p1y + 3*u*u*tt*c.c1y + 3*u*tt*tt*c.c2y + tt*tt*tt*c.y
-                if (_distSeg(mx, my, prevx, prevy, x, y) < 6) {
-                    return true
-                }
-                prevx = x
-                prevy = y
-            }
+        for (var s = 1; s <= steps; s++) {
+            var tt = s / steps
+            var u = 1 - tt
+            var x = u*u*u*p1x + 3*u*u*tt*c.c1x + 3*u*tt*tt*c.c2x + tt*tt*tt*c.x
+            var y = u*u*u*p1y + 3*u*u*tt*c.c1y + 3*u*tt*tt*c.c2y + tt*tt*tt*c.y
+            var d = _distSeg(mx, my, prevx, prevy, x, y)
+            if (d < best)
+                best = d
+            prevx = x
+            prevy = y
         }
-        return false
+        return best
     }
 
     function _distSeg(px, py, x1, y1, x2, y2) {
@@ -560,7 +793,10 @@ Item {
         if (!n.spines) {
             n.spines = []
         }
-        var pts = pathPts(n)
+        var L = currentLeader(n)
+        if (!L.spines)
+            L.spines = []
+        var pts = pathPtsL(L)
         var best = 0
         var bestD = 1e9
         for (var i = 0; i < pts.length - 1; i++) {
@@ -571,7 +807,9 @@ Item {
             }
         }
         var spn = snapPos(mx, my, false)
-        n.spines.splice(best, 0, { fx: spn.x / Math.max(1, width), fy: spn.y / Math.max(1, height) })
+        var curved = segIsCurve(L, best)
+        L.spines.splice(best, 0, { fx: spn.x / Math.max(1, width), fy: spn.y / Math.max(1, height), curve: curved })
+        n.spines = L.spines
         selectedId = id
         selectedSpine = best
         selectedChanged()
@@ -583,8 +821,10 @@ Item {
         if (!n) {
             return
         }
-        if (selectedSpine >= 0 && n.spines && selectedSpine < n.spines.length) {
-            n.spines.splice(selectedSpine, 1)
+        var L = currentLeader(n)
+        if (selectedSpine >= 0 && L.spines && selectedSpine < L.spines.length) {
+            L.spines.splice(selectedSpine, 1)
+            n.spines = L.spines
             selectedSpine = -1
             bump()
         }
@@ -979,8 +1219,24 @@ Item {
             x: { _ed.tick; return node ? node.chipFx * _ed.width : 0 }
             y: { _ed.tick; return node ? node.chipFy * _ed.height : 0 }
             z: 3
-            width: { _ed.tick; return _body.item ? Math.max(8, _body.item.implicitWidth) : 40 }
-            height: { _ed.tick; return _body.item ? Math.max(8, _body.item.implicitHeight) : 20 }
+            width: {
+                _ed.tick
+                if (!node)
+                    return 40
+                if (_ed.isGroup(node))
+                    return _ed.groupSize(node).width
+                var it = _body.item
+                return it ? Math.max(8, it.implicitWidth) : 40
+            }
+            height: {
+                _ed.tick
+                if (!node)
+                    return 20
+                if (_ed.isGroup(node))
+                    return _ed.groupSize(node).height
+                var it = _body.item
+                return it ? Math.max(8, it.implicitHeight) : 20
+            }
 
             Rectangle {
                 anchors.fill: parent
@@ -1020,10 +1276,9 @@ Item {
         Item {
             id: _grp
             property var node: ({ members: [] })
-            implicitWidth: { _ed.tick; return Math.max(8, childrenRect.width) }
-            implicitHeight: { _ed.tick; return Math.max(8, childrenRect.height) }
-            width: implicitWidth
-            height: implicitHeight
+            // Size from ox/oy + chip guess — never childrenRect / parent.width.
+            implicitWidth: { _ed.tick; return _ed.groupSize(node).width }
+            implicitHeight: { _ed.tick; return _ed.groupSize(node).height }
             Repeater {
                 model: { _ed.tick; return (_grp.node && _grp.node.members) ? _grp.node.members.length : 0 }
                 delegate: Loader {
@@ -1053,8 +1308,10 @@ Item {
                 }
             }
             Rectangle {
-                anchors.fill: parent
-                anchors.margins: -5
+                x: -5
+                y: -5
+                width: _grp.implicitWidth + 10
+                height: _grp.implicitHeight + 10
                 z: -1
                 radius: 8
                 color: "transparent"
@@ -1096,84 +1353,6 @@ Item {
                     if (node.label && node.label.length) return node.label
                     return (node.prefix || "") + node.hwId + " → " + _ed.destOf(node.kind, node.hwId)
                 }
-            }
-        }
-    }
-
-    Component {
-        id: _stackComp
-        Item {
-            property var node: ({ members: [] })
-            implicitWidth: { _ed.tick; return Math.max(8, _stackCol.childrenRect.width) }
-            implicitHeight: { _ed.tick; return Math.max(8, _stackCol.childrenRect.height) }
-            width: implicitWidth
-            height: implicitHeight
-            Column {
-                id: _stackCol
-                spacing: 3
-                Repeater {
-                    model: { _ed.tick; return node.members || [] }
-                    Rectangle {
-                        required property var modelData
-                        property bool on: _ed.litOf(node.kind === "axis_stack" ? "axis" : "btn", modelData.hwId)
-                        implicitWidth: t.implicitWidth + 10
-                        implicitHeight: Math.max(18, (node.fontSize || 10) + 10)
-                        radius: 4
-                        color: on && node.highlight ? (node.hlColor || "#14532D") : (node.color || "#18181B")
-                        border.color: {
-                            if (_ed.selectedId === node.id) return "#FBBF24"
-                            return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
-                        }
-                        Text {
-                            id: t
-                            anchors.centerIn: parent
-                            color: parent.on && node.highlight ? (node.hlText || "#BBF7D0") : (node.textColor || "#E4E4E7")
-                            font.pixelSize: node.fontSize || 10
-                            text: {
-                                _ed.tick
-                                return (node.kind === "axis_stack" ? "A" : "") + modelData.hwId + " → " + _ed.destOf(node.kind === "axis_stack" ? "axis" : "btn", modelData.hwId)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Component {
-        id: _plusComp
-        Item {
-            id: _plusRoot
-            property var node: ({ members: [] })
-            implicitWidth: { _ed.tick; return Math.max(8, _plus.childrenRect.width) }
-            implicitHeight: { _ed.tick; return Math.max(8, _plus.childrenRect.height) }
-            width: implicitWidth
-            height: implicitHeight
-            function mem(role) {
-                var m = node.members || []
-                for (var i = 0; i < m.length; i++) {
-                    if (m[i].role === role) return m[i].hwId
-                }
-                return 0
-            }
-            function bindMini(item, role) {
-                item.node = Qt.binding(function() { return _plusRoot.node })
-                item.hwId = Qt.binding(function() { return _plusRoot.mem(role) })
-            }
-            Grid {
-                id: _plus
-                columns: 3
-                rows: 3
-                spacing: 3
-                Item { width: 8; height: 8 }
-                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "up") }
-                Item { width: 8; height: 8 }
-                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "left") }
-                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "center") }
-                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "right") }
-                Item { width: 8; height: 8 }
-                Loader { sourceComponent: _mini; onLoaded: _plusRoot.bindMini(item, "down") }
-                Item { width: 8; height: 8 }
             }
         }
     }
@@ -1294,33 +1473,41 @@ Item {
             for (var i = 0; i < list.length; i++) {
                 var n = list[i]
                 var sel = _ed.interactive && _ed.isSelected(n.id)
-                ctx.strokeStyle = sel ? "#FBBF24" : "#A1A1AA"
-                ctx.lineWidth = sel ? 1.6 : 1.1
-                ctx.lineJoin = "round"
-                ctx.lineCap = "round"
-                var pts = _ed.pathPts(n)
-                _ed.strokeLeader(ctx, n, pts)
+                var ls = _ed.leaderList(n)
+                var li
+                for (li = 0; li < ls.length; li++) {
+                    var L = ls[li]
+                    var leadSel = sel && _ed.selectedLeader === li
+                    ctx.strokeStyle = leadSel ? "#FBBF24" : (sel ? "#D4D4D8" : "#A1A1AA")
+                    ctx.lineWidth = leadSel ? 1.8 : 1.1
+                    ctx.lineJoin = "round"
+                    ctx.lineCap = "round"
+                    _ed.strokeLeader(ctx, n, _ed.pathPtsL(L), L)
+                }
                 var hot = _ed.hotPt(n)
                 var hs = _ed.hotSz(n)
                 var hShape = n.hotShape || "round"
                 var hFill = n.hotFill || "filled"
                 _ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : "#F4F4F5")
                 if (_ed.interactive) {
-                    var a = _ed.endPt(_ed.fromEnd(n))
-                    _ed.drawMark(ctx, a.x, a.y, 8, "round", "filled", sel ? "#38BDF8" : "#64748B")
-                    var te = _ed.toEnd(n)
-                    if (te.type !== "hot") {
-                        var tp = _ed.endPt(te)
-                        _ed.drawMark(ctx, tp.x, tp.y, 8, "round", "filled", sel ? "#FB923C" : "#94A3B8")
-                    }
-                    var spines = n.spines || []
-                    for (var s = 0; s < spines.length; s++) {
-                        var sx = spines[s].fx * width
-                        var sy = spines[s].fy * height
-                        ctx.beginPath()
-                        ctx.arc(sx, sy, 5, 0, 6.3)
-                        ctx.fillStyle = (sel && _ed.selectedSpine === s) ? "#F59E0B" : "#94A3B8"
-                        ctx.fill()
+                    for (li = 0; li < ls.length; li++) {
+                        var L2 = ls[li]
+                        var leadSel2 = sel && _ed.selectedLeader === li
+                        var a = _ed.endPt(L2.from)
+                        _ed.drawMark(ctx, a.x, a.y, 8, "round", "filled", leadSel2 ? "#38BDF8" : "#64748B")
+                        if (L2.to && L2.to.type !== "hot") {
+                            var tp = _ed.endPt(L2.to)
+                            _ed.drawMark(ctx, tp.x, tp.y, 8, "round", "filled", leadSel2 ? "#FB923C" : "#94A3B8")
+                        }
+                        var spines = L2.spines || []
+                        for (var s = 0; s < spines.length; s++) {
+                            var sx = spines[s].fx * width
+                            var sy = spines[s].fy * height
+                            ctx.beginPath()
+                            ctx.arc(sx, sy, 5, 0, 6.3)
+                            ctx.fillStyle = (leadSel2 && _ed.selectedSpine === s) ? "#F59E0B" : "#94A3B8"
+                            ctx.fill()
+                        }
                     }
                 }
             }
@@ -1359,18 +1546,35 @@ Item {
                     }
                     return
                 }
+                if (hit.kind === "line" || hit.kind === "spine" || hit.kind === "from" || hit.kind === "to") {
+                    if (hit.id)
+                        _ed.setSelection([hit.id])
+                    _ctx.nodeId = hit.id
+                    _ctx.seg = (hit.seg !== undefined) ? hit.seg : -1
+                    _ctx.leader = (hit.leader !== undefined) ? hit.leader : 0
+                    _ed.selectedLeader = _ctx.leader
+                    _ed.selectedSeg = _ctx.seg
+                    _ctx.popup()
+                    return
+                }
                 if (hit.kind === "chip" || hit.kind === "member" || hit.kind === "hot") {
                     if (hit.id)
                         _ed.setSelection([hit.id])
                     _ctx.nodeId = hit.id
+                    _ctx.seg = -1
+                    _ctx.leader = 0
                     _ctx.popup()
                     return
                 }
                 _ctx.nodeId = ""
+                _ctx.seg = -1
                 _ctx.popup()
                 return
             }
             if (hit.kind === "line" && !shift) {
+                _ed.selectedId = hit.id
+                _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
+                _ed.selectedSeg = (hit.seg !== undefined) ? hit.seg : 0
                 _ed.addSpineAt(hit.id, m.x, m.y)
                 return
             }
@@ -1379,13 +1583,15 @@ Item {
                     _ed.setSelection([hit.id])
                 _ed.selectedId = hit.id
                 _ed.selectedSpine = -1
+                _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
                 _ed.dragKind = hit.kind
                 var ne = _ed.nodeAt(hit.id)
                 if (ne) {
-                    var ep = _ed.endPt(hit.kind === "to" ? _ed.toEnd(ne) : _ed.fromEnd(ne))
+                    var L0 = _ed.currentLeader(ne)
+                    var ep = _ed.endPt(hit.kind === "to" ? L0.to : L0.from)
                     var fr = { type: "free", fx: ep.x / Math.max(1, width), fy: ep.y / Math.max(1, height) }
-                    if (hit.kind === "to") ne.to = fr
-                    else ne.from = fr
+                    if (hit.kind === "to") L0.to = fr
+                    else L0.from = fr
                 }
                 _ed.bump()
                 return
@@ -1428,6 +1634,9 @@ Item {
                     _ed.setSelection([hit.id])
                 _ed.selectedId = hit.id
                 _ed.selectedSpine = hit.spine
+                _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
+                if (hit.kind === "spine")
+                    _ed.selectedSeg = hit.spine + 1
                 _ed.dragKind = hit.kind
                 _ed.dragSpine = hit.spine
                 _ed.bump()
@@ -1472,11 +1681,16 @@ Item {
                 var n3 = _ed.nodeAt(_ed.selectedId)
                 if (n3) {
                     var hooked = _ed.attachNear(m.x, m.y)
-                    if (_ed.dragKind === "to") n3.to = hooked
+                    var Lr = _ed.currentLeader(n3)
+                    if (_ed.dragKind === "to") Lr.to = hooked
                     else {
-                        n3.from = hooked
+                        Lr.from = hooked
                         if (hooked.type === "chip" && hooked.id === n3.id)
                             n3.pin = hooked.pin || n3.pin
+                    }
+                    if (_ed.selectedLeader === 0) {
+                        n3.to = Lr.to
+                        n3.from = Lr.from
                     }
                 }
                 _ed.dragKind = ""
@@ -1490,8 +1704,11 @@ Item {
         }
         onDoubleClicked: (m) => {
             var hit = _ed.hitTest(m.x, m.y)
-            if (hit.kind === "line" || hit.kind === "hot") {
-                _ed.addSpineAt(hit.id || _ed.selectedId, m.x, m.y)
+            if (hit.kind === "line") {
+                _ed.selectedId = hit.id
+                _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
+                _ed.selectedSeg = (hit.seg !== undefined) ? hit.seg : 0
+                _ed.toggleSegCurve()
             }
         }
         onExited: _ed.reportCursor(-1, -1, false)
@@ -1532,36 +1749,71 @@ Item {
         visible: _ed.interactive
         color: "#A1A1AA"
         font.pixelSize: 10
-        text: "Right-click a group to Edit group and move members. Esc ends group edit."
+        text: "Group and Leader menus in the toolbar. Double-click a segment to toggle curve. Esc ends group edit."
     }
 
     Menu {
         id: _ctx
         property string nodeId: ""
-        MenuItem {
-            text: "Edit group"
-            enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
-            visible: _ed.groupEditId !== _ctx.nodeId
-            onTriggered: _ed.beginGroupEdit(_ctx.nodeId)
-        }
-        MenuItem {
-            text: "Done editing group"
-            visible: _ctx.nodeId !== "" && _ed.groupEditId === _ctx.nodeId
-            onTriggered: _ed.endGroupEdit()
-        }
-        MenuItem {
-            text: "Ungroup"
-            enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
-            onTriggered: {
-                _ed.setSelection([_ctx.nodeId])
-                _ed.ungroupSelection()
+        property int seg: -1
+        property int leader: 0
+        Menu {
+            title: "Group"
+            MenuItem {
+                text: "Group selected"
+                enabled: _ed.canGroup()
+                onTriggered: _ed.groupSelection()
+            }
+            MenuItem {
+                text: "Ungroup"
+                enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
+                onTriggered: {
+                    _ed.setSelection([_ctx.nodeId])
+                    _ed.ungroupSelection()
+                }
+            }
+            MenuItem {
+                text: "Edit group"
+                enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
+                onTriggered: _ed.beginGroupEdit(_ctx.nodeId)
+            }
+            MenuItem {
+                text: "Done editing group"
+                enabled: _ed.groupEditId !== ""
+                onTriggered: _ed.endGroupEdit()
+            }
+            MenuItem {
+                text: "Convert to stack / 5-way"
+                enabled: {
+                    var n = _ed.nodeAt(_ctx.nodeId)
+                    return _ed.isGroup(n)
+                }
+                onTriggered: {
+                    var n = _ed.nodeAt(_ctx.nodeId)
+                    if (!n) return
+                    _ed.setSelection([n.id])
+                    _ed.setGroupKind(n.kind === "plus" ? "stack" : "plus")
+                }
             }
         }
-        MenuSeparator {}
-        MenuItem {
-            text: "Group selected"
-            enabled: _ed.canGroup()
-            onTriggered: _ed.groupSelection()
+        Menu {
+            title: "Leader"
+            MenuItem { text: "Add straight spine"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.ensureMidSpine(_ed.nodeAt(_ed.selectedId)); _ed.bump() } }
+            MenuItem { text: "Add curved spine"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addCurveSpine(_ed.nodeAt(_ed.selectedId)) } }
+            MenuItem { text: "This segment curved"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.selectedSeg = _ctx.seg; _ed.setSegCurve(_ed.currentLeader(_ed.nodeAt(_ed.selectedId)), Math.max(0, _ctx.seg), true) } }
+            MenuItem { text: "This segment straight"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.selectedSeg = _ctx.seg; _ed.setSegCurve(_ed.currentLeader(_ed.nodeAt(_ed.selectedId)), Math.max(0, _ctx.seg), false) } }
+            MenuItem { text: "All segments curved"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.setAllSegCurve(true) } }
+            MenuItem { text: "All segments straight"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.setAllSegCurve(false) } }
+            MenuSeparator {}
+            MenuItem { text: "Add leader (same chip)"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addLeader() } }
+            MenuItem { text: "Branch from this end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.addBranch() } }
+            MenuItem { text: "Delete extra leader"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.deleteLeader() } }
+            MenuSeparator {}
+            MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
+            MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
+            MenuItem { text: "Reconnect to this chip"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("from") } }
+            MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
+            MenuItem { text: "Delete selected spine"; onTriggered: _ed.deleteSelection() }
         }
     }
 }

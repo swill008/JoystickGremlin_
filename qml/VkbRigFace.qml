@@ -49,7 +49,7 @@ Item {
     property real autoVx: -1
     property real autoVy: -1
     property bool autoHover: false
-    property bool autoPanOn: true
+    property bool autoPanOn: false
 
     function resetView() {
         zoom = 1
@@ -65,7 +65,7 @@ Item {
     }
 
     function _edgePush(pos, size) {
-        var band = size * 0.20
+        var band = Math.max(14, Math.min(28, size * 0.04))
         if (band < 1)
             return 0
         if (pos < band) {
