@@ -43,6 +43,15 @@ def joystick_devices_initialization() -> None:
     devices = []
     for i in range(dill.DILL.get_device_count()):
         info = dill.DILL.get_device_information_by_index(i)
+        try:
+            from vigem.ids import is_vigem_xbox_summary
+            if is_vigem_xbox_summary(info):
+                syslog.debug(
+                    f"Ignored ViGEm Xbox pad: name={info.name} guid={info.device_guid}"
+                )
+                continue
+        except Exception:
+            pass
         devices.append(info)
 
     # Process all devices again to detect those that have been added and those
