@@ -84,16 +84,21 @@ ColumnLayout {
                 }
             }
 
-            Flow {
+            Item {
                 visible: _xboxPads.count > 0
                 Layout.fillWidth: true
-                spacing: 12
-                Repeater {
-                    model: _xboxPads
-                    delegate: Xbox360Face {
-                        required property int padId
-                        live: _live
-                        stamp: xboxStamp
+                Layout.preferredHeight: _faces.implicitHeight
+                Column {
+                    id: _faces
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 8
+                    Repeater {
+                        model: _xboxPads
+                        delegate: Xbox360Face {
+                            required property int padId
+                            live: _live
+                            stamp: xboxStamp
+                        }
                     }
                 }
             }
