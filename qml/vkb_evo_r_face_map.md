@@ -11,8 +11,8 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 
 | HW | Physical | Pose | px | py | nx | ny | Group |
 |---:|---|---|---:|---:|---:|---:|---|
-| 1 | Red trigger half | Right | 610 | 250 | 0.679 | 0.272 | pair 1/2 |
-| 2 | Red trigger full | Right | 610 | 250 | 0.679 | 0.272 | pair 1/2 |
+| 1 | Red trigger half | Right | 555 | 277 | 0.617 | 0.301 | pair 1/2 |
+| 2 | Red trigger full | Right | 555 | 277 | 0.617 | 0.301 | pair 1/2 |
 | 3 | Red head button | Left | 311 | 234 | 0.346 | 0.254 | single |
 | 4 | White cap | Right | 551 | 227 | 0.613 | 0.247 | single |
 | 5 | Lower grip white | Right | 544 | 386 | 0.605 | 0.420 | single |
@@ -71,4 +71,5 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 - Button 4 is the white cap centroid (551,227), not the gray above the grip.
 - Button 5 is the lower-grip white centroid (544,386), not the space to its right.
 - 21/22 is the paddle next to the red trigger (578,272), not the gray to the right of the grip.
+- 1/2 is the right-grip red trigger centroid (555,277).
 - 28/27/29 are the three squares above En1/slider/En2 (586,646 / 612,638 / 648,628).
