@@ -290,6 +290,44 @@ class XboxProxy(metaclass=SingletonMetaclass):
             self._pads[ident] = pad
         return pad
 
+    def snapshot(self, pad_id: int) -> dict[str, float] | None:
+        """Last report for an existing pad. Does not plug a new pad."""
+        pad = self._pads.get(int(pad_id))
+        if pad is None:
+            return None
+        report = pad.report
+        buttons = int(report.wButtons)
+
+        def _btn(mask: XUSB_BUTTON) -> float:
+            return 1.0 if buttons & int(mask) else 0.0
+
+        def _stick(raw: int) -> float:
+            return max(-1.0, min(1.0, float(raw) / 32767.0)) if raw else 0.0
+
+        return {
+            "left_stick_x": _stick(int(report.sThumbLX)),
+            "left_stick_y": _stick(int(report.sThumbLY)),
+            "right_stick_x": _stick(int(report.sThumbRX)),
+            "right_stick_y": _stick(int(report.sThumbRY)),
+            "left_trigger": float(report.bLeftTrigger) / 255.0,
+            "right_trigger": float(report.bRightTrigger) / 255.0,
+            "a": _btn(XUSB_BUTTON.XUSB_GAMEPAD_A),
+            "b": _btn(XUSB_BUTTON.XUSB_GAMEPAD_B),
+            "x": _btn(XUSB_BUTTON.XUSB_GAMEPAD_X),
+            "y": _btn(XUSB_BUTTON.XUSB_GAMEPAD_Y),
+            "left_shoulder": _btn(XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER),
+            "right_shoulder": _btn(XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER),
+            "left_thumb": _btn(XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB),
+            "right_thumb": _btn(XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB),
+            "start": _btn(XUSB_BUTTON.XUSB_GAMEPAD_START),
+            "back": _btn(XUSB_BUTTON.XUSB_GAMEPAD_BACK),
+            "guide": _btn(XUSB_BUTTON.XUSB_GAMEPAD_GUIDE),
+            "dpad_up": _btn(XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP),
+            "dpad_down": _btn(XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN),
+            "dpad_left": _btn(XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT),
+            "dpad_right": _btn(XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT),
+        }
+
     def reset(self) -> None:
         lib = vigem_client.client()
         for pad in list(self._pads.values()):
