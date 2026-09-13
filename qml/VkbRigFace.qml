@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
+import QtQuick.Layouts
 import Gremlin.Style
 
 Item {
@@ -13,20 +14,18 @@ Item {
     property var axes: null
     property var hats: null
 
-    readonly property real _gutterL: 0.28
-    readonly property real _gutterR: 0.22
-    readonly property real _gutterT: 0.04
-    readonly property real _gutterB: 0.20
+    property var destBtn: ({})
+    property var destAxis: ({})
+    property var destHat: ({})
+    property int destTick: 0
 
     readonly property real _pw: _img.paintedWidth
     readonly property real _ph: _img.paintedHeight
     readonly property real _ox: (_img.width - _pw) * 0.5
     readonly property real _oy: (_img.height - _ph) * 0.5
 
-    function px(nx) { return _img.x + _ox + nx * _pw }
-    function py(ny) { return _img.y + _oy + ny * _ph }
-    function fx(nx) { return nx * width }
-    function fy(ny) { return ny * height }
+    function px(nx) { return _stage.x + _ox + nx * _pw }
+    function py(ny) { return _stage.y + _oy + ny * _ph }
 
     function hwButton(id) { return host && host.hwButton ? host.hwButton(id) : 0 }
     function hwAxis(id) { return host && host.hwAxis ? host.hwAxis(id) : 0 }
@@ -47,226 +46,289 @@ Item {
         return t
     }
 
-    function plusCell(hatAx, hatAy, cx, cy, dir) {
-        var dx = 0.078
-        var dy = 0.034
-        var lx = cx
-        var ly = cy
-        if (dir === "up") ly = cy - dy
-        else if (dir === "down") ly = cy + dy
-        else if (dir === "left") lx = cx - dx
-        else if (dir === "right") lx = cx + dx
-        var isCenter = (dir === "center")
-        return {ax: hatAx, ay: hatAy, lx: lx, ly: ly, line: isCenter, dot: isCenter}
+    function labelBtn(id) {
+        destTick
+        var m = destBtn
+        return (m && m[id]) ? m[id] : "—"
+    }
+    function labelAxis(id) {
+        destTick
+        var m = destAxis
+        return (m && m[id]) ? m[id] : "—"
+    }
+    function labelHat(id) {
+        destTick
+        var m = destHat
+        return (m && m[id]) ? m[id] : "—"
     }
 
-    function pairCell(ax, ay, lx, ly0, which) {
-        var dy = 0.032
-        return {ax: ax, ay: ay, lx: lx, ly: ly0 + which * dy, line: which === 0, dot: which === 0}
+    function pin(item, side) {
+        if (!item) {
+            return Qt.point(0, 0)
+        }
+        var x = side === "right" ? item.width : (side === "left" ? 0 : item.width * 0.5)
+        var y = item.height * 0.5
+        return item.mapToItem(_face, x, y)
     }
 
-    function btnSpot(id) {
-        var t = {
-            1:  pairCell(0.655, 0.259, 0.845, 0.250, 0),
-            2:  pairCell(0.655, 0.259, 0.845, 0.250, 1),
-            3:  {ax: 0.318, ay: 0.198, lx: 0.018, ly: 0.325},
-            4:  {ax: 0.618, ay: 0.168, lx: 0.845, ly: 0.055},
-            5:  {ax: 0.628, ay: 0.430, lx: 0.845, ly: 0.345},
-            6:  plusCell(0.392, 0.205, 0.118, 0.245, "up"),
-            7:  plusCell(0.392, 0.205, 0.118, 0.245, "right"),
-            8:  plusCell(0.392, 0.205, 0.118, 0.245, "down"),
-            9:  plusCell(0.392, 0.205, 0.118, 0.245, "left"),
-            10: plusCell(0.392, 0.205, 0.118, 0.245, "center"),
-            11: plusCell(0.448, 0.135, 0.118, 0.085, "up"),
-            12: plusCell(0.448, 0.135, 0.118, 0.085, "right"),
-            13: plusCell(0.448, 0.135, 0.118, 0.085, "down"),
-            14: plusCell(0.448, 0.135, 0.118, 0.085, "left"),
-            15: plusCell(0.448, 0.135, 0.118, 0.085, "center"),
-            16: plusCell(0.378, 0.365, 0.118, 0.405, "up"),
-            17: plusCell(0.378, 0.365, 0.118, 0.405, "right"),
-            18: plusCell(0.378, 0.365, 0.118, 0.405, "down"),
-            19: plusCell(0.378, 0.365, 0.118, 0.405, "left"),
-            20: plusCell(0.378, 0.365, 0.118, 0.405, "center"),
-            21: pairCell(0.688, 0.246, 0.845, 0.145, 0),
-            22: pairCell(0.688, 0.246, 0.845, 0.145, 1),
-            23: pairCell(0.668, 0.795, 0.845, 0.430, 0),
-            24: pairCell(0.668, 0.795, 0.845, 0.430, 1),
-            25: pairCell(0.582, 0.782, 0.018, 0.875, 0),
-            26: pairCell(0.582, 0.782, 0.018, 0.875, 1),
-            27: {ax: 0.598, ay: 0.698, lx: 0.480, ly: 0.845},
-            28: {ax: 0.558, ay: 0.708, lx: 0.300, ly: 0.845},
-            29: {ax: 0.638, ay: 0.688, lx: 0.660, ly: 0.845}
-        }
-        return t[id] || null
-    }
-    function hasBtn(id) { return btnSpot(id) !== null }
-    function hasAxis(id) { return axisSpot(id) !== null }
-    function hasHat(id) { return hatSpot(id) !== null }
-    function spotOn(id, key, fallback) {
-        var s = btnSpot(id)
-        if (!s || s[key] === undefined) {
-            return fallback
-        }
-        return s[key]
-    }
-    function axisSpot(id) {
-        var t = {
-            1: {ax: 0.430, ay: 0.590, lx: 0.018, ly: 0.500, line: true, dot: true},
-            2: {ax: 0.430, ay: 0.590, lx: 0.018, ly: 0.534, line: false, dot: false},
-            3: {ax: 0.430, ay: 0.590, lx: 0.018, ly: 0.568, line: false, dot: false},
-            4: {ax: 0.628, ay: 0.778, lx: 0.480, ly: 0.915}
-        }
-        return t[id] || null
-    }
-    function hatSpot(id) {
-        var t = {
-            1: {ax: 0.298, ay: 0.108, lx: 0.018, ly: 0.012}
-        }
-        return t[id] || null
-    }
-    function axisFlag(id, key, fallback) {
-        var s = axisSpot(id)
-        if (!s || s[key] === undefined) {
-            return fallback
-        }
-        return s[key]
-    }
-
-    Image {
-        id: _img
-        x: _face.width * _gutterL
-        y: _face.height * _gutterT
-        width: _face.width * (1.0 - _gutterL - _gutterR)
-        height: _face.height * (1.0 - _gutterT - _gutterB)
-        source: Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
-        fillMode: Image.PreserveAspectFit
-        asynchronous: true
-        cache: true
-        onStatusChanged: _face.relayout()
-        onPaintedWidthChanged: _face.relayout()
-        onPaintedHeightChanged: _face.relayout()
-        onXChanged: _face.relayout()
-        onYChanged: _face.relayout()
-        onWidthChanged: _face.relayout()
-        onHeightChanged: _face.relayout()
-    }
-
-    signal relayout()
-
-    component Callout: Item {
-        property real ax: 0.5
-        property real ay: 0.5
-        property real lx: 0.05
-        property real ly: 0.05
-        property string hw: ""
-        property string dest: "—"
-        property bool lit: false
-        property bool showLine: true
-        property bool showDot: true
-
-        anchors.fill: parent
-        z: 2
-
-        Canvas {
-            id: _line
-            anchors.fill: parent
-            visible: showLine
-            onPaint: {
-                var ctx = getContext("2d")
-                ctx.reset()
-                ctx.strokeStyle = lit ? "#86EFAC" : "#A1A1AA"
-                ctx.lineWidth = 1.15
-                ctx.beginPath()
-                ctx.moveTo(px(ax), py(ay))
-                ctx.lineTo(fx(lx) + 8, fy(ly) + 10)
-                ctx.stroke()
-            }
-            Connections {
-                target: _face
-                function onRelayout() { _line.requestPaint() }
-                function onWidthChanged() { _line.requestPaint() }
-                function onHeightChanged() { _line.requestPaint() }
-            }
-        }
-
-        Rectangle {
-            visible: showDot
-            x: px(ax) - 4
-            y: py(ay) - 4
-            width: 8
-            height: 8
-            radius: 4
-            color: lit ? "#22C55E" : "#F4F4F5"
-            border.color: lit ? "#86EFAC" : "#A1A1AA"
-        }
-
-        Rectangle {
-            x: fx(lx) - (lx > 0.55 ? width - 8 : 0)
-            y: fy(ly)
-            implicitWidth: _lab.implicitWidth + 12
-            implicitHeight: _lab.implicitHeight + 8
-            radius: 4
-            color: lit ? "#14532D" : "#18181B"
-            border.color: lit ? "#22C55E" : "#3F3F46"
-            Text {
-                id: _lab
-                anchors.centerIn: parent
-                color: lit ? "#BBF7D0" : "#E4E4E7"
-                font.pixelSize: 11
-                text: hw + "  →  " + _face.shortDest(dest)
-            }
-        }
+    function putBtn(id, label) {
+        destBtn[id] = label
     }
 
     Repeater {
         model: _face.buttons
-        Callout {
+        Item {
             required property int identifier
             required property string vjoyLabel
-            visible: _face.hasBtn(identifier)
-            ax: visible ? _face.btnSpot(identifier).ax : 0
-            ay: visible ? _face.btnSpot(identifier).ay : 0
-            lx: visible ? _face.btnSpot(identifier).lx : 0
-            ly: visible ? _face.btnSpot(identifier).ly : 0
-            hw: "" + identifier
-            dest: vjoyLabel
-            lit: _face.liveStamp, _face.hwButton(identifier) > 0.5
-            showLine: visible ? _face.spotOn(identifier, "line", true) : true
-            showDot: visible ? _face.spotOn(identifier, "dot", true) : true
+            function bump() {
+                var m = _face.destBtn
+                m[identifier] = vjoyLabel
+                _face.destBtn = m
+                _face.destTick++
+            }
+            Component.onCompleted: bump()
+            onVjoyLabelChanged: bump()
         }
     }
-
     Repeater {
         model: _face.axes
-        Callout {
+        Item {
             required property int identifier
             required property string vjoyLabel
-            visible: _face.hasAxis(identifier)
-            ax: visible ? _face.axisSpot(identifier).ax : 0
-            ay: visible ? _face.axisSpot(identifier).ay : 0
-            lx: visible ? _face.axisSpot(identifier).lx : 0
-            ly: visible ? _face.axisSpot(identifier).ly : 0
-            hw: "A" + identifier
-            dest: vjoyLabel
-            lit: _face.liveStamp, Math.abs(_face.hwAxis(identifier)) > 0.12
-            showLine: visible ? _face.axisFlag(identifier, "line", true) : true
-            showDot: visible ? _face.axisFlag(identifier, "dot", true) : true
+            function bump() {
+                var m = _face.destAxis
+                m[identifier] = vjoyLabel
+                _face.destAxis = m
+                _face.destTick++
+            }
+            Component.onCompleted: bump()
+            onVjoyLabelChanged: bump()
+        }
+    }
+    Repeater {
+        model: _face.hats
+        Item {
+            required property int identifier
+            required property string vjoyLabel
+            function bump() {
+                var m = _face.destHat
+                m[identifier] = vjoyLabel
+                _face.destHat = m
+                _face.destTick++
+            }
+            Component.onCompleted: bump()
+            onVjoyLabelChanged: bump()
         }
     }
 
-    Repeater {
-        model: _face.hats
-        Callout {
-            required property int identifier
-            required property string vjoyLabel
-            visible: _face.hasHat(identifier)
-            ax: visible ? _face.hatSpot(identifier).ax : 0
-            ay: visible ? _face.hatSpot(identifier).ay : 0
-            lx: visible ? _face.hatSpot(identifier).lx : 0
-            ly: visible ? _face.hatSpot(identifier).ly : 0
-            hw: "H" + identifier
-            dest: vjoyLabel
-            lit: _face.liveStamp, _face.hwHat(identifier) > 0.5
+    component Tag: Rectangle {
+        property int hwId: 0
+        property string kind: "btn"
+        property string prefix: ""
+
+        readonly property string _dest: kind === "axis" ? _face.labelAxis(hwId)
+                                      : kind === "hat" ? _face.labelHat(hwId)
+                                      : _face.labelBtn(hwId)
+        readonly property bool lit: {
+            _face.liveStamp
+            if (kind === "axis") {
+                return Math.abs(_face.hwAxis(hwId)) > 0.12
+            }
+            if (kind === "hat") {
+                return _face.hwHat(hwId) > 0.5
+            }
+            return _face.hwButton(hwId) > 0.5
         }
+
+        implicitWidth: _lab.implicitWidth + 12
+        implicitHeight: 22
+        radius: 4
+        color: lit ? "#14532D" : "#18181B"
+        border.color: lit ? "#22C55E" : "#3F3F46"
+        Text {
+            id: _lab
+            anchors.centerIn: parent
+            color: lit ? "#BBF7D0" : "#E4E4E7"
+            font.pixelSize: 11
+            text: prefix + hwId + "  →  " + _face.shortDest(_dest)
+        }
+    }
+
+    component HatPlus: Item {
+        property int up: 0
+        property int down: 0
+        property int leftId: 0
+        property int rightId: 0
+        property int center: 0
+
+        implicitWidth: _g.implicitWidth
+        implicitHeight: _g.implicitHeight
+
+        Grid {
+            id: _g
+            columns: 3
+            rows: 3
+            spacing: 4
+            Item { width: 1; height: 1 }
+            Tag { hwId: up }
+            Item { width: 1; height: 1 }
+            Tag { hwId: leftId }
+            Tag { hwId: center }
+            Tag { hwId: rightId }
+            Item { width: 1; height: 1 }
+            Tag { hwId: down }
+            Item { width: 1; height: 1 }
+        }
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 10
+        spacing: 8
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 12
+
+            Column {
+                id: _left
+                Layout.preferredWidth: 280
+                Layout.fillHeight: true
+                spacing: 10
+
+                Tag { id: _h1; kind: "hat"; hwId: 1; prefix: "H" }
+                HatPlus { id: _p1115; up: 11; down: 13; leftId: 14; rightId: 12; center: 15 }
+                HatPlus { id: _p610; up: 6; down: 8; leftId: 9; rightId: 7; center: 10 }
+                Tag { id: _b3; hwId: 3 }
+                HatPlus { id: _p1620; up: 16; down: 18; leftId: 19; rightId: 17; center: 20 }
+                Column {
+                    id: _axes
+                    spacing: 4
+                    Tag { kind: "axis"; hwId: 1; prefix: "A" }
+                    Tag { kind: "axis"; hwId: 2; prefix: "A" }
+                    Tag { kind: "axis"; hwId: 3; prefix: "A" }
+                }
+            }
+
+            Item {
+                id: _stage
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                Image {
+                    id: _img
+                    anchors.fill: parent
+                    source: Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    cache: true
+                    onStatusChanged: _lines.requestPaint()
+                    onPaintedWidthChanged: _lines.requestPaint()
+                    onPaintedHeightChanged: _lines.requestPaint()
+                }
+            }
+
+            Column {
+                id: _right
+                Layout.preferredWidth: 220
+                Layout.fillHeight: true
+                spacing: 8
+
+                Tag { id: _b4; hwId: 4 }
+                Column {
+                    id: _p2122
+                    spacing: 4
+                    Tag { hwId: 21 }
+                    Tag { hwId: 22 }
+                }
+                Column {
+                    id: _p12
+                    spacing: 4
+                    Tag { hwId: 1 }
+                    Tag { hwId: 2 }
+                }
+                Tag { id: _b5; hwId: 5 }
+                Column {
+                    id: _p2324
+                    spacing: 4
+                    Tag { hwId: 23 }
+                    Tag { hwId: 24 }
+                }
+            }
+        }
+
+        Row {
+            id: _bottom
+            Layout.fillWidth: true
+            Layout.preferredHeight: 56
+            spacing: 16
+            layoutDirection: Qt.LeftToRight
+
+            Column {
+                id: _p2526
+                spacing: 4
+                Tag { hwId: 25 }
+                Tag { hwId: 26 }
+            }
+            Item { width: 24; height: 1 }
+            Tag { id: _b28; hwId: 28 }
+            Tag { id: _b27; hwId: 27 }
+            Tag { id: _b29; hwId: 29 }
+            Item { width: 24; height: 1 }
+            Tag { id: _a4; kind: "axis"; hwId: 4; prefix: "A" }
+        }
+    }
+
+    Canvas {
+        id: _lines
+        anchors.fill: parent
+        z: 1
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            ctx.strokeStyle = "#A1A1AA"
+            ctx.lineWidth = 1.1
+
+            function stroke(item, nx, ny, side) {
+                if (!item) {
+                    return
+                }
+                var p = _face.pin(item, side)
+                ctx.beginPath()
+                ctx.moveTo(p.x, p.y)
+                ctx.lineTo(px(nx), py(ny))
+                ctx.stroke()
+                ctx.beginPath()
+                ctx.arc(px(nx), py(ny), 3.5, 0, 6.3)
+                ctx.fillStyle = "#F4F4F5"
+                ctx.fill()
+            }
+
+            stroke(_h1, 0.298, 0.108, "right")
+            stroke(_p1115, 0.448, 0.135, "right")
+            stroke(_p610, 0.392, 0.205, "right")
+            stroke(_b3, 0.318, 0.198, "right")
+            stroke(_p1620, 0.378, 0.365, "right")
+            stroke(_axes, 0.430, 0.590, "right")
+            stroke(_b4, 0.618, 0.168, "left")
+            stroke(_p2122, 0.688, 0.246, "left")
+            stroke(_p12, 0.655, 0.259, "left")
+            stroke(_b5, 0.628, 0.430, "left")
+            stroke(_p2324, 0.668, 0.795, "left")
+            stroke(_p2526, 0.582, 0.782, "right")
+            stroke(_b28, 0.558, 0.708, "top")
+            stroke(_b27, 0.598, 0.698, "top")
+            stroke(_b29, 0.638, 0.688, "top")
+            stroke(_a4, 0.628, 0.778, "top")
+        }
+    }
+
+    Connections {
+        target: _face
+        function onWidthChanged() { _lines.requestPaint() }
+        function onHeightChanged() { _lines.requestPaint() }
+        function onLiveStampChanged() { _lines.requestPaint() }
+        function onDestTickChanged() { _lines.requestPaint() }
     }
 }
