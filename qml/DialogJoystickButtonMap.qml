@@ -281,14 +281,6 @@ Window {
         MenuSeparator {}
         MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
         MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
-        MenuItem {
-            text: "Convert to stack / 5-way"
-            onTriggered: {
-                var e = _ed()
-                if (!e || !selectedNode) return
-                e.setGroupKind(selectedNode.kind === "plus" ? "stack" : "plus")
-            }
-        }
     }
 
     Menu {

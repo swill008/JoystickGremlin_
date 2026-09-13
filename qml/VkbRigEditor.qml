@@ -443,19 +443,35 @@ Item {
         bump()
     }
 
-    function groupSize(n) {
+    function groupBounds(n) {
         var mem = (n && n.members) ? n.members : []
-        var maxx = 24
-        var maxy = 18
         var ew = Math.max(1, _ed.width)
         var eh = Math.max(1, _ed.height)
+        if (!mem.length)
+            return { minx: 0, miny: 0, width: 24, height: 18 }
+        var minx = 1e9
+        var miny = 1e9
+        var maxx = -1e9
+        var maxy = -1e9
         for (var i = 0; i < mem.length; i++) {
             var x = (mem[i].ox || 0) * ew
             var y = (mem[i].oy || 0) * eh
+            minx = Math.min(minx, x)
+            miny = Math.min(miny, y)
             maxx = Math.max(maxx, x + chipWGuess(n, mem[i]))
             maxy = Math.max(maxy, y + chipH(n))
         }
-        return Qt.size(maxx, maxy)
+        return {
+            minx: minx,
+            miny: miny,
+            width: Math.max(8, maxx - minx),
+            height: Math.max(8, maxy - miny)
+        }
+    }
+
+    function groupSize(n) {
+        var b = groupBounds(n)
+        return Qt.size(b.width, b.height)
     }
 
     function chipH(n) {
@@ -904,19 +920,11 @@ Item {
             }
             return
         }
+        // Same default for plus / pair / stack / axis_stack: a free column.
+        // No 5-way cross. Members stay regular chiplets with ox/oy.
         for (i = 0; i < mem.length; i++) {
-            var role = mem[i].role || ""
-            var dx = 0
-            var dy = (i - (mem.length - 1) * 0.5) * 0.028
-            if (n.kind === "plus") {
-                if (role === "up") { dx = 0; dy = -0.045 }
-                else if (role === "down") { dx = 0; dy = 0.045 }
-                else if (role === "left") { dx = -0.07; dy = 0 }
-                else if (role === "right") { dx = 0.07; dy = 0 }
-                else { dx = 0; dy = 0 }
-            }
-            mem[i].ox = dx
-            mem[i].oy = dy
+            mem[i].ox = 0
+            mem[i].oy = (i - (mem.length - 1) * 0.5) * 0.028
         }
     }
 
@@ -991,43 +999,6 @@ Item {
         return out
     }
 
-    function _plusMembers(parts) {
-        var leftover = parts.slice()
-        function take(score) {
-            var best = 0
-            var bestS = 1e9
-            for (var i = 0; i < leftover.length; i++) {
-                var s = score(leftover[i].src)
-                if (s < bestS) {
-                    bestS = s
-                    best = i
-                }
-            }
-            return leftover.splice(best, 1)[0]
-        }
-        var cx = 0
-        var cy = 0
-        var i
-        for (i = 0; i < parts.length; i++) {
-            cx += parts[i].src.chipFx
-            cy += parts[i].src.chipFy
-        }
-        cx /= Math.max(1, parts.length)
-        cy /= Math.max(1, parts.length)
-        var center = take(function(n) { return Math.hypot((n.chipFx || 0) - cx, (n.chipFy || 0) - cy) })
-        var up = take(function(n) { return n.chipFy || 0 })
-        var down = take(function(n) { return -(n.chipFy || 0) })
-        var left = take(function(n) { return n.chipFx || 0 })
-        var right = take(function(n) { return -(n.chipFx || 0) })
-        return [
-            { hwId: up.hwId, role: "up", ox: 0, oy: 0, src: up.src },
-            { hwId: down.hwId, role: "down", ox: 0, oy: 0, src: down.src },
-            { hwId: left.hwId, role: "left", ox: 0, oy: 0, src: left.src },
-            { hwId: right.hwId, role: "right", ox: 0, oy: 0, src: right.src },
-            { hwId: center.hwId, role: "center", ox: 0, oy: 0, src: center.src }
-        ]
-    }
-
     function groupSelection() {
         var ids = selectedIds || []
         if (ids.length < 2)
@@ -1050,8 +1021,6 @@ Item {
         var kind = "stack"
         if (axisN === parts.length)
             kind = "axis_stack"
-        else if (parts.length === 5 && axisN === 0)
-            kind = "plus"
         var first = nodeAt(ids[0])
         var st = _styleOf(first)
         var fx = 0
@@ -1068,32 +1037,18 @@ Item {
         var c = ids.length
         var ox0 = fx / c
         var oy0 = fy / c
-        var members
-        if (kind === "plus") {
-            members = _plusMembers(parts)
-            for (i = 0; i < members.length; i++) {
-                var src = members[i].src
-                members[i] = {
-                    hwId: members[i].hwId,
-                    role: members[i].role,
-                    ox: src ? (src.chipFx - ox0) : 0,
-                    oy: src ? (src.chipFy - oy0) : 0
-                }
-            }
-        } else {
-            parts.sort(function(a, b) {
-                var dy = (a.src.chipFy || 0) - (b.src.chipFy || 0)
-                return dy !== 0 ? dy : ((a.src.chipFx || 0) - (b.src.chipFx || 0))
+        parts.sort(function(a, b) {
+            var dy = (a.src.chipFy || 0) - (b.src.chipFy || 0)
+            return dy !== 0 ? dy : ((a.src.chipFx || 0) - (b.src.chipFx || 0))
+        })
+        var members = []
+        for (i = 0; i < parts.length; i++)
+            members.push({
+                hwId: parts[i].hwId,
+                role: parts[i].role || ("m" + i),
+                ox: parts[i].src.chipFx - ox0,
+                oy: parts[i].src.chipFy - oy0
             })
-            members = []
-            for (i = 0; i < parts.length; i++)
-                members.push({
-                    hwId: parts[i].hwId,
-                    role: parts[i].role || ("m" + i),
-                    ox: parts[i].src.chipFx - ox0,
-                    oy: parts[i].src.chipFy - oy0
-                })
-        }
         var g = {
             id: _uid("g"), kind: kind, members: members,
             nx: nx / c, ny: ny / c, chipFx: ox0, chipFy: oy0,
@@ -1162,13 +1117,7 @@ Item {
         var n = nodeAt(selectedId)
         if (!isGroup(n) || !kind)
             return
-        n.kind = kind
-        var mem = n.members || []
-        if (kind === "plus" && mem.length === 5) {
-            var roles = ["up", "down", "left", "right", "center"]
-            for (var i = 0; i < 5; i++)
-                mem[i].role = roles[i]
-        }
+        n.kind = kind === "plus" ? "stack" : kind
         bump()
     }
 
@@ -1216,8 +1165,24 @@ Item {
                 return (index >= 0 && index < list.length) ? list[index] : null
             }
             visible: node !== null
-            x: { _ed.tick; return node ? node.chipFx * _ed.width : 0 }
-            y: { _ed.tick; return node ? node.chipFy * _ed.height : 0 }
+            x: {
+                _ed.tick
+                if (!node)
+                    return 0
+                var x = node.chipFx * _ed.width
+                if (_ed.isGroup(node))
+                    x += _ed.groupBounds(node).minx
+                return x
+            }
+            y: {
+                _ed.tick
+                if (!node)
+                    return 0
+                var y = node.chipFy * _ed.height
+                if (_ed.isGroup(node))
+                    y += _ed.groupBounds(node).miny
+                return y
+            }
             z: 3
             width: {
                 _ed.tick
@@ -1286,12 +1251,16 @@ Item {
                     x: {
                         _ed.tick
                         var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
-                        return m ? ((m.ox || 0) * _ed.width) : 0
+                        if (!m)
+                            return 0
+                        return (m.ox || 0) * _ed.width - _ed.groupBounds(_grp.node).minx
                     }
                     y: {
                         _ed.tick
                         var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
-                        return m ? ((m.oy || 0) * _ed.height) : 0
+                        if (!m)
+                            return 0
+                        return (m.oy || 0) * _ed.height - _ed.groupBounds(_grp.node).miny
                     }
                     sourceComponent: _mini
                     onLoaded: {
@@ -1781,19 +1750,6 @@ Item {
                 text: "Done editing group"
                 enabled: _ed.groupEditId !== ""
                 onTriggered: _ed.endGroupEdit()
-            }
-            MenuItem {
-                text: "Convert to stack / 5-way"
-                enabled: {
-                    var n = _ed.nodeAt(_ctx.nodeId)
-                    return _ed.isGroup(n)
-                }
-                onTriggered: {
-                    var n = _ed.nodeAt(_ctx.nodeId)
-                    if (!n) return
-                    _ed.setSelection([n.id])
-                    _ed.setGroupKind(n.kind === "plus" ? "stack" : "plus")
-                }
             }
         }
         Menu {
