@@ -18,6 +18,7 @@ SECTION = "devices"
 GROUP = "display"
 VJOY_NAME = "vjoy-tabs"
 EXTRA_NAME = "extra-tabs"
+EXTRA_ALLOWED = ["keyboard", "logical", "osc", "xbox"]
 EXTRA_DEFAULT = ["keyboard", "logical", "osc"]
 
 
@@ -69,14 +70,14 @@ def _load_extra() -> set[str]:
     raw = _ensure(
         EXTRA_NAME,
         list(EXTRA_DEFAULT),
-        "Keyboard, Logical, and OSC tabs shown in the main bar.",
+        "Keyboard, Logical, OSC, and Xbox tabs shown in the main bar.",
     ).value(SECTION, GROUP, EXTRA_NAME)
     if raw is None:
         return set(EXTRA_DEFAULT)
     extras: set[str] = set()
     for item in raw:
         key = str(item).strip().lower()
-        if key in EXTRA_DEFAULT:
+        if key in EXTRA_ALLOWED:
             extras.add(key)
     return extras
 
@@ -85,7 +86,7 @@ def _save_extra(extras: set[str]) -> None:
     _ensure(
         EXTRA_NAME,
         list(EXTRA_DEFAULT),
-        "Keyboard, Logical, and OSC tabs shown in the main bar.",
+        "Keyboard, Logical, OSC, and Xbox tabs shown in the main bar.",
     ).set(SECTION, GROUP, EXTRA_NAME, sorted(extras))
 
 
@@ -147,7 +148,7 @@ class VJoyStatus(QtCore.QObject):
     @QtCore.Slot(str, bool)
     def setExtraPinned(self, name: str, pinned: bool) -> None:
         key = str(name).strip().lower()
-        if key not in EXTRA_DEFAULT:
+        if key not in EXTRA_ALLOWED:
             return
         if pinned:
             self._extra.add(key)
@@ -156,6 +157,15 @@ class VJoyStatus(QtCore.QObject):
         _save_extra(self._extra)
         HUB.changed.emit()
 
+    @QtCore.Slot(result=bool)
+    def xboxAvailable(self) -> bool:
+        try:
+            from vigem.xbox import XboxProxy
+
+            return XboxProxy().available()
+        except Exception:
+            return False
+
     def _count(self) -> int:
         return sum(1 for item in self._active if item)
 
@@ -163,7 +173,7 @@ class VJoyStatus(QtCore.QObject):
         total = 0
         for index in self._pins:
             total += 1 << index
-        for offset, name in enumerate(EXTRA_DEFAULT, start=17):
+        for offset, name in enumerate(EXTRA_ALLOWED, start=17):
             if name in self._extra:
                 total += 1 << offset
         return total
