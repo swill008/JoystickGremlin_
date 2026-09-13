@@ -448,32 +448,22 @@ Item {
         bump()
     }
 
-    function groupBounds(n) {
+    function groupMinX(n) {
         var mem = (n && n.members) ? n.members : []
         var ew = Math.max(1, _ed.width)
-        var eh = Math.max(1, _ed.height)
-        if (!mem.length)
-            return Qt.rect(0, 0, 24, 18)
         var minx = 1e9
-        var miny = 1e9
-        var maxx = -1e9
-        var maxy = -1e9
-        for (var i = 0; i < mem.length; i++) {
-            var x = (mem[i].ox || 0) * ew
-            var y = (mem[i].oy || 0) * eh
-            minx = Math.min(minx, x)
-            miny = Math.min(miny, y)
-            maxx = Math.max(maxx, x + chipWGuess(n, mem[i]))
-            maxy = Math.max(maxy, y + chipH(n))
-        }
-        // Qt.rect so QML bindings can read .x/.y/.width/.height (plain
-        // JS objects drop .minx in wrap bindings — box stayed at origin).
-        return Qt.rect(minx, miny, Math.max(8, maxx - minx), Math.max(8, maxy - miny))
+        for (var i = 0; i < mem.length; i++)
+            minx = Math.min(minx, (mem[i].ox || 0) * ew)
+        return minx < 1e8 ? minx : 0
     }
 
-    function groupSize(n) {
-        var b = groupBounds(n)
-        return Qt.size(b.width, b.height)
+    function groupMinY(n) {
+        var mem = (n && n.members) ? n.members : []
+        var eh = Math.max(1, _ed.height)
+        var miny = 1e9
+        for (var i = 0; i < mem.length; i++)
+            miny = Math.min(miny, (mem[i].oy || 0) * eh)
+        return miny < 1e8 ? miny : 0
     }
 
     function chipH(n) {
@@ -1179,7 +1169,7 @@ Item {
                     return 0
                 var x = node.chipFx * _ed.width
                 if (_ed.isGroup(node))
-                    x += _ed.groupBounds(node).x
+                    x += _ed.groupMinX(node)
                 return x
             }
             y: {
@@ -1188,32 +1178,23 @@ Item {
                     return 0
                 var y = node.chipFy * _ed.height
                 if (_ed.isGroup(node))
-                    y += _ed.groupBounds(node).y
+                    y += _ed.groupMinY(node)
                 return y
             }
             z: 3
             width: {
                 _ed.tick
-                if (!node)
-                    return 40
-                if (_ed.isGroup(node))
-                    return _ed.groupSize(node).width
                 var it = _body.item
                 return it ? Math.max(8, it.implicitWidth) : 40
             }
             height: {
                 _ed.tick
-                if (!node)
-                    return 20
-                if (_ed.isGroup(node))
-                    return _ed.groupSize(node).height
                 var it = _body.item
                 return it ? Math.max(8, it.implicitHeight) : 20
             }
 
             Rectangle {
-                anchors.fill: parent
-                anchors.margins: -4
+                // Tight equal pad around the actual chips, not a size guess.
                 z: -1
                 radius: 8
                 color: "transparent"
@@ -1222,23 +1203,60 @@ Item {
                     _ed.tick
                     return (_wrap.node && _ed.isSelected(_wrap.node.id)) ? "#FBBF24" : "transparent"
                 }
+                x: {
+                    _ed.tick
+                    var it = _body.item
+                    if (!it)
+                        return -4
+                    var r = it.memberBox
+                    if (r && r.width)
+                        return it.x + r.x - 4
+                    return -4
+                }
+                y: {
+                    _ed.tick
+                    var it = _body.item
+                    if (!it)
+                        return -4
+                    var r = it.memberBox
+                    if (r && r.height)
+                        return it.y + r.y - 4
+                    return -4
+                }
+                width: {
+                    _ed.tick
+                    var it = _body.item
+                    if (!it)
+                        return _wrap.width + 8
+                    var r = it.memberBox
+                    if (r && r.width)
+                        return r.width + 8
+                    return Math.max(8, it.implicitWidth) + 8
+                }
+                height: {
+                    _ed.tick
+                    var it = _body.item
+                    if (!it)
+                        return _wrap.height + 8
+                    var r = it.memberBox
+                    if (r && r.height)
+                        return r.height + 8
+                    return Math.max(8, it.implicitHeight) + 8
+                }
             }
 
             Loader {
                 id: _body
                 sourceComponent: {
-                    _ed.tick
                     var n = _wrap.node
                     if (!n) return _tagComp
-                    var k = n.kind
-                    if (k === "plus" || k === "pair" || k === "axis_stack" || k === "stack")
-                        return _groupComp
-                    return _tagComp
+                    return _ed.isGroup(n) ? _groupComp : _tagComp
                 }
                 onLoaded: {
                     item.node = Qt.binding(function() { return _wrap.node })
                     if (_wrap.node && _ed.isGroup(_wrap.node))
                         _ed.ensureMemberOffsets(_wrap.node)
+                    Qt.callLater(function() { _ed.tick++ })
                 }
             }
         }
@@ -1249,46 +1267,62 @@ Item {
         Item {
             id: _grp
             property var node: ({ members: [] })
-            // Size from ox/oy + chip guess — never childrenRect / parent.width.
-            implicitWidth: { _ed.tick; return _ed.groupSize(node).width }
-            implicitHeight: { _ed.tick; return _ed.groupSize(node).height }
-            Repeater {
-                model: { _ed.tick; return (_grp.node && _grp.node.members) ? _grp.node.members.length : 0 }
-                delegate: Loader {
-                    required property int index
-                    x: {
-                        _ed.tick
-                        var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
-                        if (!m)
-                            return 0
-                        return (m.ox || 0) * _ed.width - _ed.groupBounds(_grp.node).x
-                    }
-                    y: {
-                        _ed.tick
-                        var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
-                        if (!m)
-                            return 0
-                        return (m.oy || 0) * _ed.height - _ed.groupBounds(_grp.node).y
-                    }
-                    sourceComponent: _mini
-                    onLoaded: {
-                        item.node = Qt.binding(function() { return _grp.node })
-                        item.memberIndex = index
-                        item.hwId = Qt.binding(function() {
+            // Union of the chips only. Outline is a sibling so it cannot
+            // feed childrenRect (that was the implicitWidth loop).
+            readonly property rect memberBox: {
+                _ed.tick
+                return _members.childrenRect
+            }
+            implicitWidth: {
+                _ed.tick
+                var r = _members.childrenRect
+                return Math.max(8, r.x + r.width)
+            }
+            implicitHeight: {
+                _ed.tick
+                var r = _members.childrenRect
+                return Math.max(8, r.y + r.height)
+            }
+            Item {
+                id: _members
+                Repeater {
+                    model: { _ed.tick; return (_grp.node && _grp.node.members) ? _grp.node.members.length : 0 }
+                    delegate: Loader {
+                        required property int index
+                        x: {
+                            _ed.tick
                             var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
-                            return m && m.hwId ? m.hwId : 0
-                        })
-                        item.leafKind = Qt.binding(function() {
-                            return (_grp.node && _grp.node.kind === "axis_stack") ? "axis" : "btn"
-                        })
+                            if (!m)
+                                return 0
+                            return (m.ox || 0) * _ed.width - _ed.groupMinX(_grp.node)
+                        }
+                        y: {
+                            _ed.tick
+                            var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
+                            if (!m)
+                                return 0
+                            return (m.oy || 0) * _ed.height - _ed.groupMinY(_grp.node)
+                        }
+                        sourceComponent: _mini
+                        onLoaded: {
+                            item.node = Qt.binding(function() { return _grp.node })
+                            item.memberIndex = index
+                            item.hwId = Qt.binding(function() {
+                                var m = _grp.node && _grp.node.members ? _grp.node.members[index] : null
+                                return m && m.hwId ? m.hwId : 0
+                            })
+                            item.leafKind = Qt.binding(function() {
+                                return (_grp.node && _grp.node.kind === "axis_stack") ? "axis" : "btn"
+                            })
+                        }
                     }
                 }
             }
             Rectangle {
-                x: -5
-                y: -5
-                width: _grp.implicitWidth + 10
-                height: _grp.implicitHeight + 10
+                x: { _ed.tick; return _members.childrenRect.x - 5 }
+                y: { _ed.tick; return _members.childrenRect.y - 5 }
+                width: { _ed.tick; return _members.childrenRect.width + 10 }
+                height: { _ed.tick; return _members.childrenRect.height + 10 }
                 z: -1
                 radius: 8
                 color: "transparent"
@@ -1303,6 +1337,7 @@ Item {
         Rectangle {
             property var node: ({ kind: "btn", hwId: 0 })
             property bool on: _ed.litOf(node.kind, node.hwId)
+            readonly property rect memberBox: Qt.rect(0, 0, implicitWidth, implicitHeight)
             implicitWidth: { _ed.tick; return _lab.implicitWidth + Math.max(10, (node.chipSize || 18) * 0.55) }
             implicitHeight: { _ed.tick; return _ed.chipH(node) }
             radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node)) }
