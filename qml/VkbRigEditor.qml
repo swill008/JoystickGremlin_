@@ -36,11 +36,6 @@ Item {
     property int selectedLeader: 0
     property int selectedSeg: -1
     property int dragLeader: 0
-    property bool spaceHeld: false
-    property real panGrabX: 0
-    property real panGrabY: 0
-    property real panPressVx: 0
-    property real panPressVy: 0
 
     // Do NOT declare signal nodesChanged — property var nodes already has it.
     signal selectedChanged()
@@ -138,37 +133,12 @@ Item {
     }
 
     function followAutoPan() {
-        if (!dragKind || dragKind === "band" || dragKind === "pan")
+        if (!dragKind || dragKind === "band")
             return
         if (!face || !face.autoHover)
             return
         var w = worldFromView()
         applyPointer(w.x, w.y, altHeld)
-    }
-
-    function beginPan(mx, my) {
-        if (!face)
-            return
-        var z = face.zoom || 1
-        dragKind = "pan"
-        panGrabX = face.panX || 0
-        panGrabY = face.panY || 0
-        panPressVx = mx * z + panGrabX
-        panPressVy = my * z + panGrabY
-    }
-
-    function applyPan(mx, my) {
-        if (!face)
-            return
-        var z = face.zoom || 1
-        var vx = mx * z + (face.panX || 0)
-        var vy = my * z + (face.panY || 0)
-        face.panX = panGrabX + (vx - panPressVx)
-        face.panY = panGrabY + (vy - panPressVy)
-        if (face.clampPan)
-            face.clampPan()
-        if (face.pingEditor)
-            face.pingEditor()
     }
 
     function applyField(key, val) {
@@ -1856,19 +1826,10 @@ Item {
         focus: true
         Keys.onDeletePressed: _ed.deleteSelection()
         Keys.onPressed: (e) => {
-            if (e.key === Qt.Key_Space) {
-                spaceHeld = true
-                e.accepted = true
-            } else if (e.key === Qt.Key_Backspace) {
+            if (e.key === Qt.Key_Backspace) {
                 _ed.deleteSelection()
             } else if (e.key === Qt.Key_Escape) {
                 _ed.endGroupEdit()
-                e.accepted = true
-            }
-        }
-        Keys.onReleased: (e) => {
-            if (e.key === Qt.Key_Space) {
-                spaceHeld = false
                 e.accepted = true
             }
         }
@@ -1910,10 +1871,6 @@ Item {
                 _ctx.nodeId = ""
                 _ctx.seg = -1
                 _ctx.popup()
-                return
-            }
-            if (_ed.spaceHeld) {
-                _ed.beginPan(m.x, m.y)
                 return
             }
             if (hit.kind === "line" && !shift) {
@@ -1987,29 +1944,21 @@ Item {
                 _ed.bump()
                 return
             }
-            _ed.dragKind = shift ? "band" : "pan"
+            _ed.dragKind = "band"
             _ed.banding = false
             _ed.bandAdd = shift
             _ed.bandX0 = m.x
             _ed.bandY0 = m.y
             _ed.bandX1 = m.x
             _ed.bandY1 = m.y
-            if (shift) {
-                // keep existing selection, add via band
-            } else {
+            if (!shift)
                 _ed.setSelection([])
-                _ed.beginPan(m.x, m.y)
-            }
             _ed.bump()
         }
         onPositionChanged: (m) => {
             _ed.altHeld = !!(m.modifiers & Qt.AltModifier)
             _ed.reportCursor(m.x, m.y, true)
             if (!_ed.dragKind) {
-                return
-            }
-            if (_ed.dragKind === "pan") {
-                _ed.applyPan(m.x, m.y)
                 return
             }
             if (_ed.dragKind === "band") {
@@ -2022,11 +1971,6 @@ Item {
             _ed.applyPointer(m.x, m.y, _ed.altHeld)
         }
         onReleased: (m) => {
-            if (_ed.dragKind === "pan") {
-                _ed.dragKind = ""
-                _ed.bump()
-                return
-            }
             if (_ed.dragKind === "band") {
                 if (_ed.banding)
                     _ed.selectBand(_ed.bandAdd)
