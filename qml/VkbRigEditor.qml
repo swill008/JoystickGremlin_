@@ -336,11 +336,15 @@ Item {
                 return
             seen[key] = true
             var pid = placedId(kind, hwId)
+            var lk = leafKind(kind)
+            var hwName = lk === "axis" ? ("Axis " + hwId) : (lk === "hat" ? ("Hat " + hwId) : ("Button " + hwId))
             items.push({
                 kind: kind,
                 hwId: hwId,
                 key: key,
                 friendly: defaultFriendly(kind, hwId),
+                hwName: hwName,
+                dest: destOf(lk, hwId),
                 fullName: fullNameOf(kind, hwId),
                 placed: pid.length > 0,
                 placedId: pid

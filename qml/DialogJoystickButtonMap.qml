@@ -413,6 +413,45 @@ Window {
         return _cardLoader.item ? _cardLoader.item.editorItem : null
     }
 
+    function poolHaystack(row) {
+        if (!row)
+            return ""
+        var hw = row.hwId
+        var kind = row.kind || "btn"
+        var alias = ""
+        if (kind === "axis")
+            alias = "axis " + hw + " a" + hw
+        else if (kind === "hat")
+            alias = "hat " + hw + " h" + hw
+        else
+            alias = "button " + hw + " btn " + hw + " b" + hw
+        return [
+            row.friendly || "",
+            row.hwName || "",
+            row.fullName || "",
+            row.dest && row.dest !== "—" ? row.dest : "",
+            kind,
+            String(hw),
+            alias
+        ].join(" ").toLowerCase()
+    }
+
+    function poolMatches(row, q) {
+        if (!q.length)
+            return true
+        var hay = poolHaystack(row)
+        if (hay.indexOf(q) >= 0)
+            return true
+        var toks = q.split(/\s+/)
+        for (var i = 0; i < toks.length; i++) {
+            if (!toks[i].length)
+                continue
+            if (hay.indexOf(toks[i]) < 0)
+                return false
+        }
+        return true
+    }
+
     function refreshReservoir() {
         var e = _ed()
         var all = e ? e.catalog() : []
@@ -422,11 +461,8 @@ Window {
             var row = all[i]
             if (row.placed)
                 continue
-            if (q.length) {
-                var hay = ((row.friendly || "") + " " + (row.fullName || "") + " " + (row.kind || "") + " " + String(row.hwId)).toLowerCase()
-                if (hay.indexOf(q) < 0)
-                    continue
-            }
+            if (!poolMatches(row, q))
+                continue
             u.push(row)
         }
         resItems = u
@@ -877,7 +913,7 @@ Window {
                                 TextField {
                                     id: _poolSearch
                                     anchors.fill: parent
-                                    placeholderText: "Filter"
+                                    placeholderText: "Filter friendly or hardware"
                                     text: poolFilter
                                     rightPadding: 26
                                     onTextChanged: {
