@@ -16,16 +16,16 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 3 | Red head button | Left | 311 | 234 | 0.346 | 0.254 | single |
 | 4 | White cap | Right | 551 | 227 | 0.613 | 0.247 | single |
 | 5 | Lower grip white | Right | 544 | 386 | 0.605 | 0.420 | single |
-| 6 | 5-way right of red, up | Left | 372 | 216 | 0.414 | 0.235 | plus 6-10 |
-| 7 | that 5-way, right | Left | 372 | 216 | 0.414 | 0.235 | plus 6-10 |
-| 8 | that 5-way, down | Left | 372 | 216 | 0.414 | 0.235 | plus 6-10 |
-| 9 | that 5-way, left | Left | 372 | 216 | 0.414 | 0.235 | plus 6-10 |
-| 10 | that 5-way, center | Left | 372 | 216 | 0.414 | 0.235 | plus 6-10 |
-| 11 | Top-right head 5-way, up | Left | 375 | 168 | 0.417 | 0.183 | plus 11-15 |
-| 12 | that 5-way, right | Left | 375 | 168 | 0.417 | 0.183 | plus 11-15 |
-| 13 | that 5-way, down | Left | 375 | 168 | 0.417 | 0.183 | plus 11-15 |
-| 14 | that 5-way, left | Left | 375 | 168 | 0.417 | 0.183 | plus 11-15 |
-| 15 | that 5-way, center | Left | 375 | 168 | 0.417 | 0.183 | plus 11-15 |
+| 6 | 5-way right of red, up | Left | 390 | 218 | 0.434 | 0.237 | plus 6-10 |
+| 7 | that 5-way, right | Left | 390 | 218 | 0.434 | 0.237 | plus 6-10 |
+| 8 | that 5-way, down | Left | 390 | 218 | 0.434 | 0.237 | plus 6-10 |
+| 9 | that 5-way, left | Left | 390 | 218 | 0.434 | 0.237 | plus 6-10 |
+| 10 | that 5-way, center | Left | 390 | 218 | 0.434 | 0.237 | plus 6-10 |
+| 11 | Top-right head 5-way, up | Left | 390 | 168 | 0.434 | 0.183 | plus 11-15 |
+| 12 | that 5-way, right | Left | 390 | 168 | 0.434 | 0.183 | plus 11-15 |
+| 13 | that 5-way, down | Left | 390 | 168 | 0.434 | 0.183 | plus 11-15 |
+| 14 | that 5-way, left | Left | 390 | 168 | 0.434 | 0.183 | plus 11-15 |
+| 15 | that 5-way, center | Left | 390 | 168 | 0.434 | 0.183 | plus 11-15 |
 | 16 | Silver wheel 5-way, up | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 17 | that wheel, right | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 18 | that wheel, down | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
@@ -33,19 +33,19 @@ ONE grip, TWO poses (left = open head, right = closed grip) plus the shared base
 | 20 | that wheel, center | Left | 360 | 340 | 0.400 | 0.370 | plus 16-20 |
 | 21 | Grey upper paddle / flipper push | Right | 590 | 258 | 0.656 | 0.280 | pair 21/22 |
 | 22 | Grey upper paddle / flipper pull | Right | 590 | 258 | 0.656 | 0.280 | pair 21/22 |
-| 23 | En2 right knob up | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
-| 24 | En2 right knob down | Base | 638 | 708 | 0.710 | 0.770 | pair 23/24 |
-| 25 | En1 left knob up | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
-| 26 | En1 left knob down | Base | 558 | 708 | 0.621 | 0.770 | pair 25/26 |
+| 23 | En2 right knob up | Base | 653 | 726 | 0.726 | 0.789 | pair 23/24 |
+| 24 | En2 right knob down | Base | 653 | 726 | 0.726 | 0.789 | pair 23/24 |
+| 25 | En1 left knob up | Base | 558 | 728 | 0.621 | 0.791 | pair 25/26 |
+| 26 | En1 left knob down | Base | 558 | 728 | 0.621 | 0.791 | pair 25/26 |
 | 27 | Middle base pad | Base | 558 | 652 | 0.621 | 0.709 | pads |
-| 28 | Left base pad | Base | 534 | 658 | 0.594 | 0.715 | pads |
+| 28 | Left base pad | Base | 524 | 656 | 0.583 | 0.713 | pads |
 | 29 | Right base pad | Base | 588 | 644 | 0.654 | 0.700 | pads |
 
 ## Hats
 
 | HW | Physical | px | py | nx | ny |
 |---:|---|---:|---:|---:|---:|
-| 1 | Analog ministick 8-way | 335 | 168 | 0.373 | 0.183 |
+| 1 | Analog ministick 8-way | 320 | 168 | 0.356 | 0.183 |
 
 ## Axes
 
@@ -80,4 +80,8 @@ Label order only. Do not use this section to change nx/ny.
 - Button 5 is the lower-grip white centroid (544,386), not the space to its right.
 - 21/22 is the grey flipper face right of the red trigger (590,258). Not the red trigger. Not past the flipper tip in the background.
 - 1/2 is the right-grip red trigger centroid (555,277).
-- 28 = far-left square (534,658). 27 = middle square (558,652). 29 = right square (588,644). Do not pile them on the right pad.
+- H1 is the analog ministick nub (320,168), not the right rim of the well.
+- 11-15 is the top-right 5-way center hole (390,168).
+- 6-10 is the lower 5-way center (390,218), right of the red.
+- 28 = far-left square (524,656). 27 = middle square (558,652). 29 = right square (588,644). Do not pile them on the right pad.
+- 25/26 En1 knob center (558,728), not the top rim. 23/24 En2 knob center (653,726), not the upper-left rim.

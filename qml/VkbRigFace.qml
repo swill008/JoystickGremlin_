@@ -329,22 +329,22 @@ Item {
             }
 
             // Pixels from qml/vkb_evo_r_face_map.md on JPEG 899x920.
-            stroke(_h1, 0.373, 0.183, "right")
-            stroke(_p1115, 0.417, 0.183, "right")
+            stroke(_h1, 0.356, 0.183, "right")
+            stroke(_p1115, 0.434, 0.183, "right")
             stroke(_b3, 0.346, 0.254, "right")
-            stroke(_p610, 0.414, 0.235, "right")
+            stroke(_p610, 0.434, 0.237, "right")
             stroke(_p1620, 0.400, 0.370, "right")
             stroke(_axes, 0.429, 0.575, "right")
             stroke(_b4, 0.613, 0.247, "left")
             stroke(_p2122, 0.656, 0.280, "left")
             stroke(_p12, 0.617, 0.301, "left")
             stroke(_b5, 0.605, 0.420, "left")
-            stroke(_b28, 0.594, 0.715, "top")
+            stroke(_b28, 0.583, 0.713, "top")
             stroke(_b27, 0.621, 0.709, "top")
             stroke(_b29, 0.654, 0.700, "top")
-            stroke(_p2526, 0.621, 0.770, "top")
+            stroke(_p2526, 0.621, 0.791, "top")
             stroke(_a4, 0.656, 0.770, "top")
-            stroke(_p2324, 0.710, 0.770, "top")
+            stroke(_p2324, 0.726, 0.789, "top")
         }
     }
 
