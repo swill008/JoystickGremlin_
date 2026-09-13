@@ -17,32 +17,47 @@ from PySide6 import (
 from gremlin.ui.util import ColorInformation
 
 
-class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
-    """Generates action sequence visualizations.
+_XBOX_FACE = {
+    "a": ("A", QtGui.QColor("#22C55E")),
+    "b": ("B", QtGui.QColor("#EF4444")),
+    "x": ("X", QtGui.QColor("#3B82F6")),
+    "y": ("Y", QtGui.QColor("#EAB308")),
+}
+_XBOX_LABELS = {
+    "left_stick_x": "LSX",
+    "left_stick_y": "LSY",
+    "right_stick_x": "RSX",
+    "right_stick_y": "RSY",
+    "left_trigger": "LT",
+    "right_trigger": "RT",
+    "left_shoulder": "LB",
+    "right_shoulder": "RB",
+    "left_thumb": "LS",
+    "right_thumb": "RS",
+    "start": "STR",
+    "back": "BAK",
+    "guide": "G",
+    "dpad": "DP",
+    "dpad_up": "DU",
+    "dpad_down": "DD",
+    "dpad_left": "DL",
+    "dpad_right": "DR",
+}
 
-    This provider renders visual summary images for input action sequences
-    on demand, caches them to avoid redundant rendering, and exposes them
-    to QML through the image://action_summary/ URI scheme.
-    """
+
+class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
+    """Generates action sequence visualizations."""
 
     def __init__(self, max_cache_size: int = 500) -> None:
-        """Initialize the image provider.
-
-        Args:
-            max_cache_size: Maximum number of rendered images to cache.
-                When the limit is reached, the oldest entry is evicted.
-        """
         super().__init__(QtQuick.QQuickImageProvider.ImageType.Image)
 
         self._cache = collections.OrderedDict()
         self._max_cache_size = max_cache_size
         self._lock = threading.Lock()
 
-        # Dimensions controlling layouting.
         self._spacing = 2
         self._glyph_height = 21
 
-        # Set up fonts and metrics for rendering.
         self._bootstrap_font = QtGui.QFont("bootstrap-icons")
         self._bootstrap_font.setPixelSize(15)
         self._bootstrap_metrics = QtGui.QFontMetrics(self._bootstrap_font)
@@ -55,28 +70,25 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
         self._vjoy_font.setPixelSize(11)
         self._vjoy_metrics = QtGui.QFontMetrics(self._vjoy_font)
 
+        self._badge_font = QtGui.QFont("Segoe UI")
+        self._badge_font.setPixelSize(9)
+        self._badge_font.setBold(True)
+        self._badge_metrics = QtGui.QFontMetrics(self._badge_font)
+
+    def _ink(self) -> QtGui.QColor:
+        colors = ColorInformation()
+        if colors.is_dark_theme:
+            return QtGui.QColor("#F8FAFC")
+        return colors.foreground
+
     def requestImage(
         self, image_id: str, size: QtCore.QSize, requested_size: QtCore.QSize
     ) -> QtGui.QImage:
-        """Returns the image for the given id, generating it if needed.
-
-        Args:
-            image_id: The action string part of the image URI
-                image://action_summary/<image id>
-            size: Output parameter for the actual image size (not used)
-            requested_size: The size requested by QML (not used)
-
-        Returns:
-            A QImage representing the action summary
-        """
         with self._lock:
             if image_id in self._cache:
                 self._cache.move_to_end(image_id)
                 return self._cache[image_id]
 
-        # A "?<token>" suffix, bumped on a theme change, keeps the id (and thus
-        # the cache entry) distinct per theme; it is not part of the action
-        # string, so strip it before rendering.
         image = self._render(image_id.split("?", 1)[0])
 
         with self._lock:
@@ -86,14 +98,6 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
             return image
 
     def _render(self, action_string: str) -> QtGui.QImage:
-        """Renders an action sequence image.
-
-        Args:
-            action_string: The action sequence string to render
-
-        Returns:
-            A QImage containing the rendered action sequence
-        """
         tokens = action_string.split(":") if action_string else []
 
         picture = QtGui.QPicture()
@@ -102,14 +106,14 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
         try:
             painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
             painter.setRenderHint(QtGui.QPainter.RenderHint.TextAntialiasing)
-            painter.setPen(ColorInformation().foreground)
+            painter.setPen(self._ink())
 
             x_offset = 0
             for token in tokens:
                 if token in ["(", ")"]:
+                    painter.setPen(self._ink())
                     painter.setFont(self._segoe_font)
                     glyph_width = self._segoe_metrics.horizontalAdvance(token)
-
                     painter.drawText(
                         QtCore.QRect(x_offset, -3, glyph_width, self._glyph_height),
                         QtCore.Qt.AlignmentFlag.AlignCenter,
@@ -121,10 +125,15 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
                         token.split(","), painter, x_offset
                     )
                     x_offset += glyph_width + self._spacing
+                elif token.startswith("\uf11b") or token.startswith("\uf2d4"):
+                    glyph_width = self._render_xbox_glyph(
+                        token.split(","), painter, x_offset
+                    )
+                    x_offset += glyph_width + self._spacing
                 elif len(token) == 1:
+                    painter.setPen(self._ink())
                     painter.setFont(self._bootstrap_font)
                     glyph_width = self._bootstrap_metrics.horizontalAdvance(token)
-
                     painter.drawText(
                         QtCore.QRect(x_offset, 1, glyph_width, self._glyph_height),
                         QtCore.Qt.AlignmentFlag.AlignCenter,
@@ -138,7 +147,6 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
         finally:
             painter.end()
 
-        # Render QPicture to QImage with exact size
         image = QtGui.QImage(
             max(20, x_offset - self._spacing if x_offset > 0 else 0),
             self._glyph_height,
@@ -157,32 +165,16 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
     def _render_vjoy_glyph(
         self, token: list[str], painter: QtGui.QPainter, x_offset: int
     ) -> int:
-        """Renders a vJoy token.
-
-        Token format: <vjoy_icon>,<device_id>,<type_letter>,<input_number>
-        - vjoy_icon: Bootstrap icon character (\uf448)
-        - device_id: vJoy device number
-        - type_letter: A = Axis, B = Button, H = Hat
-        - input_number: Input number (1-128)
-
-        Args:
-            token: The vJoy token string to parse and render
-            painter: QPainter to render with
-            x_offset: The x position to start rendering at
-
-        Returns:
-            Width of the rendered glyph in pixels
-        """
         lookup = {"A": "AX", "B": "BTN", "H": "HAT"}
-        if token[2] not in lookup:
+        if len(token) < 4 or token[2] not in lookup:
             return 0
 
         vjoy_icon = token[0]
         vjoy_id = int(token[1])
         input_type = lookup[token[2]]
         input_id = int(token[3])
+        painter.setPen(self._ink())
 
-        # Calculate component widths
         icon_width = self._bootstrap_metrics.horizontalAdvance(vjoy_icon)
         device_width = self._segoe_metrics.horizontalAdvance(str(vjoy_id))
         label_block_width = max(
@@ -192,7 +184,6 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
 
         current_x = x_offset
 
-        # Draw vJoy icon
         painter.setFont(self._bootstrap_font)
         painter.drawText(
             QtCore.QRect(current_x, 1, icon_width, self._glyph_height),
@@ -201,7 +192,6 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
         )
         current_x += icon_width + self._spacing
 
-        # Draw device ID
         painter.setFont(self._segoe_font)
         painter.drawText(
             QtCore.QRect(current_x, -2, device_width, self._glyph_height),
@@ -210,15 +200,12 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
         )
         current_x += device_width + self._spacing
 
-        # Draw input number (top)
         painter.setFont(self._vjoy_font)
         painter.drawText(
             QtCore.QRect(current_x, -1, label_block_width, 13),
             QtCore.Qt.AlignmentFlag.AlignCenter,
             str(input_id),
         )
-
-        # Draw type label (bottom)
         painter.drawText(
             QtCore.QRect(current_x, 8, label_block_width, 13),
             QtCore.Qt.AlignmentFlag.AlignCenter,
@@ -227,13 +214,64 @@ class ActionSummaryImageProvider(QtQuick.QQuickImageProvider):
 
         return icon_width + device_width + label_block_width + 2 * self._spacing
 
-    def invalidate(self, action_string: str | None = None) -> None:
-        """Invalidate cached images.
+    def _render_xbox_glyph(
+        self, token: list[str], painter: QtGui.QPainter, x_offset: int
+    ) -> int:
+        pad_id = token[1] if len(token) > 1 else "1"
+        target = token[2].strip().lower() if len(token) > 2 else "a"
 
-        Args:
-            action_string: If provided, invalidate only this specific entry.
-                If None, clear the entire cache.
-        """
+        pad_width = self._vjoy_metrics.horizontalAdvance(str(pad_id))
+        current_x = x_offset
+        ink = self._ink()
+
+        painter.setPen(ink)
+        painter.setFont(self._vjoy_font)
+        painter.drawText(
+            QtCore.QRect(current_x, 4, pad_width, self._glyph_height - 4),
+            QtCore.Qt.AlignmentFlag.AlignVCenter,
+            str(pad_id),
+        )
+        current_x += pad_width + 3
+
+        if target in _XBOX_FACE:
+            letter, fill = _XBOX_FACE[target]
+            size = 16
+            rect = QtCore.QRect(current_x, 3, size, size)
+            painter.setBrush(QtGui.QBrush(fill))
+            painter.setPen(QtGui.QPen(fill.darker(130), 1))
+            painter.drawEllipse(rect)
+            painter.setPen(QtGui.QColor("#FFFFFF"))
+            painter.setFont(self._badge_font)
+            painter.drawText(rect, QtCore.Qt.AlignmentFlag.AlignCenter, letter)
+            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+            return (current_x + size) - x_offset
+
+        if target == "guide":
+            size = 16
+            fill = QtGui.QColor("#16A34A")
+            rect = QtCore.QRect(current_x, 3, size, size)
+            painter.setBrush(QtGui.QBrush(fill))
+            painter.setPen(QtGui.QPen(QtGui.QColor("#86EFAC"), 1))
+            painter.drawEllipse(rect)
+            painter.setPen(QtGui.QColor("#FFFFFF"))
+            painter.setFont(self._badge_font)
+            painter.drawText(rect, QtCore.Qt.AlignmentFlag.AlignCenter, "X")
+            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+            return (current_x + size) - x_offset
+
+        label = _XBOX_LABELS.get(target, target.upper()[:3])
+        text_w = max(16, self._badge_metrics.horizontalAdvance(label) + 6)
+        rect = QtCore.QRect(current_x, 4, text_w, 14)
+        painter.setBrush(QtGui.QBrush(QtGui.QColor("#1F2937")))
+        painter.setPen(QtGui.QPen(ink, 1))
+        painter.drawRoundedRect(rect, 3, 3)
+        painter.setPen(ink)
+        painter.setFont(self._badge_font)
+        painter.drawText(rect, QtCore.Qt.AlignmentFlag.AlignCenter, label)
+        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+        return (current_x + text_w) - x_offset
+
+    def invalidate(self, action_string: str | None = None) -> None:
         with self._lock:
             if action_string is None:
                 self._cache.clear()
