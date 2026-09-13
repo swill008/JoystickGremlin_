@@ -51,7 +51,89 @@ Window {
     property int resTick: 0
     property string poolFilter: ""
     onPoolFilterChanged: refreshReservoir()
-    property bool poolDrag: false
+    property real panelW: 0
+    property real panelH: 160
+    property bool panelFillW: true
+    property bool panelDockB: true
+    property real _prsX: 0
+    property real _prsY: 0
+    property real _prsW: 0
+    property real _prsH: 0
+    property real _prmX: 0
+    property real _prmY: 0
+    property string _prEdge: ""
+
+    function clampPool() {
+        var box = _poolFloat
+        if (!box || !box.parent)
+            return
+        var pw = box.parent.width
+        var ph = box.parent.height
+        if (panelFillW || box.width < 40) {
+            box.x = 12
+            box.width = Math.max(280, pw - 24)
+        }
+        box.width = Math.max(280, Math.min(box.width, pw - 16))
+        box.height = Math.max(90, Math.min(panelH, ph - 16))
+        panelH = box.height
+        if (panelDockB)
+            box.y = ph - box.height - 12
+        box.x = Math.max(8, Math.min(box.x, pw - box.width - 8))
+        box.y = Math.max(8, Math.min(box.y, ph - box.height - 8))
+    }
+
+    function startPanelResize(edge, mx, my, item) {
+        _prEdge = edge
+        _prsX = _poolFloat.x
+        _prsY = _poolFloat.y
+        _prsW = _poolFloat.width
+        _prsH = _poolFloat.height
+        var p = item.mapToItem(_poolFloat.parent, mx, my)
+        _prmX = p.x
+        _prmY = p.y
+    }
+
+    function movePanelResize(mx, my, item) {
+        var p = item.mapToItem(_poolFloat.parent, mx, my)
+        var dx = p.x - _prmX
+        var dy = p.y - _prmY
+        var nx = _prsX
+        var ny = _prsY
+        var nw = _prsW
+        var nh = _prsH
+        var e = _prEdge
+        var host = _poolFloat.parent
+        if (e.indexOf("e") >= 0) {
+            nw = _prsW + dx
+            panelFillW = false
+        }
+        if (e.indexOf("w") >= 0) {
+            nw = _prsW - dx
+            panelFillW = false
+        }
+        if (e.indexOf("s") >= 0) {
+            nh = _prsH + dy
+            panelDockB = false
+        }
+        if (e.indexOf("n") >= 0)
+            nh = _prsH - dy
+        var maxW = Math.max(280, host.width - 16)
+        var maxH = Math.max(90, host.height - 16)
+        nw = Math.max(280, Math.min(nw, maxW))
+        nh = Math.max(90, Math.min(nh, maxH))
+        if (e.indexOf("w") >= 0)
+            nx = _prsX + _prsW - nw
+        if (e.indexOf("n") >= 0)
+            ny = _prsY + _prsH - nh
+        nx = Math.max(8, Math.min(nx, host.width - nw - 8))
+        ny = Math.max(8, Math.min(ny, host.height - nh - 8))
+        _poolFloat.x = nx
+        _poolFloat.y = ny
+        _poolFloat.width = nw
+        _poolFloat.height = nh
+        panelH = nh
+        panelW = nw
+    }
     property string poolKind: "btn"
     property int poolHw: 0
     property string poolName: ""
@@ -126,7 +208,10 @@ Window {
         editing = true
         selectedId = ""
         selectedNode = null
-        Qt.callLater(refreshReservoir)
+        Qt.callLater(function() {
+            refreshReservoir()
+            clampPool()
+        })
     }
 
     function saveEdit() {
@@ -744,15 +829,33 @@ Window {
                     property var item: null
                 }
 
-                Item {
+                MouseArea {
                     id: _poolFloat
                     visible: editing
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.margins: 12
-                    height: 50 + Math.min(120, Math.max(28, _resFlow.implicitHeight))
                     z: 30
+                    x: 12
+                    width: 280
+                    height: 160
+                    acceptedButtons: Qt.AllButtons
+                    hoverEnabled: true
+                    preventStealing: false
+                    onPressed: (m) => { m.accepted = true }
+                    onClicked: (m) => { m.accepted = true }
+                    onDoubleClicked: (m) => { m.accepted = true }
+                    onWheel: (w) => { w.accepted = true }
+                    onVisibleChanged: if (visible) Qt.callLater(clampPool)
+
+                    component PoolGrip: MouseArea {
+                        required property string edge
+                        preventStealing: true
+                        hoverEnabled: true
+                        onPressed: (m) => startPanelResize(edge, m.x, m.y, this)
+                        onPositionChanged: (m) => {
+                            if (pressed)
+                                movePanelResize(m.x, m.y, this)
+                        }
+                    }
+
                     Rectangle {
                         anchors.fill: parent
                         radius: 12
@@ -760,9 +863,10 @@ Window {
                         border.color: "#3F3F46"
                     }
                     ColumnLayout {
-                        id: _poolCol
                         anchors.fill: parent
                         anchors.margins: 8
+                        anchors.bottomMargin: 12
+                        anchors.rightMargin: 10
                         spacing: 6
                         RowLayout {
                             Layout.fillWidth: true
@@ -806,8 +910,7 @@ Window {
                         }
                         Flickable {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: Math.max(28, _resFlow.implicitHeight)
-                            Layout.maximumHeight: 120
+                            Layout.fillHeight: true
                             clip: true
                             contentWidth: width
                             contentHeight: _resFlow.implicitHeight
@@ -874,6 +977,32 @@ Window {
                             }
                         }
                     }
+
+                    PoolGrip { edge: "n"; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
+                    PoolGrip { edge: "s"; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
+                    PoolGrip { edge: "w"; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
+                    PoolGrip { edge: "e"; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
+                    PoolGrip { edge: "nw"; width: 12; height: 12; anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
+                    PoolGrip { edge: "ne"; width: 12; height: 12; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
+                    PoolGrip { edge: "sw"; width: 12; height: 12; anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
+                    PoolGrip { edge: "se"; width: 14; height: 14; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor; z: 2 }
+
+                    Item {
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 3
+                        width: 10
+                        height: 10
+                        opacity: 0.55
+                        Rectangle { width: 8; height: 1; color: "#A1A1AA"; rotation: -45; x: 2; y: 7 }
+                        Rectangle { width: 5; height: 1; color: "#A1A1AA"; rotation: -45; x: 5; y: 8 }
+                    }
+                }
+
+                Connections {
+                    target: parent
+                    function onWidthChanged() { if (editing) clampPool() }
+                    function onHeightChanged() { if (editing) clampPool() }
                 }
             }
 
