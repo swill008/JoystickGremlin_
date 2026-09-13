@@ -139,9 +139,9 @@ Item {
 
     Hotspot { nx: 0.728; ny: 0.520; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("y"); glow: "#facc15"; fill: "#66fde047"; radius: width / 2 }
     Hotspot { nx: 0.780; ny: 0.578; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("b"); glow: "#f87171"; fill: "#66f87171"; radius: width / 2 }
-    Hotspot { nx: 0.694; ny: 0.635; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("a"); glow: "#4ade80"; fill: "#664ade80"; radius: width / 2 }
+    Hotspot { nx: 0.728; ny: 0.638; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("a"); glow: "#4ade80"; fill: "#664ade80"; radius: width / 2 }
     Hotspot { nx: 0.672; ny: 0.581; nw: 0.05; nh: 0.055 * _pw / _ph; lit: on("x"); glow: "#60a5fa"; fill: "#6660a5fa"; radius: width / 2 }
 
-    Hotspot { nx: 0.438; ny: 0.575; nw: 0.028; nh: 0.024; lit: on("back"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
-    Hotspot { nx: 0.565; ny: 0.575; nw: 0.028; nh: 0.024; lit: on("start"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
+    Hotspot { nx: 0.452; ny: 0.594; nw: 0.028; nh: 0.022; lit: on("back"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
+    Hotspot { nx: 0.572; ny: 0.594; nw: 0.028; nh: 0.022; lit: on("start"); glow: "#86EFAC"; fill: "#6622C55E"; radius: 6 }
 }
