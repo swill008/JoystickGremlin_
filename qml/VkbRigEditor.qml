@@ -845,6 +845,19 @@ Item {
         n.alignH = "free"
     }
 
+    function memberIndexOf(n, mem) {
+        var mems = (n && n.members) ? n.members : []
+        for (var i = 0; i < mems.length; i++) {
+            if (mems[i] === mem)
+                return i
+        }
+        return 0
+    }
+
+    function stackPitch(n) {
+        return chipH(n) + 6
+    }
+
     function memberLocalX(n, mem) {
         var ew = Math.max(1, _ed.width)
         var a = groupAlignH(n)
@@ -860,6 +873,8 @@ Item {
     }
 
     function memberLocalY(n, mem) {
+        if (groupAlignH(n) !== "free")
+            return memberIndexOf(n, mem) * stackPitch(n)
         var eh = Math.max(1, _ed.height)
         return (mem.oy || 0) * eh - groupMinY(n)
     }
@@ -876,6 +891,8 @@ Item {
     }
 
     function groupMinY(n) {
+        if (groupAlignH(n) !== "free")
+            return 0
         var mem = (n && n.members) ? n.members : []
         var eh = Math.max(1, _ed.height)
         var miny = 1e9
@@ -904,9 +921,11 @@ Item {
 
     function groupSpanH(n) {
         var mem = (n && n.members) ? n.members : []
-        var eh = Math.max(1, _ed.height)
         if (!mem.length)
             return 20
+        if (groupAlignH(n) !== "free")
+            return Math.max(8, mem.length * stackPitch(n) - 6)
+        var eh = Math.max(1, _ed.height)
         var miny = groupMinY(n)
         var maxy = miny
         for (var i = 0; i < mem.length; i++)
@@ -1396,11 +1415,25 @@ Item {
             }
             return
         }
-        // Same default for plus / pair / stack / axis_stack: a free column.
-        // No 5-way cross. Members stay regular chiplets with ox/oy.
+        // Default column. Do not keep a 5-way cross. ox/oy only used in free layout.
+        var eh = Math.max(1, height)
+        var pitch = stackPitch(n) / eh
         for (i = 0; i < mem.length; i++) {
             mem[i].ox = 0
-            mem[i].oy = (i - (mem.length - 1) * 0.5) * 0.028
+            mem[i].oy = i * pitch
+        }
+    }
+
+    function demoteSpecialKinds() {
+        var list = nodes || []
+        for (var i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (!n)
+                continue
+            if (n.kind === "plus" || n.kind === "pair")
+                n.kind = "stack"
+            if (isGroup(n) && !n.alignH)
+                n.alignH = "center"
         }
     }
 
@@ -1567,19 +1600,18 @@ Item {
         var prefix = n.kind === "axis_stack" ? "A" : ""
         var created = []
         var i
-        var dx
-        var dy
-        var role
+        var ew = Math.max(1, width)
+        var eh = Math.max(1, height)
         for (i = 0; i < mem.length; i++) {
-            dx = (mem[i].ox !== undefined) ? mem[i].ox : 0
-            dy = (mem[i].oy !== undefined) ? mem[i].oy : ((i - (mem.length - 1) * 0.5) * 0.028)
+            var px = n.chipFx * ew + groupMinX(n) + memberLocalX(n, mem[i])
+            var py = n.chipFy * eh + groupMinY(n) + memberLocalY(n, mem[i])
             created.push({
                 id: _uid("b"), kind: leafKind, hwId: mem[i].hwId, prefix: prefix,
                 label: "",
                 friendly: mem[i].friendly || defaultFriendly(leafKind, mem[i].hwId),
                 nx: n.nx, ny: n.ny,
-                chipFx: Math.max(0.02, Math.min(0.9, n.chipFx + dx)),
-                chipFy: Math.max(0.02, Math.min(0.9, n.chipFy + dy)),
+                chipFx: Math.max(0.02, Math.min(0.9, px / ew)),
+                chipFy: Math.max(0.02, Math.min(0.9, py / eh)),
                 pin: st.pin, spines: [], curve: st.curve,
                 color: st.color, border: st.border, textColor: st.textColor,
                 highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
@@ -1884,6 +1916,7 @@ Item {
         repeat: false
         onTriggered: {
             var list = _ed.nodes || []
+            _ed.demoteSpecialKinds()
             for (var i = 0; i < list.length; i++) {
                 _ed.ensureFriendly(list[i])
                 _ed.ensureMidSpine(list[i])
