@@ -409,7 +409,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "File → Edit Mapping starts the session.\nSave writes the control.hardware profile and becomes the live map.\nCancel leaves without writing.\nReset layout sends every chip back to the reservoir. Inputs still illuminate.\nChoose background / Clear image swap the photo under the map."
+                    b: "File → Edit Mapping starts the session.\nSave writes the control.hardware profile and becomes the live map.\nCancel leaves without writing.\nReset layout sends every chip back to the reservoir. Inputs still illuminate.\nChoose background / Clear image swap the photo under the map.\nExit closes the button map. Unsaved work still warns first."
                 },
                 {
                     h: "View, zoom, pan",
@@ -744,6 +744,11 @@ Window {
                                 _hw.clearImage(targetName)
                                 applyImage(stockImage)
                             }
+                        }
+                        MenuSeparator {}
+                        MenuItem {
+                            text: "Exit"
+                            onTriggered: _buttonMap.close()
                         }
                     }
                     Menu {
