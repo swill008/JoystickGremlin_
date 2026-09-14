@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
+import QtQml
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -236,6 +237,16 @@ Item {
                 n[key] = val
         }
         bump()
+    }
+
+    function fieldEq(key, val, fallback) {
+        var n = nodeAt(selectedId)
+        if (!n)
+            return val === fallback
+        var cur = n[key]
+        if (cur === undefined || cur === null || cur === "")
+            return val === fallback
+        return cur === val
     }
 
     function snapPx(v) {
@@ -2332,35 +2343,35 @@ Item {
             }
             MenuSeparator {}
             Menu {
+                id: _fontMenu
                 title: "Font size"
-                Repeater {
+                Instantiator {
                     model: [8, 9, 10, 11, 12, 14, 16, 18, 20, 22]
-                    MenuItem {
+                    delegate: MenuItem {
                         required property int modelData
                         text: "" + modelData
                         checkable: true
-                        checked: {
-                            var n = _ed.nodeAt(_ed.selectedId)
-                            return !!n && ((n.fontSize || 10) === modelData)
-                        }
+                        checked: _ed.fieldEq("fontSize", modelData, 10)
                         onTriggered: _ed.applyField("fontSize", modelData)
                     }
+                    onObjectAdded: (i, obj) => _fontMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _fontMenu.removeItem(obj)
                 }
             }
             Menu {
+                id: _chipSzMenu
                 title: "Chip size"
-                Repeater {
+                Instantiator {
                     model: [12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48]
-                    MenuItem {
+                    delegate: MenuItem {
                         required property int modelData
                         text: "" + modelData
                         checkable: true
-                        checked: {
-                            var n = _ed.nodeAt(_ed.selectedId)
-                            return !!n && ((n.chipSize || 18) === modelData)
-                        }
+                        checked: _ed.fieldEq("chipSize", modelData, 18)
                         onTriggered: _ed.applyField("chipSize", modelData)
                     }
+                    onObjectAdded: (i, obj) => _chipSzMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _chipSzMenu.removeItem(obj)
                 }
             }
             MenuItem {
@@ -2400,19 +2411,19 @@ Item {
                 onTriggered: _ed.applyField("chipFill", "hollow")
             }
             Menu {
+                id: _hotSzMenu
                 title: "Hotspot size"
-                Repeater {
+                Instantiator {
                     model: [4, 6, 8, 9, 10, 12, 14, 16, 20, 24, 28]
-                    MenuItem {
+                    delegate: MenuItem {
                         required property int modelData
                         text: "" + modelData
                         checkable: true
-                        checked: {
-                            var n = _ed.nodeAt(_ed.selectedId)
-                            return !!n && ((n.hotSize || 9) === modelData)
-                        }
+                        checked: _ed.fieldEq("hotSize", modelData, 9)
                         onTriggered: _ed.applyField("hotSize", modelData)
                     }
+                    onObjectAdded: (i, obj) => _hotSzMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _hotSzMenu.removeItem(obj)
                 }
             }
             MenuItem {
