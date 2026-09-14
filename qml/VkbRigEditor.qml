@@ -29,8 +29,10 @@ Item {
     property real bandY1: 0
     property bool gridOn: true
     property bool snapOn: true
+    property bool snapEntOn: true
     property int gridSize: 8
     property bool altHeld: false
+    property bool shiftHeld: false
     property string groupEditId: ""
     property int selectedMember: -1
     property int dragMember: -1
@@ -46,10 +48,11 @@ Item {
     property real rzY0: 0
     property real rzX1: 0
     property real rzY1: 0
-    readonly property var drawColors: ["#22C55E", "#38BDF8", "#FBBF24", "#F43F5E", "#A78BFA", "#E4E4E7", "#18181B", "#FFFFFF"]
+    property var clip: []
     signal selectedChanged()
     signal chipMenuRequested(real x, real y)
     signal historyChanged()
+    signal colorPickRequested(string field, string hex)
 
     property var hist
     property int histAt: -1
@@ -1454,6 +1457,11 @@ Item {
     function snapEnt(x, y, altOff) {
         if (altOff)
             return Qt.point(x, y)
+        if (!snapEntOn) {
+            if (snapOn)
+                return Qt.point(snapPx(x), snapPx(y))
+            return Qt.point(x, y)
+        }
         var xs = []
         var ys = []
         function ax(v) { xs.push(v) }
@@ -1517,6 +1525,21 @@ Item {
             x0 = p.x
         if (handle.indexOf("e") >= 0)
             x1 = p.x
+        if (shiftHeld && handle.length === 2) {
+            var fx0 = (handle.indexOf("w") >= 0) ? x1 : x0
+            var fy0 = (handle.indexOf("n") >= 0) ? y1 : y0
+            var mx1 = (handle.indexOf("w") >= 0) ? x0 : x1
+            var my1 = (handle.indexOf("n") >= 0) ? y0 : y1
+            var lp = lockAspect(fx0, fy0, mx1, my1)
+            if (handle.indexOf("w") >= 0)
+                x0 = lp.x
+            else
+                x1 = lp.x
+            if (handle.indexOf("n") >= 0)
+                y0 = lp.y
+            else
+                y1 = lp.y
+        }
         var nx = Math.min(x0, x1)
         var ny = Math.min(y0, y1)
         var nw = Math.max(8, Math.abs(x1 - x0))
@@ -1567,6 +1590,11 @@ Item {
     }
 
     function addDrawFree(shape, x0, y0, x1, y1) {
+        if (shiftHeld) {
+            var lp = lockAspect(x0, y0, x1, y1)
+            x1 = lp.x
+            y1 = lp.y
+        }
         var x = Math.min(x0, x1)
         var y = Math.min(y0, y1)
         var w = Math.abs(x1 - x0)
@@ -1587,6 +1615,192 @@ Item {
 
     function setDrawTool(shape) {
         drawTool = (drawTool === shape) ? "" : shape
+    }
+
+    function lockAspect(x0, y0, x1, y1) {
+        var w = x1 - x0
+        var h = y1 - y0
+        var s = Math.max(Math.abs(w), Math.abs(h))
+        if (s < 1)
+            s = 1
+        return Qt.point(x0 + (w >= 0 ? s : -s), y0 + (h >= 0 ? s : -s))
+    }
+
+    function requestDrawColor(field) {
+        var n = nodeAt(selectedId)
+        if (!isDraw(n))
+            return
+        var hex = field === "border" ? (n.border || "#22C55E") : (n.color || "#14532D")
+        colorPickRequested(field, hex)
+    }
+
+    function nudge(dx, dy) {
+        var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
+        if (!ids.length)
+            return
+        var i
+        for (i = 0; i < ids.length; i++) {
+            var n = nodeAt(ids[i])
+            if (!n)
+                continue
+            if (isDraw(n)) {
+                var around = n.around || []
+                if (around.length) {
+                    var ai
+                    for (ai = 0; ai < around.length; ai++) {
+                        var qn = nodeAt(around[ai])
+                        if (!qn || isDraw(qn))
+                            continue
+                        qn.chipFx = Math.max(0.01, Math.min(0.92, qn.chipFx + dx))
+                        qn.chipFy = Math.max(0.01, Math.min(0.92, qn.chipFy + dy))
+                    }
+                } else {
+                    n.fx = Math.max(0, Math.min(0.98, (n.fx || 0) + dx))
+                    n.fy = Math.max(0, Math.min(0.98, (n.fy || 0) + dy))
+                }
+            } else {
+                n.chipFx = Math.max(0.01, Math.min(0.92, (n.chipFx || 0) + dx))
+                n.chipFy = Math.max(0.01, Math.min(0.92, (n.chipFy || 0) + dy))
+            }
+        }
+        bump()
+    }
+
+    function _newId(n) {
+        if (isDraw(n))
+            return _uid("d")
+        if (isGroup(n))
+            return _uid("g")
+        var k = n.kind || "btn"
+        return _uid(k === "btn" ? "b" : k.charAt(0))
+    }
+
+    function shiftClone(n, dx, dy) {
+        if (isDraw(n)) {
+            n.fx = (n.fx || 0) + dx
+            n.fy = (n.fy || 0) + dy
+        } else {
+            n.chipFx = Math.max(0.01, Math.min(0.92, (n.chipFx || 0) + dx))
+            n.chipFy = Math.max(0.01, Math.min(0.92, (n.chipFy || 0) + dy))
+            if (n.nx !== undefined)
+                n.nx = Math.max(0, Math.min(1, n.nx + dx))
+            if (n.ny !== undefined)
+                n.ny = Math.max(0, Math.min(1, n.ny + dy))
+        }
+        var ls = n.leaders || []
+        var li
+        for (li = 0; li < ls.length; li++) {
+            var sp = ls[li].spines || []
+            var s
+            for (s = 0; s < sp.length; s++) {
+                sp[s].fx = (sp[s].fx || 0) + dx
+                sp[s].fy = (sp[s].fy || 0) + dy
+            }
+            if (ls[li].from && ls[li].from.type === "free") {
+                ls[li].from.fx = (ls[li].from.fx || 0) + dx
+                ls[li].from.fy = (ls[li].from.fy || 0) + dy
+            }
+            if (ls[li].to && ls[li].to.type === "free") {
+                ls[li].to.fx = (ls[li].to.fx || 0) + dx
+                ls[li].to.fy = (ls[li].to.fy || 0) + dy
+            }
+        }
+    }
+
+    function pasteNodes(src, dx, dy) {
+        if (!src || !src.length)
+            return
+        var map = {}
+        var copies = []
+        var i
+        for (i = 0; i < src.length; i++) {
+            var c = JSON.parse(JSON.stringify(src[i]))
+            var old = c.id
+            c.id = _newId(c)
+            map[old] = c.id
+            copies.push(c)
+        }
+        for (i = 0; i < copies.length; i++) {
+            var n = copies[i]
+            shiftClone(n, dx, dy)
+            if (n.around && n.around.length) {
+                var a = []
+                var k
+                for (k = 0; k < n.around.length; k++) {
+                    if (map[n.around[k]])
+                        a.push(map[n.around[k]])
+                }
+                n.around = a
+            }
+            var ls = n.leaders || []
+            var li
+            for (li = 0; li < ls.length; li++) {
+                if (ls[li].from && ls[li].from.id && map[ls[li].from.id])
+                    ls[li].from.id = map[ls[li].from.id]
+                if (ls[li].to && ls[li].to.id && map[ls[li].to.id])
+                    ls[li].to.id = map[ls[li].to.id]
+            }
+            nodes.push(n)
+        }
+        var ids = []
+        for (i = 0; i < copies.length; i++)
+            ids.push(copies[i].id)
+        setSelection(ids)
+        bump()
+    }
+
+    function duplicateSelection() {
+        var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
+        var src = []
+        var i
+        for (i = 0; i < ids.length; i++) {
+            var n = nodeAt(ids[i])
+            if (n)
+                src.push(n)
+        }
+        pasteNodes(src, 16 / Math.max(1, width), 16 / Math.max(1, height))
+    }
+
+    function copySelection() {
+        var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
+        var arr = []
+        var i
+        for (i = 0; i < ids.length; i++) {
+            var n = nodeAt(ids[i])
+            if (n)
+                arr.push(JSON.parse(JSON.stringify(n)))
+        }
+        clip = arr
+    }
+
+    function pasteClipboard() {
+        pasteNodes(clip || [], 16 / Math.max(1, width), 16 / Math.max(1, height))
+    }
+
+    function bringForward() {
+        var list = nodes || []
+        var i
+        for (i = list.length - 2; i >= 0; i--) {
+            if (isSelected(list[i].id) && !isSelected(list[i + 1].id)) {
+                var t = list[i]
+                list[i] = list[i + 1]
+                list[i + 1] = t
+            }
+        }
+        bump()
+    }
+
+    function sendBack() {
+        var list = nodes || []
+        var i
+        for (i = 1; i < list.length; i++) {
+            if (isSelected(list[i].id) && !isSelected(list[i - 1].id)) {
+                var t = list[i]
+                list[i] = list[i - 1]
+                list[i - 1] = t
+            }
+        }
+        bump()
     }
 
     function hitDraw(n, mx, my) {
@@ -2447,14 +2661,32 @@ Item {
                 else
                     _ed.undo()
                 e.accepted = true
-            } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Y) {
-                _ed.redo()
+            } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_D) {
+                _ed.duplicateSelection()
+                e.accepted = true
+            } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_C) {
+                _ed.copySelection()
+                e.accepted = true
+            } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_V) {
+                _ed.pasteClipboard()
+                e.accepted = true
+            } else if (e.key === Qt.Key_Left || e.key === Qt.Key_Right || e.key === Qt.Key_Up || e.key === Qt.Key_Down) {
+                var step = (e.modifiers & Qt.ShiftModifier) ? Math.max(2, _ed.gridSize) : 1
+                var dx = 0
+                var dy = 0
+                if (e.key === Qt.Key_Left) dx = -step
+                if (e.key === Qt.Key_Right) dx = step
+                if (e.key === Qt.Key_Up) dy = -step
+                if (e.key === Qt.Key_Down) dy = step
+                _ed.nudge(dx / Math.max(1, _ed.width), dy / Math.max(1, _ed.height))
                 e.accepted = true
             }
         }
 
         onPressed: (m) => {
             forceActiveFocus()
+            _ed.altHeld = !!(m.modifiers & Qt.AltModifier)
+            _ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
             var hit = _ed.hitTest(m.x, m.y)
             var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
             if (m.button === Qt.RightButton) {
@@ -2595,12 +2827,17 @@ Item {
         }
         onPositionChanged: (m) => {
             _ed.altHeld = !!(m.modifiers & Qt.AltModifier)
+            _ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
             _ed.reportCursor(m.x, m.y, true)
             if (!_ed.dragKind) {
                 return
             }
             if (_ed.dragKind === "drawnew") {
                 var p1 = _ed.snapEnt(m.x, m.y, _ed.altHeld)
+                if (_ed.shiftHeld) {
+                    var lp = _ed.lockAspect(_ed.drawX0, _ed.drawY0, p1.x, p1.y)
+                    p1 = lp
+                }
                 _ed.drawX1 = p1.x
                 _ed.drawY1 = p1.y
                 return
@@ -2955,39 +3192,15 @@ Item {
                 checked: _ed.fieldEq("fill", "hollow", "hollow")
                 onTriggered: _ed.applyField("fill", "hollow")
             }
-            Menu {
-                id: _fillColMenu
-                title: "Fill color"
+            MenuItem {
+                text: "Fill color…"
                 enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-                Instantiator {
-                    model: _ed.drawColors
-                    delegate: MenuItem {
-                        required property string modelData
-                        text: modelData
-                        checkable: true
-                        checked: _ed.fieldEq("color", modelData, "#14532D")
-                        onTriggered: _ed.applyField("color", modelData)
-                    }
-                    onObjectAdded: (i, obj) => _fillColMenu.insertItem(i, obj)
-                    onObjectRemoved: (i, obj) => _fillColMenu.removeItem(obj)
-                }
+                onTriggered: _ed.requestDrawColor("color")
             }
-            Menu {
-                id: _strokeColMenu
-                title: "Stroke color"
+            MenuItem {
+                text: "Stroke color…"
                 enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-                Instantiator {
-                    model: _ed.drawColors
-                    delegate: MenuItem {
-                        required property string modelData
-                        text: modelData
-                        checkable: true
-                        checked: _ed.fieldEq("border", modelData, "#22C55E")
-                        onTriggered: _ed.applyField("border", modelData)
-                    }
-                    onObjectAdded: (i, obj) => _strokeColMenu.insertItem(i, obj)
-                    onObjectRemoved: (i, obj) => _strokeColMenu.removeItem(obj)
-                }
+                onTriggered: _ed.requestDrawColor("border")
             }
             Menu {
                 title: "Stroke"
@@ -3007,6 +3220,16 @@ Item {
                 MenuItem { text: "100%"; checkable: true; checked: _ed.fieldEq("opacity", 1, 1); onTriggered: _ed.applyField("opacity", 1) }
             }
             MenuSeparator {}
+            MenuItem {
+                text: "Bring forward"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                onTriggered: _ed.bringForward()
+            }
+            MenuItem {
+                text: "Send back"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                onTriggered: _ed.sendBack()
+            }
             MenuItem {
                 text: "Detach from chips"
                 enabled: {

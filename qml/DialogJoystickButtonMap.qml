@@ -675,6 +675,22 @@ Window {
                             enabled: { var e = _ed(); return e ? e.canRedo : false }
                             onTriggered: { var e = _ed(); if (e) e.redo() }
                         }
+                        MenuSeparator {}
+                        MenuItem {
+                            text: "Duplicate"
+                            enabled: { var e = _ed(); return e && e.selectedId !== "" }
+                            onTriggered: { var e = _ed(); if (e) e.duplicateSelection() }
+                        }
+                        MenuItem {
+                            text: "Copy"
+                            enabled: { var e = _ed(); return e && e.selectedId !== "" }
+                            onTriggered: { var e = _ed(); if (e) e.copySelection() }
+                        }
+                        MenuItem {
+                            text: "Paste"
+                            enabled: { var e = _ed(); return e && e.clip && e.clip.length }
+                            onTriggered: { var e = _ed(); if (e) e.pasteClipboard() }
+                        }
                     }
                     Menu {
                         title: "View"
@@ -725,6 +741,19 @@ Window {
                                     var e = _ed()
                                     if (e)
                                         e.snapOn = checked
+                                }
+                            }
+                            MenuItem {
+                                text: "Snap to entities"
+                                checkable: true
+                                checked: {
+                                    var e = _ed()
+                                    return e ? e.snapEntOn : true
+                                }
+                                onTriggered: {
+                                    var e = _ed()
+                                    if (e)
+                                        e.snapEntOn = checked
                                 }
                             }
                             MenuSeparator {}
@@ -789,6 +818,16 @@ Window {
                     font.pixelSize: 12
                 }
                 Label {
+                    visible: {
+                        resTick
+                        var e = _ed()
+                        return editing && e && e.drawTool && e.drawTool.length
+                    }
+                    text: "Drawing — drag empty. Shift locks aspect. Esc cancels."
+                    color: "#FBBF24"
+                    font.pixelSize: 12
+                }
+                Label {
                     visible: editing
                     text: "control.hardware  " + _hw.path
                     color: "#A1A1AA"
@@ -830,6 +869,21 @@ Window {
                     enabled: editing
                     sequence: "Ctrl+Shift+G"
                     onActivated: { var e = _ed(); if (e) e.ungroupSelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+D"
+                    onActivated: { var e = _ed(); if (e) e.duplicateSelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+C"
+                    onActivated: { var e = _ed(); if (e) e.copySelection() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+V"
+                    onActivated: { var e = _ed(); if (e) e.pasteClipboard() }
                 }
                 Shortcut {
                     enabled: editing
@@ -886,6 +940,8 @@ Window {
                             function onSelectedChanged() { _buttonMap.applySelected() }
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
+                            function onColorPickRequested(field, hex) { _buttonMap._colorPop.openField(field, hex, null) }
+                            function onDrawToolChanged() { _buttonMap.resTick++ }
                             function onHistoryChanged() {
                                 _buttonMap.applySelected()
                                 _buttonMap.refreshReservoir()
@@ -1594,6 +1650,9 @@ Window {
                 var p = anchorItem.mapToItem(parent, 0, anchorItem.height + 4)
                 x = Math.max(8, Math.min(parent.width - width - 8, p.x - width + anchorItem.width))
                 y = Math.max(8, Math.min(parent.height - height - 8, p.y))
+            } else if (parent) {
+                x = Math.max(8, (parent.width - width) * 0.5)
+                y = Math.max(8, (parent.height - height) * 0.5)
             }
             open()
         }
