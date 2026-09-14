@@ -385,6 +385,89 @@ Window {
     }
 
     Dialog {
+        id: _helpDlg
+        title: "Button Map Editor — Help"
+        modal: true
+        anchors.centerIn: parent
+        width: 640
+        height: 560
+        standardButtons: Dialog.Close
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        ListView {
+            id: _helpList
+            anchors.fill: parent
+            anchors.margins: 4
+            clip: true
+            spacing: 14
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+            model: [
+                {
+                    h: "Overview",
+                    b: "Edit places chips, hotspots, leaders, groups, and draw frames on the stick photo. The live map uses the same layout. Hardware still lights the chip when you press the stick — layout does not change bindings.\n\nOpen Edit, work, then File → Save. Cancel drops the session. Closing with unsaved work asks first."
+                },
+                {
+                    h: "File",
+                    b: "Save writes the control.hardware profile and becomes the live map.\nCancel leaves without writing.\nReset layout sends every chip back to the reservoir. Inputs still illuminate.\nChoose background / Clear image swap the photo under the map."
+                },
+                {
+                    h: "View, zoom, pan",
+                    b: "Scroll wheel zooms the photo (about 50% to 400%).\nDrag empty space with a rubber-band to select; middle/empty drag pans when zoomed (auto pan is off by default).\nView → Reset view returns 100%.\nView → Auto pan: when on, dragging near the window edge pans.\nView → Grid: show grid, snap to grid, snap to entities (chips, hots, frames). Alt skips snap while you drag."
+                },
+                {
+                    h: "Reservoir",
+                    b: "The pool at the bottom lists chips that are not on the map. Filter by friendly name or hardware name. X or Reset clears the filter.\nDrag a chip from the pool onto the photo to place it. Resize the pool; the map does not zoom while the pointer is over it."
+                },
+                {
+                    h: "Chips",
+                    b: "Left-drag a chip to move it. Drag the hotspot (dot on the photo) separately — that is the hardware contact.\nRight-click → Chip: font, chip size/shape/fill, hotspot size/shape/fill, highlight on press, delete chip.\nDelete / Backspace on a single chip returns it to the reservoir.\nYellow ring is selection. Every chip uses the same ring."
+                },
+                {
+                    h: "Groups",
+                    b: "Select two or more chips (Shift-click or rubber-band), then right-click → Group → Group selected. Grouping drops extra leaders and keeps one.\nBreak group (or Delete on a group) splits members back to singles.\nAlign left / center / right stacks members; Free layout lets you drag members inside Edit group.\nRight-click → Group → Edit group to move members; Done editing group to finish."
+                },
+                {
+                    h: "Leaders",
+                    b: "A leader is the line from chip to hotspot. Drag spine dots to bend it. Double-click a segment to toggle curve.\nRight-click → Leader: add straight or curved spine, this segment / all segments curve, add another leader, branch from this end, detach/reconnect ends, delete spine, delete leader.\nDelete spine and Delete leader are also in that menu."
+                },
+                {
+                    h: "Draw",
+                    b: "Right-click → Draw. Around selection wraps a rectangle, rounded rect, ellipse, triangle, or diamond around the selected chips; it moves with them.\nFree drag: pick a shape, then drag on empty photo. Shift locks aspect (square / circle). Esc cancels the tool. Yellow “Drawing” in the toolbar means a tool is armed.\nCorner handles resize. Detach from chips turns an around-frame into a free frame.\nFill / hollow, fill color, stroke color (HSV picker), stroke width, opacity, rotate, padding.\nBring forward / Send back for overlapping frames. Hollow frames click through to chips inside."
+                },
+                {
+                    h: "Select and move",
+                    b: "Click selects. Shift-click toggles. Drag empty to rubber-band.\nArrows nudge 1 px; Shift+arrows nudge by the grid size.\nCtrl+D duplicate, Ctrl+C copy, Ctrl+V paste (also under Edit). Pasted items offset so they do not stack."
+                },
+                {
+                    h: "Keyboard",
+                    b: "Ctrl+S Save\nCtrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nDelete / Backspace  delete chip or break group\nArrows nudge    Shift+Arrows grid nudge\nEsc  cancel draw tool / end group edit\nF1  this help\nAlt (while dragging)  skip snap\nShift (while drawing)  lock aspect"
+                }
+            ]
+            delegate: Column {
+                width: _helpList.width
+                spacing: 4
+                required property var modelData
+                Label {
+                    width: parent.width
+                    text: modelData.h
+                    color: "#FBBF24"
+                    font.pixelSize: 15
+                    font.bold: true
+                }
+                Label {
+                    width: parent.width
+                    text: modelData.b
+                    color: "#E4E4E7"
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: 13
+                    lineHeight: 1.25
+                }
+            }
+        }
+    }
+
+    Dialog {
         id: _resetDlg
         title: "Reset layout"
         modal: true
@@ -810,6 +893,13 @@ Window {
                             }
                         }
                     }
+                    Menu {
+                        title: "Help"
+                        MenuItem {
+                            text: "Editor help"
+                            onTriggered: _helpDlg.open()
+                        }
+                    }
                 }
                 Label {
                     visible: editing
@@ -884,6 +974,11 @@ Window {
                     enabled: editing
                     sequence: "Ctrl+V"
                     onActivated: { var e = _ed(); if (e) e.pasteClipboard() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "F1"
+                    onActivated: _helpDlg.open()
                 }
                 Shortcut {
                     enabled: editing
