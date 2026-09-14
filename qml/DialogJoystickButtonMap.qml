@@ -38,7 +38,11 @@ Window {
     readonly property string stockImage: "qml/images/vkb_gladiator_rig.jpg"
     property int _nameTick: 0
     property bool editing: false
-    onEditingChanged: if (editing) Qt.callLater(refreshReservoir)
+    onEditingChanged: {
+        poolDrag = false
+        if (editing)
+            Qt.callLater(refreshReservoir)
+    }
     property var liveNodes
     property var workNodes
     property string photoOverride: ""
@@ -491,14 +495,14 @@ Window {
         var hw = poolHw
         poolDrag = false
         var ed = _ed()
-        if (!ed)
+        if (!ed || !kind || !(hw > 0))
             return
         if (_poolFloat && _poolFloat.visible) {
-            var lp = _poolFloat.mapFromItem(_buttonMap.contentItem, vx, vy)
+            var lp = _poolFloat.mapFromItem(_mapHost, vx, vy)
             if (lp.x >= 0 && lp.y >= 0 && lp.x <= _poolFloat.width && lp.y <= _poolFloat.height)
                 return
         }
-        var local = ed.mapFromItem(_buttonMap.contentItem, vx, vy)
+        var local = ed.mapFromItem(_mapHost, vx, vy)
         if (local.x < 0 || local.y < 0 || local.x > ed.width || local.y > ed.height)
             return
         ed.addChiplet(kind, hw, local.x, local.y)
@@ -1141,27 +1145,28 @@ Window {
                                             onPressed: (m) => {
                                                 if (!modelData)
                                                     return
+                                                var p = mapToItem(_mapHost, m.x, m.y)
                                                 _buttonMap.poolKind = modelData.kind
                                                 _buttonMap.poolHw = modelData.hwId
                                                 _buttonMap.poolName = modelData.friendly
-                                                _buttonMap.poolDrag = true
-                                                var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
                                                 _buttonMap.poolX = p.x
                                                 _buttonMap.poolY = p.y
+                                                _buttonMap.poolDrag = true
                                             }
                                             onPositionChanged: (m) => {
                                                 if (!_buttonMap.poolDrag)
                                                     return
-                                                var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
+                                                var p = mapToItem(_mapHost, m.x, m.y)
                                                 _buttonMap.poolX = p.x
                                                 _buttonMap.poolY = p.y
                                             }
                                             onReleased: (m) => {
                                                 if (!_buttonMap.poolDrag)
                                                     return
-                                                var p = mapToItem(_buttonMap.contentItem, m.x, m.y)
+                                                var p = mapToItem(_mapHost, m.x, m.y)
                                                 dropPool(p.x, p.y)
                                             }
+                                            onCanceled: _buttonMap.poolDrag = false
                                         }
                                     }
                                 }
@@ -1194,6 +1199,22 @@ Window {
                     target: _mapHost
                     function onWidthChanged() { if (editing) clampPool() }
                     function onHeightChanged() { if (editing) clampPool() }
+                }
+
+                MouseArea {
+                    id: _poolCatch
+                    anchors.fill: parent
+                    z: 40
+                    visible: poolDrag
+                    hoverEnabled: true
+                    preventStealing: true
+                    acceptedButtons: Qt.LeftButton
+                    onPositionChanged: (m) => {
+                        poolX = m.x
+                        poolY = m.y
+                    }
+                    onReleased: (m) => dropPool(m.x, m.y)
+                    onCanceled: poolDrag = false
                 }
             }
 
@@ -1545,8 +1566,8 @@ Window {
 
     Rectangle {
         id: _poolGhost
-        parent: _buttonMap.contentItem
-        visible: _buttonMap.poolDrag
+        parent: _mapHost
+        visible: poolDrag && editing
         z: 2000
         width: Math.max(36, _ghostLab.implicitWidth + 18)
         height: 26
