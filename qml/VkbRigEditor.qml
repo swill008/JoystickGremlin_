@@ -839,10 +839,10 @@ Item {
     }
 
     function groupAlignH(n) {
-        var a = n && n.alignH ? String(n.alignH) : "center"
-        if (a === "left" || a === "right" || a === "free")
+        var a = n && n.alignH ? String(n.alignH) : "left"
+        if (a === "center" || a === "right" || a === "free")
             return a
-        return "center"
+        return "left"
     }
 
     function setAlignH(mode) {
@@ -879,7 +879,7 @@ Item {
     }
 
     function stackPitch(n) {
-        return chipH(n) + 6
+        return chipH(n) + 2
     }
 
     function memberLocalX(n, mem) {
@@ -948,7 +948,7 @@ Item {
         if (!mem.length)
             return 20
         if (groupAlignH(n) !== "free")
-            return Math.max(8, mem.length * stackPitch(n) - 6)
+            return Math.max(8, mem.length * stackPitch(n) - 2)
         var eh = Math.max(1, _ed.height)
         var miny = groupMinY(n)
         var maxy = miny
@@ -1950,8 +1950,6 @@ Item {
                 continue
             if (n.kind === "plus" || n.kind === "pair")
                 n.kind = "stack"
-            if (isGroup(n) && !n.alignH)
-                n.alignH = "center"
         }
     }
 
@@ -1959,7 +1957,7 @@ Item {
         var fs = (n && n.fontSize) ? n.fontSize : 10
         var s = mem ? friendlyOf(n, mem) : friendlyOf(n, null)
         var pad = Math.max(10, ((n && n.chipSize) || 18) * 0.55)
-        return Math.max(36, String(s).length * fs * 0.50 + pad)
+        return String(s).length * fs * 0.50 + pad
     }
 
     function memberHit(n, mx, my) {
@@ -2082,7 +2080,7 @@ Item {
         var g = {
             id: _uid("g"), kind: kind, members: members,
             nx: nx / c, ny: ny / c, chipFx: ox0, chipFy: oy0,
-            pin: st.pin, spines: [], curve: st.curve, alignH: "center",
+            pin: st.pin, spines: [], curve: st.curve, alignH: "left",
             color: st.color, border: st.border, textColor: st.textColor,
             highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
             hlText: st.hlText, fontSize: st.fontSize, label: "", chipSize: st.chipSize, chipShape: st.chipShape, chipFill: st.chipFill, hotSize: st.hotSize, hotShape: st.hotShape, hotFill: st.hotFill
