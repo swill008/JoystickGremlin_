@@ -2084,6 +2084,8 @@ Item {
                     _ctx.leader = (hit.leader !== undefined) ? hit.leader : 0
                     _ed.selectedLeader = _ctx.leader
                     _ed.selectedSeg = _ctx.seg
+                    if (hit.kind === "spine")
+                        _ed.selectedSpine = hit.spine
                     if (hit.kind === "member")
                         _ed.selectedMember = hit.member
                 } else {
@@ -2296,6 +2298,15 @@ Item {
             onTriggered: _ed.redo()
         }
         MenuItem {
+            text: "Delete spine"
+            enabled: _ed.selectedSpine >= 0
+            onTriggered: {
+                _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                _ed.selectedLeader = _ctx.leader
+                _ed.deleteSelection()
+            }
+        }
+        MenuItem {
             text: "Delete leader"
             enabled: _ctx.nodeId !== ""
             onTriggered: {
@@ -2495,6 +2506,7 @@ Item {
             MenuSeparator {}
             MenuItem { text: "Add leader (same chip)"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addLeader() } }
             MenuItem { text: "Branch from this end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.addBranch() } }
+            MenuItem { text: "Delete spine"; enabled: _ed.selectedSpine >= 0; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.deleteSelection() } }
             MenuItem { text: "Delete leader"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.deleteLeader() } }
             MenuSeparator {}
             MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
