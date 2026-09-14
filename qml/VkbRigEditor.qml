@@ -2317,32 +2317,6 @@ Item {
         }
         MenuSeparator {}
         Menu {
-            title: "Group"
-            MenuItem {
-                text: "Group selected"
-                enabled: _ed.canGroup()
-                onTriggered: _ed.groupSelection()
-            }
-            MenuItem {
-                text: "Ungroup"
-                enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
-                onTriggered: {
-                    _ed.setSelection([_ctx.nodeId])
-                    _ed.ungroupSelection()
-                }
-            }
-            MenuItem {
-                text: "Edit group"
-                enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
-                onTriggered: _ed.beginGroupEdit(_ctx.nodeId)
-            }
-            MenuItem {
-                text: "Done editing group"
-                enabled: _ed.groupEditId !== ""
-                onTriggered: _ed.endGroupEdit()
-            }
-        }
-        Menu {
             title: "Single"
             enabled: _ed.selectedId !== ""
             MenuItem {
@@ -2493,6 +2467,32 @@ Item {
                     return !!n && !_ed.isGroup(n)
                 }
                 onTriggered: _ed.deleteChip()
+            }
+        }
+        Menu {
+            title: "Group"
+            MenuItem {
+                text: "Group selected"
+                enabled: _ed.canGroup()
+                onTriggered: _ed.groupSelection()
+            }
+            MenuItem {
+                text: "Ungroup"
+                enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
+                onTriggered: {
+                    _ed.setSelection([_ctx.nodeId])
+                    _ed.ungroupSelection()
+                }
+            }
+            MenuItem {
+                text: "Edit group"
+                enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
+                onTriggered: _ed.beginGroupEdit(_ctx.nodeId)
+            }
+            MenuItem {
+                text: "Done editing group"
+                enabled: _ed.groupEditId !== ""
+                onTriggered: _ed.endGroupEdit()
             }
         }
         Menu {
