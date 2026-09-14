@@ -1028,7 +1028,7 @@ Window {
                             function onSelectedChanged() { _buttonMap.applySelected() }
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
-                            function onHistChanged() {
+                            function onHistoryChanged() {
                                 _buttonMap.applySelected()
                                 _buttonMap.refreshReservoir()
                             }

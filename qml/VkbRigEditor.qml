@@ -38,7 +38,7 @@ Item {
     property int dragLeader: 0
     signal selectedChanged()
     signal chipMenuRequested(real x, real y)
-    signal histChanged()
+    signal historyChanged()
 
     property var hist
     property int histAt: -1
@@ -71,7 +71,7 @@ Item {
     function seedHist() {
         hist = [snapJson()]
         histAt = 0
-        histChanged()
+        historyChanged()
     }
 
     function pushHist() {
@@ -87,7 +87,7 @@ Item {
             next = next.slice(next.length - histCap)
         hist = next
         histAt = next.length - 1
-        histChanged()
+        historyChanged()
     }
 
     function applySnap(s) {
@@ -115,7 +115,7 @@ Item {
         groupEditId = ""
         selectedMember = -1
         setSelection([])
-        histChanged()
+        historyChanged()
         bump()
     }
 
@@ -129,7 +129,7 @@ Item {
         groupEditId = ""
         selectedMember = -1
         setSelection([])
-        histChanged()
+        historyChanged()
         bump()
     }
 
