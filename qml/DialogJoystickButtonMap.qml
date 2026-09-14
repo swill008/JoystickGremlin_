@@ -405,11 +405,11 @@ Window {
             model: [
                 {
                     h: "Overview",
-                    b: "Edit places chips, hotspots, leaders, groups, and draw frames on the stick photo. The live map uses the same layout. Hardware still lights the chip when you press the stick — layout does not change bindings.\n\nOpen Edit, work, then File → Save. Cancel drops the session. Closing with unsaved work asks first."
+                    b: "File → Edit places chips, hotspots, leaders, groups, and draw frames on the stick photo. The live map uses the same layout. Hardware still lights the chip when you press the stick — layout does not change bindings.\n\nFile → Edit to start, then File → Save. File → Cancel drops the session. Closing with unsaved work asks first."
                 },
                 {
                     h: "File",
-                    b: "Save writes the control.hardware profile and becomes the live map.\nCancel leaves without writing.\nReset layout sends every chip back to the reservoir. Inputs still illuminate.\nChoose background / Clear image swap the photo under the map."
+                    b: "File → Edit starts the session.\nSave writes the control.hardware profile and becomes the live map.\nCancel leaves without writing.\nReset layout sends every chip back to the reservoir. Inputs still illuminate.\nChoose background / Clear image swap the photo under the map."
                 },
                 {
                     h: "View, zoom, pan",
@@ -723,23 +723,23 @@ Window {
             RowLayout {
                 anchors.fill: parent
                 spacing: 8
-                Button {
-                    text: editing ? "Editing" : "Edit"
-                    enabled: !editing
-                    onClicked: enterEdit()
-                }
                 MenuBar {
-                    visible: editing
                     Menu {
                         title: "File"
-                        MenuItem { text: "Save"; onTriggered: saveEdit() }
-                        MenuItem { text: "Cancel"; onTriggered: cancelEdit() }
+                        MenuItem {
+                            text: "Edit"
+                            enabled: !editing
+                            onTriggered: enterEdit()
+                        }
+                        MenuItem { text: "Save"; enabled: editing; onTriggered: saveEdit() }
+                        MenuItem { text: "Cancel"; enabled: editing; onTriggered: cancelEdit() }
                         MenuSeparator {}
-                        MenuItem { text: "Reset layout"; onTriggered: _resetDlg.open() }
+                        MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
                         MenuSeparator {}
-                        MenuItem { text: "Choose background…"; onTriggered: _imageDialog.open() }
+                        MenuItem { text: "Choose background…"; enabled: editing; onTriggered: _imageDialog.open() }
                         MenuItem {
                             text: "Clear image"
+                            enabled: editing
                             onTriggered: {
                                 _hw.clearImage(targetName)
                                 applyImage(stockImage)
@@ -976,7 +976,6 @@ Window {
                     onActivated: { var e = _ed(); if (e) e.pasteClipboard() }
                 }
                 Shortcut {
-                    enabled: editing
                     sequence: "F1"
                     onActivated: _helpDlg.open()
                 }
