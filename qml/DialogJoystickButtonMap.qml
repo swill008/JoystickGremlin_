@@ -1390,14 +1390,7 @@ Window {
             spacing: 6
             RowLayout {
                 Layout.fillWidth: true
-                Label {
-                    text: selectedNode ? (selectedNode.friendly || selectedNode.id || "Chip") : "Chip"
-                    font.bold: true
-                    color: "#E4E4E7"
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                    verticalAlignment: Text.AlignVCenter
-                }
+                spacing: 4
                 Button {
                     text: "Undo"
                     implicitHeight: 24
@@ -1433,12 +1426,20 @@ Window {
                     implicitHeight: 24
                     onClicked: _leadMenu.popup()
                 }
+                Item { Layout.fillWidth: true }
                 Button {
                     text: "×"
                     implicitWidth: 28
                     implicitHeight: 24
                     onClicked: _chipPop.close()
                 }
+            }
+            Label {
+                text: selectedNode ? (selectedNode.friendly || selectedNode.id || "Chip") : "Chip"
+                font.bold: true
+                color: "#E4E4E7"
+                Layout.fillWidth: true
+                elide: Text.ElideRight
             }
             Label {
                 Layout.fillWidth: true
