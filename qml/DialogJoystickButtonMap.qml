@@ -413,7 +413,7 @@ Window {
                 },
                 {
                     h: "View, zoom, pan",
-                    b: "Scroll wheel zooms the photo (about 50% to 400%).\nDrag empty space with a rubber-band to select; middle/empty drag pans when zoomed (auto pan is off by default).\nView → Reset view returns 100%.\nView → Auto pan: when on, dragging near the window edge pans.\nView → Grid: show grid, snap to grid, snap to entities (chips, hots, frames). Alt skips snap while you drag."
+                    b: "Scroll wheel zooms the photo (about 50% to 400%). Middle-button drag pans. View → Reset view returns 100%.\nView → Grid: show grid, snap to grid, snap to entities (chips, hots, frames). Alt skips snap while you drag."
                 },
                 {
                     h: "Reservoir",
@@ -787,19 +787,6 @@ Window {
                             onTriggered: {
                                 if (_cardLoader.item)
                                     _cardLoader.item.resetView()
-                            }
-                        }
-                        MenuItem {
-                            text: "Auto pan"
-                            checkable: true
-                            checked: {
-                                var c = _cardLoader.item
-                                return c ? c.autoPanOn === true : false
-                            }
-                            onTriggered: {
-                                var c = _cardLoader.item
-                                if (c)
-                                    c.autoPanOn = checked
                             }
                         }
                         MenuSeparator {}

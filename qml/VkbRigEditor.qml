@@ -159,23 +159,6 @@ Item {
         bump()
     }
 
-    function reportCursor(wx, wy, inside) {
-        if (!face || !face.setAutoCursor)
-            return
-        var z = face.zoom || 1
-        var vx = wx * z + (face.panX || 0)
-        var vy = wy * z + (face.panY || 0)
-        face.setAutoCursor(vx, vy, inside)
-    }
-
-    function worldFromView() {
-        if (!face)
-            return Qt.point(0, 0)
-        var z = face.zoom || 1
-        if (z < 0.01) z = 1
-        return Qt.point((face.autoVx - face.panX) / z, (face.autoVy - face.panY) / z)
-    }
-
     function applyPointer(mx, my, altOff) {
         if (!dragKind || dragKind === "band")
             return
@@ -252,15 +235,6 @@ Item {
             n.members[dragMember].oy = mp.y / Math.max(1, height) - n.chipFy
         }
         repaint()
-    }
-
-    function followAutoPan() {
-        if (!dragKind || dragKind === "band")
-            return
-        if (!face || !face.autoHover)
-            return
-        var w = worldFromView()
-        applyPointer(w.x, w.y, altHeld)
     }
 
     function applyField(key, val) {
@@ -2215,8 +2189,6 @@ Item {
         function onDestTickChanged() { _ed.tick++ }
         function onWidthChanged() { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
         function onHeightChanged() { _lines.requestPaint(); if (_grid) _grid.requestPaint() }
-        function onPanXChanged() { _ed.followAutoPan() }
-        function onPanYChanged() { _ed.followAutoPan() }
     }
 
     Repeater {
@@ -2828,7 +2800,6 @@ Item {
         onPositionChanged: (m) => {
             _ed.altHeld = !!(m.modifiers & Qt.AltModifier)
             _ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
-            _ed.reportCursor(m.x, m.y, true)
             if (!_ed.dragKind) {
                 return
             }
@@ -2901,7 +2872,6 @@ Item {
                 _ed.toggleSegCurve()
             }
         }
-        onExited: _ed.reportCursor(-1, -1, false)
         onWheel: (w) => {
             if (!_ed.interactive || !face || !face.zoomAt) {
                 w.accepted = false
