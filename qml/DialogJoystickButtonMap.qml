@@ -649,8 +649,6 @@ Window {
                     visible: editing
                     Menu {
                         title: "Menu"
-                        Menu {
-                            title: "Options"
                             Menu {
                                 title: "Session"
                                 MenuItem { text: "Save"; onTriggered: saveEdit() }
@@ -907,7 +905,6 @@ Window {
                                     onTriggered: setChipPopSize(280, 480)
                                 }
                             }
-                        }
                     }
                 }
                 Label {
