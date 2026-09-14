@@ -1009,20 +1009,13 @@ Window {
                     property var item: null
                 }
 
-                MouseArea {
+                Item {
                     id: _poolFloat
                     visible: editing
                     z: 30
                     x: 12
                     width: 280
                     height: 160
-                    acceptedButtons: Qt.AllButtons
-                    hoverEnabled: true
-                    preventStealing: false
-                    onPressed: (m) => { m.accepted = true }
-                    onClicked: (m) => { m.accepted = true }
-                    onDoubleClicked: (m) => { m.accepted = true }
-                    onWheel: (w) => { w.accepted = true }
                     onVisibleChanged: if (visible) Qt.callLater(clampPool)
 
                     component PoolGrip: MouseArea {
@@ -1036,13 +1029,26 @@ Window {
                         }
                     }
 
+                    MouseArea {
+                        anchors.fill: parent
+                        z: 0
+                        acceptedButtons: Qt.AllButtons
+                        hoverEnabled: true
+                        onPressed: (m) => { m.accepted = true }
+                        onClicked: (m) => { m.accepted = true }
+                        onDoubleClicked: (m) => { m.accepted = true }
+                        onWheel: (w) => { w.accepted = true }
+                    }
+
                     Rectangle {
                         anchors.fill: parent
+                        z: 1
                         radius: 12
                         color: "#CC0C0C0E"
                         border.color: "#3F3F46"
                     }
                     ColumnLayout {
+                        z: 2
                         anchors.fill: parent
                         anchors.margins: 8
                         anchors.bottomMargin: 12
@@ -1092,6 +1098,8 @@ Window {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
+                            interactive: !_buttonMap.poolDrag
+                            pressDelay: 0
                             contentWidth: width
                             contentHeight: _resFlow.implicitHeight
                             boundsBehavior: Flickable.StopAtBounds
@@ -1126,6 +1134,9 @@ Window {
                                         }
                                         MouseArea {
                                             anchors.fill: parent
+                                            z: 2
+                                            hoverEnabled: true
+                                            preventStealing: true
                                             cursorShape: Qt.OpenHandCursor
                                             onPressed: (m) => {
                                                 if (!modelData)
@@ -1158,14 +1169,14 @@ Window {
                         }
                     }
 
-                    PoolGrip { edge: "n"; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
-                    PoolGrip { edge: "s"; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
-                    PoolGrip { edge: "w"; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
-                    PoolGrip { edge: "e"; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
-                    PoolGrip { edge: "nw"; width: 12; height: 12; anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
-                    PoolGrip { edge: "ne"; width: 12; height: 12; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
-                    PoolGrip { edge: "sw"; width: 12; height: 12; anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
-                    PoolGrip { edge: "se"; width: 14; height: 14; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor; z: 2 }
+                    PoolGrip { edge: "n"; z: 3; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
+                    PoolGrip { edge: "s"; z: 3; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeVerCursor }
+                    PoolGrip { edge: "w"; z: 3; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.left: parent.left; cursorShape: Qt.SizeHorCursor }
+                    PoolGrip { edge: "e"; z: 3; width: 6; anchors.top: parent.top; anchors.bottom: parent.bottom; anchors.right: parent.right; cursorShape: Qt.SizeHorCursor }
+                    PoolGrip { edge: "nw"; z: 3; width: 12; height: 12; anchors.left: parent.left; anchors.top: parent.top; cursorShape: Qt.SizeFDiagCursor }
+                    PoolGrip { edge: "ne"; z: 3; width: 12; height: 12; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeBDiagCursor }
+                    PoolGrip { edge: "sw"; z: 3; width: 12; height: 12; anchors.left: parent.left; anchors.bottom: parent.bottom; cursorShape: Qt.SizeBDiagCursor }
+                    PoolGrip { edge: "se"; z: 4; width: 14; height: 14; anchors.right: parent.right; anchors.bottom: parent.bottom; cursorShape: Qt.SizeFDiagCursor }
 
                     Item {
                         anchors.right: parent.right
