@@ -2146,10 +2146,9 @@ Item {
         list.splice(idx, 1)
         for (i = 0; i < created.length; i++)
             list.splice(idx + i, 0, created[i])
-        var ids = []
-        for (i = 0; i < created.length; i++)
-            ids.push(created[i].id)
-        setSelection(ids)
+        groupEditId = ""
+        selectedMember = -1
+        setSelection([])
         bump()
     }
 
