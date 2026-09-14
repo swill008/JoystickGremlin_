@@ -37,6 +37,16 @@ Item {
     property int selectedLeader: 0
     property int selectedSeg: -1
     property int dragLeader: 0
+    property string drawTool: ""
+    property real drawX0: 0
+    property real drawY0: 0
+    property real drawX1: 0
+    property real drawY1: 0
+    property real rzX0: 0
+    property real rzY0: 0
+    property real rzX1: 0
+    property real rzY1: 0
+    readonly property var drawColors: ["#22C55E", "#38BDF8", "#FBBF24", "#F43F5E", "#A78BFA", "#E4E4E7", "#18181B", "#FFFFFF"]
     signal selectedChanged()
     signal chipMenuRequested(real x, real y)
     signal historyChanged()
@@ -211,6 +221,27 @@ Item {
                 Ls.spines[dragSpine].fy = Math.max(0, Math.min(1, sp.y / Math.max(1, height)))
             }
             n.spines = Ls.spines
+        } else if (dragKind === "draw") {
+            var g0 = drawGeom(n)
+            var np = snapEnt(mx - dragOffX, my - dragOffY, altOff)
+            var ddx = np.x - g0.x
+            var ddy = np.y - g0.y
+            var around = n.around || []
+            if (around.length) {
+                var ai
+                for (ai = 0; ai < around.length; ai++) {
+                    var qn = nodeAt(around[ai])
+                    if (!qn || isDraw(qn))
+                        continue
+                    qn.chipFx = Math.max(0.01, Math.min(0.92, qn.chipFx + ddx / Math.max(1, width)))
+                    qn.chipFy = Math.max(0.01, Math.min(0.92, qn.chipFy + ddy / Math.max(1, height)))
+                }
+            } else {
+                n.fx = Math.max(0, Math.min(0.98, np.x / Math.max(1, width)))
+                n.fy = Math.max(0, Math.min(0.98, np.y / Math.max(1, height)))
+            }
+        } else if (dragKind.indexOf("draw-") === 0) {
+            applyDrawResize(n, mx, my, dragKind.slice(5), altOff)
         } else if (dragKind === "member" && n.members && dragMember >= 0 && dragMember < n.members.length) {
             bakeAlignToFree(n)
             var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
@@ -548,6 +579,9 @@ Item {
             }
             if (!n.friendly || !String(n.friendly).length)
                 n.friendly = n.label && n.label.length ? n.label : n.id
+        } else if (isDraw(n)) {
+            if (!n.friendly || !String(n.friendly).length)
+                n.friendly = "Draw"
         } else if (!n.friendly || !String(n.friendly).length) {
             n.friendly = (n.label && n.label.length) ? n.label : defaultFriendly(n.kind, n.hwId)
         }
@@ -635,13 +669,15 @@ Item {
     }
 
     function leaderList(n) {
-        if (n && n.leaders)
+        if (!n || n.kind === "draw")
+            return []
+        if (n.leaders)
             return n.leaders
         return [_legacyLeader(n)]
     }
 
     function ensureLeaders(n) {
-        if (!n)
+        if (!n || n.kind === "draw")
             return []
         if (n.leaders === undefined || n.leaders === null)
             n.leaders = [_legacyLeader(n)]
@@ -1093,6 +1129,8 @@ Item {
     }
 
     function ensureMidSpine(n) {
+        if (!n || n.kind === "draw")
+            return
         if (n.spines && n.spines.length) {
             return
         }
@@ -1150,6 +1188,8 @@ Item {
         var n
         for (i = 0; i < list.length; i++) {
             n = list[i]
+            if (n.kind === "draw")
+                continue
             var ls = leaderList(n)
             for (var li = 0; li < ls.length; li++) {
                 var fp = endPt(ls[li].from)
@@ -1171,6 +1211,8 @@ Item {
         }
         for (i = 0; i < list.length; i++) {
             n = list[i]
+            if (n.kind === "draw")
+                continue
             var h = hotPt(n)
             if (Math.hypot(mx - h.x, my - h.y) < (hotSz(n) * 0.5 + 5)) {
                 return { kind: "hot", id: n.id, spine: -1 }
@@ -1200,6 +1242,8 @@ Item {
         }
         for (i = 0; i < list.length; i++) {
             n = list[i]
+            if (isDraw(n))
+                continue
             if (isGroup(n) && memberHit(n, mx, my) >= 0)
                 return { kind: "chip", id: n.id, spine: -1 }
             var it = _chips.itemAt(i)
@@ -1210,6 +1254,14 @@ Item {
             if (p.x >= 0 && p.y >= 0 && p.x <= it.width && p.y <= it.height) {
                 return { kind: "chip", id: list[i].id, spine: -1 }
             }
+        }
+        for (i = 0; i < list.length; i++) {
+            n = list[i]
+            if (!isDraw(n))
+                continue
+            var dh = hitDraw(n, mx, my)
+            if (dh)
+                return { kind: "draw", id: n.id, spine: -1, handle: dh }
         }
         for (i = 0; i < list.length; i++) {
             var seg = _nearLeader(list[i], mx, my)
@@ -1348,6 +1400,273 @@ Item {
         setSelection(keep)
         bump()
         return true
+    }
+
+    function isDraw(n) {
+        return !!(n && n.kind === "draw")
+    }
+
+    function chipBounds(n) {
+        if (!n)
+            return { x: 0, y: 0, w: 40, h: 20 }
+        var i = nodeIndex(n.id)
+        var it = (i >= 0 && _chips) ? _chips.itemAt(i) : null
+        if (it && it.width > 1)
+            return { x: it.x, y: it.y, w: it.width, h: it.height }
+        return {
+            x: (n.chipFx || 0) * width,
+            y: (n.chipFy || 0) * height,
+            w: 80,
+            h: chipH(n)
+        }
+    }
+
+    function drawGeom(n) {
+        var pad = (n && n.pad > 0) ? n.pad : 8
+        var around = (n && n.around) ? n.around : []
+        if (around.length) {
+            var minx = 1e9
+            var miny = 1e9
+            var maxx = -1e9
+            var maxy = -1e9
+            var k
+            for (k = 0; k < around.length; k++) {
+                var q = nodeAt(around[k])
+                if (!q || isDraw(q))
+                    continue
+                var b = chipBounds(q)
+                minx = Math.min(minx, b.x)
+                miny = Math.min(miny, b.y)
+                maxx = Math.max(maxx, b.x + b.w)
+                maxy = Math.max(maxy, b.y + b.h)
+            }
+            if (minx < 1e8)
+                return { x: minx - pad, y: miny - pad, w: (maxx - minx) + pad * 2, h: (maxy - miny) + pad * 2 }
+        }
+        return {
+            x: ((n && n.fx) ? n.fx : 0) * width,
+            y: ((n && n.fy) ? n.fy : 0) * height,
+            w: Math.max(8, ((n && n.fw) ? n.fw : 0.08) * width),
+            h: Math.max(8, ((n && n.fh) ? n.fh : 0.06) * height)
+        }
+    }
+
+    function snapEnt(x, y, altOff) {
+        if (altOff)
+            return Qt.point(x, y)
+        var xs = []
+        var ys = []
+        function ax(v) { xs.push(v) }
+        function ay(v) { ys.push(v) }
+        var list = nodes || []
+        var i
+        for (i = 0; i < list.length; i++) {
+            var nn = list[i]
+            if (dragKind && nn.id === selectedId)
+                continue
+            if (isDraw(nn)) {
+                var g = drawGeom(nn)
+                ax(g.x); ax(g.x + g.w); ax(g.x + g.w * 0.5)
+                ay(g.y); ay(g.y + g.h); ay(g.y + g.h * 0.5)
+                continue
+            }
+            var bb = chipBounds(nn)
+            ax(bb.x); ax(bb.x + bb.w); ax(bb.x + bb.w * 0.5)
+            ay(bb.y); ay(bb.y + bb.h); ay(bb.y + bb.h * 0.5)
+            if (nn.nx !== undefined) {
+                var hp = hotPt(nn)
+                ax(hp.x)
+                ay(hp.y)
+            }
+        }
+        function nearest(v, arr) {
+            var best = v
+            var d = 8
+            var j
+            for (j = 0; j < arr.length; j++) {
+                var dd = Math.abs(v - arr[j])
+                if (dd < d) {
+                    d = dd
+                    best = arr[j]
+                }
+            }
+            if (snapOn) {
+                var g2 = snapPx(v)
+                if (Math.abs(g2 - v) <= d)
+                    best = g2
+            }
+            return best
+        }
+        return Qt.point(nearest(x, xs), nearest(y, ys))
+    }
+
+    function applyDrawResize(n, mx, my, handle, altOff) {
+        if (!n)
+            return
+        n.around = []
+        var p = snapEnt(mx, my, altOff)
+        var x0 = rzX0
+        var y0 = rzY0
+        var x1 = rzX1
+        var y1 = rzY1
+        if (handle.indexOf("n") >= 0)
+            y0 = p.y
+        if (handle.indexOf("s") >= 0)
+            y1 = p.y
+        if (handle.indexOf("w") >= 0)
+            x0 = p.x
+        if (handle.indexOf("e") >= 0)
+            x1 = p.x
+        var nx = Math.min(x0, x1)
+        var ny = Math.min(y0, y1)
+        var nw = Math.max(8, Math.abs(x1 - x0))
+        var nh = Math.max(8, Math.abs(y1 - y0))
+        n.fx = nx / Math.max(1, width)
+        n.fy = ny / Math.max(1, height)
+        n.fw = nw / Math.max(1, width)
+        n.fh = nh / Math.max(1, height)
+    }
+
+    function _drawStyle() {
+        return {
+            kind: "draw",
+            rot: 0,
+            fill: "hollow",
+            color: "#14532D",
+            border: "#22C55E",
+            stroke: 2,
+            opacity: 1,
+            pad: 8,
+            around: []
+        }
+    }
+
+    function addDrawAround(shape) {
+        var ids = selectedIds || []
+        var around = []
+        var i
+        for (i = 0; i < ids.length; i++) {
+            var q = nodeAt(ids[i])
+            if (q && !isDraw(q))
+                around.push(ids[i])
+        }
+        if (!around.length)
+            return
+        var st = _drawStyle()
+        st.id = _uid("d")
+        st.shape = shape
+        st.around = around
+        var g = drawGeom(st)
+        st.fx = g.x / Math.max(1, width)
+        st.fy = g.y / Math.max(1, height)
+        st.fw = g.w / Math.max(1, width)
+        st.fh = g.h / Math.max(1, height)
+        nodes.push(st)
+        setSelection([st.id])
+        bump()
+    }
+
+    function addDrawFree(shape, x0, y0, x1, y1) {
+        var x = Math.min(x0, x1)
+        var y = Math.min(y0, y1)
+        var w = Math.abs(x1 - x0)
+        var h = Math.abs(y1 - y0)
+        if (w < 6 || h < 6)
+            return
+        var st = _drawStyle()
+        st.id = _uid("d")
+        st.shape = shape
+        st.fx = x / Math.max(1, width)
+        st.fy = y / Math.max(1, height)
+        st.fw = w / Math.max(1, width)
+        st.fh = h / Math.max(1, height)
+        nodes.push(st)
+        setSelection([st.id])
+        bump()
+    }
+
+    function setDrawTool(shape) {
+        drawTool = (drawTool === shape) ? "" : shape
+    }
+
+    function hitDraw(n, mx, my) {
+        var i = nodeIndex(n.id)
+        var it = (i >= 0 && _chips) ? _chips.itemAt(i) : null
+        if (!it)
+            return ""
+        var p = it.mapFromItem(_ed, mx, my)
+        var w = it.width
+        var h = it.height
+        if (interactive && isSelected(n.id)) {
+            var hs = [
+                [0, 0, "nw"], [w, 0, "ne"], [0, h, "sw"], [w, h, "se"],
+                [w * 0.5, 0, "n"], [w * 0.5, h, "s"], [0, h * 0.5, "w"], [w, h * 0.5, "e"]
+            ]
+            var t
+            for (t = 0; t < hs.length; t++) {
+                if (Math.hypot(p.x - hs[t][0], p.y - hs[t][1]) < 8)
+                    return hs[t][2]
+            }
+        }
+        if (p.x < 0 || p.y < 0 || p.x > w || p.y > h)
+            return ""
+        if (n.fill === "filled")
+            return "body"
+        var ring = Math.max(6, (n.stroke || 2) + 4)
+        if (p.x <= ring || p.y <= ring || p.x >= w - ring || p.y >= h - ring)
+            return "body"
+        return ""
+    }
+
+    function paintDraw(ctx, n, w, h) {
+        var stroke = n.stroke || 2
+        var inset = stroke * 0.5 + 0.5
+        var ww = Math.max(2, w - stroke)
+        var hh = Math.max(2, h - stroke)
+        var shape = n.shape || "rect"
+        ctx.save()
+        ctx.translate(inset, inset)
+        ctx.beginPath()
+        if (shape === "ellipse") {
+            ctx.save()
+            ctx.translate(ww * 0.5, hh * 0.5)
+            ctx.scale(Math.max(0.5, ww * 0.5), Math.max(0.5, hh * 0.5))
+            ctx.arc(0, 0, 1, 0, 6.2832)
+            ctx.restore()
+        } else if (shape === "triangle") {
+            ctx.moveTo(ww * 0.5, 0)
+            ctx.lineTo(ww, hh)
+            ctx.lineTo(0, hh)
+            ctx.closePath()
+        } else if (shape === "diamond") {
+            ctx.moveTo(ww * 0.5, 0)
+            ctx.lineTo(ww, hh * 0.5)
+            ctx.lineTo(ww * 0.5, hh)
+            ctx.lineTo(0, hh * 0.5)
+            ctx.closePath()
+        } else if (shape === "roundrect") {
+            var r = Math.min(14, ww * 0.2, hh * 0.2)
+            ctx.moveTo(r, 0)
+            ctx.lineTo(ww - r, 0)
+            ctx.quadraticCurveTo(ww, 0, ww, r)
+            ctx.lineTo(ww, hh - r)
+            ctx.quadraticCurveTo(ww, hh, ww - r, hh)
+            ctx.lineTo(r, hh)
+            ctx.quadraticCurveTo(0, hh, 0, hh - r)
+            ctx.lineTo(0, r)
+            ctx.quadraticCurveTo(0, 0, r, 0)
+            ctx.closePath()
+        } else {
+            ctx.rect(0, 0, ww, hh)
+        }
+        if (n.fill !== "hollow") {
+            ctx.fillStyle = n.color || "#14532D"
+            ctx.fill()
+        }
+        ctx.strokeStyle = n.border || "#22C55E"
+        ctx.lineWidth = stroke
+        ctx.stroke()
+        ctx.restore()
     }
 
     function isSelected(id) {
@@ -1526,7 +1845,10 @@ Item {
         var i
         var n
         for (i = 0; i < ids.length; i++) {
-            var chunk = _partsFrom(nodeAt(ids[i]))
+            var chunkN = nodeAt(ids[i])
+            if (_ed.isDraw(chunkN))
+                continue
+            var chunk = _partsFrom(chunkN)
             for (var p = 0; p < chunk.length; p++)
                 parts.push(chunk[p])
         }
@@ -1699,6 +2021,8 @@ Item {
                 _ed.tick
                 if (!node)
                     return 0
+                if (_ed.isDraw(node))
+                    return _ed.drawGeom(node).x
                 var x = node.chipFx * _ed.width
                 if (_ed.isGroup(node))
                     x += _ed.groupMinX(node)
@@ -1708,17 +2032,24 @@ Item {
                 _ed.tick
                 if (!node)
                     return 0
+                if (_ed.isDraw(node))
+                    return _ed.drawGeom(node).y
                 var y = node.chipFy * _ed.height
                 if (_ed.isGroup(node))
                     y += _ed.groupMinY(node)
                 return y
             }
-            z: 3
+            z: { _ed.tick; return (_ed.isDraw(node) ? 2 : 3) }
+            rotation: { _ed.tick; return (_ed.isDraw(node) && node.rot) ? node.rot : 0 }
+            opacity: { _ed.tick; return (_ed.isDraw(node) && node.opacity !== undefined && node.opacity !== null) ? node.opacity : 1 }
+            transformOrigin: Item.Center
             clip: false
             width: {
                 _ed.tick
                 if (!node)
                     return 40
+                if (_ed.isDraw(node))
+                    return _ed.drawGeom(node).w
                 if (_ed.isGroup(node))
                     return _ed.groupSpanW(node)
                 return (_body.item && _body.item.implicitWidth > 1) ? _body.item.implicitWidth : _ed.chipWGuess(node, null)
@@ -1727,6 +2058,8 @@ Item {
                 _ed.tick
                 if (!node)
                     return 20
+                if (_ed.isDraw(node))
+                    return _ed.drawGeom(node).h
                 if (_ed.isGroup(node))
                     return _ed.groupSpanH(node)
                 return (_body.item && _body.item.implicitHeight > 1) ? _body.item.implicitHeight : _ed.chipH(node)
@@ -1737,19 +2070,20 @@ Item {
                 clip: false
                 width: {
                     _ed.tick
-                    if (_wrap.node && _ed.isGroup(_wrap.node))
+                    if (_wrap.node && (_ed.isGroup(_wrap.node) || _ed.isDraw(_wrap.node)))
                         return _wrap.width
                     return item ? item.implicitWidth : 0
                 }
                 height: {
                     _ed.tick
-                    if (_wrap.node && _ed.isGroup(_wrap.node))
+                    if (_wrap.node && (_ed.isGroup(_wrap.node) || _ed.isDraw(_wrap.node)))
                         return _wrap.height
                     return item ? item.implicitHeight : 0
                 }
                 sourceComponent: {
                     var n = _wrap.node
                     if (!n) return _tagComp
+                    if (_ed.isDraw(n)) return _drawComp
                     return _ed.isGroup(n) ? _groupComp : _tagComp
                 }
                 onLoaded: {
@@ -1812,6 +2146,50 @@ Item {
                             return (_grp.node && _grp.node.kind === "axis_stack") ? "axis" : "btn"
                         })
                     }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: _drawComp
+        Item {
+            id: _drawRoot
+            property var node: ({ kind: "draw" })
+            anchors.fill: parent
+            Canvas {
+                id: _dc
+                anchors.fill: parent
+                antialiasing: true
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.reset()
+                    if (node)
+                        _ed.paintDraw(ctx, node, width, height)
+                }
+            }
+            Connections {
+                target: _ed
+                function onTickChanged() { _dc.requestPaint() }
+            }
+            Repeater {
+                model: (_ed.interactive && node && _ed.isSelected(node.id)) ? 8 : 0
+                Rectangle {
+                    required property int index
+                    width: 8
+                    height: 8
+                    radius: 1
+                    color: "#FBBF24"
+                    border.color: "#18181B"
+                    x: {
+                        var xs = [0, _drawRoot.width, 0, _drawRoot.width, _drawRoot.width * 0.5, _drawRoot.width * 0.5, 0, _drawRoot.width]
+                        return xs[index] - 4
+                    }
+                    y: {
+                        var ys = [0, 0, _drawRoot.height, _drawRoot.height, 0, _drawRoot.height, _drawRoot.height * 0.5, _drawRoot.height * 0.5]
+                        return ys[index] - 4
+                    }
+                    z: 4
                 }
             }
         }
@@ -1991,6 +2369,8 @@ Item {
             var list = _ed.nodes || []
             for (var i = 0; i < list.length; i++) {
                 var n = list[i]
+                if (_ed.isDraw(n))
+                    continue
                 var sel = _ed.interactive && _ed.isSelected(n.id)
                 var ls = _ed.leaderList(n)
                 var li
@@ -2040,6 +2420,7 @@ Item {
         hoverEnabled: true
         preventStealing: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        cursorShape: _ed.drawTool.length ? Qt.CrossCursor : Qt.ArrowCursor
         focus: true
         Keys.onDeletePressed: {
             var n = _ed.nodeAt(_ed.selectedId)
@@ -2058,6 +2439,7 @@ Item {
                 e.accepted = true
             } else if (e.key === Qt.Key_Escape) {
                 _ed.endGroupEdit()
+                _ed.drawTool = ""
                 e.accepted = true
             } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Z) {
                 if (e.modifiers & Qt.ShiftModifier)
@@ -2095,6 +2477,36 @@ Item {
                 }
                 _ed.chipMenuRequested(m.x, m.y)
                 _ctx.popup()
+                return
+            }
+            if (hit.kind === "draw") {
+                if (shift)
+                    _ed.toggleSelected(hit.id)
+                else if (!_ed.isSelected(hit.id))
+                    _ed.setSelection([hit.id])
+                var dn = _ed.nodeAt(hit.id)
+                var g = dn ? _ed.drawGeom(dn) : { x: 0, y: 0, w: 8, h: 8 }
+                if (hit.handle && hit.handle !== "body") {
+                    _ed.dragKind = "draw-" + hit.handle
+                    _ed.rzX0 = g.x
+                    _ed.rzY0 = g.y
+                    _ed.rzX1 = g.x + g.w
+                    _ed.rzY1 = g.y + g.h
+                } else {
+                    _ed.dragKind = "draw"
+                    _ed.dragOffX = m.x - g.x
+                    _ed.dragOffY = m.y - g.y
+                }
+                _ed.bump()
+                return
+            }
+            if (_ed.drawTool.length && (!hit.kind || hit.kind === "")) {
+                var p0 = _ed.snapEnt(m.x, m.y, _ed.altHeld)
+                _ed.dragKind = "drawnew"
+                _ed.drawX0 = p0.x
+                _ed.drawY0 = p0.y
+                _ed.drawX1 = p0.x
+                _ed.drawY1 = p0.y
                 return
             }
             if (hit.kind === "line" && !shift) {
@@ -2187,6 +2599,12 @@ Item {
             if (!_ed.dragKind) {
                 return
             }
+            if (_ed.dragKind === "drawnew") {
+                var p1 = _ed.snapEnt(m.x, m.y, _ed.altHeld)
+                _ed.drawX1 = p1.x
+                _ed.drawY1 = p1.y
+                return
+            }
             if (_ed.dragKind === "band") {
                 _ed.bandX1 = m.x
                 _ed.bandY1 = m.y
@@ -2197,6 +2615,11 @@ Item {
             _ed.applyPointer(m.x, m.y, _ed.altHeld)
         }
         onReleased: (m) => {
+            if (_ed.dragKind === "drawnew") {
+                _ed.addDrawFree(_ed.drawTool, _ed.drawX0, _ed.drawY0, _ed.drawX1, _ed.drawY1)
+                _ed.dragKind = ""
+                return
+            }
             if (_ed.dragKind === "band") {
                 if (_ed.banding)
                     _ed.selectBand(_ed.bandAdd)
@@ -2279,7 +2702,24 @@ Item {
         visible: _ed.interactive
         color: "#A1A1AA"
         font.pixelSize: 10
-        text: "Group and Leader menus in the toolbar. Double-click a segment to toggle curve. Esc ends group edit."
+        text: _ed.drawTool.length ? ("Draw " + _ed.drawTool + " — drag on empty. Esc cancels.") : "Right-click Chip / Draw / Group / Leader. Esc cancels draw tool and group edit."
+    }
+
+    Canvas {
+        visible: _ed.interactive && _ed.dragKind === "drawnew"
+        x: Math.min(_ed.drawX0, _ed.drawX1)
+        y: Math.min(_ed.drawY0, _ed.drawY1)
+        width: Math.max(1, Math.abs(_ed.drawX1 - _ed.drawX0))
+        height: Math.max(1, Math.abs(_ed.drawY1 - _ed.drawY0))
+        z: 7
+        antialiasing: true
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            _ed.paintDraw(ctx, { shape: _ed.drawTool || "rect", fill: "hollow", color: "#14532D", border: "#22C55E", stroke: 2 }, width, height)
+        }
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
     }
 
     Menu {
@@ -2300,7 +2740,7 @@ Item {
         MenuSeparator {}
         Menu {
             title: "Chip"
-            enabled: _ed.selectedId !== ""
+            enabled: _ed.selectedId !== "" && !_ed.isDraw(_ed.nodeAt(_ed.selectedId))
             MenuItem {
                 enabled: false
                 text: {
@@ -2430,8 +2870,164 @@ Item {
                 text: "Delete chip"
                 enabled: {
                     var n = _ed.nodeAt(_ed.selectedId)
-                    return !!n && !_ed.isGroup(n)
+                    return !!n && !_ed.isGroup(n) && !_ed.isDraw(n)
                 }
+                onTriggered: _ed.deleteChip()
+            }
+        }
+        Menu {
+            title: "Draw"
+            Menu {
+                title: "Around selection"
+                enabled: {
+                    var ids = _ed.selectedIds || []
+                    var k
+                    for (k = 0; k < ids.length; k++) {
+                        if (!_ed.isDraw(_ed.nodeAt(ids[k])))
+                            return true
+                    }
+                    return false
+                }
+                MenuItem { text: "Rectangle"; onTriggered: _ed.addDrawAround("rect") }
+                MenuItem { text: "Rounded"; onTriggered: _ed.addDrawAround("roundrect") }
+                MenuItem { text: "Ellipse"; onTriggered: _ed.addDrawAround("ellipse") }
+                MenuItem { text: "Triangle"; onTriggered: _ed.addDrawAround("triangle") }
+                MenuItem { text: "Diamond"; onTriggered: _ed.addDrawAround("diamond") }
+            }
+            Menu {
+                title: "Free drag"
+                MenuItem { text: "Rectangle"; checkable: true; checked: _ed.drawTool === "rect"; onTriggered: _ed.setDrawTool("rect") }
+                MenuItem { text: "Rounded"; checkable: true; checked: _ed.drawTool === "roundrect"; onTriggered: _ed.setDrawTool("roundrect") }
+                MenuItem { text: "Ellipse"; checkable: true; checked: _ed.drawTool === "ellipse"; onTriggered: _ed.setDrawTool("ellipse") }
+                MenuItem { text: "Triangle"; checkable: true; checked: _ed.drawTool === "triangle"; onTriggered: _ed.setDrawTool("triangle") }
+                MenuItem { text: "Diamond"; checkable: true; checked: _ed.drawTool === "diamond"; onTriggered: _ed.setDrawTool("diamond") }
+                MenuSeparator {}
+                MenuItem { text: "Cancel tool"; enabled: _ed.drawTool.length > 0; onTriggered: _ed.drawTool = "" }
+            }
+            MenuSeparator {}
+            Menu {
+                title: "Shape"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                MenuItem { text: "Rectangle"; checkable: true; checked: _ed.fieldEq("shape", "rect", "rect"); onTriggered: _ed.applyField("shape", "rect") }
+                MenuItem { text: "Rounded"; checkable: true; checked: _ed.fieldEq("shape", "roundrect", "rect"); onTriggered: _ed.applyField("shape", "roundrect") }
+                MenuItem { text: "Ellipse"; checkable: true; checked: _ed.fieldEq("shape", "ellipse", "rect"); onTriggered: _ed.applyField("shape", "ellipse") }
+                MenuItem { text: "Triangle"; checkable: true; checked: _ed.fieldEq("shape", "triangle", "rect"); onTriggered: _ed.applyField("shape", "triangle") }
+                MenuItem { text: "Diamond"; checkable: true; checked: _ed.fieldEq("shape", "diamond", "rect"); onTriggered: _ed.applyField("shape", "diamond") }
+            }
+            Menu {
+                id: _padMenu
+                title: "Padding"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                Instantiator {
+                    model: [4, 8, 12, 16, 24, 32]
+                    delegate: MenuItem {
+                        required property int modelData
+                        text: "" + modelData
+                        checkable: true
+                        checked: _ed.fieldEq("pad", modelData, 8)
+                        onTriggered: _ed.applyField("pad", modelData)
+                    }
+                    onObjectAdded: (i, obj) => _padMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _padMenu.removeItem(obj)
+                }
+            }
+            Menu {
+                title: "Rotate"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                MenuItem { text: "0°"; onTriggered: _ed.applyField("rot", 0) }
+                MenuItem { text: "90°"; onTriggered: _ed.applyField("rot", 90) }
+                MenuItem { text: "180°"; onTriggered: _ed.applyField("rot", 180) }
+                MenuItem { text: "270°"; onTriggered: _ed.applyField("rot", 270) }
+                MenuItem { text: "-15°"; onTriggered: { var n = _ed.nodeAt(_ed.selectedId); _ed.applyField("rot", ((n && n.rot) ? n.rot : 0) - 15) } }
+                MenuItem { text: "+15°"; onTriggered: { var n = _ed.nodeAt(_ed.selectedId); _ed.applyField("rot", ((n && n.rot) ? n.rot : 0) + 15) } }
+            }
+            MenuItem {
+                text: "Filled"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                checkable: true
+                checked: _ed.fieldEq("fill", "filled", "hollow")
+                onTriggered: _ed.applyField("fill", "filled")
+            }
+            MenuItem {
+                text: "Hollow"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                checkable: true
+                checked: _ed.fieldEq("fill", "hollow", "hollow")
+                onTriggered: _ed.applyField("fill", "hollow")
+            }
+            Menu {
+                id: _fillColMenu
+                title: "Fill color"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                Instantiator {
+                    model: _ed.drawColors
+                    delegate: MenuItem {
+                        required property string modelData
+                        text: modelData
+                        checkable: true
+                        checked: _ed.fieldEq("color", modelData, "#14532D")
+                        onTriggered: _ed.applyField("color", modelData)
+                    }
+                    onObjectAdded: (i, obj) => _fillColMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _fillColMenu.removeItem(obj)
+                }
+            }
+            Menu {
+                id: _strokeColMenu
+                title: "Stroke color"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                Instantiator {
+                    model: _ed.drawColors
+                    delegate: MenuItem {
+                        required property string modelData
+                        text: modelData
+                        checkable: true
+                        checked: _ed.fieldEq("border", modelData, "#22C55E")
+                        onTriggered: _ed.applyField("border", modelData)
+                    }
+                    onObjectAdded: (i, obj) => _strokeColMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _strokeColMenu.removeItem(obj)
+                }
+            }
+            Menu {
+                title: "Stroke"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                MenuItem { text: "1"; checkable: true; checked: _ed.fieldEq("stroke", 1, 2); onTriggered: _ed.applyField("stroke", 1) }
+                MenuItem { text: "2"; checkable: true; checked: _ed.fieldEq("stroke", 2, 2); onTriggered: _ed.applyField("stroke", 2) }
+                MenuItem { text: "3"; checkable: true; checked: _ed.fieldEq("stroke", 3, 2); onTriggered: _ed.applyField("stroke", 3) }
+                MenuItem { text: "4"; checkable: true; checked: _ed.fieldEq("stroke", 4, 2); onTriggered: _ed.applyField("stroke", 4) }
+                MenuItem { text: "6"; checkable: true; checked: _ed.fieldEq("stroke", 6, 2); onTriggered: _ed.applyField("stroke", 6) }
+            }
+            Menu {
+                title: "Opacity"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                MenuItem { text: "25%"; checkable: true; checked: _ed.fieldEq("opacity", 0.25, 1); onTriggered: _ed.applyField("opacity", 0.25) }
+                MenuItem { text: "50%"; checkable: true; checked: _ed.fieldEq("opacity", 0.5, 1); onTriggered: _ed.applyField("opacity", 0.5) }
+                MenuItem { text: "75%"; checkable: true; checked: _ed.fieldEq("opacity", 0.75, 1); onTriggered: _ed.applyField("opacity", 0.75) }
+                MenuItem { text: "100%"; checkable: true; checked: _ed.fieldEq("opacity", 1, 1); onTriggered: _ed.applyField("opacity", 1) }
+            }
+            MenuSeparator {}
+            MenuItem {
+                text: "Detach from chips"
+                enabled: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return _ed.isDraw(n) && n.around && n.around.length
+                }
+                onTriggered: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    if (!n) return
+                    var g = _ed.drawGeom(n)
+                    n.around = []
+                    n.fx = g.x / Math.max(1, _ed.width)
+                    n.fy = g.y / Math.max(1, _ed.height)
+                    n.fw = g.w / Math.max(1, _ed.width)
+                    n.fh = g.h / Math.max(1, _ed.height)
+                    _ed.bump()
+                }
+            }
+            MenuItem {
+                text: "Delete drawing"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
                 onTriggered: _ed.deleteChip()
             }
         }
