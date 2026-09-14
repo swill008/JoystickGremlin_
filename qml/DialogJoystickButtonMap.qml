@@ -648,263 +648,138 @@ Window {
                 MenuBar {
                     visible: editing
                     Menu {
-                        title: "Menu"
-                            Menu {
-                                title: "Session"
-                                MenuItem { text: "Save"; onTriggered: saveEdit() }
-                                MenuItem { text: "Cancel"; onTriggered: cancelEdit() }
-                                MenuSeparator {}
-                                MenuItem {
-                                    text: "Undo"
-                                    enabled: { var e = _ed(); return e ? e.canUndo : false }
-                                    onTriggered: { var e = _ed(); if (e) e.undo() }
-                                }
-                                MenuItem {
-                                    text: "Redo"
-                                    enabled: { var e = _ed(); return e ? e.canRedo : false }
-                                    onTriggered: { var e = _ed(); if (e) e.redo() }
-                                }
-                                MenuSeparator {}
-                                MenuItem { text: "Reset layout"; onTriggered: _resetDlg.open() }
+                        title: "File"
+                        MenuItem { text: "Save"; onTriggered: saveEdit() }
+                        MenuItem { text: "Cancel"; onTriggered: cancelEdit() }
+                        MenuSeparator {}
+                        MenuItem { text: "Reset layout"; onTriggered: _resetDlg.open() }
+                        MenuSeparator {}
+                        MenuItem { text: "Choose background…"; onTriggered: _imageDialog.open() }
+                        MenuItem {
+                            text: "Clear image"
+                            onTriggered: {
+                                _hw.clearImage(targetName)
+                                applyImage(stockImage)
                             }
-                            Menu {
-                                title: "Group"
-                                MenuItem { text: "Group selected"; onTriggered: { var e = _ed(); if (e) e.groupSelection() } }
-                                MenuItem { text: "Break group"; onTriggered: { var e = _ed(); if (e) e.ungroupSelection() } }
-                                MenuSeparator {}
-                                MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
-                                MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
-                                MenuSeparator {}
-                                MenuItem { text: "Align left"; onTriggered: { var e = _ed(); if (e) e.setAlignH("left") } }
-                                MenuItem { text: "Align center"; onTriggered: { var e = _ed(); if (e) e.setAlignH("center") } }
-                                MenuItem { text: "Align right"; onTriggered: { var e = _ed(); if (e) e.setAlignH("right") } }
-                                MenuItem { text: "Free layout"; onTriggered: { var e = _ed(); if (e) e.setAlignH("free") } }
+                        }
+                    }
+                    Menu {
+                        title: "Edit"
+                        MenuItem {
+                            text: "Undo"
+                            enabled: { var e = _ed(); return e ? e.canUndo : false }
+                            onTriggered: { var e = _ed(); if (e) e.undo() }
+                        }
+                        MenuItem {
+                            text: "Redo"
+                            enabled: { var e = _ed(); return e ? e.canRedo : false }
+                            onTriggered: { var e = _ed(); if (e) e.redo() }
+                        }
+                    }
+                    Menu {
+                        title: "View"
+                        MenuItem {
+                            text: "Reset view"
+                            onTriggered: {
+                                if (_cardLoader.item)
+                                    _cardLoader.item.resetView()
                             }
-                            Menu {
-                                title: "Leader"
-                                MenuItem { text: "Add straight spine"; onTriggered: { var e = _ed(); if (e && selectedNode) { e.ensureMidSpine(selectedNode); e.bump() } } }
-                                MenuItem { text: "Add curved spine"; onTriggered: { var e = _ed(); if (e && selectedNode) e.addCurveSpine(selectedNode) } }
-                                MenuItem { text: "This segment curved"; onTriggered: { var e = _ed(); if (e) e.setSegCurve(e.currentLeader(e.nodeAt(e.selectedId)), Math.max(0, e.selectedSeg), true) } }
-                                MenuItem { text: "This segment straight"; onTriggered: { var e = _ed(); if (e) e.setSegCurve(e.currentLeader(e.nodeAt(e.selectedId)), Math.max(0, e.selectedSeg), false) } }
-                                MenuItem { text: "All segments curved"; onTriggered: { var e = _ed(); if (e) e.setAllSegCurve(true) } }
-                                MenuItem { text: "All segments straight"; onTriggered: { var e = _ed(); if (e) e.setAllSegCurve(false) } }
-                                MenuSeparator {}
-                                MenuItem { text: "Add leader (same chip / hotspot)"; onTriggered: { var e = _ed(); if (e) e.addLeader() } }
-                                MenuItem { text: "Branch from this end"; onTriggered: { var e = _ed(); if (e) e.addBranch() } }
-                                MenuItem { text: "Delete leader"; onTriggered: { var e = _ed(); if (e) e.deleteLeader() } }
-                                MenuSeparator {}
-                                MenuItem { text: "Detach chip end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("from") } }
-                                MenuItem { text: "Detach hotspot end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("to") } }
-                                MenuItem { text: "Reconnect to this chip"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("from") } }
-                                MenuItem { text: "Reconnect to this hotspot"; onTriggered: { var e = _ed(); if (e) e.attachEndToSelf("to") } }
-                                MenuItem { text: "Delete selected spine"; onTriggered: { var e = _ed(); if (e) e.deleteSelection() } }
+                        }
+                        MenuItem {
+                            text: "Auto pan"
+                            checkable: true
+                            checked: {
+                                var c = _cardLoader.item
+                                return c ? c.autoPanOn === true : false
                             }
-                            Menu {
-                                title: "Image"
-                                MenuItem { text: "Choose background…"; onTriggered: _imageDialog.open() }
-                                MenuItem {
-                                    text: "Clear image"
-                                    onTriggered: {
-                                        _hw.clearImage(targetName)
-                                        applyImage(stockImage)
-                                    }
+                            onTriggered: {
+                                var c = _cardLoader.item
+                                if (c)
+                                    c.autoPanOn = checked
+                            }
+                        }
+                        MenuSeparator {}
+                        Menu {
+                            title: "Grid"
+                            MenuItem {
+                                text: "Show grid"
+                                checkable: true
+                                checked: {
+                                    var e = _ed()
+                                    return e ? e.gridOn : true
+                                }
+                                onTriggered: {
+                                    var e = _ed()
+                                    if (e)
+                                        e.gridOn = checked
                                 }
                             }
-                            Menu {
-                                title: "View"
-                                MenuItem {
-                                    text: "Reset view"
-                                    onTriggered: {
-                                        if (_cardLoader.item)
-                                            _cardLoader.item.resetView()
-                                    }
+                            MenuItem {
+                                text: "Snap to grid"
+                                checkable: true
+                                checked: {
+                                    var e = _ed()
+                                    return e ? e.snapOn : true
                                 }
-                                Menu {
-                                title: "Grid"
+                                onTriggered: {
+                                    var e = _ed()
+                                    if (e)
+                                        e.snapOn = checked
+                                }
+                            }
+                            MenuSeparator {}
+                            Menu {
+                                title: "Size"
                                 MenuItem {
-                                    text: "Show grid"
+                                    text: "4"
                                     checkable: true
-                                    checked: {
-                                        var e = _ed()
-                                        return e ? e.gridOn : true
-                                    }
-                                    onTriggered: {
-                                        var e = _ed()
-                                        if (e)
-                                            e.gridOn = checked
-                                    }
+                                    checked: { var e = _ed(); return e && e.gridSize === 4 }
+                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 4 }
                                 }
                                 MenuItem {
-                                    text: "Snap to grid"
+                                    text: "8"
                                     checkable: true
-                                    checked: {
-                                        var e = _ed()
-                                        return e ? e.snapOn : true
-                                    }
-                                    onTriggered: {
-                                        var e = _ed()
-                                        if (e)
-                                            e.snapOn = checked
-                                    }
+                                    checked: { var e = _ed(); return e && e.gridSize === 8 }
+                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 8 }
                                 }
                                 MenuItem {
-                                    text: "Auto pan"
+                                    text: "12"
                                     checkable: true
-                                    checked: {
-                                        var c = _cardLoader.item
-                                        return c ? c.autoPanOn === true : false
-                                    }
-                                    onTriggered: {
-                                        var c = _cardLoader.item
-                                        if (c)
-                                            c.autoPanOn = checked
-                                    }
+                                    checked: { var e = _ed(); return e && e.gridSize === 12 }
+                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 12 }
                                 }
-                                MenuSeparator {}
-                                Menu {
-                                    title: "Size"
-                                    MenuItem {
-                                        text: "4"
-                                        checkable: true
-                                        checked: { var e = _ed(); return e && e.gridSize === 4 }
-                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 4 }
-                                    }
-                                    MenuItem {
-                                        text: "8"
-                                        checkable: true
-                                        checked: { var e = _ed(); return e && e.gridSize === 8 }
-                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 8 }
-                                    }
-                                    MenuItem {
-                                        text: "12"
-                                        checkable: true
-                                        checked: { var e = _ed(); return e && e.gridSize === 12 }
-                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 12 }
-                                    }
-                                    MenuItem {
-                                        text: "16"
-                                        checkable: true
-                                        checked: { var e = _ed(); return e && e.gridSize === 16 }
-                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 16 }
-                                    }
-                                    MenuItem {
-                                        text: "24"
-                                        checkable: true
-                                        checked: { var e = _ed(); return e && e.gridSize === 24 }
-                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 24 }
-                                    }
-                                    MenuItem {
-                                        text: "32"
-                                        checkable: true
-                                        checked: { var e = _ed(); return e && e.gridSize === 32 }
-                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 32 }
-                                    }
-                                    MenuItem {
-                                        text: "48"
-                                        checkable: true
-                                        checked: { var e = _ed(); return e && e.gridSize === 48 }
-                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 48 }
-                                    }
-                                    MenuItem {
-                                        text: "64"
-                                        checkable: true
-                                        checked: { var e = _ed(); return e && e.gridSize === 64 }
-                                        onTriggered: { var e = _ed(); if (e) e.gridSize = 64 }
-                                    }
+                                MenuItem {
+                                    text: "16"
+                                    checkable: true
+                                    checked: { var e = _ed(); return e && e.gridSize === 16 }
+                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 16 }
                                 }
+                                MenuItem {
+                                    text: "24"
+                                    checkable: true
+                                    checked: { var e = _ed(); return e && e.gridSize === 24 }
+                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 24 }
+                                }
+                                MenuItem {
+                                    text: "32"
+                                    checkable: true
+                                    checked: { var e = _ed(); return e && e.gridSize === 32 }
+                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 32 }
+                                }
+                                MenuItem {
+                                    text: "48"
+                                    checkable: true
+                                    checked: { var e = _ed(); return e && e.gridSize === 48 }
+                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 48 }
+                                }
+                                MenuItem {
+                                    text: "64"
+                                    checkable: true
+                                    checked: { var e = _ed(); return e && e.gridSize === 64 }
+                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 64 }
                                 }
                             }
-                            Menu {
-                                title: "Context menu"
-                                MenuItem {
-                                    enabled: false
-                                    text: chipPopW + " × " + chipPopH + " px"
-                                }
-                                MenuSeparator {}
-                                Menu {
-                                    title: "Width"
-                                    MenuItem {
-                                        text: "240 px"
-                                        checkable: true
-                                        checked: chipPopW === 240
-                                        onTriggered: setChipPopSize(240, 0)
-                                    }
-                                    MenuItem {
-                                        text: "280 px"
-                                        checkable: true
-                                        checked: chipPopW === 280
-                                        onTriggered: setChipPopSize(280, 0)
-                                    }
-                                    MenuItem {
-                                        text: "320 px"
-                                        checkable: true
-                                        checked: chipPopW === 320
-                                        onTriggered: setChipPopSize(320, 0)
-                                    }
-                                    MenuItem {
-                                        text: "400 px"
-                                        checkable: true
-                                        checked: chipPopW === 400
-                                        onTriggered: setChipPopSize(400, 0)
-                                    }
-                                    MenuItem {
-                                        text: "480 px"
-                                        checkable: true
-                                        checked: chipPopW === 480
-                                        onTriggered: setChipPopSize(480, 0)
-                                    }
-                                    MenuItem {
-                                        text: "560 px"
-                                        checkable: true
-                                        checked: chipPopW === 560
-                                        onTriggered: setChipPopSize(560, 0)
-                                    }
-                                }
-                                Menu {
-                                    title: "Height"
-                                    MenuItem {
-                                        text: "320 px"
-                                        checkable: true
-                                        checked: chipPopH === 320
-                                        onTriggered: setChipPopSize(0, 320)
-                                    }
-                                    MenuItem {
-                                        text: "400 px"
-                                        checkable: true
-                                        checked: chipPopH === 400
-                                        onTriggered: setChipPopSize(0, 400)
-                                    }
-                                    MenuItem {
-                                        text: "480 px"
-                                        checkable: true
-                                        checked: chipPopH === 480
-                                        onTriggered: setChipPopSize(0, 480)
-                                    }
-                                    MenuItem {
-                                        text: "560 px"
-                                        checkable: true
-                                        checked: chipPopH === 560
-                                        onTriggered: setChipPopSize(0, 560)
-                                    }
-                                    MenuItem {
-                                        text: "640 px"
-                                        checkable: true
-                                        checked: chipPopH === 640
-                                        onTriggered: setChipPopSize(0, 640)
-                                    }
-                                    MenuItem {
-                                        text: "720 px"
-                                        checkable: true
-                                        checked: chipPopH === 720
-                                        onTriggered: setChipPopSize(0, 720)
-                                    }
-                                }
-                                MenuSeparator {}
-                                MenuItem {
-                                    text: "Reset size (280 × 480)"
-                                    onTriggered: setChipPopSize(280, 480)
-                                }
-                            }
+                        }
                     }
                 }
                 Label {
