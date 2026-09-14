@@ -721,99 +721,7 @@ Window {
                                             _cardLoader.item.resetView()
                                     }
                                 }
-                            }
-                            Menu {
-                                title: "Context menu"
-                                MenuItem {
-                                    enabled: false
-                                    text: chipPopW + " × " + chipPopH + " px"
-                                }
-                                MenuSeparator {}
                                 Menu {
-                                    title: "Width"
-                                    MenuItem {
-                                        text: "240 px"
-                                        checkable: true
-                                        checked: chipPopW === 240
-                                        onTriggered: setChipPopSize(240, 0)
-                                    }
-                                    MenuItem {
-                                        text: "280 px"
-                                        checkable: true
-                                        checked: chipPopW === 280
-                                        onTriggered: setChipPopSize(280, 0)
-                                    }
-                                    MenuItem {
-                                        text: "320 px"
-                                        checkable: true
-                                        checked: chipPopW === 320
-                                        onTriggered: setChipPopSize(320, 0)
-                                    }
-                                    MenuItem {
-                                        text: "400 px"
-                                        checkable: true
-                                        checked: chipPopW === 400
-                                        onTriggered: setChipPopSize(400, 0)
-                                    }
-                                    MenuItem {
-                                        text: "480 px"
-                                        checkable: true
-                                        checked: chipPopW === 480
-                                        onTriggered: setChipPopSize(480, 0)
-                                    }
-                                    MenuItem {
-                                        text: "560 px"
-                                        checkable: true
-                                        checked: chipPopW === 560
-                                        onTriggered: setChipPopSize(560, 0)
-                                    }
-                                }
-                                Menu {
-                                    title: "Height"
-                                    MenuItem {
-                                        text: "320 px"
-                                        checkable: true
-                                        checked: chipPopH === 320
-                                        onTriggered: setChipPopSize(0, 320)
-                                    }
-                                    MenuItem {
-                                        text: "400 px"
-                                        checkable: true
-                                        checked: chipPopH === 400
-                                        onTriggered: setChipPopSize(0, 400)
-                                    }
-                                    MenuItem {
-                                        text: "480 px"
-                                        checkable: true
-                                        checked: chipPopH === 480
-                                        onTriggered: setChipPopSize(0, 480)
-                                    }
-                                    MenuItem {
-                                        text: "560 px"
-                                        checkable: true
-                                        checked: chipPopH === 560
-                                        onTriggered: setChipPopSize(0, 560)
-                                    }
-                                    MenuItem {
-                                        text: "640 px"
-                                        checkable: true
-                                        checked: chipPopH === 640
-                                        onTriggered: setChipPopSize(0, 640)
-                                    }
-                                    MenuItem {
-                                        text: "720 px"
-                                        checkable: true
-                                        checked: chipPopH === 720
-                                        onTriggered: setChipPopSize(0, 720)
-                                    }
-                                }
-                                MenuSeparator {}
-                                MenuItem {
-                                    text: "Reset size (280 × 480)"
-                                    onTriggered: setChipPopSize(280, 480)
-                                }
-                            }
-                            Menu {
                                 title: "Grid"
                                 MenuItem {
                                     text: "Show grid"
@@ -905,6 +813,98 @@ Window {
                                         checked: { var e = _ed(); return e && e.gridSize === 64 }
                                         onTriggered: { var e = _ed(); if (e) e.gridSize = 64 }
                                     }
+                                }
+                                }
+                            }
+                            Menu {
+                                title: "Context menu"
+                                MenuItem {
+                                    enabled: false
+                                    text: chipPopW + " × " + chipPopH + " px"
+                                }
+                                MenuSeparator {}
+                                Menu {
+                                    title: "Width"
+                                    MenuItem {
+                                        text: "240 px"
+                                        checkable: true
+                                        checked: chipPopW === 240
+                                        onTriggered: setChipPopSize(240, 0)
+                                    }
+                                    MenuItem {
+                                        text: "280 px"
+                                        checkable: true
+                                        checked: chipPopW === 280
+                                        onTriggered: setChipPopSize(280, 0)
+                                    }
+                                    MenuItem {
+                                        text: "320 px"
+                                        checkable: true
+                                        checked: chipPopW === 320
+                                        onTriggered: setChipPopSize(320, 0)
+                                    }
+                                    MenuItem {
+                                        text: "400 px"
+                                        checkable: true
+                                        checked: chipPopW === 400
+                                        onTriggered: setChipPopSize(400, 0)
+                                    }
+                                    MenuItem {
+                                        text: "480 px"
+                                        checkable: true
+                                        checked: chipPopW === 480
+                                        onTriggered: setChipPopSize(480, 0)
+                                    }
+                                    MenuItem {
+                                        text: "560 px"
+                                        checkable: true
+                                        checked: chipPopW === 560
+                                        onTriggered: setChipPopSize(560, 0)
+                                    }
+                                }
+                                Menu {
+                                    title: "Height"
+                                    MenuItem {
+                                        text: "320 px"
+                                        checkable: true
+                                        checked: chipPopH === 320
+                                        onTriggered: setChipPopSize(0, 320)
+                                    }
+                                    MenuItem {
+                                        text: "400 px"
+                                        checkable: true
+                                        checked: chipPopH === 400
+                                        onTriggered: setChipPopSize(0, 400)
+                                    }
+                                    MenuItem {
+                                        text: "480 px"
+                                        checkable: true
+                                        checked: chipPopH === 480
+                                        onTriggered: setChipPopSize(0, 480)
+                                    }
+                                    MenuItem {
+                                        text: "560 px"
+                                        checkable: true
+                                        checked: chipPopH === 560
+                                        onTriggered: setChipPopSize(0, 560)
+                                    }
+                                    MenuItem {
+                                        text: "640 px"
+                                        checkable: true
+                                        checked: chipPopH === 640
+                                        onTriggered: setChipPopSize(0, 640)
+                                    }
+                                    MenuItem {
+                                        text: "720 px"
+                                        checkable: true
+                                        checked: chipPopH === 720
+                                        onTriggered: setChipPopSize(0, 720)
+                                    }
+                                }
+                                MenuSeparator {}
+                                MenuItem {
+                                    text: "Reset size (280 × 480)"
+                                    onTriggered: setChipPopSize(280, 480)
                                 }
                             }
                         }
