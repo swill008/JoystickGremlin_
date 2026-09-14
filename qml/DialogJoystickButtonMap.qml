@@ -521,6 +521,20 @@ Window {
         Qt.callLater(refreshReservoir)
     }
 
+    function deleteOrBreak() {
+        var e = _ed()
+        if (!e)
+            return
+        var n = e.nodeAt(e.selectedId)
+        if (nodeIsGroup(n) || e.isGroup(n))
+            e.ungroupSelection()
+        else
+            e.deleteChip()
+        applySelected()
+        refreshReservoir()
+        _chipPop.close()
+    }
+
     function nodeIsGroup(n) {
         return !!(n && (n.kind === "plus" || n.kind === "pair" || n.kind === "axis_stack" || n.kind === "stack" || (n.members && n.members.length)))
     }
@@ -923,6 +937,16 @@ Window {
                     font.pixelSize: 11
                     elide: Text.ElideMiddle
                     Layout.fillWidth: true
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Delete"
+                    onActivated: deleteOrBreak()
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Backspace"
+                    onActivated: deleteOrBreak()
                 }
                 Shortcut {
                     enabled: editing

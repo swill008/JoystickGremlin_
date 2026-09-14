@@ -1966,10 +1966,21 @@ Item {
         preventStealing: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         focus: true
-        Keys.onDeletePressed: _ed.deleteSelection()
+        Keys.onDeletePressed: {
+            var n = _ed.nodeAt(_ed.selectedId)
+            if (_ed.isGroup(n))
+                _ed.ungroupSelection()
+            else
+                _ed.deleteChip()
+        }
         Keys.onPressed: (e) => {
             if (e.key === Qt.Key_Backspace) {
-                _ed.deleteSelection()
+                var n = _ed.nodeAt(_ed.selectedId)
+                if (_ed.isGroup(n))
+                    _ed.ungroupSelection()
+                else
+                    _ed.deleteChip()
+                e.accepted = true
             } else if (e.key === Qt.Key_Escape) {
                 _ed.endGroupEdit()
                 e.accepted = true
