@@ -2739,160 +2739,6 @@ Item {
         }
         MenuSeparator {}
         Menu {
-            title: "Around selection"
-            enabled: {
-                var ids = _ed.selectedIds || []
-                var k
-                for (k = 0; k < ids.length; k++) {
-                    if (!_ed.isDraw(_ed.nodeAt(ids[k])))
-                        return true
-                }
-                return false
-            }
-            MenuItem { text: "Rectangle"; onTriggered: _ed.addDrawAround("rect") }
-            MenuItem { text: "Rounded"; onTriggered: _ed.addDrawAround("roundrect") }
-            MenuItem { text: "Ellipse"; onTriggered: _ed.addDrawAround("ellipse") }
-            MenuItem { text: "Triangle"; onTriggered: _ed.addDrawAround("triangle") }
-            MenuItem { text: "Diamond"; onTriggered: _ed.addDrawAround("diamond") }
-        }
-        Menu {
-            title: "Free drag"
-            MenuItem { text: "Rectangle"; checkable: true; checked: _ed.drawTool === "rect"; onTriggered: _ed.setDrawTool("rect") }
-            MenuItem { text: "Rounded"; checkable: true; checked: _ed.drawTool === "roundrect"; onTriggered: _ed.setDrawTool("roundrect") }
-            MenuItem { text: "Ellipse"; checkable: true; checked: _ed.drawTool === "ellipse"; onTriggered: _ed.setDrawTool("ellipse") }
-            MenuItem { text: "Triangle"; checkable: true; checked: _ed.drawTool === "triangle"; onTriggered: _ed.setDrawTool("triangle") }
-            MenuItem { text: "Diamond"; checkable: true; checked: _ed.drawTool === "diamond"; onTriggered: _ed.setDrawTool("diamond") }
-            MenuSeparator {}
-            MenuItem { text: "Cancel tool"; enabled: _ed.drawTool.length > 0; onTriggered: _ed.drawTool = "" }
-        }
-        MenuSeparator {}
-        Menu {
-            title: "Shape"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            MenuItem { text: "Rectangle"; checkable: true; checked: _ed.fieldEq("shape", "rect", "rect"); onTriggered: _ed.applyField("shape", "rect") }
-            MenuItem { text: "Rounded"; checkable: true; checked: _ed.fieldEq("shape", "roundrect", "rect"); onTriggered: _ed.applyField("shape", "roundrect") }
-            MenuItem { text: "Ellipse"; checkable: true; checked: _ed.fieldEq("shape", "ellipse", "rect"); onTriggered: _ed.applyField("shape", "ellipse") }
-            MenuItem { text: "Triangle"; checkable: true; checked: _ed.fieldEq("shape", "triangle", "rect"); onTriggered: _ed.applyField("shape", "triangle") }
-            MenuItem { text: "Diamond"; checkable: true; checked: _ed.fieldEq("shape", "diamond", "rect"); onTriggered: _ed.applyField("shape", "diamond") }
-        }
-        Menu {
-            id: _padMenu
-            title: "Padding"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            Instantiator {
-                model: [4, 8, 12, 16, 24, 32]
-                delegate: MenuItem {
-                    required property int modelData
-                    text: "" + modelData
-                    checkable: true
-                    checked: _ed.fieldEq("pad", modelData, 8)
-                    onTriggered: _ed.applyField("pad", modelData)
-                }
-                onObjectAdded: (i, obj) => _padMenu.insertItem(i, obj)
-                onObjectRemoved: (i, obj) => _padMenu.removeItem(obj)
-            }
-        }
-        Menu {
-            title: "Rotate"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            MenuItem { text: "0°"; onTriggered: _ed.applyField("rot", 0) }
-            MenuItem { text: "90°"; onTriggered: _ed.applyField("rot", 90) }
-            MenuItem { text: "180°"; onTriggered: _ed.applyField("rot", 180) }
-            MenuItem { text: "270°"; onTriggered: _ed.applyField("rot", 270) }
-            MenuItem { text: "-15°"; onTriggered: { var n = _ed.nodeAt(_ed.selectedId); _ed.applyField("rot", ((n && n.rot) ? n.rot : 0) - 15) } }
-            MenuItem { text: "+15°"; onTriggered: { var n = _ed.nodeAt(_ed.selectedId); _ed.applyField("rot", ((n && n.rot) ? n.rot : 0) + 15) } }
-        }
-        MenuItem {
-            text: "Filled"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            checkable: true
-            checked: _ed.fieldEq("fill", "filled", "hollow")
-            onTriggered: _ed.applyField("fill", "filled")
-        }
-        MenuItem {
-            text: "Hollow"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            checkable: true
-            checked: _ed.fieldEq("fill", "hollow", "hollow")
-            onTriggered: _ed.applyField("fill", "hollow")
-        }
-        Menu {
-            id: _fillColMenu
-            title: "Fill color"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            Instantiator {
-                model: _ed.drawColors
-                delegate: MenuItem {
-                    required property string modelData
-                    text: modelData
-                    checkable: true
-                    checked: _ed.fieldEq("color", modelData, "#14532D")
-                    onTriggered: _ed.applyField("color", modelData)
-                }
-                onObjectAdded: (i, obj) => _fillColMenu.insertItem(i, obj)
-                onObjectRemoved: (i, obj) => _fillColMenu.removeItem(obj)
-            }
-        }
-        Menu {
-            id: _strokeColMenu
-            title: "Stroke color"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            Instantiator {
-                model: _ed.drawColors
-                delegate: MenuItem {
-                    required property string modelData
-                    text: modelData
-                    checkable: true
-                    checked: _ed.fieldEq("border", modelData, "#22C55E")
-                    onTriggered: _ed.applyField("border", modelData)
-                }
-                onObjectAdded: (i, obj) => _strokeColMenu.insertItem(i, obj)
-                onObjectRemoved: (i, obj) => _strokeColMenu.removeItem(obj)
-            }
-        }
-        Menu {
-            title: "Stroke"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            MenuItem { text: "1"; checkable: true; checked: _ed.fieldEq("stroke", 1, 2); onTriggered: _ed.applyField("stroke", 1) }
-            MenuItem { text: "2"; checkable: true; checked: _ed.fieldEq("stroke", 2, 2); onTriggered: _ed.applyField("stroke", 2) }
-            MenuItem { text: "3"; checkable: true; checked: _ed.fieldEq("stroke", 3, 2); onTriggered: _ed.applyField("stroke", 3) }
-            MenuItem { text: "4"; checkable: true; checked: _ed.fieldEq("stroke", 4, 2); onTriggered: _ed.applyField("stroke", 4) }
-            MenuItem { text: "6"; checkable: true; checked: _ed.fieldEq("stroke", 6, 2); onTriggered: _ed.applyField("stroke", 6) }
-        }
-        Menu {
-            title: "Opacity"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            MenuItem { text: "25%"; checkable: true; checked: _ed.fieldEq("opacity", 0.25, 1); onTriggered: _ed.applyField("opacity", 0.25) }
-            MenuItem { text: "50%"; checkable: true; checked: _ed.fieldEq("opacity", 0.5, 1); onTriggered: _ed.applyField("opacity", 0.5) }
-            MenuItem { text: "75%"; checkable: true; checked: _ed.fieldEq("opacity", 0.75, 1); onTriggered: _ed.applyField("opacity", 0.75) }
-            MenuItem { text: "100%"; checkable: true; checked: _ed.fieldEq("opacity", 1, 1); onTriggered: _ed.applyField("opacity", 1) }
-        }
-        MenuSeparator {}
-        MenuItem {
-            text: "Detach from chips"
-            enabled: {
-                var n = _ed.nodeAt(_ed.selectedId)
-                return _ed.isDraw(n) && n.around && n.around.length
-            }
-            onTriggered: {
-                var n = _ed.nodeAt(_ed.selectedId)
-                if (!n) return
-                var g = _ed.drawGeom(n)
-                n.around = []
-                n.fx = g.x / Math.max(1, _ed.width)
-                n.fy = g.y / Math.max(1, _ed.height)
-                n.fw = g.w / Math.max(1, _ed.width)
-                n.fh = g.h / Math.max(1, _ed.height)
-                _ed.bump()
-            }
-        }
-        MenuItem {
-            text: "Delete drawing"
-            enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
-            onTriggered: _ed.deleteChip()
-        }
-        MenuSeparator {}
-        Menu {
             title: "Chip"
             enabled: _ed.selectedId !== "" && !_ed.isDraw(_ed.nodeAt(_ed.selectedId))
             MenuItem {
@@ -3029,6 +2875,163 @@ Item {
                 onTriggered: _ed.deleteChip()
             }
         }
+        Menu {
+            title: "Draw"
+            Menu {
+                title: "Around selection"
+                enabled: {
+                    var ids = _ed.selectedIds || []
+                    var k
+                    for (k = 0; k < ids.length; k++) {
+                        if (!_ed.isDraw(_ed.nodeAt(ids[k])))
+                            return true
+                    }
+                    return false
+                }
+                MenuItem { text: "Rectangle"; onTriggered: _ed.addDrawAround("rect") }
+                MenuItem { text: "Rounded"; onTriggered: _ed.addDrawAround("roundrect") }
+                MenuItem { text: "Ellipse"; onTriggered: _ed.addDrawAround("ellipse") }
+                MenuItem { text: "Triangle"; onTriggered: _ed.addDrawAround("triangle") }
+                MenuItem { text: "Diamond"; onTriggered: _ed.addDrawAround("diamond") }
+            }
+            Menu {
+                title: "Free drag"
+                MenuItem { text: "Rectangle"; checkable: true; checked: _ed.drawTool === "rect"; onTriggered: _ed.setDrawTool("rect") }
+                MenuItem { text: "Rounded"; checkable: true; checked: _ed.drawTool === "roundrect"; onTriggered: _ed.setDrawTool("roundrect") }
+                MenuItem { text: "Ellipse"; checkable: true; checked: _ed.drawTool === "ellipse"; onTriggered: _ed.setDrawTool("ellipse") }
+                MenuItem { text: "Triangle"; checkable: true; checked: _ed.drawTool === "triangle"; onTriggered: _ed.setDrawTool("triangle") }
+                MenuItem { text: "Diamond"; checkable: true; checked: _ed.drawTool === "diamond"; onTriggered: _ed.setDrawTool("diamond") }
+                MenuSeparator {}
+                MenuItem { text: "Cancel tool"; enabled: _ed.drawTool.length > 0; onTriggered: _ed.drawTool = "" }
+            }
+            MenuSeparator {}
+            Menu {
+                title: "Shape"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                MenuItem { text: "Rectangle"; checkable: true; checked: _ed.fieldEq("shape", "rect", "rect"); onTriggered: _ed.applyField("shape", "rect") }
+                MenuItem { text: "Rounded"; checkable: true; checked: _ed.fieldEq("shape", "roundrect", "rect"); onTriggered: _ed.applyField("shape", "roundrect") }
+                MenuItem { text: "Ellipse"; checkable: true; checked: _ed.fieldEq("shape", "ellipse", "rect"); onTriggered: _ed.applyField("shape", "ellipse") }
+                MenuItem { text: "Triangle"; checkable: true; checked: _ed.fieldEq("shape", "triangle", "rect"); onTriggered: _ed.applyField("shape", "triangle") }
+                MenuItem { text: "Diamond"; checkable: true; checked: _ed.fieldEq("shape", "diamond", "rect"); onTriggered: _ed.applyField("shape", "diamond") }
+            }
+            Menu {
+                id: _padMenu
+                title: "Padding"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                Instantiator {
+                    model: [4, 8, 12, 16, 24, 32]
+                    delegate: MenuItem {
+                        required property int modelData
+                        text: "" + modelData
+                        checkable: true
+                        checked: _ed.fieldEq("pad", modelData, 8)
+                        onTriggered: _ed.applyField("pad", modelData)
+                    }
+                    onObjectAdded: (i, obj) => _padMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _padMenu.removeItem(obj)
+                }
+            }
+            Menu {
+                title: "Rotate"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                MenuItem { text: "0°"; onTriggered: _ed.applyField("rot", 0) }
+                MenuItem { text: "90°"; onTriggered: _ed.applyField("rot", 90) }
+                MenuItem { text: "180°"; onTriggered: _ed.applyField("rot", 180) }
+                MenuItem { text: "270°"; onTriggered: _ed.applyField("rot", 270) }
+                MenuItem { text: "-15°"; onTriggered: { var n = _ed.nodeAt(_ed.selectedId); _ed.applyField("rot", ((n && n.rot) ? n.rot : 0) - 15) } }
+                MenuItem { text: "+15°"; onTriggered: { var n = _ed.nodeAt(_ed.selectedId); _ed.applyField("rot", ((n && n.rot) ? n.rot : 0) + 15) } }
+            }
+            MenuItem {
+                text: "Filled"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                checkable: true
+                checked: _ed.fieldEq("fill", "filled", "hollow")
+                onTriggered: _ed.applyField("fill", "filled")
+            }
+            MenuItem {
+                text: "Hollow"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                checkable: true
+                checked: _ed.fieldEq("fill", "hollow", "hollow")
+                onTriggered: _ed.applyField("fill", "hollow")
+            }
+            Menu {
+                id: _fillColMenu
+                title: "Fill color"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                Instantiator {
+                    model: _ed.drawColors
+                    delegate: MenuItem {
+                        required property string modelData
+                        text: modelData
+                        checkable: true
+                        checked: _ed.fieldEq("color", modelData, "#14532D")
+                        onTriggered: _ed.applyField("color", modelData)
+                    }
+                    onObjectAdded: (i, obj) => _fillColMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _fillColMenu.removeItem(obj)
+                }
+            }
+            Menu {
+                id: _strokeColMenu
+                title: "Stroke color"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                Instantiator {
+                    model: _ed.drawColors
+                    delegate: MenuItem {
+                        required property string modelData
+                        text: modelData
+                        checkable: true
+                        checked: _ed.fieldEq("border", modelData, "#22C55E")
+                        onTriggered: _ed.applyField("border", modelData)
+                    }
+                    onObjectAdded: (i, obj) => _strokeColMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _strokeColMenu.removeItem(obj)
+                }
+            }
+            Menu {
+                title: "Stroke"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                MenuItem { text: "1"; checkable: true; checked: _ed.fieldEq("stroke", 1, 2); onTriggered: _ed.applyField("stroke", 1) }
+                MenuItem { text: "2"; checkable: true; checked: _ed.fieldEq("stroke", 2, 2); onTriggered: _ed.applyField("stroke", 2) }
+                MenuItem { text: "3"; checkable: true; checked: _ed.fieldEq("stroke", 3, 2); onTriggered: _ed.applyField("stroke", 3) }
+                MenuItem { text: "4"; checkable: true; checked: _ed.fieldEq("stroke", 4, 2); onTriggered: _ed.applyField("stroke", 4) }
+                MenuItem { text: "6"; checkable: true; checked: _ed.fieldEq("stroke", 6, 2); onTriggered: _ed.applyField("stroke", 6) }
+            }
+            Menu {
+                title: "Opacity"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                MenuItem { text: "25%"; checkable: true; checked: _ed.fieldEq("opacity", 0.25, 1); onTriggered: _ed.applyField("opacity", 0.25) }
+                MenuItem { text: "50%"; checkable: true; checked: _ed.fieldEq("opacity", 0.5, 1); onTriggered: _ed.applyField("opacity", 0.5) }
+                MenuItem { text: "75%"; checkable: true; checked: _ed.fieldEq("opacity", 0.75, 1); onTriggered: _ed.applyField("opacity", 0.75) }
+                MenuItem { text: "100%"; checkable: true; checked: _ed.fieldEq("opacity", 1, 1); onTriggered: _ed.applyField("opacity", 1) }
+            }
+            MenuSeparator {}
+            MenuItem {
+                text: "Detach from chips"
+                enabled: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return _ed.isDraw(n) && n.around && n.around.length
+                }
+                onTriggered: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    if (!n) return
+                    var g = _ed.drawGeom(n)
+                    n.around = []
+                    n.fx = g.x / Math.max(1, _ed.width)
+                    n.fy = g.y / Math.max(1, _ed.height)
+                    n.fw = g.w / Math.max(1, _ed.width)
+                    n.fh = g.h / Math.max(1, _ed.height)
+                    _ed.bump()
+                }
+            }
+            MenuItem {
+                text: "Delete drawing"
+                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                onTriggered: _ed.deleteChip()
+            }
+        }
+
 
         Menu {
             title: "Group"
