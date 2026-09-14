@@ -57,6 +57,9 @@ Window {
     property string poolName: ""
     property real poolX: 0
     property real poolY: 0
+    property int chipPopW: 280
+    property int chipPopH: 480
+    property bool chipPopPlaced: false
     property real panelW: 0
     property real panelH: 160
     property bool panelFillW: true
@@ -198,6 +201,12 @@ Window {
         }
         liveNodes = JSON.parse(JSON.stringify(doc.nodes))
         liveImage = doc.image && doc.image.length ? doc.image : stockImage
+        if (doc.ui) {
+            if (doc.ui.chipPopW >= 240)
+                chipPopW = doc.ui.chipPopW
+            if (doc.ui.chipPopH >= 200)
+                chipPopH = doc.ui.chipPopH
+        }
         applyImage(liveImage)
         return true
     }
@@ -229,6 +238,7 @@ Window {
             image: image,
             imageWidth: 899,
             imageHeight: 920,
+            ui: { chipPopW: chipPopW, chipPopH: chipPopH },
             nodes: nodes
         }
         if (_hw.save(targetName, JSON.stringify(doc))) {
@@ -509,24 +519,62 @@ Window {
         return !!(n && (n.kind === "plus" || n.kind === "pair" || n.kind === "axis_stack" || n.kind === "stack" || (n.members && n.members.length)))
     }
 
+    function applyChipPopSize() {
+        var maxW = Math.max(240, _buttonMap.width - 16)
+        var maxH = Math.max(200, _buttonMap.height - 16)
+        var w = Math.max(240, Math.min(chipPopW, maxW))
+        var h = Math.max(200, Math.min(chipPopH, maxH))
+        _chipPop.width = w
+        _chipPop.height = h
+        chipPopW = Math.round(w)
+        chipPopH = Math.round(h)
+    }
+
+    function rememberChipPopSize() {
+        chipPopW = Math.round(_chipPop.width)
+        chipPopH = Math.round(_chipPop.height)
+        persistChipPopUi()
+    }
+
+    function setChipPopSize(w, h) {
+        if (w)
+            chipPopW = w
+        if (h)
+            chipPopH = h
+        applyChipPopSize()
+        persistChipPopUi()
+    }
+
+    function persistChipPopUi() {
+        var text = _hw.load(targetName)
+        var doc = parseDoc(text)
+        if (!doc) {
+            doc = {
+                kind: "control.hardware",
+                device: targetName,
+                image: liveImage.length ? liveImage : stockImage,
+                nodes: liveNodes || []
+            }
+        }
+        doc.ui = { chipPopW: chipPopW, chipPopH: chipPopH }
+        _hw.save(targetName, JSON.stringify(doc))
+    }
+
     function openChipMenu(x, y) {
         applySelected()
         if (!selectedNode)
             return
         var e = _ed()
-        var p = e ? e.mapToItem(_buttonMap.contentItem, x, y) : Qt.point(x, y)
-        if (_chipPop.width < 240)
-            _chipPop.width = 280
-        if (_chipPop.height < 200)
-            _chipPop.height = 480
-        var maxW = Math.max(240, _buttonMap.width - 16)
-        var maxH = Math.max(200, _buttonMap.height - 16)
-        if (_chipPop.width > maxW)
-            _chipPop.width = maxW
-        if (_chipPop.height > maxH)
-            _chipPop.height = maxH
-        _chipPop.x = Math.max(8, Math.min(p.x, _buttonMap.width - _chipPop.width - 8))
-        _chipPop.y = Math.max(8, Math.min(p.y, _buttonMap.height - _chipPop.height - 8))
+        applyChipPopSize()
+        if (!chipPopPlaced) {
+            var p = e ? e.mapToItem(_buttonMap.contentItem, x, y) : Qt.point(x, y)
+            _chipPop.x = Math.max(8, Math.min(p.x, _buttonMap.width - _chipPop.width - 8))
+            _chipPop.y = Math.max(8, Math.min(p.y, _buttonMap.height - _chipPop.height - 8))
+            chipPopPlaced = true
+        } else {
+            _chipPop.x = Math.max(8, Math.min(_chipPop.x, _buttonMap.width - _chipPop.width - 8))
+            _chipPop.y = Math.max(8, Math.min(_chipPop.y, _buttonMap.height - _chipPop.height - 8))
+        }
         _chipPop.open()
     }
 
@@ -655,6 +703,97 @@ Window {
                                         if (_cardLoader.item)
                                             _cardLoader.item.resetView()
                                     }
+                                }
+                            }
+                            Menu {
+                                title: "Context menu"
+                                MenuItem {
+                                    enabled: false
+                                    text: chipPopW + " × " + chipPopH + " px"
+                                }
+                                MenuSeparator {}
+                                Menu {
+                                    title: "Width"
+                                    MenuItem {
+                                        text: "240 px"
+                                        checkable: true
+                                        checked: chipPopW === 240
+                                        onTriggered: setChipPopSize(240, 0)
+                                    }
+                                    MenuItem {
+                                        text: "280 px"
+                                        checkable: true
+                                        checked: chipPopW === 280
+                                        onTriggered: setChipPopSize(280, 0)
+                                    }
+                                    MenuItem {
+                                        text: "320 px"
+                                        checkable: true
+                                        checked: chipPopW === 320
+                                        onTriggered: setChipPopSize(320, 0)
+                                    }
+                                    MenuItem {
+                                        text: "400 px"
+                                        checkable: true
+                                        checked: chipPopW === 400
+                                        onTriggered: setChipPopSize(400, 0)
+                                    }
+                                    MenuItem {
+                                        text: "480 px"
+                                        checkable: true
+                                        checked: chipPopW === 480
+                                        onTriggered: setChipPopSize(480, 0)
+                                    }
+                                    MenuItem {
+                                        text: "560 px"
+                                        checkable: true
+                                        checked: chipPopW === 560
+                                        onTriggered: setChipPopSize(560, 0)
+                                    }
+                                }
+                                Menu {
+                                    title: "Height"
+                                    MenuItem {
+                                        text: "320 px"
+                                        checkable: true
+                                        checked: chipPopH === 320
+                                        onTriggered: setChipPopSize(0, 320)
+                                    }
+                                    MenuItem {
+                                        text: "400 px"
+                                        checkable: true
+                                        checked: chipPopH === 400
+                                        onTriggered: setChipPopSize(0, 400)
+                                    }
+                                    MenuItem {
+                                        text: "480 px"
+                                        checkable: true
+                                        checked: chipPopH === 480
+                                        onTriggered: setChipPopSize(0, 480)
+                                    }
+                                    MenuItem {
+                                        text: "560 px"
+                                        checkable: true
+                                        checked: chipPopH === 560
+                                        onTriggered: setChipPopSize(0, 560)
+                                    }
+                                    MenuItem {
+                                        text: "640 px"
+                                        checkable: true
+                                        checked: chipPopH === 640
+                                        onTriggered: setChipPopSize(0, 640)
+                                    }
+                                    MenuItem {
+                                        text: "720 px"
+                                        checkable: true
+                                        checked: chipPopH === 720
+                                        onTriggered: setChipPopSize(0, 720)
+                                    }
+                                }
+                                MenuSeparator {}
+                                MenuItem {
+                                    text: "Reset size (280 × 480)"
+                                    onTriggered: setChipPopSize(280, 480)
                                 }
                             }
                             Menu {
@@ -1109,6 +1248,22 @@ Window {
             y = ny
             width = nw
             height = nh
+            chipPopW = Math.round(nw)
+            chipPopH = Math.round(nh)
+        }
+
+        function startMove(mx, my, item) {
+            _rsx = x
+            _rsy = y
+            var p = item.mapToItem(parent, mx, my)
+            _rmx = p.x
+            _rmy = p.y
+        }
+
+        function moveWin(mx, my, item) {
+            var p = item.mapToItem(parent, mx, my)
+            x = Math.max(8, Math.min(_rsx + p.x - _rmx, parent.width - width - 8))
+            y = Math.max(8, Math.min(_rsy + p.y - _rmy, parent.height - height - 8))
         }
 
         background: Rectangle {
@@ -1126,6 +1281,7 @@ Window {
                 if (pressed)
                     _chipPop.moveResize(m.x, m.y, this)
             }
+            onReleased: rememberChipPopSize()
         }
         ColumnLayout {
             anchors.fill: parent
@@ -1135,12 +1291,23 @@ Window {
             spacing: 6
             RowLayout {
                 Layout.fillWidth: true
-                Label {
-                    text: selectedNode ? (selectedNode.friendly || selectedNode.id || "Chip") : "Chip"
-                    font.bold: true
-                    color: "#E4E4E7"
+                MouseArea {
                     Layout.fillWidth: true
-                    elide: Text.ElideRight
+                    implicitHeight: 24
+                    cursorShape: Qt.SizeAllCursor
+                    onPressed: (m) => _chipPop.startMove(m.x, m.y, this)
+                    onPositionChanged: (m) => {
+                        if (pressed)
+                            _chipPop.moveWin(m.x, m.y, this)
+                    }
+                    Label {
+                        anchors.fill: parent
+                        text: selectedNode ? (selectedNode.friendly || selectedNode.id || "Chip") : "Chip"
+                        font.bold: true
+                        color: "#E4E4E7"
+                        elide: Text.ElideRight
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
                 Button {
                     text: "Group"
