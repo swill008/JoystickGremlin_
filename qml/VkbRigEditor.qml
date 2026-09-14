@@ -2297,27 +2297,9 @@ Item {
             enabled: _ed.canRedo
             onTriggered: _ed.redo()
         }
-        MenuItem {
-            text: "Delete spine"
-            enabled: _ed.selectedSpine >= 0
-            onTriggered: {
-                _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                _ed.selectedLeader = _ctx.leader
-                _ed.deleteSelection()
-            }
-        }
-        MenuItem {
-            text: "Delete leader"
-            enabled: _ctx.nodeId !== ""
-            onTriggered: {
-                _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                _ed.selectedLeader = _ctx.leader
-                _ed.deleteLeader()
-            }
-        }
         MenuSeparator {}
         Menu {
-            title: "Single"
+            title: "Chip"
             enabled: _ed.selectedId !== ""
             MenuItem {
                 enabled: false
@@ -2344,108 +2326,92 @@ Item {
                 }
             }
             Menu {
-                id: _chipSzMenu
-                title: "Chip size"
-                Instantiator {
-                    model: [12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48]
-                    delegate: MenuItem {
-                        required property int modelData
-                        text: "" + modelData
-                        checkable: true
-                        checked: _ed.fieldEq("chipSize", modelData, 18)
-                        onTriggered: _ed.applyField("chipSize", modelData)
+                title: "Chip"
+                Menu {
+                    id: _chipSzMenu
+                    title: "Size"
+                    Instantiator {
+                        model: [12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48]
+                        delegate: MenuItem {
+                            required property int modelData
+                            text: "" + modelData
+                            checkable: true
+                            checked: _ed.fieldEq("chipSize", modelData, 18)
+                            onTriggered: _ed.applyField("chipSize", modelData)
+                        }
+                        onObjectAdded: (i, obj) => _chipSzMenu.insertItem(i, obj)
+                        onObjectRemoved: (i, obj) => _chipSzMenu.removeItem(obj)
                     }
-                    onObjectAdded: (i, obj) => _chipSzMenu.insertItem(i, obj)
-                    onObjectRemoved: (i, obj) => _chipSzMenu.removeItem(obj)
                 }
-            }
-            MenuItem {
-                text: "Chip round"
-                checkable: true
-                checked: {
-                    var n = _ed.nodeAt(_ed.selectedId)
-                    return !n || n.chipShape !== "square"
+                MenuItem {
+                    text: "Round"
+                    checkable: true
+                    checked: _ed.fieldEq("chipShape", "round", "round")
+                    onTriggered: _ed.applyField("chipShape", "round")
                 }
-                onTriggered: _ed.applyField("chipShape", "round")
-            }
-            MenuItem {
-                text: "Chip square"
-                checkable: true
-                checked: {
-                    var n = _ed.nodeAt(_ed.selectedId)
-                    return !!n && n.chipShape === "square"
+                MenuItem {
+                    text: "Square"
+                    checkable: true
+                    checked: _ed.fieldEq("chipShape", "square", "round")
+                    onTriggered: _ed.applyField("chipShape", "square")
                 }
-                onTriggered: _ed.applyField("chipShape", "square")
-            }
-            MenuItem {
-                text: "Chip filled"
-                checkable: true
-                checked: {
-                    var n = _ed.nodeAt(_ed.selectedId)
-                    return !n || n.chipFill !== "hollow"
+                MenuSeparator {}
+                MenuItem {
+                    text: "Filled"
+                    checkable: true
+                    checked: _ed.fieldEq("chipFill", "filled", "filled")
+                    onTriggered: _ed.applyField("chipFill", "filled")
                 }
-                onTriggered: _ed.applyField("chipFill", "filled")
-            }
-            MenuItem {
-                text: "Chip hollow"
-                checkable: true
-                checked: {
-                    var n = _ed.nodeAt(_ed.selectedId)
-                    return !!n && n.chipFill === "hollow"
+                MenuItem {
+                    text: "Hollow"
+                    checkable: true
+                    checked: _ed.fieldEq("chipFill", "hollow", "filled")
+                    onTriggered: _ed.applyField("chipFill", "hollow")
                 }
-                onTriggered: _ed.applyField("chipFill", "hollow")
             }
             Menu {
-                id: _hotSzMenu
-                title: "Hotspot size"
-                Instantiator {
-                    model: [4, 6, 8, 9, 10, 12, 14, 16, 20, 24, 28]
-                    delegate: MenuItem {
-                        required property int modelData
-                        text: "" + modelData
-                        checkable: true
-                        checked: _ed.fieldEq("hotSize", modelData, 9)
-                        onTriggered: _ed.applyField("hotSize", modelData)
+                title: "Hotspot"
+                Menu {
+                    id: _hotSzMenu
+                    title: "Size"
+                    Instantiator {
+                        model: [4, 6, 8, 9, 10, 12, 14, 16, 20, 24, 28]
+                        delegate: MenuItem {
+                            required property int modelData
+                            text: "" + modelData
+                            checkable: true
+                            checked: _ed.fieldEq("hotSize", modelData, 9)
+                            onTriggered: _ed.applyField("hotSize", modelData)
+                        }
+                        onObjectAdded: (i, obj) => _hotSzMenu.insertItem(i, obj)
+                        onObjectRemoved: (i, obj) => _hotSzMenu.removeItem(obj)
                     }
-                    onObjectAdded: (i, obj) => _hotSzMenu.insertItem(i, obj)
-                    onObjectRemoved: (i, obj) => _hotSzMenu.removeItem(obj)
                 }
-            }
-            MenuItem {
-                text: "Hotspot round"
-                checkable: true
-                checked: {
-                    var n = _ed.nodeAt(_ed.selectedId)
-                    return !n || n.hotShape !== "square"
+                MenuItem {
+                    text: "Round"
+                    checkable: true
+                    checked: _ed.fieldEq("hotShape", "round", "round")
+                    onTriggered: _ed.applyField("hotShape", "round")
                 }
-                onTriggered: _ed.applyField("hotShape", "round")
-            }
-            MenuItem {
-                text: "Hotspot square"
-                checkable: true
-                checked: {
-                    var n = _ed.nodeAt(_ed.selectedId)
-                    return !!n && n.hotShape === "square"
+                MenuItem {
+                    text: "Square"
+                    checkable: true
+                    checked: _ed.fieldEq("hotShape", "square", "round")
+                    onTriggered: _ed.applyField("hotShape", "square")
                 }
-                onTriggered: _ed.applyField("hotShape", "square")
-            }
-            MenuItem {
-                text: "Hotspot filled"
-                checkable: true
-                checked: {
-                    var n = _ed.nodeAt(_ed.selectedId)
-                    return !n || n.hotFill !== "hollow"
+                MenuSeparator {}
+                MenuItem {
+                    text: "Filled"
+                    checkable: true
+                    checked: _ed.fieldEq("hotFill", "filled", "filled")
+                    onTriggered: _ed.applyField("hotFill", "filled")
                 }
-                onTriggered: _ed.applyField("hotFill", "filled")
-            }
-            MenuItem {
-                text: "Hotspot hollow"
-                checkable: true
-                checked: {
-                    var n = _ed.nodeAt(_ed.selectedId)
-                    return !!n && n.hotFill === "hollow"
+                MenuItem {
+                    text: "Hollow"
+                    checkable: true
+                    checked: _ed.fieldEq("hotFill", "hollow", "filled")
+                    onTriggered: _ed.applyField("hotFill", "hollow")
                 }
-                onTriggered: _ed.applyField("hotFill", "hollow")
             }
             MenuItem {
                 text: "Highlight on press"
@@ -2477,7 +2443,7 @@ Item {
                 onTriggered: _ed.groupSelection()
             }
             MenuItem {
-                text: "Ungroup"
+                text: "Break group"
                 enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
                 onTriggered: {
                     _ed.setSelection([_ctx.nodeId])
@@ -2494,26 +2460,54 @@ Item {
                 enabled: _ed.groupEditId !== ""
                 onTriggered: _ed.endGroupEdit()
             }
+            MenuSeparator {}
+            MenuItem { text: "Align left"; onTriggered: _ed.setAlignH("left") }
+            MenuItem { text: "Align center"; onTriggered: _ed.setAlignH("center") }
+            MenuItem { text: "Align right"; onTriggered: _ed.setAlignH("right") }
+            MenuItem { text: "Free layout"; onTriggered: _ed.setAlignH("free") }
         }
         Menu {
             title: "Leader"
             MenuItem { text: "Add straight spine"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.ensureMidSpine(_ed.nodeAt(_ed.selectedId)); _ed.bump() } }
             MenuItem { text: "Add curved spine"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addCurveSpine(_ed.nodeAt(_ed.selectedId)) } }
-            MenuItem { text: "This segment curved"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.selectedSeg = _ctx.seg; _ed.setSegCurve(_ed.currentLeader(_ed.nodeAt(_ed.selectedId)), Math.max(0, _ctx.seg), true) } }
-            MenuItem { text: "This segment straight"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.selectedSeg = _ctx.seg; _ed.setSegCurve(_ed.currentLeader(_ed.nodeAt(_ed.selectedId)), Math.max(0, _ctx.seg), false) } }
-            MenuItem { text: "All segments curved"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.setAllSegCurve(true) } }
-            MenuItem { text: "All segments straight"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.setAllSegCurve(false) } }
+            Menu {
+                title: "This segment"
+                MenuItem { text: "Curved"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.selectedSeg = _ctx.seg; _ed.setSegCurve(_ed.currentLeader(_ed.nodeAt(_ed.selectedId)), Math.max(0, _ctx.seg), true) } }
+                MenuItem { text: "Straight"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.selectedSeg = _ctx.seg; _ed.setSegCurve(_ed.currentLeader(_ed.nodeAt(_ed.selectedId)), Math.max(0, _ctx.seg), false) } }
+            }
+            Menu {
+                title: "All segments"
+                MenuItem { text: "Curved"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.setAllSegCurve(true) } }
+                MenuItem { text: "Straight"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.setAllSegCurve(false) } }
+            }
             MenuSeparator {}
-            MenuItem { text: "Add leader (same chip)"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addLeader() } }
+            MenuItem { text: "Add leader"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addLeader() } }
             MenuItem { text: "Branch from this end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.addBranch() } }
-            MenuItem { text: "Delete spine"; enabled: _ed.selectedSpine >= 0; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.deleteSelection() } }
-            MenuItem { text: "Delete leader"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.deleteLeader() } }
+            Menu {
+                title: "Attach"
+                MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
+                MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
+                MenuItem { text: "Reconnect to this chip"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("from") } }
+                MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
+            }
             MenuSeparator {}
-            MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
-            MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
-            MenuItem { text: "Reconnect to this chip"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("from") } }
-            MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
-            MenuItem { text: "Delete selected spine"; onTriggered: _ed.deleteSelection() }
+            MenuItem {
+                text: "Delete spine"
+                enabled: _ed.selectedSpine >= 0
+                onTriggered: {
+                    _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                    _ed.selectedLeader = _ctx.leader
+                    _ed.deleteSelection()
+                }
+            }
+            MenuItem {
+                text: "Delete leader"
+                onTriggered: {
+                    _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                    _ed.selectedLeader = _ctx.leader
+                    _ed.deleteLeader()
+                }
+            }
         }
     }
 }
