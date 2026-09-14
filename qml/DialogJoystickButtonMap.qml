@@ -510,8 +510,10 @@ Window {
     }
 
     function resetLayout() {
-        workNodes = []
         var e = _ed()
+        if (e)
+            e.pushHist()
+        workNodes = []
         if (e)
             e.clearLayout()
         selectedId = ""
@@ -653,6 +655,17 @@ Window {
                                 title: "Session"
                                 MenuItem { text: "Save"; onTriggered: saveEdit() }
                                 MenuItem { text: "Cancel"; onTriggered: cancelEdit() }
+                                MenuSeparator {}
+                                MenuItem {
+                                    text: "Undo"
+                                    enabled: { var e = _ed(); return e ? e.canUndo : false }
+                                    onTriggered: { var e = _ed(); if (e) e.undo() }
+                                }
+                                MenuItem {
+                                    text: "Redo"
+                                    enabled: { var e = _ed(); return e ? e.canRedo : false }
+                                    onTriggered: { var e = _ed(); if (e) e.redo() }
+                                }
                                 MenuSeparator {}
                                 MenuItem { text: "Reset layout"; onTriggered: _resetDlg.open() }
                             }
@@ -913,6 +926,21 @@ Window {
                 }
                 Shortcut {
                     enabled: editing
+                    sequence: "Ctrl+Z"
+                    onActivated: { var e = _ed(); if (e) e.undo() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Shift+Z"
+                    onActivated: { var e = _ed(); if (e) e.redo() }
+                }
+                Shortcut {
+                    enabled: editing
+                    sequence: "Ctrl+Y"
+                    onActivated: { var e = _ed(); if (e) e.redo() }
+                }
+                Shortcut {
+                    enabled: editing
                     sequence: "Ctrl+G"
                     onActivated: { var e = _ed(); if (e) e.groupSelection() }
                 }
@@ -976,6 +1004,10 @@ Window {
                             function onSelectedChanged() { _buttonMap.applySelected() }
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
+                            function onHistChanged() {
+                                _buttonMap.applySelected()
+                                _buttonMap.refreshReservoir()
+                            }
                             function onNodesChanged() {
                                 _buttonMap.applySelected()
                                 _buttonMap.refreshReservoir()
@@ -1340,6 +1372,18 @@ Window {
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
                     }
+                }
+                Button {
+                    text: "Undo"
+                    implicitHeight: 24
+                    enabled: { var e = _ed(); return e ? e.canUndo : false }
+                    onClicked: { var e = _ed(); if (e) e.undo() }
+                }
+                Button {
+                    text: "Redo"
+                    implicitHeight: 24
+                    enabled: { var e = _ed(); return e ? e.canRedo : false }
+                    onClicked: { var e = _ed(); if (e) e.redo() }
                 }
                 Button {
                     text: "Group"

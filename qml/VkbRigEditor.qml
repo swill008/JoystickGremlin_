@@ -38,6 +38,14 @@ Item {
     property int dragLeader: 0
     signal selectedChanged()
     signal chipMenuRequested(real x, real y)
+    signal histChanged()
+
+    property var hist
+    property int histAt: -1
+    property int histCap: 80
+    property bool _restoring: false
+    readonly property bool canUndo: histAt > 0
+    readonly property bool canRedo: histAt >= 0 && hist && histAt < hist.length - 1
 
     // Do NOT declare signal nodesChanged — property var nodes already has it.
 
@@ -50,6 +58,79 @@ Item {
     function bump() {
         repaint()
         selectedChanged()
+    }
+
+    function snapJson() {
+        try {
+            return JSON.stringify(nodes || [])
+        } catch (e) {
+            return "[]"
+        }
+    }
+
+    function seedHist() {
+        hist = [snapJson()]
+        histAt = 0
+        histChanged()
+    }
+
+    function pushHist() {
+        if (_restoring || !interactive)
+            return
+        var s = snapJson()
+        var cur = hist || []
+        if (histAt >= 0 && histAt < cur.length && cur[histAt] === s)
+            return
+        var next = cur.slice(0, histAt + 1)
+        next.push(s)
+        if (next.length > histCap)
+            next = next.slice(next.length - histCap)
+        hist = next
+        histAt = next.length - 1
+        histChanged()
+    }
+
+    function applySnap(s) {
+        var next = []
+        try {
+            next = JSON.parse(s)
+        } catch (e) {
+            return
+        }
+        var list = nodes
+        if (!list)
+            return
+        list.splice(0, list.length)
+        for (var i = 0; i < next.length; i++)
+            list.push(next[i])
+    }
+
+    function undo() {
+        if (!canUndo)
+            return
+        histAt = histAt - 1
+        _restoring = true
+        applySnap(hist[histAt])
+        _restoring = false
+        groupEditId = ""
+        selectedMember = -1
+        setSelection([])
+        histChanged()
+        bump()
+    }
+
+    function redo() {
+        if (!canRedo)
+            return
+        histAt = histAt + 1
+        _restoring = true
+        applySnap(hist[histAt])
+        _restoring = false
+        groupEditId = ""
+        selectedMember = -1
+        setSelection([])
+        histChanged()
+        bump()
     }
 
     function clearLayout() {
@@ -142,6 +223,7 @@ Item {
     }
 
     function applyField(key, val) {
+        pushHist()
         var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
         for (var i = 0; i < ids.length; i++) {
             var n = nodeAt(ids[i])
@@ -174,6 +256,8 @@ Item {
             groupEditId = ""
             selectedMember = -1
             dragMember = -1
+        } else {
+            seedHist()
         }
         if (_lines)
             _lines.requestPaint()
@@ -395,6 +479,7 @@ Item {
             bump()
             return
         }
+        pushHist()
         var p
         if (wx !== undefined && wy !== undefined && wx !== null && wy !== null)
             p = toPhoto(wx, wy)
@@ -589,6 +674,7 @@ Item {
     function setSegCurve(L, j, on) {
         if (!L)
             return
+        pushHist()
         if (j <= 0)
             L.fromCurve = on
         else if (L.spines && L.spines[j - 1])
@@ -597,6 +683,7 @@ Item {
     }
 
     function toggleSegCurve() {
+        pushHist()
         var n = nodeAt(selectedId)
         if (!n)
             return
@@ -608,6 +695,7 @@ Item {
     }
 
     function setAllSegCurve(on) {
+        pushHist()
         var n = nodeAt(selectedId)
         if (!n)
             return
@@ -623,6 +711,7 @@ Item {
     }
 
     function addLeader() {
+        pushHist()
         var n = nodeAt(selectedId)
         if (!n)
             return
@@ -653,6 +742,7 @@ Item {
     }
 
     function addBranch() {
+        pushHist()
         var n = nodeAt(selectedId)
         if (!n)
             return
@@ -684,6 +774,7 @@ Item {
     }
 
     function deleteLeader() {
+        pushHist()
         var n = nodeAt(selectedId)
         if (!n)
             return
@@ -703,6 +794,7 @@ Item {
     }
 
     function setAlignH(mode) {
+        pushHist()
         var n = nodeAt(selectedId)
         if (!isGroup(n))
             return
@@ -874,6 +966,7 @@ Item {
     }
 
     function detachEnd(which) {
+        pushHist()
         var n = nodeAt(selectedId)
         if (!n) return
         var L = currentLeader(n)
@@ -889,6 +982,7 @@ Item {
     }
 
     function attachEndToSelf(which) {
+        pushHist()
         var n = nodeAt(selectedId)
         if (!n) return
         var L = currentLeader(n)
@@ -954,6 +1048,7 @@ Item {
 
     function addCurveSpine(n) {
         if (!n) return
+        pushHist()
         var L = currentLeader(n)
         L.curve = true
         var a = endPt(L.from)
@@ -1127,6 +1222,7 @@ Item {
         if (!n) {
             return
         }
+        pushHist()
         if (!n.spines) {
             n.spines = []
         }
@@ -1159,6 +1255,7 @@ Item {
             return
         var L = currentLeader(n)
         if (selectedSpine >= 0 && L.spines && selectedSpine < L.spines.length) {
+            pushHist()
             L.spines.splice(selectedSpine, 1)
             n.spines = L.spines
             selectedSpine = -1
@@ -1174,6 +1271,7 @@ Item {
         var idx = nodeIndex(nid)
         if (idx < 0)
             return false
+        pushHist()
         var list = nodes || []
         list.splice(idx, 1)
         var keep = []
@@ -1357,6 +1455,7 @@ Item {
         }
         if (parts.length < 2)
             return
+        pushHist()
         var axisN = 0
         for (i = 0; i < parts.length; i++) {
             if (parts[i].kind === "axis")
@@ -1431,6 +1530,7 @@ Item {
         var mem = n.members || []
         if (!mem.length)
             return
+        pushHist()
         var st = _styleOf(n)
         var leafKind = n.kind === "axis_stack" ? "axis" : "btn"
         var prefix = n.kind === "axis_stack" ? "A" : ""
@@ -1873,6 +1973,15 @@ Item {
             } else if (e.key === Qt.Key_Escape) {
                 _ed.endGroupEdit()
                 e.accepted = true
+            } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Z) {
+                if (e.modifiers & Qt.ShiftModifier)
+                    _ed.redo()
+                else
+                    _ed.undo()
+                e.accepted = true
+            } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Y) {
+                _ed.redo()
+                e.accepted = true
             }
         }
 
@@ -1880,10 +1989,13 @@ Item {
             forceActiveFocus()
             var hit = _ed.hitTest(m.x, m.y)
             var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
+            if (m.button !== Qt.RightButton && (hit.kind === "from" || hit.kind === "to" || hit.kind === "member" || hit.kind === "chip" || hit.kind === "hot" || hit.kind === "spine" || hit.kind === "line"))
+                _ed.pushHist()
             if (m.button === Qt.RightButton) {
                 if (hit.kind === "spine") {
                     var n = _ed.nodeAt(hit.id)
                     if (n && n.spines) {
+                        _ed.pushHist()
                         n.spines.splice(hit.spine, 1)
                         _ed.selectedSpine = -1
                         _ed.bump()
@@ -2100,6 +2212,17 @@ Item {
         property string nodeId: ""
         property int seg: -1
         property int leader: 0
+        MenuItem {
+            text: "Undo"
+            enabled: _ed.canUndo
+            onTriggered: _ed.undo()
+        }
+        MenuItem {
+            text: "Redo"
+            enabled: _ed.canRedo
+            onTriggered: _ed.redo()
+        }
+        MenuSeparator {}
         Menu {
             title: "Group"
             MenuItem {
