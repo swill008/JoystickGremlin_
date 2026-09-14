@@ -623,7 +623,7 @@ Window {
         MenuSeparator {}
         MenuItem { text: "Add leader (same chip / hotspot)"; onTriggered: { var e = _ed(); if (e) e.addLeader() } }
         MenuItem { text: "Branch from this end"; onTriggered: { var e = _ed(); if (e) e.addBranch() } }
-        MenuItem { text: "Delete extra leader"; onTriggered: { var e = _ed(); if (e) e.deleteLeader() } }
+        MenuItem { text: "Delete leader"; onTriggered: { var e = _ed(); if (e) e.deleteLeader() } }
         MenuSeparator {}
         MenuItem { text: "Detach chip end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("from") } }
         MenuItem { text: "Detach hotspot end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("to") } }
@@ -707,7 +707,7 @@ Window {
                                 MenuSeparator {}
                                 MenuItem { text: "Add leader (same chip / hotspot)"; onTriggered: { var e = _ed(); if (e) e.addLeader() } }
                                 MenuItem { text: "Branch from this end"; onTriggered: { var e = _ed(); if (e) e.addBranch() } }
-                                MenuItem { text: "Delete extra leader"; onTriggered: { var e = _ed(); if (e) e.deleteLeader() } }
+                                MenuItem { text: "Delete leader"; onTriggered: { var e = _ed(); if (e) e.deleteLeader() } }
                                 MenuSeparator {}
                                 MenuItem { text: "Detach chip end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("from") } }
                                 MenuItem { text: "Detach hotspot end"; onTriggered: { var e = _ed(); if (e) e.detachEnd("to") } }

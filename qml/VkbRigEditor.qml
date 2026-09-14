@@ -170,6 +170,8 @@ Item {
             var ep2 = snapPos(mx, my, altOff)
             var fr2 = { type: "free", fx: ep2.x / Math.max(1, width), fy: ep2.y / Math.max(1, height) }
             var Ld = currentLeader(n)
+            if (!Ld)
+                return
             if (dragKind === "to") Ld.to = fr2
             else Ld.from = fr2
             if (selectedLeader === 0) {
@@ -197,6 +199,8 @@ Item {
             }
         } else if (dragKind === "spine" && dragSpine >= 0) {
             var Ls = currentLeader(n)
+            if (!Ls)
+                return
             if (!Ls.spines) Ls.spines = []
             if (dragSpine < Ls.spines.length) {
                 var sp = snapPos(mx, my, altOff)
@@ -620,7 +624,7 @@ Item {
     }
 
     function leaderList(n) {
-        if (n && n.leaders && n.leaders.length)
+        if (n && n.leaders)
             return n.leaders
         return [_legacyLeader(n)]
     }
@@ -628,13 +632,15 @@ Item {
     function ensureLeaders(n) {
         if (!n)
             return []
-        if (!n.leaders || !n.leaders.length)
+        if (n.leaders === undefined || n.leaders === null)
             n.leaders = [_legacyLeader(n)]
         return n.leaders
     }
 
     function currentLeader(n) {
         var ls = ensureLeaders(n)
+        if (!ls.length)
+            return null
         var i = selectedLeader
         if (i < 0 || i >= ls.length)
             i = 0
@@ -688,6 +694,8 @@ Item {
         if (!n)
             return
         var L = currentLeader(n)
+        if (!L)
+            return
         var j = selectedSeg
         if (j < 0)
             j = (selectedSpine >= 0) ? (selectedSpine + 1) : 0
@@ -700,6 +708,8 @@ Item {
         if (!n)
             return
         var L = currentLeader(n)
+        if (!L)
+            return
         L.curve = on
         L.fromCurve = on
         var s = L.spines || []
@@ -716,7 +726,13 @@ Item {
         if (!n)
             return
         var ls = ensureLeaders(n)
-        var src = ls[selectedLeader] || ls[0]
+        var src = ls.length ? (ls[selectedLeader] || ls[0]) : null
+        if (!src) {
+            ls.push(_legacyLeader(n))
+            selectedLeader = 0
+            bump()
+            return
+        }
         var a = endPt(src.from)
         ls.push({
             id: _uid("L"),
@@ -747,7 +763,9 @@ Item {
         if (!n)
             return
         var ls = ensureLeaders(n)
-        var src = ls[selectedLeader] || ls[0]
+        var src = ls.length ? (ls[selectedLeader] || ls[0]) : null
+        if (!src)
+            return
         var origin = (src.to && src.to.type === "free") ? src.to : src.from
         var p = endPt(origin)
         ls.push({
@@ -779,10 +797,26 @@ Item {
         if (!n)
             return
         var ls = ensureLeaders(n)
-        if (ls.length < 2)
+        if (!ls.length)
             return
-        ls.splice(selectedLeader, 1)
-        selectedLeader = Math.max(0, selectedLeader - 1)
+        var i = selectedLeader
+        if (i < 0 || i >= ls.length)
+            i = 0
+        ls.splice(i, 1)
+        n.leaders = ls
+        if (ls.length) {
+            selectedLeader = Math.min(i, ls.length - 1)
+            var L = ls[selectedLeader]
+            n.spines = L.spines || []
+            n.from = L.from
+            n.to = L.to
+        } else {
+            selectedLeader = 0
+            selectedSpine = -1
+            n.spines = []
+            n.from = undefined
+            n.to = undefined
+        }
         bump()
     }
 
@@ -970,6 +1004,8 @@ Item {
         var n = nodeAt(selectedId)
         if (!n) return
         var L = currentLeader(n)
+        if (!L)
+            return
         var p = endPt(which === "to" ? L.to : L.from)
         var free = { type: "free", fx: p.x / Math.max(1, width), fy: p.y / Math.max(1, height) }
         if (which === "to") L.to = free
@@ -986,6 +1022,8 @@ Item {
         var n = nodeAt(selectedId)
         if (!n) return
         var L = currentLeader(n)
+        if (!L)
+            return
         if (which === "to") L.to = { type: "hot", id: n.id }
         else L.from = { type: "chip", id: n.id, pin: n.pin || "right" }
         if (selectedLeader === 0) {
@@ -1038,6 +1076,8 @@ Item {
             return
         }
         var L = currentLeader(n)
+        if (!L)
+            return
         var a = endPt(L.from)
         var b = endPt(L.to)
         if (L.spines && L.spines.length)
@@ -1050,6 +1090,8 @@ Item {
         if (!n) return
         pushHist()
         var L = currentLeader(n)
+        if (!L)
+            return
         L.curve = true
         var a = endPt(L.from)
         var b = endPt(L.to)
@@ -1227,6 +1269,8 @@ Item {
             n.spines = []
         }
         var L = currentLeader(n)
+        if (!L)
+            return
         if (!L.spines)
             L.spines = []
         var pts = pathPtsL(L)
@@ -1254,6 +1298,8 @@ Item {
         if (!n)
             return
         var L = currentLeader(n)
+        if (!L)
+            return
         if (selectedSpine >= 0 && L.spines && selectedSpine < L.spines.length) {
             pushHist()
             L.spines.splice(selectedSpine, 1)
@@ -2054,6 +2100,8 @@ Item {
                 var ne = _ed.nodeAt(hit.id)
                 if (ne) {
                     var L0 = _ed.currentLeader(ne)
+                    if (!L0)
+                        return
                     var ep = _ed.endPt(hit.kind === "to" ? L0.to : L0.from)
                     var fr = { type: "free", fx: ep.x / Math.max(1, width), fy: ep.y / Math.max(1, height) }
                     if (hit.kind === "to") L0.to = fr
@@ -2148,15 +2196,17 @@ Item {
                 if (n3) {
                     var hooked = _ed.attachNear(m.x, m.y)
                     var Lr = _ed.currentLeader(n3)
-                    if (_ed.dragKind === "to") Lr.to = hooked
-                    else {
-                        Lr.from = hooked
-                        if (hooked.type === "chip" && hooked.id === n3.id)
-                            n3.pin = hooked.pin || n3.pin
-                    }
-                    if (_ed.selectedLeader === 0) {
-                        n3.to = Lr.to
-                        n3.from = Lr.from
+                    if (Lr) {
+                        if (_ed.dragKind === "to") Lr.to = hooked
+                        else {
+                            Lr.from = hooked
+                            if (hooked.type === "chip" && hooked.id === n3.id)
+                                n3.pin = hooked.pin || n3.pin
+                        }
+                        if (_ed.selectedLeader === 0) {
+                            n3.to = Lr.to
+                            n3.from = Lr.from
+                        }
                     }
                 }
                 _ed.dragKind = ""
@@ -2233,6 +2283,15 @@ Item {
             enabled: _ed.canRedo
             onTriggered: _ed.redo()
         }
+        MenuItem {
+            text: "Delete leader"
+            enabled: _ctx.nodeId !== ""
+            onTriggered: {
+                _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                _ed.selectedLeader = _ctx.leader
+                _ed.deleteLeader()
+            }
+        }
         MenuSeparator {}
         Menu {
             title: "Group"
@@ -2271,7 +2330,7 @@ Item {
             MenuSeparator {}
             MenuItem { text: "Add leader (same chip)"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addLeader() } }
             MenuItem { text: "Branch from this end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.addBranch() } }
-            MenuItem { text: "Delete extra leader"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.deleteLeader() } }
+            MenuItem { text: "Delete leader"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.deleteLeader() } }
             MenuSeparator {}
             MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
             MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
