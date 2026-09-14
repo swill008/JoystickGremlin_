@@ -405,11 +405,11 @@ Window {
             model: [
                 {
                     h: "Overview",
-                    b: "File → Edit places chips, hotspots, leaders, groups, and draw frames on the stick photo. The live map uses the same layout. Hardware still lights the chip when you press the stick — layout does not change bindings.\n\nFile → Edit to start, then File → Save. File → Cancel drops the session. Closing with unsaved work asks first."
+                    b: "File → Edit Mapping places chips, hotspots, leaders, groups, and draw frames on the stick photo. The live map uses the same layout. Hardware still lights the chip when you press the stick — layout does not change bindings.\n\nFile → Edit Mapping to start, then File → Save. File → Cancel drops the session. Closing with unsaved work asks first."
                 },
                 {
                     h: "File",
-                    b: "File → Edit starts the session.\nSave writes the control.hardware profile and becomes the live map.\nCancel leaves without writing.\nReset layout sends every chip back to the reservoir. Inputs still illuminate.\nChoose background / Clear image swap the photo under the map."
+                    b: "File → Edit Mapping starts the session.\nSave writes the control.hardware profile and becomes the live map.\nCancel leaves without writing.\nReset layout sends every chip back to the reservoir. Inputs still illuminate.\nChoose background / Clear image swap the photo under the map."
                 },
                 {
                     h: "View, zoom, pan",
@@ -727,7 +727,7 @@ Window {
                     Menu {
                         title: "File"
                         MenuItem {
-                            text: "Edit"
+                            text: "Edit Mapping"
                             enabled: !editing
                             onTriggered: enterEdit()
                         }
