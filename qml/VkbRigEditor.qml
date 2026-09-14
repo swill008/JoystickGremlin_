@@ -1223,7 +1223,9 @@ Item {
         if (!n)
             return false
         var k = n.kind
-        return k === "plus" || k === "pair" || k === "axis_stack" || k === "stack"
+        if (k === "plus" || k === "pair" || k === "axis_stack" || k === "stack")
+            return true
+        return !!(n.members && n.members.length)
     }
 
     function beginGroupEdit(id) {
@@ -1334,9 +1336,9 @@ Item {
             var mem = n.members || []
             var leaf = n.kind === "axis_stack" ? "axis" : "btn"
             for (var i = 0; i < mem.length; i++)
-                out.push({ hwId: mem[i].hwId, kind: leaf, role: mem[i].role || "", src: n })
+                out.push({ hwId: mem[i].hwId, kind: leaf, role: mem[i].role || "", src: n, friendly: mem[i].friendly || "" })
         } else {
-            out.push({ hwId: n.hwId, kind: n.kind || "btn", role: "", src: n })
+            out.push({ hwId: n.hwId, kind: n.kind || "btn", role: "", src: n, friendly: n.friendly || "" })
         }
         return out
     }
@@ -1390,7 +1392,7 @@ Item {
                 role: parts[i].role || ("m" + i),
                 ox: parts[i].src.chipFx - ox0,
                 oy: parts[i].src.chipFy - oy0,
-                friendly: parts[i].src.friendly || defaultFriendly(parts[i].kind, parts[i].hwId)
+                friendly: parts[i].friendly || parts[i].src.friendly || defaultFriendly(parts[i].kind, parts[i].hwId)
             })
         var g = {
             id: _uid("g"), kind: kind, members: members,
@@ -1400,6 +1402,15 @@ Item {
             highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
             hlText: st.hlText, fontSize: st.fontSize, label: "", chipSize: st.chipSize, chipShape: st.chipShape, chipFill: st.chipFill, hotSize: st.hotSize, hotShape: st.hotShape, hotFill: st.hotFill
         }
+        g.from = { type: "chip", id: g.id, pin: g.pin }
+        g.to = { type: "hot", id: g.id }
+        g.leaders = [{
+            id: g.id + "_L0",
+            from: g.from,
+            to: g.to,
+            spines: [],
+            curve: st.curve !== false
+        }]
         var drop = {}
         for (i = 0; i < ids.length; i++)
             drop[ids[i]] = true
@@ -1891,7 +1902,7 @@ Item {
                     return
                 }
                 if (hit.kind === "chip" || hit.kind === "member" || hit.kind === "hot") {
-                    if (hit.id)
+                    if (hit.id && !_ed.isSelected(hit.id))
                         _ed.setSelection([hit.id])
                     if (hit.kind === "member")
                         _ed.selectedMember = hit.member
