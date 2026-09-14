@@ -1371,7 +1371,18 @@ Window {
             }
             onReleased: rememberChipPopSize()
         }
-        ColumnLayout {
+        MouseArea {
+            id: _chipDrag
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.SizeAllCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: (m) => _chipPop.startMove(m.x, m.y, this)
+            onPositionChanged: (m) => {
+                if (pressed)
+                    _chipPop.moveWin(m.x, m.y, this)
+            }
+            ColumnLayout {
             anchors.fill: parent
             anchors.margins: 10
             anchors.bottomMargin: 14
@@ -1379,23 +1390,13 @@ Window {
             spacing: 6
             RowLayout {
                 Layout.fillWidth: true
-                MouseArea {
+                Label {
+                    text: selectedNode ? (selectedNode.friendly || selectedNode.id || "Chip") : "Chip"
+                    font.bold: true
+                    color: "#E4E4E7"
                     Layout.fillWidth: true
-                    implicitHeight: 24
-                    cursorShape: Qt.SizeAllCursor
-                    onPressed: (m) => _chipPop.startMove(m.x, m.y, this)
-                    onPositionChanged: (m) => {
-                        if (pressed)
-                            _chipPop.moveWin(m.x, m.y, this)
-                    }
-                    Label {
-                        anchors.fill: parent
-                        text: selectedNode ? (selectedNode.friendly || selectedNode.id || "Chip") : "Chip"
-                        font.bold: true
-                        color: "#E4E4E7"
-                        elide: Text.ElideRight
-                        verticalAlignment: Text.AlignVCenter
-                    }
+                    elide: Text.ElideRight
+                    verticalAlignment: Text.AlignVCenter
                 }
                 Button {
                     text: "Undo"
@@ -1609,6 +1610,7 @@ Window {
                     }
                 }
             }
+        }
         }
 
         Grip { edge: "n"; height: 6; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; cursorShape: Qt.SizeVerCursor }
