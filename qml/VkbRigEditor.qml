@@ -2065,36 +2065,22 @@ Item {
             var hit = _ed.hitTest(m.x, m.y)
             var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
             if (m.button === Qt.RightButton) {
-                if (hit.kind === "spine") {
-                    var n = _ed.nodeAt(hit.id)
-                    if (n && n.spines) {
-                        n.spines.splice(hit.spine, 1)
-                        _ed.selectedSpine = -1
-                        _ed.bump()
-                    }
-                    return
-                }
-                if (hit.kind === "line" || hit.kind === "spine" || hit.kind === "from" || hit.kind === "to") {
-                    if (hit.id)
+                if (hit.id) {
+                    if (!shift && !_ed.isSelected(hit.id))
                         _ed.setSelection([hit.id])
                     _ctx.nodeId = hit.id
                     _ctx.seg = (hit.seg !== undefined) ? hit.seg : -1
                     _ctx.leader = (hit.leader !== undefined) ? hit.leader : 0
                     _ed.selectedLeader = _ctx.leader
                     _ed.selectedSeg = _ctx.seg
-                    _ctx.popup()
-                    return
-                }
-                if (hit.kind === "chip" || hit.kind === "member" || hit.kind === "hot") {
-                    if (hit.id && !_ed.isSelected(hit.id))
-                        _ed.setSelection([hit.id])
                     if (hit.kind === "member")
                         _ed.selectedMember = hit.member
-                    _ed.chipMenuRequested(m.x, m.y)
-                    return
+                } else {
+                    _ctx.nodeId = ""
+                    _ctx.seg = -1
+                    _ctx.leader = 0
                 }
-                _ctx.nodeId = ""
-                _ctx.seg = -1
+                _ed.chipMenuRequested(m.x, m.y)
                 _ctx.popup()
                 return
             }
@@ -2332,6 +2318,159 @@ Item {
                 text: "Done editing group"
                 enabled: _ed.groupEditId !== ""
                 onTriggered: _ed.endGroupEdit()
+            }
+        }
+        Menu {
+            title: "Single"
+            enabled: _ed.selectedId !== ""
+            MenuItem {
+                enabled: false
+                text: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return n ? (n.friendly || n.id || "Chip") : "Chip"
+                }
+            }
+            MenuSeparator {}
+            Menu {
+                title: "Font size"
+                Repeater {
+                    model: [8, 9, 10, 11, 12, 14, 16, 18, 20, 22]
+                    MenuItem {
+                        required property int modelData
+                        text: "" + modelData
+                        checkable: true
+                        checked: {
+                            var n = _ed.nodeAt(_ed.selectedId)
+                            return !!n && ((n.fontSize || 10) === modelData)
+                        }
+                        onTriggered: _ed.applyField("fontSize", modelData)
+                    }
+                }
+            }
+            Menu {
+                title: "Chip size"
+                Repeater {
+                    model: [12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48]
+                    MenuItem {
+                        required property int modelData
+                        text: "" + modelData
+                        checkable: true
+                        checked: {
+                            var n = _ed.nodeAt(_ed.selectedId)
+                            return !!n && ((n.chipSize || 18) === modelData)
+                        }
+                        onTriggered: _ed.applyField("chipSize", modelData)
+                    }
+                }
+            }
+            MenuItem {
+                text: "Chip round"
+                checkable: true
+                checked: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || n.chipShape !== "square"
+                }
+                onTriggered: _ed.applyField("chipShape", "round")
+            }
+            MenuItem {
+                text: "Chip square"
+                checkable: true
+                checked: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!n && n.chipShape === "square"
+                }
+                onTriggered: _ed.applyField("chipShape", "square")
+            }
+            MenuItem {
+                text: "Chip filled"
+                checkable: true
+                checked: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || n.chipFill !== "hollow"
+                }
+                onTriggered: _ed.applyField("chipFill", "filled")
+            }
+            MenuItem {
+                text: "Chip hollow"
+                checkable: true
+                checked: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!n && n.chipFill === "hollow"
+                }
+                onTriggered: _ed.applyField("chipFill", "hollow")
+            }
+            Menu {
+                title: "Hotspot size"
+                Repeater {
+                    model: [4, 6, 8, 9, 10, 12, 14, 16, 20, 24, 28]
+                    MenuItem {
+                        required property int modelData
+                        text: "" + modelData
+                        checkable: true
+                        checked: {
+                            var n = _ed.nodeAt(_ed.selectedId)
+                            return !!n && ((n.hotSize || 9) === modelData)
+                        }
+                        onTriggered: _ed.applyField("hotSize", modelData)
+                    }
+                }
+            }
+            MenuItem {
+                text: "Hotspot round"
+                checkable: true
+                checked: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || n.hotShape !== "square"
+                }
+                onTriggered: _ed.applyField("hotShape", "round")
+            }
+            MenuItem {
+                text: "Hotspot square"
+                checkable: true
+                checked: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!n && n.hotShape === "square"
+                }
+                onTriggered: _ed.applyField("hotShape", "square")
+            }
+            MenuItem {
+                text: "Hotspot filled"
+                checkable: true
+                checked: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || n.hotFill !== "hollow"
+                }
+                onTriggered: _ed.applyField("hotFill", "filled")
+            }
+            MenuItem {
+                text: "Hotspot hollow"
+                checkable: true
+                checked: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!n && n.hotFill === "hollow"
+                }
+                onTriggered: _ed.applyField("hotFill", "hollow")
+            }
+            MenuItem {
+                text: "Highlight on press"
+                checkable: true
+                checked: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || n.highlight !== false
+                }
+                onTriggered: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    _ed.applyField("highlight", !(n && n.highlight !== false))
+                }
+            }
+            MenuSeparator {}
+            MenuItem {
+                text: "Delete chip"
+                enabled: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!n && !_ed.isGroup(n)
+                }
+                onTriggered: _ed.deleteChip()
             }
         }
         Menu {

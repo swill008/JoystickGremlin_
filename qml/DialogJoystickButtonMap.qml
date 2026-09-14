@@ -582,20 +582,6 @@ Window {
 
     function openChipMenu(x, y) {
         applySelected()
-        if (!selectedNode)
-            return
-        var e = _ed()
-        applyChipPopSize()
-        if (!chipPopPlaced) {
-            var p = e ? e.mapToItem(_buttonMap.contentItem, x, y) : Qt.point(x, y)
-            _chipPop.x = Math.max(8, Math.min(p.x, _buttonMap.width - _chipPop.width - 8))
-            _chipPop.y = Math.max(8, Math.min(p.y, _buttonMap.height - _chipPop.height - 8))
-            chipPopPlaced = true
-        } else {
-            _chipPop.x = Math.max(8, Math.min(_chipPop.x, _buttonMap.width - _chipPop.width - 8))
-            _chipPop.y = Math.max(8, Math.min(_chipPop.y, _buttonMap.height - _chipPop.height - 8))
-        }
-        _chipPop.open()
     }
 
     Menu {
