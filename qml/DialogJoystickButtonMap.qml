@@ -1377,6 +1377,7 @@ Window {
             hoverEnabled: true
             cursorShape: Qt.SizeAllCursor
             acceptedButtons: Qt.LeftButton
+            preventStealing: true
             onPressed: (m) => _chipPop.startMove(m.x, m.y, this)
             onPositionChanged: (m) => {
                 if (pressed)
@@ -1462,12 +1463,22 @@ Window {
                 }
             }
             Flickable {
+                id: _chipFlick
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                interactive: false
                 contentWidth: width
                 contentHeight: _chipForm.implicitHeight
                 boundsBehavior: Flickable.StopAtBounds
+                WheelHandler {
+                    onWheel: (w) => {
+                        var ny = _chipFlick.contentY - w.angleDelta.y * 0.5
+                        var maxY = Math.max(0, _chipFlick.contentHeight - _chipFlick.height)
+                        _chipFlick.contentY = Math.max(0, Math.min(maxY, ny))
+                        w.accepted = true
+                    }
+                }
                 ColumnLayout {
                     id: _chipForm
                     width: parent.width
