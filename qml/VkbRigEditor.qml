@@ -48,10 +48,10 @@ Item {
     property string packWarn: ""
     readonly property real worldPageW: 32000
     readonly property real worldPageH: 18000
-    readonly property real innerPageW: 16000
-    readonly property real innerPageH: 9000
-    readonly property real innerPadX: 0.25
-    readonly property real innerPadY: 0.25
+    readonly property real innerPageW: 24000
+    readonly property real innerPageH: 13500
+    readonly property real innerPadX: 0.125
+    readonly property real innerPadY: 0.125
     readonly property real uiRefW: 1600
     readonly property real uiScale: {
         var s = Math.min(width / Math.max(1, worldPageW), height / Math.max(1, worldPageH))
