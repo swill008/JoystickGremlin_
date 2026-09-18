@@ -1294,6 +1294,27 @@ Item {
     }
 
     function memberLocalX(n, mem) {
+        var a = groupAlignH(n)
+        if (!themeLayout(n) && a === "center") {
+            var w = chipWGuess(n, mem)
+            return Math.max(0, (groupSpanW(n) - w) * 0.5)
+        }
+        if (!themeLayout(n) && a === "right") {
+            var wr = chipWGuess(n, mem)
+            return Math.max(0, groupSpanW(n) - wr)
+        }
+        if (!themeLayout(n) && a === "left")
+            return 0
+        return memberHomeX(n, mem) - groupMinX(n)
+    }
+
+    function memberLocalY(n, mem) {
+        if (!themeLayout(n) && groupAlignH(n) !== "free")
+            return captionH(n) + memberIndexOf(n, mem) * stackPitch(n)
+        return memberHomeY(n, mem) - groupMinY(n)
+    }
+
+    function memberHomeX(n, mem) {
         if (themeLayout(n)) {
             var g = themeGeom(n)
             var r = fiveWayRole(mem)
@@ -1302,17 +1323,12 @@ Item {
         var ew = Math.max(1, spaceRect().w)
         var a = groupAlignH(n)
         var w = chipWGuess(n, mem)
-        var span = groupSpanW(n)
-        if (a === "center")
-            return Math.max(0, (span - w) * 0.5)
-        if (a === "right")
-            return Math.max(0, span - w)
-        if (a === "left")
+        if (a === "center" || a === "right" || a === "left")
             return 0
-        return (mem.ox || 0) * ew - groupMinX(n)
+        return (mem.ox || 0) * ew
     }
 
-    function memberLocalY(n, mem) {
+    function memberHomeY(n, mem) {
         var cap = captionH(n)
         if (themeLayout(n)) {
             var g = themeGeom(n)
@@ -1321,53 +1337,53 @@ Item {
         }
         if (groupAlignH(n) !== "free")
             return cap + memberIndexOf(n, mem) * stackPitch(n)
-        var eh = Math.max(1, spaceRect().h)
-        return (mem.oy || 0) * eh - groupMinY(n)
+        return (mem.oy || 0) * Math.max(1, spaceRect().h)
     }
 
     function groupMinX(n) {
-        if (themeLayout(n))
-            return 0
-        if (groupAlignH(n) !== "free")
-            return 0
         var mem = (n && n.members) ? n.members : []
-        var ew = Math.max(1, spaceRect().w)
-        var minx = 1e9
-        for (var i = 0; i < mem.length; i++)
-            minx = Math.min(minx, (mem[i].ox || 0) * ew)
-        return minx < 1e8 ? minx : 0
+        if (!mem.length)
+            return 0
+        if (themeLayout(n) || groupAlignH(n) === "free") {
+            var minx = 1e9
+            var i
+            for (i = 0; i < mem.length; i++)
+                minx = Math.min(minx, memberHomeX(n, mem[i]))
+            return minx < 1e8 ? minx : 0
+        }
+        return 0
     }
 
     function groupMinY(n) {
-        if (themeLayout(n))
-            return 0
-        if (groupAlignH(n) !== "free")
-            return 0
         var mem = (n && n.members) ? n.members : []
-        var eh = Math.max(1, spaceRect().h)
-        var miny = 1e9
-        for (var i = 0; i < mem.length; i++)
-            miny = Math.min(miny, (mem[i].oy || 0) * eh)
-        return miny < 1e8 ? miny : 0
+        if (!mem.length)
+            return 0
+        if (themeLayout(n) || groupAlignH(n) === "free") {
+            var miny = 1e9
+            var i
+            for (i = 0; i < mem.length; i++)
+                miny = Math.min(miny, memberHomeY(n, mem[i]))
+            return miny < 1e8 ? miny : 0
+        }
+        return 0
     }
 
     function groupSpanW(n) {
         var mem = (n && n.members) ? n.members : []
         if (!mem.length)
             return 40
-        if (themeLayout(n))
-            return themeGeom(n).w
-        if (groupAlignH(n) !== "free") {
+        if (groupAlignH(n) !== "free" && !themeLayout(n)) {
             var maxw = 8
-            for (var i = 0; i < mem.length; i++)
+            var i
+            for (i = 0; i < mem.length; i++)
                 maxw = Math.max(maxw, chipWGuess(n, mem[i]))
             return maxw
         }
-        var ew = Math.max(1, spaceRect().w)
         var minx = groupMinX(n)
         var maxx = minx
-        for (var j = 0; j < mem.length; j++)
-            maxx = Math.max(maxx, (mem[j].ox || 0) * ew + chipWGuess(n, mem[j]))
+        var j
+        for (j = 0; j < mem.length; j++)
+            maxx = Math.max(maxx, memberHomeX(n, mem[j]) + chipWGuess(n, mem[j]))
         return Math.max(8, maxx - minx)
     }
 
@@ -1375,15 +1391,13 @@ Item {
         var mem = (n && n.members) ? n.members : []
         if (!mem.length)
             return 20
-        if (themeLayout(n))
-            return themeGeom(n).h
-        if (groupAlignH(n) !== "free")
+        if (groupAlignH(n) !== "free" && !themeLayout(n))
             return Math.max(8, captionH(n) + mem.length * stackPitch(n) - 2)
-        var eh = Math.max(1, spaceRect().h)
         var miny = groupMinY(n)
         var maxy = miny
-        for (var i = 0; i < mem.length; i++)
-            maxy = Math.max(maxy, (mem[i].oy || 0) * eh + chipH(n))
+        var i
+        for (i = 0; i < mem.length; i++)
+            maxy = Math.max(maxy, memberHomeY(n, mem[i]) + chipH(n, mem[i]))
         return Math.max(8, maxy - miny)
     }
 
@@ -1611,6 +1625,17 @@ Item {
             n = list[i]
             if (isPinnable(n) && hitOverlayPin(n, mx, my))
                 return { kind: "overlayPin", id: n.id, spine: -1 }
+        }
+        for (i = 0; i < list.length; i++) {
+            n = list[i]
+            if (!isGroup(n))
+                continue
+            var mi0 = memberHit(n, mx, my)
+            if (mi0 < 0)
+                continue
+            if (groupEditId === n.id)
+                return { kind: "member", id: n.id, spine: -1, member: mi0 }
+            return { kind: "chip", id: n.id, spine: -1 }
         }
         for (i = 0; i < list.length; i++) {
             n = list[i]
