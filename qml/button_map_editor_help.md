@@ -61,13 +61,37 @@ Left-drag moves the chip. The hotspot (dot on the photo) is the hardware contact
 | Size / Round / Square / Filled / Hollow | Chip body |
 | Fill… / Outline… / Text… | Idle colors (HSV picker) |
 | Pressed fill / outline / text | Live highlight colors |
-| Leader… / Hotspot… | Line and contact colors |
-| Hotspot size / shape / fill | Contact graphic |
 | Highlight on press | Live fill when the stick is down |
 | Reset this cell | Drop member style overrides (Edit group only) |
 | Delete chip | Return to the reservoir |
 
 Delete / Backspace on a single chip also returns it to the pool. Yellow ring is selection.
+
+Hotspot (photo input) and Leader End (wire stop) are first-level menus, not under Chip.
+
+## Hotspot
+
+Hotspot is the input on the photo — the control you press — not the chip label.
+
+| Item | Function |
+|---|---|
+| Size | Dot diameter |
+| Round / Square | Dot shape |
+| Filled / Hollow | Dot fill |
+| Color… | HSV picker for the photo dot only |
+
+## Leader End
+
+Leader End is where the wire stops. It is not the hotspot fill.
+
+| Item | Function |
+|---|---|
+| Detach chip end | Free the terminus on the pill |
+| Detach hotspot end | Free the terminus on the photo |
+| Reconnect to this chip | Snap the chip-side end back |
+| Reconnect to this hotspot | Snap the photo-side end back |
+
+Leader still owns line color, weight, extra leaders, and curve.
 
 ## Groups
 
@@ -115,7 +139,7 @@ The first screen follows the click target.
 |---|---|
 | Group | Undo, Redo, Clear Format (theme or cell overrides), then Chip / Group / Format / Align / Leader / Draw |
 | Leader or spine handle | Undo, Redo, Clear Format if the line belongs to a group, then Add spine, Convert spine, Delete selected spine, Clear spines, then the family drawers |
-| Chip | Undo, Chip, Group, Format, Align, Leader, Draw |
+| Chip / group | Undo, Chip, Hotspot, Leader End, Group, Format, Align, Leader, Draw |
 | Empty photo | Undo and Draw |
 
 Gray items are gated: no selection, not a group, not a 5-way, or no spines.
