@@ -1,9 +1,21 @@
 {
   "kind": "control.hardware",
   "device": "VKBsim Gladiator EVO R",
+  "space": "world",
+  "page": 32000,
+  "pageW": 32000,
+  "pageH": 18000,
   "image": "qml/images/vkb_gladiator_rig.jpg",
   "imageWidth": 899,
   "imageHeight": 920,
+  "ui": {
+    "chipPopW": 280,
+    "chipPopH": 480,
+    "gridOn": true,
+    "snapOn": true,
+    "snapEntOn": true,
+    "gridSize": 4
+  },
   "nodes": [
     {
       "id": "h1",
@@ -11,10 +23,10 @@
       "hwId": 1,
       "prefix": "H",
       "label": "",
-      "nx": 0.345,
-      "ny": 0.18,
-      "chipFx": 0.34,
-      "chipFy": 0.33,
+      "nx": 0.34990730441230994,
+      "ny": 0.18000000000000008,
+      "chipFx": 0.42927719634433964,
+      "chipFy": 0.3337777777777778,
       "pin": "right",
       "spines": [],
       "color": "#18181B",
@@ -24,39 +36,75 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "Hat 1",
+      "leaders": [
+        {
+          "id": "h1_L0",
+          "from": {
+            "type": "chip",
+            "id": "h1",
+            "pin": "right"
+          },
+          "to": {
+            "type": "hot",
+            "id": "h1"
+          },
+          "spines": []
+        }
+      ],
+      "from": {
+        "type": "chip",
+        "id": "h1",
+        "pin": "right"
+      },
+      "to": {
+        "type": "hot",
+        "id": "h1"
+      }
     },
     {
       "id": "p1115",
-      "kind": "plus",
+      "kind": "stack",
       "members": [
         {
           "hwId": 11,
-          "role": "up"
+          "role": "up",
+          "friendly": "Button 11"
         },
         {
           "hwId": 13,
-          "role": "down"
+          "role": "down",
+          "friendly": "Button 13"
         },
         {
           "hwId": 14,
-          "role": "left"
+          "role": "left",
+          "friendly": "Button 14"
         },
         {
           "hwId": 12,
-          "role": "right"
+          "role": "right",
+          "friendly": "Button 12"
         },
         {
           "hwId": 15,
-          "role": "center"
+          "role": "center",
+          "friendly": "Button 15"
         }
       ],
-      "nx": 0.418,
-      "ny": 0.175,
-      "chipFx": 0.34,
-      "chipFy": 0.37,
+      "nx": 0.40721542454579146,
+      "ny": 0.17422222222222214,
+      "chipFx": 0.38094560731132077,
+      "chipFy": 0.30358909853249477,
       "pin": "right",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.447875,
+          "fy": 0.3233333333333333,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -64,39 +112,74 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "p1115",
+      "leaders": [
+        {
+          "id": "p1115_L0",
+          "from": {
+            "type": "chip",
+            "id": "p1115",
+            "pin": "right"
+          },
+          "to": {
+            "type": "hot",
+            "id": "p1115"
+          },
+          "spines": [
+            {
+              "fx": 0.447875,
+              "fy": 0.3233333333333333,
+              "curve": true
+            }
+          ]
+        }
+      ],
+      "hotFill": "hollow",
+      "hotSize": 28
     },
     {
       "id": "p610",
-      "kind": "plus",
+      "kind": "stack",
       "members": [
         {
           "hwId": 6,
-          "role": "up"
+          "role": "up",
+          "friendly": "Button 6"
         },
         {
           "hwId": 8,
-          "role": "down"
+          "role": "down",
+          "friendly": "Button 8"
         },
         {
           "hwId": 9,
-          "role": "left"
+          "role": "left",
+          "friendly": "Button 9"
         },
         {
           "hwId": 7,
-          "role": "right"
+          "role": "right",
+          "friendly": "Button 7"
         },
         {
           "hwId": 10,
-          "role": "center"
+          "role": "center",
+          "friendly": "Button 10"
         }
       ],
-      "nx": 0.412,
-      "ny": 0.228,
-      "chipFx": 0.34,
-      "chipFy": 0.43,
+      "nx": 0.39811889754047725,
+      "ny": 0.23199999999999998,
+      "chipFx": 0.38094560731132077,
+      "chipFy": 0.40735849056603773,
       "pin": "right",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.46125,
+          "fy": 0.42177777777777775,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -104,7 +187,31 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "p610",
+      "leaders": [
+        {
+          "id": "p610_L0",
+          "from": {
+            "type": "chip",
+            "id": "p610",
+            "pin": "right"
+          },
+          "to": {
+            "type": "hot",
+            "id": "p610"
+          },
+          "spines": [
+            {
+              "fx": 0.46125,
+              "fy": 0.42177777777777775,
+              "curve": true
+            }
+          ]
+        }
+      ],
+      "hotFill": "hollow",
+      "hotSize": 28
     },
     {
       "id": "b3",
@@ -112,10 +219,10 @@
       "hwId": 3,
       "prefix": "",
       "label": "",
-      "nx": 0.346,
-      "ny": 0.254,
-      "chipFx": 0.34,
-      "chipFy": 0.48,
+      "nx": 0.34990730441230994,
+      "ny": 0.25688888888888894,
+      "chipFx": 0.42628559846698116,
+      "chipFy": 0.37641509433962267,
       "pin": "right",
       "spines": [],
       "color": "#18181B",
@@ -125,39 +232,66 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "Button 3",
+      "leaders": [
+        {
+          "id": "b3_L0",
+          "from": {
+            "type": "chip",
+            "id": "b3",
+            "pin": "right"
+          },
+          "to": {
+            "type": "hot",
+            "id": "b3"
+          },
+          "spines": []
+        }
+      ]
     },
     {
       "id": "p1620",
-      "kind": "plus",
+      "kind": "stack",
       "members": [
         {
           "hwId": 16,
-          "role": "up"
+          "role": "up",
+          "friendly": "Button 16"
         },
         {
           "hwId": 18,
-          "role": "down"
+          "role": "down",
+          "friendly": "Button 18"
         },
         {
           "hwId": 19,
-          "role": "left"
+          "role": "left",
+          "friendly": "Button 19"
         },
         {
           "hwId": 17,
-          "role": "right"
+          "role": "right",
+          "friendly": "Button 17"
         },
         {
           "hwId": 20,
-          "role": "center"
+          "role": "center",
+          "friendly": "Button 20"
         }
       ],
-      "nx": 0.4,
-      "ny": 0.37,
-      "chipFx": 0.34,
-      "chipFy": 0.53,
+      "nx": 0.40630577184526023,
+      "ny": 0.3804444444444445,
+      "chipFx": 0.42475,
+      "chipFy": 0.4630188679245283,
       "pin": "right",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.47280508474576277,
+          "fy": 0.48853203283232066,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -165,7 +299,31 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "p1620",
+      "leaders": [
+        {
+          "id": "p1620_L0",
+          "from": {
+            "type": "chip",
+            "id": "p1620",
+            "pin": "right"
+          },
+          "to": {
+            "type": "hot",
+            "id": "p1620"
+          },
+          "spines": [
+            {
+              "fx": 0.47280508474576277,
+              "fy": 0.48853203283232066,
+              "curve": true
+            }
+          ]
+        }
+      ],
+      "hotFill": "hollow",
+      "hotSize": 28
     },
     {
       "id": "axes",
@@ -173,22 +331,25 @@
       "members": [
         {
           "hwId": 1,
-          "role": "A1"
+          "role": "A1",
+          "friendly": "Axis 1"
         },
         {
           "hwId": 2,
-          "role": "A2"
+          "role": "A2",
+          "friendly": "Axis 2"
         },
         {
           "hwId": 3,
-          "role": "A3"
+          "role": "A3",
+          "friendly": "Axis 3"
         }
       ],
       "nx": 0.429,
       "ny": 0.575,
-      "chipFx": 0.34,
-      "chipFy": 0.6,
-      "pin": "right",
+      "chipFx": 0.5239110406839623,
+      "chipFy": 0.5133333333333333,
+      "pin": "left",
       "spines": [],
       "color": "#18181B",
       "border": "#3F3F46",
@@ -197,7 +358,32 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "axes",
+      "leaders": [
+        {
+          "id": "axes_L0",
+          "from": {
+            "type": "chip",
+            "id": "axes",
+            "pin": "left"
+          },
+          "to": {
+            "type": "hot",
+            "id": "axes"
+          },
+          "spines": []
+        }
+      ],
+      "from": {
+        "type": "chip",
+        "id": "axes",
+        "pin": "left"
+      },
+      "to": {
+        "type": "hot",
+        "id": "axes"
+      }
     },
     {
       "id": "b4",
@@ -207,10 +393,16 @@
       "label": "",
       "nx": 0.613,
       "ny": 0.247,
-      "chipFx": 0.67,
-      "chipFy": 0.35,
+      "chipFx": 0.55775,
+      "chipFy": 0.3635849056603773,
       "pin": "left",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.5444029042119565,
+          "fy": 0.3753221138471378,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -218,27 +410,57 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 8,
+      "friendly": "Button 4",
+      "leaders": [
+        {
+          "id": "b4_L0",
+          "from": {
+            "type": "chip",
+            "id": "b4",
+            "pin": "left"
+          },
+          "to": {
+            "type": "hot",
+            "id": "b4"
+          },
+          "spines": [
+            {
+              "fx": 0.5444029042119565,
+              "fy": 0.3753221138471378,
+              "curve": true
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "p2122",
-      "kind": "pair",
+      "kind": "stack",
       "members": [
         {
           "hwId": 21,
-          "role": "push"
+          "role": "push",
+          "friendly": "Button 21"
         },
         {
           "hwId": 22,
-          "role": "pull"
+          "role": "pull",
+          "friendly": "Button 22"
         }
       ],
-      "nx": 0.656,
-      "ny": 0.28,
-      "chipFx": 0.67,
+      "nx": 0.6632826597453961,
+      "ny": 0.2857777777777778,
+      "chipFx": 0.5780278596698113,
       "chipFy": 0.39,
       "pin": "left",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.560450682552297,
+          "fy": 0.40431261770244814,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -246,27 +468,66 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 8,
+      "friendly": "p2122",
+      "leaders": [
+        {
+          "id": "p2122_L0",
+          "from": {
+            "type": "chip",
+            "id": "p2122",
+            "pin": "left"
+          },
+          "to": {
+            "type": "hot",
+            "id": "p2122"
+          },
+          "spines": [
+            {
+              "fx": 0.560450682552297,
+              "fy": 0.40431261770244814,
+              "curve": true
+            }
+          ]
+        }
+      ],
+      "to": {
+        "type": "hot",
+        "id": "p2122"
+      },
+      "from": {
+        "type": "chip",
+        "id": "p2122",
+        "pin": "left"
+      }
     },
     {
       "id": "p12",
-      "kind": "pair",
+      "kind": "stack",
       "members": [
         {
           "hwId": 1,
-          "role": "half"
+          "role": "half",
+          "friendly": "Button 1"
         },
         {
           "hwId": 2,
-          "role": "full"
+          "role": "full",
+          "friendly": "Button 2"
         }
       ],
-      "nx": 0.617,
-      "ny": 0.301,
-      "chipFx": 0.67,
+      "nx": 0.626441725373872,
+      "ny": 0.30977777777777776,
+      "chipFx": 0.5790891804245283,
       "chipFy": 0.43,
       "pin": "left",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.5556221547503076,
+          "fy": 0.4295626177024482,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -274,7 +535,38 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 8,
+      "friendly": "p12",
+      "leaders": [
+        {
+          "id": "p12_L0",
+          "from": {
+            "type": "chip",
+            "id": "p12",
+            "pin": "left"
+          },
+          "to": {
+            "type": "hot",
+            "id": "p12"
+          },
+          "spines": [
+            {
+              "fx": 0.5556221547503076,
+              "fy": 0.4295626177024482,
+              "curve": true
+            }
+          ]
+        }
+      ],
+      "from": {
+        "type": "chip",
+        "id": "p12",
+        "pin": "left"
+      },
+      "to": {
+        "type": "hot",
+        "id": "p12"
+      }
     },
     {
       "id": "b5",
@@ -282,12 +574,18 @@
       "hwId": 5,
       "prefix": "",
       "label": "",
-      "nx": 0.605,
-      "ny": 0.42,
-      "chipFx": 0.67,
-      "chipFy": 0.47,
+      "nx": 0.6077938450129774,
+      "ny": 0.42266666666666663,
+      "chipFx": 0.5401989008010613,
+      "chipFy": 0.4532477092680618,
       "pin": "left",
-      "spines": [],
+      "spines": [
+        {
+          "fx": 0.5349119504005306,
+          "fy": 0.4640701823176467,
+          "curve": true
+        }
+      ],
       "color": "#18181B",
       "border": "#3F3F46",
       "textColor": "#E4E4E7",
@@ -295,7 +593,29 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 8,
+      "friendly": "Button 5",
+      "leaders": [
+        {
+          "id": "b5_L0",
+          "from": {
+            "type": "chip",
+            "id": "b5",
+            "pin": "left"
+          },
+          "to": {
+            "type": "hot",
+            "id": "b5"
+          },
+          "spines": [
+            {
+              "fx": 0.5349119504005306,
+              "fy": 0.4640701823176467,
+              "curve": true
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "b28",
@@ -303,11 +623,11 @@
       "hwId": 28,
       "prefix": "",
       "label": "",
-      "nx": 0.574,
-      "ny": 0.711,
-      "chipFx": 0.39,
-      "chipFy": 0.715,
-      "pin": "top",
+      "nx": 0.5714077369917194,
+      "ny": 0.7146666666666666,
+      "chipFx": 0.49756561326422355,
+      "chipFy": 0.5776675054490081,
+      "pin": "bottom",
       "spines": [],
       "color": "#18181B",
       "border": "#3F3F46",
@@ -316,7 +636,32 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "Button 28",
+      "leaders": [
+        {
+          "id": "b28_L0",
+          "from": {
+            "type": "chip",
+            "id": "b28",
+            "pin": "bottom"
+          },
+          "to": {
+            "type": "hot",
+            "id": "b28"
+          },
+          "spines": []
+        }
+      ],
+      "from": {
+        "type": "chip",
+        "id": "b28",
+        "pin": "bottom"
+      },
+      "to": {
+        "type": "hot",
+        "id": "b28"
+      }
     },
     {
       "id": "b27",
@@ -324,11 +669,11 @@
       "hwId": 27,
       "prefix": "",
       "label": "",
-      "nx": 0.621,
-      "ny": 0.709,
-      "chipFx": 0.44,
-      "chipFy": 0.715,
-      "pin": "top",
+      "nx": 0.6196193301198863,
+      "ny": 0.7004444444444445,
+      "chipFx": 0.5211184404481133,
+      "chipFy": 0.5776675054490081,
+      "pin": "bottom",
       "spines": [],
       "color": "#18181B",
       "border": "#3F3F46",
@@ -337,7 +682,32 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "Button 27",
+      "leaders": [
+        {
+          "id": "b27_L0",
+          "from": {
+            "type": "chip",
+            "id": "b27",
+            "pin": "bottom"
+          },
+          "to": {
+            "type": "hot",
+            "id": "b27"
+          },
+          "spines": []
+        }
+      ],
+      "to": {
+        "type": "hot",
+        "id": "b27"
+      },
+      "from": {
+        "type": "chip",
+        "id": "b27",
+        "pin": "bottom"
+      }
     },
     {
       "id": "b29",
@@ -345,11 +715,11 @@
       "hwId": 29,
       "prefix": "",
       "label": "",
-      "nx": 0.654,
-      "ny": 0.7,
-      "chipFx": 0.49,
-      "chipFy": 0.715,
-      "pin": "top",
+      "nx": 0.666921270547522,
+      "ny": 0.6968888888888889,
+      "chipFx": 0.5438704072869105,
+      "chipFy": 0.5776675054490081,
+      "pin": "bottom",
       "spines": [],
       "color": "#18181B",
       "border": "#3F3F46",
@@ -358,25 +728,52 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "Button 29",
+      "leaders": [
+        {
+          "id": "b29_L0",
+          "from": {
+            "type": "chip",
+            "id": "b29",
+            "pin": "bottom"
+          },
+          "to": {
+            "type": "hot",
+            "id": "b29"
+          },
+          "spines": []
+        }
+      ],
+      "from": {
+        "type": "chip",
+        "id": "b29",
+        "pin": "bottom"
+      },
+      "to": {
+        "type": "hot",
+        "id": "b29"
+      }
     },
     {
       "id": "p2526",
-      "kind": "pair",
+      "kind": "stack",
       "members": [
         {
           "hwId": 25,
-          "role": "up"
+          "role": "up",
+          "friendly": "Button 25"
         },
         {
           "hwId": 26,
-          "role": "down"
+          "role": "down",
+          "friendly": "Button 26"
         }
       ],
-      "nx": 0.623,
-      "ny": 0.798,
-      "chipFx": 0.54,
-      "chipFy": 0.715,
+      "nx": 0.636902731429984,
+      "ny": 0.795111111111111,
+      "chipFx": 0.528375,
+      "chipFy": 0.6646666666666666,
       "pin": "top",
       "spines": [],
       "color": "#18181B",
@@ -386,7 +783,32 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "p2526",
+      "leaders": [
+        {
+          "id": "p2526_L0",
+          "from": {
+            "type": "chip",
+            "id": "p2526",
+            "pin": "top"
+          },
+          "to": {
+            "type": "hot",
+            "id": "p2526"
+          },
+          "spines": []
+        }
+      ],
+      "from": {
+        "type": "chip",
+        "id": "p2526",
+        "pin": "top"
+      },
+      "to": {
+        "type": "hot",
+        "id": "p2526"
+      }
     },
     {
       "id": "a4",
@@ -394,10 +816,10 @@
       "hwId": 4,
       "prefix": "A",
       "label": "",
-      "nx": 0.665,
-      "ny": 0.798,
-      "chipFx": 0.59,
-      "chipFy": 0.715,
+      "nx": 0.6823853664565566,
+      "ny": 0.7875555555555556,
+      "chipFx": 0.5526495199048348,
+      "chipFy": 0.6722138364779874,
       "pin": "top",
       "spines": [],
       "color": "#18181B",
@@ -407,25 +829,52 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "Axis 4",
+      "leaders": [
+        {
+          "id": "a4_L0",
+          "from": {
+            "type": "chip",
+            "id": "a4",
+            "pin": "top"
+          },
+          "to": {
+            "type": "hot",
+            "id": "a4"
+          },
+          "spines": []
+        }
+      ],
+      "to": {
+        "type": "hot",
+        "id": "a4"
+      },
+      "from": {
+        "type": "chip",
+        "id": "a4",
+        "pin": "top"
+      }
     },
     {
       "id": "p2324",
-      "kind": "pair",
+      "kind": "stack",
       "members": [
         {
           "hwId": 23,
-          "role": "up"
+          "role": "up",
+          "friendly": "Button 23"
         },
         {
           "hwId": 24,
-          "role": "down"
+          "role": "down",
+          "friendly": "Button 24"
         }
       ],
-      "nx": 0.739,
-      "ny": 0.798,
-      "chipFx": 0.64,
-      "chipFy": 0.715,
+      "nx": 0.7337807440365839,
+      "ny": 0.7777777777777777,
+      "chipFx": 0.5761174823113208,
+      "chipFy": 0.6646666666666666,
       "pin": "top",
       "spines": [],
       "color": "#18181B",
@@ -435,11 +884,23 @@
       "hlColor": "#14532D",
       "hlBorder": "#22C55E",
       "hlText": "#BBF7D0",
-      "fontSize": 10
+      "fontSize": 10,
+      "friendly": "p2324",
+      "leaders": [
+        {
+          "id": "p2324_L0",
+          "from": {
+            "type": "chip",
+            "id": "p2324",
+            "pin": "top"
+          },
+          "to": {
+            "type": "hot",
+            "id": "p2324"
+          },
+          "spines": []
+        }
+      ]
     }
-  ],
-  "space": "world",
-  "page": 32000,
-  "pageW": 32000,
-  "pageH": 18000
+  ]
 }
