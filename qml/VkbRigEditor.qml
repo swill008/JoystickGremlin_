@@ -1739,6 +1739,44 @@ Item {
         bump()
     }
 
+    function clearTextFormat() {
+        var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
+        var i
+        for (i = 0; i < ids.length; i++) {
+            var n = nodeAt(ids[i])
+            if (!isText(n))
+                continue
+            n.theme = "gremlin"
+            n.fontSize = 12
+            n.color = "#18181B"
+            n.border = "#3F3F46"
+            n.textColor = "#E4E4E7"
+            n.fill = "filled"
+            n.fillOpacity = 1
+            n.borderOpacity = 1
+            n.stroke = 1
+            n.wrap = true
+            n.scaleFont = false
+            n.bold = false
+            n.align = "center"
+            n.valign = "middle"
+        }
+        bump()
+    }
+
+    function copyTextPlain() {
+        var n = nodeAt(selectedId)
+        if (!isText(n))
+            return
+        if (!_textClip) {
+            bump()
+            return
+        }
+        _textClip.text = n.text || ""
+        _textClip.selectAll()
+        _textClip.copy()
+    }
+
     function applyTextBoxSize(pw, ph) {
         var n = nodeAt(selectedId)
         if (!isText(n))
@@ -5709,6 +5747,13 @@ Item {
         y: _ed.hoverTipY + 16
     }
 
+    TextEdit {
+        id: _textClip
+        visible: false
+        width: 1
+        height: 1
+    }
+
     TextInput {
         id: _nameEdit
         z: 12
@@ -6086,6 +6131,8 @@ Item {
         MenuItem { text: "Delete text box"; onTriggered: _ed.deleteChip() }
         MenuItem { text: "Duplicate"; onTriggered: _ed.duplicateSelection() }
         MenuItem { text: "Copy format"; onTriggered: _ed.copyTextFormat() }
+        MenuItem { text: "Copy text"; onTriggered: _ed.copyTextPlain() }
+        MenuItem { text: "Clear formatting"; onTriggered: _ed.clearTextFormat() }
         MenuItem {
             text: "Paint format"
             enabled: {
