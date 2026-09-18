@@ -451,6 +451,21 @@ Item {
         guideYKind = ""
     }
 
+    function guideSkipTarget(moving, other) {
+        if (!other || !moving || other.id === moving.id)
+            return true
+        var ids = selectedIds || []
+        var i
+        for (i = 0; i < ids.length; i++) {
+            if (ids[i] === other.id)
+                return true
+        }
+        var pack = tablePackOf(moving)
+        if (pack && tablePackOf(other) === pack)
+            return true
+        return false
+    }
+
     function updateMoveGuides(n) {
         clearMoveGuides()
         if (!n || altHeld)
@@ -460,43 +475,69 @@ Item {
         var slop = 10
         var cx = b.x + b.w * 0.5
         var cy = b.y + b.h * 0.5
+        var left = b.x
+        var right = b.x + b.w
+        var top = b.y
+        var bot = b.y + b.h
+        var bestX = slop + 1
+        var bestY = slop + 1
+        var rankX = 9
+        var rankY = 9
+        function considerX(line, kind, rank, dist) {
+            if (dist > slop)
+                return
+            if (rank < rankX || (rank === rankX && dist < bestX)) {
+                guideX = line
+                guideXKind = kind
+                bestX = dist
+                rankX = rank
+            }
+        }
+        function considerY(line, kind, rank, dist) {
+            if (dist > slop)
+                return
+            if (rank < rankY || (rank === rankY && dist < bestY)) {
+                guideY = line
+                guideYKind = kind
+                bestY = dist
+                rankY = rank
+            }
+        }
         var pageCx = s.x + s.w * 0.5
         var pageCy = s.y + s.h * 0.5
-        var dC = Math.abs(cx - pageCx)
-        var dL = Math.abs(b.x - s.x)
-        var dR = Math.abs(b.x + b.w - (s.x + s.w))
-        var bestX = slop + 1
-        if (dC <= slop && dC <= bestX) {
-            guideX = pageCx
-            guideXKind = "center"
-            bestX = dC
-        }
-        if (dL <= slop && dL < bestX) {
-            guideX = s.x
-            guideXKind = "left"
-            bestX = dL
-        }
-        if (dR <= slop && dR < bestX) {
-            guideX = s.x + s.w
-            guideXKind = "right"
-        }
-        var dCy = Math.abs(cy - pageCy)
-        var dT = Math.abs(b.y - s.y)
-        var dB = Math.abs(b.y + b.h - (s.y + s.h))
-        var bestY = slop + 1
-        if (dCy <= slop && dCy <= bestY) {
-            guideY = pageCy
-            guideYKind = "center"
-            bestY = dCy
-        }
-        if (dT <= slop && dT < bestY) {
-            guideY = s.y
-            guideYKind = "top"
-            bestY = dT
-        }
-        if (dB <= slop && dB < bestY) {
-            guideY = s.y + s.h
-            guideYKind = "bottom"
+        considerX(pageCx, "center", 0, Math.abs(cx - pageCx))
+        considerY(pageCy, "center", 0, Math.abs(cy - pageCy))
+        considerX(s.x, "left", 2, Math.abs(left - s.x))
+        considerX(s.x + s.w, "right", 2, Math.abs(right - (s.x + s.w)))
+        considerY(s.y, "top", 2, Math.abs(top - s.y))
+        considerY(s.y + s.h, "bottom", 2, Math.abs(bot - (s.y + s.h)))
+        if (!snapEntOn)
+            return
+        var list = nodes || []
+        var i
+        for (i = 0; i < list.length; i++) {
+            var o = list[i]
+            if (guideSkipTarget(n, o))
+                continue
+            var ob = nodeBox(o)
+            if (ob.w < 2 || ob.h < 2)
+                continue
+            var oL = ob.x
+            var oR = ob.x + ob.w
+            var oC = ob.x + ob.w * 0.5
+            var oT = ob.y
+            var oB = ob.y + ob.h
+            var oM = ob.y + ob.h * 0.5
+            considerX(oC, "center", 1, Math.abs(cx - oC))
+            considerX(oL, "left", 3, Math.abs(left - oL))
+            considerX(oR, "right", 3, Math.abs(right - oR))
+            considerX(oL, "right", 3, Math.abs(right - oL))
+            considerX(oR, "left", 3, Math.abs(left - oR))
+            considerY(oM, "center", 1, Math.abs(cy - oM))
+            considerY(oT, "top", 3, Math.abs(top - oT))
+            considerY(oB, "bottom", 3, Math.abs(bot - oB))
+            considerY(oT, "bottom", 3, Math.abs(bot - oT))
+            considerY(oB, "top", 3, Math.abs(top - oB))
         }
     }
 
