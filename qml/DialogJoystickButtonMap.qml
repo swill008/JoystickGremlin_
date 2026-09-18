@@ -392,7 +392,7 @@ Window {
         modal: true
         anchors.centerIn: parent
         width: 640
-        height: 560
+        height: 640
         standardButtons: Dialog.Close
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
@@ -415,7 +415,7 @@ Window {
                 },
                 {
                     h: "View, zoom, pan",
-                    b: "Scroll wheel zooms the photo (about 50% to 400%). Middle-button drag pans. View → Reset view returns 100%.\nView → Grid: show grid, snap to grid, snap to entities (chips, hots, frames). Alt skips snap while you drag."
+                    b: "Scroll wheel zooms the photo (about 50% to 400%). Middle-button drag pans. View → Reset view returns 100%.\nView → Grid: show grid, snap to grid, snap to entities (chips, hots, frames). Grid on/off is saved with the map.\nA window resize or photo reload keeps your zoom if it is still valid — it only recenters when zoom or pan is broken. Alt skips snap while you drag."
                 },
                 {
                     h: "Reservoir",
@@ -423,15 +423,25 @@ Window {
                 },
                 {
                     h: "Chips",
-                    b: "Left-drag a chip to move it. Drag the hotspot (dot on the photo) separately — that is the hardware contact.\nRight-click → Chip: font, chip size/shape/fill, hotspot size/shape/fill, highlight on press, delete chip.\nDelete / Backspace on a single chip returns it to the reservoir.\nYellow ring is selection. Every chip uses the same ring."
+                    b: "Left-drag a chip to move it. Drag the hotspot (dot on the photo) separately — that is the hardware contact.\nRight-click → Chip: font, size, shape, fill, outline color, text color, highlight colors, hotspot size/shape/fill, delete chip. Color… opens the HSV picker.\nIn Edit group, double-click a member to select it, double-click again to rename. Clear the friendly name and the hardware name returns.\nDelete / Backspace on a single chip returns it to the reservoir.\nYellow ring is selection."
                 },
                 {
                     h: "Groups",
-                    b: "Select two or more chips (Shift-click or rubber-band), then right-click → Group → Group selected. Grouping drops extra leaders and keeps one.\nBreak group (or Delete on a group) splits members back to singles.\nAlign left / center / right stacks members; Free layout lets you drag members inside Edit group.\nRight-click → Group → Edit group to move members; Done editing group to finish.\n5-Way Theme: on a 5-member hat group, Group → Apply Format → 5-Way picks Plus cluster, Mini hat, Named card, or Radial leaders. Format is presentation only — hardware ids stay grouped. Save writes it to the control.hardware profile."
+                    b: "Select two or more chips (Shift-click or rubber-band), then right-click → Group → Group selected. Grouping drops extra leaders and keeps one.\nBreak group (or Delete on a group) splits members back to singles.\nGroup → Edit group unlocks that group only. Double-click or right-click a member to target it. Drag the member to offset it. Done editing group or Esc finishes.\nDouble-click empty photo exits edit and clears the selection."
+                },
+                {
+                },
+                {
+                    h: "Format and Align",
+                    b: "Format and Align are their own drawers — they are not inside Group.\nFormat → 5-Way stamps Plus cluster, Mini hat, Named card, or Radial leaders on a 5-member hat group. Picking a theme that is already on re-applies it (clears cell offsets and style overrides, keeps names).\nClear Format (first menu when a theme is on, or Format → Clear Format) removes the theme and returns the stack to Align.\nAlign left / center / right / Free layout only run when the click target is a group. Themes stay presentation — hardware ids stay grouped. Save writes format to the control.hardware profile."
+                },
+                {
+                    h: "Context menu",
+                    b: "The first screen follows the click.\nLeader / spine: Add spine, Clear spines, Delete selected spine (when a handle is selected).\nChip / group: Chip, Group, Format, Align, Leader, Draw. Clear Format appears when a 5-Way theme is on.\nEmpty photo: Draw only.\nChip, Leader, Format, and Align stay off until something that uses them is selected."
                 },
                 {
                     h: "Leaders",
-                    b: "A leader is the line from chip to hotspot. Drag spine dots to bend it. Double-click a segment to toggle curve.\nRight-click → Leader: add straight or curved spine, this segment / all segments curve, add another leader, branch from this end, detach/reconnect ends, delete spine, delete leader.\nDelete spine and Delete leader are also in that menu."
+                    b: "A leader is the line from chip to hotspot. Click the line to select it — a click does not add a spine.\nDrag a segment to plant a curved spine at the grab point, then keep dragging that handle.\nClick a handle to select it. Short right-click on a handle opens the menu (Delete selected spine). Hold right-click about half a second on a handle to delete it.\nAdd spine / Clear spines are on the first menu when you click the line. Leader submenu still has color, weight, curve, extra leaders, detach, and delete leader.\nSpines hide when you leave Edit Mapping. The chip-to-hotspot line stays."
                 },
                 {
                     h: "Draw",
@@ -443,7 +453,7 @@ Window {
                 },
                 {
                     h: "Keyboard",
-                    b: "Ctrl+S Save\nCtrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nDelete / Backspace  delete chip or break group\nArrows nudge    Shift+Arrows grid nudge\nEsc  cancel draw tool / end group edit\nF1  this help\nAlt (while dragging)  skip snap\nShift (while drawing)  lock aspect"
+                    b: "Ctrl+S Save\nCtrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nDelete / Backspace  delete chip, break group, or delete selected spine\nArrows nudge    Shift+Arrows grid nudge\nEsc  cancel draw tool / end group edit / cancel rename\nF1  this help\nAlt (while dragging)  skip snap\nShift (while drawing)  lock aspect"
                 }
             ]
             delegate: Column {
