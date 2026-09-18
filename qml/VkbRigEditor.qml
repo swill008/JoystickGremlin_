@@ -45,6 +45,7 @@ Item {
     property int selectedSeg: -1
     property int dragLeader: 0
     property string drawTool: ""
+    property bool plantSnap: false
     property real drawX0: 0
     property real drawY0: 0
     property real drawX1: 0
@@ -222,6 +223,8 @@ Item {
             }
             n.spines = Ls.spines
         } else if (dragKind === "draw") {
+            if (isLocked(n))
+                return
             var g0 = drawGeom(n)
             var np = snapEnt(mx - dragOffX, my - dragOffY, altOff)
             var ddx = np.x - g0.x
@@ -240,8 +243,12 @@ Item {
                 n.fx = Math.max(0, Math.min(0.98, np.x / Math.max(1, width)))
                 n.fy = Math.max(0, Math.min(0.98, np.y / Math.max(1, height)))
             }
+            syncOverlayChips(n)
         } else if (dragKind.indexOf("draw-") === 0) {
+            if (isLocked(n))
+                return
             applyDrawResize(n, mx, my, dragKind.slice(5), altOff)
+            syncOverlayChips(n)
         } else if (dragKind === "member" && n.members && dragMember >= 0 && dragMember < n.members.length) {
             var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
             var mm = n.members[dragMember]
@@ -1559,6 +1566,172 @@ Item {
         return !!(n && n.kind === "draw")
     }
 
+    function isOverlay(n) {
+        return !!(n && n.kind === "draw" && n.shape === "image")
+    }
+
+    function isLocked(n) {
+        return !!(n && n.locked)
+    }
+
+    function addOverlay(rel, fileUrl) {
+        var st = _drawStyle()
+        st.id = _uid("d")
+        st.shape = "image"
+        st.src = rel || ""
+        st.srcUrl = fileUrl || ""
+        st.locked = false
+        st.sockets = []
+        st.zLayer = 2
+        st.fill = "filled"
+        st.fx = 0.36
+        st.fy = 0.28
+        st.fw = 0.28
+        st.fh = 0.28
+        st.rot = 0
+        st.opacity = 1
+        nodes.push(st)
+        setSelection([st.id])
+        bump()
+        return st.id
+    }
+
+    function toggleLock() {
+        var n = nodeAt(selectedId)
+        if (!isDraw(n))
+            return
+        n.locked = !n.locked
+        plantSnap = false
+        bump()
+    }
+
+    function beginPlantSnap() {
+        var n = nodeAt(selectedId)
+        if (!isOverlay(n))
+            return
+        plantSnap = true
+        bump()
+    }
+
+    function addSocketAt(n, mx, my) {
+        if (!isOverlay(n))
+            return
+        var g = drawGeom(n)
+        var lx = mx
+        var ly = my
+        var rot = n.rot || 0
+        if (rot) {
+            var cx = g.x + g.w * 0.5
+            var cy = g.y + g.h * 0.5
+            var rad = -rot * Math.PI / 180
+            var dx = mx - cx
+            var dy = my - cy
+            var c = Math.cos(rad)
+            var s = Math.sin(rad)
+            lx = cx + dx * c - dy * s
+            ly = cy + dx * s + dy * c
+        }
+        var ux = (lx - g.x) / Math.max(1, g.w)
+        var uy = (ly - g.y) / Math.max(1, g.h)
+        ux = Math.max(0, Math.min(1, ux))
+        uy = Math.max(0, Math.min(1, uy))
+        if (!n.sockets)
+            n.sockets = []
+        n.sockets.push({ id: _uid("s"), ux: ux, uy: uy, chipId: "" })
+        plantSnap = false
+        bump()
+    }
+
+    function socketWorld(n, sock) {
+        var g = drawGeom(n)
+        var lx = g.x + (sock.ux || 0) * g.w
+        var ly = g.y + (sock.uy || 0) * g.h
+        var rot = n.rot || 0
+        if (!rot)
+            return Qt.point(lx, ly)
+        var cx = g.x + g.w * 0.5
+        var cy = g.y + g.h * 0.5
+        var rad = rot * Math.PI / 180
+        var dx = lx - cx
+        var dy = ly - cy
+        var c = Math.cos(rad)
+        var s = Math.sin(rad)
+        return Qt.point(cx + dx * c - dy * s, cy + dx * s + dy * c)
+    }
+
+    function syncOverlayChips(n) {
+        if (!n || !n.sockets)
+            return
+        var i
+        for (i = 0; i < n.sockets.length; i++) {
+            var sock = n.sockets[i]
+            if (!sock || !sock.chipId)
+                continue
+            var q = nodeAt(sock.chipId)
+            if (!q || isDraw(q)) {
+                sock.chipId = ""
+                continue
+            }
+            var pt = socketWorld(n, sock)
+            var bw = chipBounds(q)
+            q.chipFx = Math.max(0.01, Math.min(0.92, (pt.x - bw.w * 0.5) / Math.max(1, width)))
+            q.chipFy = Math.max(0.01, Math.min(0.92, (pt.y - bw.h * 0.5) / Math.max(1, height)))
+        }
+    }
+
+    function unsnapChip(chipId) {
+        var list = nodes || []
+        var i, j
+        for (i = 0; i < list.length; i++) {
+            var ov = list[i]
+            if (!ov.sockets)
+                continue
+            for (j = 0; j < ov.sockets.length; j++) {
+                if (ov.sockets[j].chipId === chipId)
+                    ov.sockets[j].chipId = ""
+            }
+        }
+    }
+
+    function snapChipToSocket(chipId, mx, my) {
+        if (!chipId)
+            return false
+        var list = nodes || []
+        var best = null
+        var bestD = 28
+        var bi = -1
+        var i, j
+        for (i = 0; i < list.length; i++) {
+            var ov = list[i]
+            if (!isOverlay(ov) || !ov.sockets)
+                continue
+            for (j = 0; j < ov.sockets.length; j++) {
+                var pt = socketWorld(ov, ov.sockets[j])
+                var d = Math.hypot(mx - pt.x, my - pt.y)
+                if (d < bestD) {
+                    bestD = d
+                    best = ov
+                    bi = j
+                }
+            }
+        }
+        if (!best)
+            return false
+        unsnapChip(chipId)
+        best.sockets[bi].chipId = chipId
+        syncOverlayChips(best)
+        bump()
+        return true
+    }
+
+    function clearSockets() {
+        var n = nodeAt(selectedId)
+        if (!isOverlay(n))
+            return
+        n.sockets = []
+        bump()
+    }
+
     function chipBounds(n) {
         if (!n)
             return { x: 0, y: 0, w: 40, h: 20 }
@@ -1794,6 +1967,8 @@ Item {
             if (!n)
                 continue
             if (isDraw(n)) {
+                if (isLocked(n))
+                    continue
                 var around = n.around || []
                 if (around.length) {
                     var ai
@@ -1937,6 +2112,10 @@ Item {
                 list[i + 1] = t
             }
         }
+        for (i = 0; i < list.length; i++) {
+            if (isSelected(list[i].id) && isDraw(list[i]))
+                list[i].zLayer = 4
+        }
         bump()
     }
 
@@ -1950,6 +2129,10 @@ Item {
                 list[i - 1] = t
             }
         }
+        for (i = 0; i < list.length; i++) {
+            if (isSelected(list[i].id) && isDraw(list[i]))
+                list[i].zLayer = 1
+        }
         bump()
     }
 
@@ -1961,7 +2144,7 @@ Item {
         var p = it.mapFromItem(_ed, mx, my)
         var w = it.width
         var h = it.height
-        if (interactive && isSelected(n.id)) {
+        if (interactive && isSelected(n.id) && !isLocked(n)) {
             var hs = [
                 [0, 0, "nw"], [w, 0, "ne"], [0, h, "sw"], [w, h, "se"],
                 [w * 0.5, 0, "n"], [w * 0.5, h, "s"], [0, h * 0.5, "w"], [w, h * 0.5, "e"]
@@ -1974,7 +2157,7 @@ Item {
         }
         if (p.x < 0 || p.y < 0 || p.x > w || p.y > h)
             return ""
-        if (n.fill === "filled")
+        if (n.shape === "image" || n.fill === "filled")
             return "body"
         var ring = Math.max(6, (n.stroke || 2) + 4)
         if (p.x <= ring || p.y <= ring || p.x >= w - ring || p.y >= h - ring)
@@ -1983,6 +2166,8 @@ Item {
     }
 
     function paintDraw(ctx, n, w, h) {
+        if (!n || n.shape === "image")
+            return
         var stroke = n.stroke || 2
         var inset = stroke * 0.5 + 0.5
         var ww = Math.max(2, w - stroke)
@@ -2890,7 +3075,14 @@ Item {
                     y += _ed.groupMinY(node)
                 return y
             }
-            z: { _ed.tick; return (_ed.isDraw(node) ? 2 : 3) }
+            z: {
+                _ed.tick
+                if (!node)
+                    return 0
+                if (node.zLayer !== undefined && node.zLayer !== null)
+                    return node.zLayer
+                return _ed.isDraw(node) ? 2 : 3
+            }
             rotation: { _ed.tick; return (_ed.isDraw(node) && node.rot) ? node.rot : 0 }
             opacity: { _ed.tick; return (_ed.isDraw(node) && node.opacity !== undefined && node.opacity !== null) ? node.opacity : 1 }
             transformOrigin: Item.Center
@@ -3034,21 +3226,62 @@ Item {
             anchors.fill: parent
             Canvas {
                 id: _dc
+                visible: { var n = node; return !(n && n.shape === "image") }
                 anchors.fill: parent
                 antialiasing: true
                 onPaint: {
                     var ctx = getContext("2d")
                     ctx.reset()
-                    if (node)
+                    if (node && node.shape !== "image")
                         _ed.paintDraw(ctx, node, width, height)
                 }
             }
             Connections {
                 target: _ed
-                function onTickChanged() { _dc.requestPaint() }
+                function onTickChanged() { if (_dc.visible) _dc.requestPaint() }
+            }
+            Image {
+                visible: { var n = node; return !!(n && n.shape === "image") }
+                anchors.fill: parent
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+                source: {
+                    _ed.tick
+                    var n = node || {}
+                    return n.srcUrl || ""
+                }
             }
             Repeater {
-                model: (_ed.interactive && node && _ed.isSelected(node.id)) ? 8 : 0
+                model: {
+                    _ed.tick
+                    var n = node
+                    return (n && n.sockets) ? n.sockets.length : 0
+                }
+                Rectangle {
+                    required property int index
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: "#F4F4F5"
+                    border.color: "#18181B"
+                    border.width: 1
+                    z: 5
+                    x: {
+                        var n = node
+                        if (!n || !n.sockets || index >= n.sockets.length)
+                            return 0
+                        return n.sockets[index].ux * _drawRoot.width - 4
+                    }
+                    y: {
+                        var n = node
+                        if (!n || !n.sockets || index >= n.sockets.length)
+                            return 0
+                        return n.sockets[index].uy * _drawRoot.height - 4
+                    }
+                }
+            }
+            Repeater {
+                model: (_ed.interactive && node && _ed.isSelected(node.id) && !_ed.isLocked(node)) ? 8 : 0
                 Rectangle {
                     required property int index
                     width: 8
@@ -3433,7 +3666,16 @@ Item {
                 else if (!_ed.isSelected(hit.id))
                     _ed.setSelection([hit.id])
                 var dn = _ed.nodeAt(hit.id)
+                if (_ed.plantSnap && _ed.isOverlay(dn)) {
+                    _ed.addSocketAt(dn, m.x, m.y)
+                    return
+                }
                 var g = dn ? _ed.drawGeom(dn) : { x: 0, y: 0, w: 8, h: 8 }
+                if (_ed.isLocked(dn)) {
+                    _ed.dragKind = ""
+                    _ed.bump()
+                    return
+                }
                 if (hit.handle && hit.handle !== "body") {
                     _ed.dragKind = "draw-" + hit.handle
                     _ed.rzX0 = g.x
@@ -3643,6 +3885,8 @@ Item {
                 return
             }
             if (_ed.dragKind) {
+                if (_ed.dragKind === "chip" || _ed.dragKind === "member")
+                    _ed.snapChipToSocket(_ed.selectedId, m.x, m.y)
                 _ed.dragKind = ""
                 _ed.bump()
             }
@@ -4242,6 +4486,34 @@ Item {
             title: "Draw"
             enabled: true
 
+            MenuItem {
+                text: { _ed.tick; var n = _ed.ctxTarget(); return (n && n.locked) ? "Unlock overlay" : "Lock overlay" }
+                enabled: { var n = _ed.ctxTarget(); return _ed.isDraw(n) }
+                onTriggered: {
+                    _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                    _ed.toggleLock()
+                }
+            }
+            MenuItem {
+                text: _ed.plantSnap ? "Click overlay to plant snap…" : "Add snap point"
+                enabled: { var n = _ed.ctxTarget(); return _ed.isOverlay(n) }
+                onTriggered: {
+                    _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                    _ed.beginPlantSnap()
+                }
+            }
+            MenuItem {
+                text: "Clear snap points"
+                enabled: {
+                    var n = _ed.ctxTarget()
+                    return !!(n && n.sockets && n.sockets.length)
+                }
+                onTriggered: {
+                    _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                    _ed.clearSockets()
+                }
+            }
+            MenuSeparator {}
 
             Menu {
                 title: "Around selection"
