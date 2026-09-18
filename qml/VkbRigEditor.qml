@@ -30,7 +30,7 @@ Item {
     property bool gridOn: true
     property bool snapOn: true
     property bool snapEntOn: true
-    property int gridSize: 8
+    property int gridSize: 50
     property bool altHeld: false
     property bool shiftHeld: false
     property string groupEditId: ""
@@ -408,17 +408,21 @@ Item {
         bump()
     }
 
-    function snapPx(v) {
+    function snapWorld(w) {
         var g = gridSize
-        if (!snapOn || g < 2)
-            return v
-        return Math.round(v / g) * g
+        if (!snapOn || g < 1)
+            return w
+        return Math.round(w / g) * g
+    }
+
+    function snapPx(v) {
+        return worldToX(snapWorld(xToWorld(v)))
     }
 
     function snapPos(x, y, altOff) {
         if (altOff || !snapOn)
             return Qt.point(x, y)
-        return Qt.point(snapPx(x), snapPx(y))
+        return Qt.point(worldToX(snapWorld(xToWorld(x))), worldToY(snapWorld(yToWorld(y))))
     }
 
     onInteractiveChanged: {
@@ -2719,7 +2723,7 @@ Item {
             return Qt.point(x, y)
         if (!snapEntOn) {
             if (snapOn)
-                return Qt.point(snapPx(x), snapPx(y))
+                return snapPos(x, y, false)
             return Qt.point(x, y)
         }
         var xs = []
@@ -2759,7 +2763,7 @@ Item {
                 }
             }
             if (snapOn) {
-                var g2 = snapPx(v)
+                var g2 = (arr === xs) ? worldToX(snapWorld(xToWorld(v))) : worldToY(snapWorld(yToWorld(v)))
                 if (Math.abs(g2 - v) <= d)
                     best = g2
             }
@@ -5219,39 +5223,43 @@ Item {
         onPaint: {
             var ctx = getContext("2d")
             ctx.reset()
-            var g = Math.max(2, _ed.gridSize)
-            var w = width
-            var h = height
-            var x
-            var y
-            var major = g * 4
+            var s = _ed.spaceRect()
+            var page = _ed.worldPage
+            var step = Math.max(1, _ed.gridSize)
+            var major = step * 4
+            ctx.save()
+            ctx.beginPath()
+            ctx.rect(s.x, s.y, s.w, s.h)
+            ctx.clip()
             ctx.lineWidth = 1
             ctx.strokeStyle = "#14FFFFFF"
             ctx.beginPath()
-            for (x = 0; x <= w; x += g) {
-                if (Math.round(x) % major === 0)
+            var w
+            for (w = 0; w <= page; w += step) {
+                if (Math.round(w) % major === 0)
                     continue
-                ctx.moveTo(x + 0.5, 0)
-                ctx.lineTo(x + 0.5, h)
-            }
-            for (y = 0; y <= h; y += g) {
-                if (Math.round(y) % major === 0)
-                    continue
-                ctx.moveTo(0, y + 0.5)
-                ctx.lineTo(w, y + 0.5)
+                var px = _ed.worldToX(w) + 0.5
+                var py = _ed.worldToY(w) + 0.5
+                ctx.moveTo(px, s.y)
+                ctx.lineTo(px, s.y + s.h)
+                ctx.moveTo(s.x, py)
+                ctx.lineTo(s.x + s.w, py)
             }
             ctx.stroke()
             ctx.strokeStyle = "#28FFFFFF"
             ctx.beginPath()
-            for (x = 0; x <= w; x += major) {
-                ctx.moveTo(x + 0.5, 0)
-                ctx.lineTo(x + 0.5, h)
-            }
-            for (y = 0; y <= h; y += major) {
-                ctx.moveTo(0, y + 0.5)
-                ctx.lineTo(w, y + 0.5)
+            for (w = 0; w <= page; w += major) {
+                px = _ed.worldToX(w) + 0.5
+                py = _ed.worldToY(w) + 0.5
+                ctx.moveTo(px, s.y)
+                ctx.lineTo(px, s.y + s.h)
+                ctx.moveTo(s.x, py)
+                ctx.lineTo(s.x + s.w, py)
             }
             ctx.stroke()
+            ctx.strokeStyle = "#40A1A1AA"
+            ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1)
+            ctx.restore()
         }
     }
 
