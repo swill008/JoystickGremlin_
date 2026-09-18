@@ -42,6 +42,8 @@ Item {
     property int tableCol: -1
     property int tableExtra: -1
     property string packWarn: ""
+    readonly property real worldPage: 2000
+    readonly property string worldSpace: "world"
     property var textFormatClip: null
     property bool textPaintOn: false
     property string renameDraft: ""
@@ -305,8 +307,8 @@ Item {
                 var g = themeGeom(n)
                 var role = fiveWayRole(mm)
                 var home = g[role] || g.center
-                mm.offX = (mp.x - n.chipFx * width - home.x) / Math.max(1, width)
-                mm.offY = (mp.y - n.chipFy * height - home.y) / Math.max(1, height)
+                mm.offX = (mp.x - fxToX(n.chipFx) - home.x) / Math.max(1, spaceRect().w)
+                mm.offY = (mp.y - fyToY(n.chipFy) - home.y) / Math.max(1, spaceRect().h)
             } else {
                 bakeAlignToFree(n)
                 mm.ox = mp.x / Math.max(1, width) - n.chipFx
@@ -810,7 +812,7 @@ Item {
         if (!end)
             return Qt.point(0, 0)
         if (end.type === "free")
-            return Qt.point((end.fx || 0) * width, (end.fy || 0) * height)
+            return Qt.point(fxToX(end.fx || 0), fyToY(end.fy || 0))
         if (end.type === "member") {
             var gn = nodeAt(end.id)
             if (!gn || !gn.members || end.member < 0 || end.member >= gn.members.length)
@@ -884,7 +886,7 @@ Item {
         var pts = [endPt(L.from)]
         var spines = L.spines || []
         for (var s = 0; s < spines.length; s++) {
-            pts.push(Qt.point(spines[s].fx * width, spines[s].fy * height))
+            pts.push(Qt.point(fxToX(spines[s].fx), fyToY(spines[s].fy)))
         }
         pts.push(endPt(L.to))
         return pts
@@ -1091,8 +1093,8 @@ Item {
         if (!isGroup(n) || groupAlignH(n) === "free")
             return
         var mem = n.members || []
-        var ew = Math.max(1, _ed.width)
-        var eh = Math.max(1, _ed.height)
+        var ew = Math.max(1, spaceRect().w)
+        var eh = Math.max(1, spaceRect().h)
         for (var i = 0; i < mem.length; i++) {
             mem[i].ox = memberLocalX(n, mem[i]) / ew
             mem[i].oy = memberLocalY(n, mem[i]) / eh
@@ -1117,9 +1119,9 @@ Item {
         if (themeLayout(n)) {
             var g = themeGeom(n)
             var r = fiveWayRole(mem)
-            return (g[r] || g.center).x + (mem.offX || 0) * Math.max(1, _ed.width)
+            return (g[r] || g.center).x + (mem.offX || 0) * Math.max(1, spaceRect().w)
         }
-        var ew = Math.max(1, _ed.width)
+        var ew = Math.max(1, spaceRect().w)
         var a = groupAlignH(n)
         var w = chipWGuess(n, mem)
         var span = groupSpanW(n)
@@ -1137,11 +1139,11 @@ Item {
         if (themeLayout(n)) {
             var g = themeGeom(n)
             var r = fiveWayRole(mem)
-            return (g[r] || g.center).y + (mem.offY || 0) * Math.max(1, _ed.height)
+            return (g[r] || g.center).y + (mem.offY || 0) * Math.max(1, spaceRect().h)
         }
         if (groupAlignH(n) !== "free")
             return cap + memberIndexOf(n, mem) * stackPitch(n)
-        var eh = Math.max(1, _ed.height)
+        var eh = Math.max(1, spaceRect().h)
         return (mem.oy || 0) * eh - groupMinY(n)
     }
 
@@ -1151,7 +1153,7 @@ Item {
         if (groupAlignH(n) !== "free")
             return 0
         var mem = (n && n.members) ? n.members : []
-        var ew = Math.max(1, _ed.width)
+        var ew = Math.max(1, spaceRect().w)
         var minx = 1e9
         for (var i = 0; i < mem.length; i++)
             minx = Math.min(minx, (mem[i].ox || 0) * ew)
@@ -1164,7 +1166,7 @@ Item {
         if (groupAlignH(n) !== "free")
             return 0
         var mem = (n && n.members) ? n.members : []
-        var eh = Math.max(1, _ed.height)
+        var eh = Math.max(1, spaceRect().h)
         var miny = 1e9
         for (var i = 0; i < mem.length; i++)
             miny = Math.min(miny, (mem[i].oy || 0) * eh)
@@ -1183,7 +1185,7 @@ Item {
                 maxw = Math.max(maxw, chipWGuess(n, mem[i]))
             return maxw
         }
-        var ew = Math.max(1, _ed.width)
+        var ew = Math.max(1, spaceRect().w)
         var minx = groupMinX(n)
         var maxx = minx
         for (var j = 0; j < mem.length; j++)
@@ -1199,7 +1201,7 @@ Item {
             return themeGeom(n).h
         if (groupAlignH(n) !== "free")
             return Math.max(8, captionH(n) + mem.length * stackPitch(n) - 2)
-        var eh = Math.max(1, _ed.height)
+        var eh = Math.max(1, spaceRect().h)
         var miny = groupMinY(n)
         var maxy = miny
         for (var i = 0; i < mem.length; i++)
@@ -1396,7 +1398,7 @@ Item {
         var b = endPt(L.to)
         var spines = L.spines || []
         if (spines.length) {
-            a = Qt.point(spines[spines.length - 1].fx * width, spines[spines.length - 1].fy * height)
+            a = Qt.point(fxToX(spines[spines.length - 1].fx), fyToY(spines[spines.length - 1].fy))
         }
         var dx = b.x - a.x
         var dy = b.y - a.y
@@ -1472,8 +1474,8 @@ Item {
                     continue
                 var spines = lss[lk].spines || []
                 for (var s = 0; s < spines.length; s++) {
-                    var sx = spines[s].fx * width
-                    var sy = spines[s].fy * height
+                    var sx = fxToX(spines[s].fx)
+                    var sy = fyToY(spines[s].fy)
                     if (Math.hypot(mx - sx, my - sy) < 9) {
                         return { kind: "spine", id: n.id, spine: s, leader: lk }
                     }
@@ -1819,8 +1821,8 @@ Item {
         var n = nodeAt(selectedId)
         if (!isText(n))
             return false
-        var w = Math.round((n.fw || 0) * width)
-        var h = Math.round((n.fh || 0) * height)
+        var w = Math.round((n.fw || 0) * spaceRect().w)
+        var h = Math.round((n.fh || 0) * spaceRect().h)
         return Math.abs(w - pw) <= 1 && Math.abs(h - ph) <= 1
     }
 
@@ -2629,7 +2631,29 @@ Item {
     }
 
     function spaceRect() {
-        return { x: 0, y: 0, w: Math.max(1, width), h: Math.max(1, height) }
+        var side = Math.min(Math.max(1, width), Math.max(1, height))
+        return {
+            x: (width - side) * 0.5,
+            y: (height - side) * 0.5,
+            w: side,
+            h: side
+        }
+    }
+
+    function worldToX(wx) {
+        return spaceRect().x + (wx / worldPage) * spaceRect().w
+    }
+
+    function worldToY(wy) {
+        return spaceRect().y + (wy / worldPage) * spaceRect().h
+    }
+
+    function xToWorld(px) {
+        return (px - spaceRect().x) / Math.max(1, spaceRect().w) * worldPage
+    }
+
+    function yToWorld(py) {
+        return (py - spaceRect().y) / Math.max(1, spaceRect().h) * worldPage
     }
 
     function fxToX(fx) {
@@ -3904,8 +3928,8 @@ Item {
             return -1
         var mem = n.members || []
         for (var i = mem.length - 1; i >= 0; i--) {
-            var x = n.chipFx * width + groupMinX(n) + memberLocalX(n, mem[i])
-            var y = n.chipFy * height + groupMinY(n) + memberLocalY(n, mem[i])
+            var x = fxToX(n.chipFx) + groupMinX(n) + memberLocalX(n, mem[i])
+            var y = fyToY(n.chipFy) + groupMinY(n) + memberLocalY(n, mem[i])
             var h = chipH(n, mem[i])
             var w = chipWGuess(n, mem[i])
             if (mx >= x && mx <= x + w && my >= y && my <= y + h)
@@ -5275,8 +5299,8 @@ Item {
                         }
                         var spines = L2.spines || []
                         for (var s = 0; s < spines.length; s++) {
-                            var sx = spines[s].fx * width
-                            var sy = spines[s].fy * height
+                            var sx = _ed.fxToX(spines[s].fx)
+                            var sy = _ed.fyToY(spines[s].fy)
                             ctx.beginPath()
                             ctx.arc(sx, sy, 5, 0, 6.3)
                             ctx.fillStyle = (_ed.selectedSpine === s || (_ed.dragKind === "spine" && _ed.dragSpine === s)) ? "#F59E0B" : "#94A3B8"
@@ -5345,7 +5369,7 @@ Item {
                 if (e.key === Qt.Key_Right) dx = step
                 if (e.key === Qt.Key_Up) dy = -step
                 if (e.key === Qt.Key_Down) dy = step
-                _ed.nudge(dx / Math.max(1, _ed.width), dy / Math.max(1, _ed.height))
+                _ed.nudge(dx / Math.max(1, _ed.spaceRect().w), dy / Math.max(1, _ed.spaceRect().h))
                 e.accepted = true
             }
         }
@@ -7160,10 +7184,10 @@ Item {
                     if (!n) return
                     var g = _ed.drawGeom(n)
                     n.around = []
-                    n.fx = g.x / Math.max(1, _ed.width)
-                    n.fy = g.y / Math.max(1, _ed.height)
-                    n.fw = g.w / Math.max(1, _ed.width)
-                    n.fh = g.h / Math.max(1, _ed.height)
+                    n.fx = _ed.xToFx(g.x)
+                    n.fy = _ed.yToFy(g.y)
+                    n.fw = g.w / Math.max(1, _ed.spaceRect().w)
+                    n.fh = g.h / Math.max(1, _ed.spaceRect().h)
                     _ed.bump()
                 }
             }
