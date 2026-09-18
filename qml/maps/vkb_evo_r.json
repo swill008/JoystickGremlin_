@@ -1,8 +1,6 @@
 {
   "kind": "control.hardware",
   "device": "VKBsim Gladiator EVO R",
-  "space": "world",
-  "page": 2000,
   "image": "qml/images/vkb_gladiator_rig.jpg",
   "imageWidth": 899,
   "imageHeight": 920,
