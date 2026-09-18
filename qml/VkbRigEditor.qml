@@ -5464,22 +5464,20 @@ Item {
     Image {
         id: _pagePhoto
         z: 0
-        x: { _ed.tick; return _ed.spaceRect().x }
-        y: { _ed.tick; return _ed.spaceRect().y }
-        width: { _ed.tick; return _ed.spaceRect().w }
-        height: { _ed.tick; return _ed.spaceRect().h }
+        x: _ed.spaceRect().x
+        y: _ed.spaceRect().y
+        width: _ed.spaceRect().w
+        height: _ed.spaceRect().h
         fillMode: Image.PreserveAspectFit
         asynchronous: true
         cache: true
-        source: {
-            _ed.tick
-            if (_ed.face && _ed.face.photoOverride && _ed.face.photoOverride.length)
-                return _ed.face.photoOverride
-            return Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+        source: (_ed.face && _ed.face.photoOverride && _ed.face.photoOverride.length)
+                ? _ed.face.photoOverride
+                : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+        onStatusChanged: {
+            if (status === Image.Ready && _lines)
+                _lines.requestPaint()
         }
-        onPaintedWidthChanged: _ed.bump()
-        onPaintedHeightChanged: _ed.bump()
-        onStatusChanged: if (status === Image.Ready) _ed.bump()
     }
 
     Canvas {
