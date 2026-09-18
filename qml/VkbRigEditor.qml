@@ -1700,6 +1700,24 @@ Item {
         return { fill: "#18181B", border: "#3F3F46", text: "#E4E4E7" }
     }
 
+    function applyTextBoxSize(pw, ph) {
+        var n = nodeAt(selectedId)
+        if (!isText(n))
+            return
+        n.fw = Math.max(8, pw) / Math.max(1, width)
+        n.fh = Math.max(8, ph) / Math.max(1, height)
+        bump()
+    }
+
+    function textBoxSizeEq(pw, ph) {
+        var n = nodeAt(selectedId)
+        if (!isText(n))
+            return false
+        var w = Math.round((n.fw || 0) * width)
+        var h = Math.round((n.fh || 0) * height)
+        return Math.abs(w - pw) <= 1 && Math.abs(h - ph) <= 1
+    }
+
     function applyTextTheme(theme) {
         var n = nodeAt(selectedId)
         if (!isText(n))
@@ -2759,10 +2777,6 @@ Item {
             st.wrap = true
             st.scaleFont = false
             st.zLayer = 3
-            if (w < 48)
-                st.fw = 48 / Math.max(1, width)
-            if (h < 20)
-                st.fh = 20 / Math.max(1, height)
         }
         nodes.push(st)
         setSelection([st.id])
@@ -6024,6 +6038,63 @@ Item {
         MenuItem { text: "Duplicate"; onTriggered: _ed.duplicateSelection() }
         MenuSeparator {}
         Menu {
+            title: "Size"
+            MenuItem {
+                text: "Caption  72×20"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    return _ed.textBoxSizeEq(72, 20)
+                }
+                onTriggered: _ed.applyTextBoxSize(72, 20)
+            }
+            MenuItem {
+                text: "Small  96×24"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    return _ed.textBoxSizeEq(96, 24)
+                }
+                onTriggered: _ed.applyTextBoxSize(96, 24)
+            }
+            MenuItem {
+                text: "Medium  128×32"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    return _ed.textBoxSizeEq(128, 32)
+                }
+                onTriggered: _ed.applyTextBoxSize(128, 32)
+            }
+            MenuItem {
+                text: "Large  176×40"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    return _ed.textBoxSizeEq(176, 40)
+                }
+                onTriggered: _ed.applyTextBoxSize(176, 40)
+            }
+            MenuItem {
+                text: "Title  240×48"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    return _ed.textBoxSizeEq(240, 48)
+                }
+                onTriggered: _ed.applyTextBoxSize(240, 48)
+            }
+            MenuItem {
+                text: "Wide  280×28"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    return _ed.textBoxSizeEq(280, 28)
+                }
+                onTriggered: _ed.applyTextBoxSize(280, 28)
+            }
+        }
+        Menu {
             title: "Theme"
             MenuItem {
                 text: "Gremlin dark"
@@ -6136,7 +6207,9 @@ Item {
             MenuItem { text: "Stroke…"; onTriggered: _ed.requestDrawColor("border") }
         }
         Menu {
-            title: "Fill opacity"
+            title: "Opacity"
+            Menu {
+            title: "Fill"
             MenuItem {
                 text: "0%"
                 checkable: true
@@ -6189,7 +6262,7 @@ Item {
             }
         }
         Menu {
-            title: "Stroke opacity"
+            title: "Stroke"
             MenuItem {
                 text: "0%"
                 checkable: true
@@ -6240,6 +6313,7 @@ Item {
                 }
                 onTriggered: _ed.applyField("borderOpacity", 1)
             }
+        }
         }
         Menu {
             title: "Align"
