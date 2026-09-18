@@ -2254,6 +2254,17 @@ Item {
         return { w: g.w, h: chipH(n), gap: themeGap(n) }
     }
 
+    function clearThemeMemberLayout(n) {
+        var mem = n && n.members ? n.members : []
+        var keys = ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor",
+                    "hlColor", "hlBorder", "hlText", "offX", "offY"]
+        var i, k
+        for (i = 0; i < mem.length; i++) {
+            for (k = 0; k < keys.length; k++)
+                delete mem[i][keys[k]]
+        }
+    }
+
     function applyFiveWayFormat(fmt) {
         var id = selectedId || groupEditId
         var n = nodeAt(id)
@@ -2262,12 +2273,25 @@ Item {
         if (fmt !== "plus" && fmt !== "mini" && fmt !== "card" && fmt !== "radial")
             return
         ensureFiveWayRoles(n)
+        clearThemeMemberLayout(n)
         n.format = fmt
         if (fmt === "radial") {
             n.leaders = buildRadialLeaders(n)
         } else if (n.leaders && n.leaders.length > 1) {
             n.leaders = [n.leaders[0]]
         }
+        bump()
+    }
+
+    function resetFiveWayFormat() {
+        var id = selectedId || groupEditId
+        var n = nodeAt(id)
+        if (!isFiveWay(n))
+            return
+        clearThemeMemberLayout(n)
+        delete n.format
+        if (n.leaders && n.leaders.length > 1)
+            n.leaders = [n.leaders[0]]
         bump()
     }
 
@@ -3940,8 +3964,26 @@ Item {
             Menu {
                 title: "Apply Format"
                 enabled: _ed.isFiveWay(_ed.nodeAt(_ctx.nodeId || _ed.selectedId))
+                MenuItem {
+                    text: "Reset theme"
+                    enabled: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)).length > 0
+                    onTriggered: {
+                        _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                        _ed.resetFiveWayFormat()
+                    }
+                }
+                MenuSeparator {}
                 Menu {
                     title: "5-Way"
+                    MenuItem {
+                        text: "Reset theme"
+                        enabled: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)).length > 0
+                        onTriggered: {
+                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                            _ed.resetFiveWayFormat()
+                        }
+                    }
+                    MenuSeparator {}
                     MenuItem {
                         text: "Plus cluster"
                         checkable: true
