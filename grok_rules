@@ -22,7 +22,11 @@ Any change to rules is written here. Do not keep a second unofficial list.
 15. Xbox tab is labeled layout + incoming sources, not a DILL input device. Hardware maps with Map to Xbox.
 16. Keep older R15 XML profiles loadable. Xbox-only nodes (map-to-xbox) are extra; stock R15 will not understand them.
 17. Standing rules live in this file (grok_rules) at the program folder root. Recall this file. Any rule change is written here.
-18. All images generated for the user to view must be displayed in chat using image generation.
+18. Images shown to the user
+    18.1 Display every generated or planned image in chat with in-chat image generation / image edit (the method that attached the Option A plus-cluster overlay). Never use render_file or a file-preview card for pictures — that showed raw XML and the user saw nothing.
+    18.2 Overlay mockups on the real source photo only: qml/images/vkb_gladiator_rig.jpg or a live Button Map shot the user sent. Do not invent a different controller.
+    18.3 One image at a time. Ask saw it / blank before the next. If blank, one search-image test; if still blank, stop generating and implement.
+    18.4 Do not rely on a file written to disk (imagine_images/) as proof the user saw it. The chat image is the proof.
 19. GitHub uploads — PAT, no size gate. Until the user says otherwise:
     19.1 Use the user's GitHub PAT for every push. Contents API PUT of the full file. Any size. One or many files. Do not ask for a new token. Do not wait on the GitHub MCP file tools.
     19.2 Skip the 20k size check. Skip MCP create_or_update_file and push_files. Those truncated files and took too long.
