@@ -354,6 +354,8 @@ Item {
                 n[key] = val
                 if (isText(n) && (key === "color" || key === "border" || key === "textColor"))
                     delete n.theme
+                if (isText(n) && (key === "wrap" || key === "fontSize" || key === "bold"))
+                    fitTextBox(n)
             }
         }
         bump()
@@ -1762,6 +1764,31 @@ Item {
             n.valign = "middle"
         }
         bump()
+    }
+
+    function fitTextBox(n) {
+        if (!isText(n) || !_textFit)
+            return
+        var pad = 8
+        var ew = Math.max(1, width)
+        var eh = Math.max(1, height)
+        _textFit.text = (n.text && String(n.text).length) ? String(n.text) : "Text"
+        _textFit.font.pixelSize = n.fontSize > 0 ? n.fontSize : 12
+        _textFit.font.bold = !!n.bold
+        if (n.wrap === false) {
+            _textFit.wrapMode = Text.NoWrap
+            _textFit.width = 4000
+            var tw = Math.ceil(_textFit.contentWidth > 0 ? _textFit.contentWidth : _textFit.implicitWidth) + pad
+            var th = Math.ceil(_textFit.contentHeight > 0 ? _textFit.contentHeight : _textFit.implicitHeight) + pad
+            n.fw = Math.max(24, tw) / ew
+            n.fh = Math.max(16, th) / eh
+        } else {
+            var boxW = Math.max(24, (n.fw || 0.08) * ew)
+            _textFit.wrapMode = Text.WordWrap
+            _textFit.width = Math.max(16, boxW - pad)
+            var th2 = Math.ceil(_textFit.contentHeight > 0 ? _textFit.contentHeight : _textFit.implicitHeight) + pad
+            n.fh = Math.max(16, th2) / eh
+        }
     }
 
     function copyTextPlain() {
@@ -3765,6 +3792,7 @@ Item {
         var t = String(renameDraft || "").trim()
         if (isText(n)) {
             n.text = t
+            fitTextBox(n)
         } else if (isTable(n) && tableHasTarget()) {
             ensureTable(n)
             if (tableExtra >= 0) {
@@ -5752,6 +5780,14 @@ Item {
         visible: false
         width: 1
         height: 1
+    }
+
+    Text {
+        id: _textFit
+        visible: false
+        width: 100
+        wrapMode: Text.WordWrap
+        font.pixelSize: 12
     }
 
     TextInput {
