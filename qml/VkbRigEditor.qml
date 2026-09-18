@@ -3850,72 +3850,13 @@ Item {
             onTriggered: _ed.clearGroupFormat()
         }
         MenuSeparator {}
-        Instantiator {
-            model: {
-                _ed.tick
-                return _ed.ctxIsLeader() ? ["add", "convert", "delete", "clear"] : []
-            }
-            delegate: MenuItem {
-                required property string modelData
-                text: modelData === "add" ? "Add spine"
-                    : modelData === "convert" ? "Convert spine"
-                    : modelData === "delete" ? "Delete selected spine"
-                    : "Clear spines"
-                enabled: {
-                    _ed.tick
-                    if (modelData === "add") {
-                        var n = _ed.ctxTarget()
-                        return !!(n && !_ed.isDraw(n))
-                    }
-                    if (modelData === "convert" || modelData === "delete")
-                        return _ed.ctxHasSelectedSpine()
-                    return _ed.ctxHasSpines()
-                }
-                onTriggered: {
-                    var n = _ed.ctxTarget()
-                    if (!n)
-                        return
-                    _ed.selectedId = n.id
-                    _ed.selectedLeader = _ctx.leader
-                    if (modelData === "add") {
-                        _ed.ensureMidSpine(n)
-                        _ed.bump()
-                    } else if (modelData === "convert") {
-                        _ed.convertSelectedSpine()
-                    } else if (modelData === "delete") {
-                        _ed.deleteSpineAt(n.id, _ctx.leader, _ed.ctxSpineIndex())
-                    } else {
-                        _ed.clearAllSpines(n.id)
-                    }
-                }
-            }
-            onObjectAdded: function(index, object) {
-                _ctx.insertItem(4 + index, object)
-            }
-            onObjectRemoved: function(index, object) {
-                _ctx.removeItem(object)
-            }
-        }
-        Instantiator {
-            model: {
-                _ed.tick
-                return _ed.ctxIsLeader() ? [1] : []
-            }
-            delegate: MenuSeparator {}
-            onObjectAdded: function(index, object) {
-                _ctx.insertItem(4 + 4 + index, object)
-            }
-            onObjectRemoved: function(index, object) {
-                _ctx.removeItem(object)
-            }
-        }
-        Menu {
-            title: "Chip"
-            visible: _ed.ctxHasMapItem()
+        MenuItem {
+            text: "Chip"
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
+            menu: Menu {
 
             MenuItem {
                 enabled: false
@@ -4048,14 +3989,16 @@ Item {
                 }
                 onTriggered: _ed.deleteChip()
             }
+        
+            }
         }
-        Menu {
-            title: "Hotspot"
-            visible: _ed.ctxHasMapItem()
+        MenuItem {
+            text: "Hotspot"
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
+            menu: Menu {
 
             Menu {
                 id: _hotSzMenu
@@ -4100,25 +4043,29 @@ Item {
             }
             MenuSeparator {}
             MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("hotColor") } }
+        
+            }
         }
-        Menu {
-            title: "Leader End"
-            visible: _ed.ctxHasMapItem()
+        MenuItem {
+            text: "Leader End"
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
+            menu: Menu {
 
             MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
             MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
             MenuSeparator {}
             MenuItem { text: "Reconnect to this chip"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("from") } }
             MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
+        
+            }
         }
-        Menu {
-            title: "Group"
-            visible: _ed.ctxHasMapItem() || _ed.canGroup() || _ed.groupEditId !== ""
+        MenuItem {
+            text: "Group"
             enabled: _ed.canGroup() || _ed.isGroup(_ed.ctxTarget()) || _ed.groupEditId !== ""
+            menu: Menu {
 
             MenuItem {
                 text: "Group selected"
@@ -4143,11 +4090,13 @@ Item {
                 enabled: _ed.groupEditId !== ""
                 onTriggered: _ed.endGroupEdit()
             }
+        
+            }
         }
-        Menu {
-            title: "Format"
-            visible: _ed.ctxHasMapItem()
+        MenuItem {
+            text: "Format"
             enabled: _ed.isFiveWay(_ed.ctxTarget()) || _ed.ctxHasTheme()
+            menu: Menu {
 
             Menu {
                 title: "5-Way"
@@ -4194,24 +4143,28 @@ Item {
                 enabled: _ed.ctxHasGroupFormat()
                 onTriggered: _ed.clearGroupFormat()
             }
+        
+            }
         }
-        Menu {
-            title: "Align"
-            visible: _ed.ctxHasMapItem()
+        MenuItem {
+            text: "Align"
             enabled: _ed.isGroup(_ed.ctxTarget())
+            menu: Menu {
 
             MenuItem { text: "Align left"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("left") }
             MenuItem { text: "Align center"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("center") }
             MenuItem { text: "Align right"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("right") }
             MenuItem { text: "Free layout"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("free") }
+        
+            }
         }
-        Menu {
-            title: "Leader"
-            visible: _ed.ctxHasMapItem()
+        MenuItem {
+            text: "Leader"
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
+            menu: Menu {
 
             MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("leaderColor") } }
             Menu {
@@ -4235,6 +4188,7 @@ Item {
             }
             MenuSeparator {}
             MenuItem { text: "Add straight spine"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.ensureMidSpine(_ed.nodeAt(_ed.selectedId)); _ed.bump() } }
+            MenuItem { text: "Convert spine"; enabled: _ed.ctxHasSelectedSpine(); onTriggered: _ed.convertSelectedSpine() }
             MenuItem { text: "Add curved spine"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addCurveSpine(_ed.nodeAt(_ed.selectedId)) } }
             Menu {
                 title: "This segment"
@@ -4281,11 +4235,13 @@ Item {
                     _ed.deleteLeader()
                 }
             }
+        
+            }
         }
-        Menu {
-            title: "Draw"
-            visible: true
+        MenuItem {
+            text: "Draw"
             enabled: true
+            menu: Menu {
 
             Menu {
                 title: "Around selection"
@@ -4425,6 +4381,8 @@ Item {
                 text: "Delete drawing"
                 enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
                 onTriggered: _ed.deleteChip()
+            }
+        
             }
         }
 
