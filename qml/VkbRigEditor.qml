@@ -2881,12 +2881,14 @@ Item {
         if (ids.length < 2)
             return
         var parts = []
+        var chipIds = []
         var i
         var n
         for (i = 0; i < ids.length; i++) {
             var chunkN = nodeAt(ids[i])
-            if (_ed.isDraw(chunkN))
+            if (!chunkN || isDraw(chunkN))
                 continue
+            chipIds.push(ids[i])
             var chunk = _partsFrom(chunkN)
             for (var p = 0; p < chunk.length; p++)
                 parts.push(chunk[p])
@@ -2901,20 +2903,20 @@ Item {
         var kind = "stack"
         if (axisN === parts.length)
             kind = "axis_stack"
-        var first = nodeAt(ids[0])
+        var first = nodeAt(chipIds[0])
         var st = _styleOf(first)
         var fx = 0
         var fy = 0
         var nx = 0
         var ny = 0
-        for (i = 0; i < ids.length; i++) {
-            n = nodeAt(ids[i])
-            fx += n.chipFx
-            fy += n.chipFy
-            nx += n.nx
-            ny += n.ny
+        for (i = 0; i < chipIds.length; i++) {
+            n = nodeAt(chipIds[i])
+            fx += (n.chipFx || 0)
+            fy += (n.chipFy || 0)
+            nx += (n.nx || 0)
+            ny += (n.ny || 0)
         }
-        var c = ids.length
+        var c = chipIds.length
         var ox0 = fx / c
         var oy0 = fy / c
         parts.sort(function(a, b) {
@@ -2948,12 +2950,21 @@ Item {
             curve: st.curve !== false
         }]
         var drop = {}
-        for (i = 0; i < ids.length; i++)
-            drop[ids[i]] = true
+        for (i = 0; i < chipIds.length; i++)
+            drop[chipIds[i]] = true
         var list = nodes || []
         for (i = list.length - 1; i >= 0; i--) {
             if (drop[list[i].id])
                 list.splice(i, 1)
+        }
+        var oi, sj
+        for (oi = 0; oi < list.length; oi++) {
+            if (!list[oi].sockets)
+                continue
+            for (sj = 0; sj < list[oi].sockets.length; sj++) {
+                if (drop[list[oi].sockets[sj].chipId])
+                    list[oi].sockets[sj].chipId = ""
+            }
         }
         list.push(g)
         setSelection([g.id])
