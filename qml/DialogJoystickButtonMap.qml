@@ -392,7 +392,7 @@ Window {
         modal: true
         anchors.centerIn: parent
         width: 640
-        height: 640
+        height: 680
         standardButtons: Dialog.Close
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
@@ -407,53 +407,59 @@ Window {
             model: [
                 {
                     h: "Overview",
-                    b: "File → Edit Mapping places chips, hotspots, leaders, groups, and draw frames on the stick photo. The live map uses the same layout. Hardware still lights the chip when you press the stick — layout does not change bindings.\n\nFile → Edit Mapping to start, then File → Save. File → Cancel drops the session. Closing with unsaved work asks first."
+                    b: "Button Map is a photo of the VKBsim Gladiator EVO R with chips on the hardware contacts. File → Edit Mapping starts a session. The live window uses the same layout; pressing the stick still lights the matching chip. Layout does not change bindings.\n\nFile → Save writes control.hardware (qml/maps/vkb_evo_r.json) and becomes the live map. File → Cancel drops the session. Closing with unsaved work asks first.\nF1 or Help → Editor help opens this page."
                 },
                 {
                     h: "File",
-                    b: "File → Edit Mapping starts the session.\nSave writes the control.hardware profile and becomes the live map.\nCancel leaves without writing.\nReset layout sends every chip back to the reservoir. Inputs still illuminate.\nChoose background / Clear image swap the photo under the map.\nExit closes the button map. Unsaved work still warns first."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
+                },
+                {
+                    h: "Edit menu",
+                    b: "Undo / Redo — layout history for this session (also Ctrl+Z / Ctrl+Y).\nDuplicate (Ctrl+D) — copy the selection offset so it does not stack.\nCopy / Paste (Ctrl+C / Ctrl+V) — clipboard of chips, groups, and frames."
                 },
                 {
                     h: "View, zoom, pan",
-                    b: "Scroll wheel zooms the photo (about 50% to 400%). Middle-button drag pans. View → Reset view returns 100%.\nView → Grid: show grid, snap to grid, snap to entities (chips, hots, frames). Grid on/off is saved with the map.\nA window resize or photo reload keeps your zoom if it is still valid — it only recenters when zoom or pan is broken. Alt skips snap while you drag."
+                    b: "Scroll wheel zooms about 50%–400%. Middle-button drag pans. View → Reset view returns 100% and centered.\nA resize or photo reload keeps a valid zoom. It only recenters when zoom or pan is broken (NaN or out of range).\nView → Grid → Show grid — overlay. Saved with the map.\nSnap to grid — drag onto grid points. Size 4 / 8 / 16 / 32.\nSnap to entities — snap to other chips, hots, frames.\nAlt while dragging skips snap."
                 },
                 {
                     h: "Reservoir",
-                    b: "The pool at the bottom lists chips that are not on the map. Filter by friendly name or hardware name. X or Reset clears the filter.\nDrag a chip from the pool onto the photo to place it. Resize the pool; the map does not zoom while the pointer is over it."
+                    b: "The pool lists chips not on the map. Filter by friendly or hardware name. X or Reset clears the filter.\nDrag a chip from the pool onto the photo to place it. Resize the pool; the map does not zoom while the pointer is over it.\nEmpty photo right-click is Draw only — chips come from the pool."
                 },
                 {
                     h: "Chips",
-                    b: "Left-drag a chip to move it. Drag the hotspot (dot on the photo) separately — that is the hardware contact.\nRight-click → Chip: font, size, shape, fill, outline color, text color, highlight colors, hotspot size/shape/fill, delete chip. Color… opens the HSV picker.\nIn Edit group, double-click a member to select it, double-click again to rename. Clear the friendly name and the hardware name returns.\nDelete / Backspace on a single chip returns it to the reservoir.\nYellow ring is selection."
+                    b: "Left-drag moves the chip. The hotspot (dot on the photo) is the hardware contact — drag it separately.\nRight-click → Chip:\n  Rename — friendly label. Empty friendly name falls back to the hardware / system name.\n  Font size.\n  Chip size, Round / Square, Filled / Hollow.\n  Colors — Fill, Outline, Text, Pressed fill / outline / text. Color… opens the HSV picker.\n  Leader… and Hotspot… colors from the same picker.\n  Hotspot size, Round / Square, Filled / Hollow.\n  Highlight on press — live fill when the stick is down.\n  Reset this cell — drop member style overrides (Edit group only).\n  Delete chip — back to the reservoir.\nDelete / Backspace on a single chip also returns it to the pool.\nYellow ring is selection."
                 },
                 {
                     h: "Groups",
-                    b: "Select two or more chips (Shift-click or rubber-band), then right-click → Group → Group selected. Grouping drops extra leaders and keeps one.\nBreak group (or Delete on a group) splits members back to singles.\nGroup → Edit group unlocks that group only. Double-click or right-click a member to target it. Drag the member to offset it. Done editing group or Esc finishes.\nDouble-click empty photo exits edit and clears the selection."
-                },
-                {
+                    b: "Shift-click or rubber-band two or more chips, then Group → Group selected (Ctrl+G). Extra leaders drop; one remains.\nBreak group (Ctrl+Shift+G) or Delete on a group splits members back to singles.\nEdit group unlocks that group only. Other groups stay locked.\nDouble-click or right-click a member to target it. Drag that member to offset it. Chip style writes to that member only.\nDouble-click the member again to rename it.\nDone editing group or Esc ends the session. Double-click empty photo ends edit and clears the selection.\nSaved group style profiles are not in yet — each group keeps its own format and overrides."
                 },
                 {
                     h: "Format and Align",
-                    b: "Format and Align are their own drawers — they are not inside Group.\nFormat → 5-Way stamps Plus cluster, Mini hat, Named card, or Radial leaders on a 5-member hat group. Picking a theme that is already on re-applies it (clears cell offsets and style overrides, keeps names).\nClear Format (first menu when a theme is on, or Format → Clear Format) removes the theme and returns the stack to Align.\nAlign left / center / right / Free layout only run when the click target is a group. Themes stay presentation — hardware ids stay grouped. Save writes format to the control.hardware profile."
+                    b: "Format and Align are first-level drawers, not inside Group.\nFormat → 5-Way (five-member hat groups only):\n  Plus cluster — Up / Left / Push / Right / Down cross. Group name once. One leader.\n  Mini hat — compact U/D/L/R/C glyph.\n  Named card — header plus role-only rows.\n  Radial leaders — spokes from the group (can crowd three hats on this grip).\nPicking the theme that is already on re-applies it: stock layout, cell offsets and style overrides cleared, names kept.\nClear Format (first menu when a theme is on, or Format → Clear Format) removes the theme. Align then owns the stack.\nAlign left / center / right / Free layout — only when the target is a group.\nFormat is presentation. Hardware ids stay grouped. Save writes format to control.hardware."
                 },
                 {
                     h: "Context menu",
-                    b: "The first screen follows the click.\nLeader / spine: Add spine, Clear spines, Delete selected spine (when a handle is selected).\nChip / group: Chip, Group, Format, Align, Leader, Draw. Clear Format appears when a 5-Way theme is on.\nEmpty photo: Draw only.\nChip, Leader, Format, and Align stay off until something that uses them is selected."
+                    b: "The first screen follows the click target.\nLeader or spine handle — Undo, Add spine, Clear spines, Delete selected spine (handle selected), then Chip / Group / Format / Align / Leader / Draw.\nChip or group — Undo, Chip, Group, Format, Align, Leader, Draw. Clear Format when a 5-Way theme is on.\nEmpty photo — Undo and Draw.\nGray items are gated: no selection, not a group, not a 5-way, or no spines."
                 },
                 {
                     h: "Leaders",
-                    b: "A leader is the line from chip to hotspot. Click the line to select it — a click does not add a spine.\nDrag a segment to plant a curved spine at the grab point, then keep dragging that handle.\nClick a handle to select it. Short right-click on a handle opens the menu (Delete selected spine). Hold right-click about half a second on a handle to delete it.\nAdd spine / Clear spines are on the first menu when you click the line. Leader submenu still has color, weight, curve, extra leaders, detach, and delete leader.\nSpines hide when you leave Edit Mapping. The chip-to-hotspot line stays."
+                    b: "A leader is the line from chip (or group) to the hotspot.\nClick the line — select only. A click does not add a spine.\nDrag a segment — plant a curved spine at the grab point, then that handle follows the drag.\nClick a handle — select it (orange).\nShort right-click on a handle — menu. Use Delete selected spine.\nHold right-click about ½ second on a handle — delete that handle, no menu.\nFirst menu on a line: Add spine (mid-point), Clear spines (needs a selection and existing spines).\nLeader submenu: Color…, Weight 0.8–4.0, Add straight / curved spine, This segment or All segments Curved / Straight, Add leader, Branch from this end, Attach (detach / reconnect chip or hotspot ends), Clear all spines, Delete spine, Delete leader.\nSpines show only while Edit Mapping is on. The chip-to-hotspot line stays in the live map."
                 },
                 {
                     h: "Draw",
-                    b: "Right-click → Draw. Around selection wraps a rectangle, rounded rect, ellipse, triangle, or diamond around the selected chips; it moves with them.\nFree drag: pick a shape, then drag on empty photo. Shift locks aspect (square / circle). Esc cancels the tool. Yellow “Drawing” in the toolbar means a tool is armed.\nCorner handles resize. Detach from chips turns an around-frame into a free frame.\nFill / hollow, fill color, stroke color (HSV picker), stroke width, opacity, rotate, padding.\nBring forward / Send back for overlapping frames. Hollow frames click through to chips inside."
+                    b: "Right-click → Draw.\nAround selection — rectangle, rounded, ellipse, triangle, or diamond around selected chips; it moves with them.\nFree drag — pick a shape, drag on empty photo. Shift locks aspect. Esc or Cancel tool drops the tool. Yellow Drawing in the toolbar means a tool is armed.\nCorner handles resize. Detach from chips turns an around-frame into a free frame.\nShape, Padding, Rotate (0/90/180/270, ±15), Filled / Hollow, Fill color…, Stroke color…, Stroke width, Opacity.\nBring forward / Send back. Hollow frames click through to chips inside."
                 },
                 {
                     h: "Select and move",
-                    b: "Click selects. Shift-click toggles. Drag empty to rubber-band.\nArrows nudge 1 px; Shift+arrows nudge by the grid size.\nCtrl+D duplicate, Ctrl+C copy, Ctrl+V paste (also under Edit). Pasted items offset so they do not stack."
+                    b: "Click selects. Shift-click or Ctrl-click toggles. Drag empty glass to rubber-band.\nArrows nudge 1 px. Shift+arrows nudge by the grid size.\nDuplicate / Copy / Paste under Edit. Pasted items offset so they do not stack."
                 },
                 {
                     h: "Keyboard",
-                    b: "Ctrl+S Save\nCtrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nDelete / Backspace  delete chip, break group, or delete selected spine\nArrows nudge    Shift+Arrows grid nudge\nEsc  cancel draw tool / end group edit / cancel rename\nF1  this help\nAlt (while dragging)  skip snap\nShift (while drawing)  lock aspect"
+                    b: "Ctrl+S Save\nCtrl+Z Undo    Ctrl+Y or Ctrl+Shift+Z Redo\nCtrl+D Duplicate    Ctrl+C Copy    Ctrl+V Paste\nCtrl+G Group    Ctrl+Shift+G Break group\nDelete / Backspace  chip to pool, break group, or delete selected spine\nArrows nudge    Shift+Arrows grid nudge\nEsc  cancel draw tool / end group edit / cancel rename\nF1  this help\nAlt while dragging  skip snap\nShift while drawing  lock aspect"
+                },
+                {
+                    h: "Save and live map",
+                    b: "Save writes kind control.hardware for VKBsim Gladiator EVO R. Nodes, image path, and ui (grid) go to the hardware profile.\nThe live face rebinds dest labels from pairing / vJoy / Xbox the same way as before. Theme and chip names are layout only.\nHardware ids on this grip stay locked (buttons 1–29, hat 1, axes 1–4)."
                 }
             ]
             delegate: Column {
