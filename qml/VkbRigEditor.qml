@@ -36,6 +36,11 @@ Item {
     property string groupEditId: ""
     property int selectedMember: -1
     property int dragMember: -1
+    property string renameId: ""
+    property int renameMember: -1
+    property string renameDraft: ""
+    property string armRenameId: ""
+    property int armRenameMember: -1
     property int selectedLeader: 0
     property int selectedSeg: -1
     property int dragLeader: 0
@@ -329,6 +334,9 @@ Item {
             groupEditId = ""
             selectedMember = -1
             dragMember = -1
+            cancelRename()
+            armRenameId = ""
+            armRenameMember = -1
         } else {
             Qt.callLater(seedHist)
         }
@@ -2247,7 +2255,76 @@ Item {
         setSelection([])
         if (_ctx)
             _ctx.close()
+        cancelRename()
+        armRenameId = ""
+        armRenameMember = -1
         bump()
+    }
+
+    function chipScreenRect(n, mem) {
+        if (!n)
+            return Qt.rect(0, 0, 40, 20)
+        if (isGroup(n) && mem) {
+            return Qt.rect(
+                n.chipFx * width + groupMinX(n) + memberLocalX(n, mem),
+                n.chipFy * height + groupMinY(n) + memberLocalY(n, mem),
+                Math.max(24, chipWGuess(n, mem)),
+                chipH(n, mem)
+            )
+        }
+        return Qt.rect(
+            n.chipFx * width,
+            n.chipFy * height,
+            Math.max(24, chipWGuess(n, null)),
+            chipH(n, null)
+        )
+    }
+
+    function beginRename(id, memberIndex) {
+        var n = nodeAt(id)
+        if (!n || isDraw(n))
+            return
+        var mem = null
+        if (isGroup(n) && memberIndex >= 0 && n.members && memberIndex < n.members.length)
+            mem = n.members[memberIndex]
+        renameId = id
+        renameMember = mem ? memberIndex : -1
+        renameDraft = mem ? memberLabel(n, mem) : friendlyOf(n, null)
+        dragKind = ""
+        Qt.callLater(function () {
+            if (_nameEdit) {
+                _nameEdit.forceActiveFocus()
+                _nameEdit.selectAll()
+            }
+        })
+        bump()
+    }
+
+    function commitRename() {
+        if (!renameId)
+            return
+        var n = nodeAt(renameId)
+        if (!n) {
+            cancelRename()
+            return
+        }
+        var t = String(renameDraft || "").trim()
+        if (isGroup(n) && renameMember >= 0 && n.members && renameMember < n.members.length) {
+            if (t.length)
+                n.members[renameMember].friendly = t
+            else
+                delete n.members[renameMember].friendly
+        } else {
+            n.friendly = t
+        }
+        cancelRename()
+        bump()
+    }
+
+    function cancelRename() {
+        renameId = ""
+        renameMember = -1
+        renameDraft = ""
     }
 
     function ensureMemberOffsets(n) {
@@ -2835,6 +2912,10 @@ Item {
                     return parent.on && hl ? _ed.styleVal(node, mem, "hlText", "#BBF7D0") : _ed.styleVal(node, mem, "textColor", "#E4E4E7")
                 }
                 font.pixelSize: { _ed.tick; return _ed.styleVal(node, mem, "fontSize", 10) }
+                visible: {
+                    _ed.tick
+                    return !(_ed.renameId === node.id && _ed.renameMember === memberIndex)
+                }
                 text: {
                     _ed.tick
                     var m = node && node.members ? node.members[memberIndex] : null
@@ -2994,7 +3075,10 @@ Item {
                     _ed.deleteChip()
                 e.accepted = true
             } else if (e.key === Qt.Key_Escape) {
-                _ed.cancelAllActions()
+                if (_ed.renameId)
+                    _ed.cancelRename()
+                else
+                    _ed.cancelAllActions()
                 e.accepted = true
             } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Z) {
                 if (e.modifiers & Qt.ShiftModifier)
@@ -3025,6 +3109,13 @@ Item {
         }
 
         onPressed: (m) => {
+            if (_ed.renameId) {
+                var nr = _ed.nodeAt(_ed.renameId)
+                var mr = (_ed.renameMember >= 0 && nr && nr.members) ? nr.members[_ed.renameMember] : null
+                var rr = _ed.chipScreenRect(nr, mr)
+                if (!(m.x >= rr.x && m.x <= rr.x + rr.width && m.y >= rr.y && m.y <= rr.y + rr.height))
+                    _ed.commitRename()
+            }
             forceActiveFocus()
             _ed.altHeld = !!(m.modifiers & Qt.AltModifier)
             _ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
@@ -3250,6 +3341,8 @@ Item {
                 _ed.toggleSegCurve()
                 return
             }
+            if (_ed.renameId)
+                _ed.commitRename()
             var gn = hit.id ? _ed.nodeAt(hit.id) : null
             if (gn && _ed.isGroup(gn)) {
                 if (_ed.groupEditId !== gn.id)
@@ -3257,7 +3350,27 @@ Item {
                 var mi = (hit.member !== undefined && hit.member >= 0) ? hit.member : _ed.memberHit(gn, m.x, m.y)
                 if (mi >= 0)
                     _ed.selectedMember = mi
-                _ed.bump()
+                if (mi >= 0 && _ed.armRenameId === gn.id && _ed.armRenameMember === mi) {
+                    _ed.beginRename(gn.id, mi)
+                    _ed.armRenameId = ""
+                    _ed.armRenameMember = -1
+                } else {
+                    _ed.armRenameId = gn.id
+                    _ed.armRenameMember = mi
+                    _ed.bump()
+                }
+                return
+            }
+            if (gn && !_ed.isDraw(gn) && (hit.kind === "chip" || hit.kind === "member")) {
+                _ed.setSelection([gn.id])
+                if (_ed.armRenameId === gn.id && _ed.armRenameMember < 0) {
+                    _ed.beginRename(gn.id, -1)
+                    _ed.armRenameId = ""
+                    _ed.armRenameMember = -1
+                } else {
+                    _ed.armRenameId = gn.id
+                    _ed.armRenameMember = -1
+                }
             }
         }
         onWheel: (w) => {
@@ -3274,6 +3387,63 @@ Item {
             var vy = w.y * face.zoom + face.panY
             face.zoomAt(vx, vy, Math.pow(1.0012, dy))
             w.accepted = true
+        }
+    }
+
+    TextInput {
+        id: _nameEdit
+        z: 12
+        visible: _ed.interactive && _ed.renameId.length > 0
+        x: {
+            _ed.tick
+            var n = _ed.nodeAt(_ed.renameId)
+            var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
+            return _ed.chipScreenRect(n, mem).x
+        }
+        y: {
+            _ed.tick
+            var n = _ed.nodeAt(_ed.renameId)
+            var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
+            return _ed.chipScreenRect(n, mem).y
+        }
+        width: {
+            _ed.tick
+            var n = _ed.nodeAt(_ed.renameId)
+            var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
+            return Math.max(48, _ed.chipScreenRect(n, mem).width)
+        }
+        height: {
+            _ed.tick
+            var n = _ed.nodeAt(_ed.renameId)
+            var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
+            return Math.max(18, _ed.chipScreenRect(n, mem).height)
+        }
+        text: _ed.renameDraft
+        color: "#E4E4E7"
+        font.pixelSize: {
+            var n = _ed.nodeAt(_ed.renameId)
+            var mem = (_ed.renameMember >= 0 && n && n.members) ? n.members[_ed.renameMember] : null
+            return _ed.styleVal(n, mem, "fontSize", 10)
+        }
+        horizontalAlignment: TextInput.AlignHCenter
+        verticalAlignment: TextInput.AlignVCenter
+        selectByMouse: true
+        clip: true
+        leftPadding: 4
+        rightPadding: 4
+        onTextChanged: _ed.renameDraft = text
+        onAccepted: _ed.commitRename()
+        Keys.onEscapePressed: {
+            _ed.cancelRename()
+            event.accepted = true
+        }
+        Rectangle {
+            anchors.fill: parent
+            z: -1
+            radius: 4
+            color: "#18181B"
+            border.color: "#38BDF8"
+            border.width: 2
         }
     }
 
@@ -3354,6 +3524,29 @@ Item {
                     if (n && mem)
                         return (n.id || "group") + " · " + (_ed.roleWord(_ed.fiveWayRole(mem)) || _ed.memberLabel(n, mem))
                     return n ? (n.friendly || n.id || "Chip") : "Chip"
+                }
+            }
+            MenuItem {
+                text: "Rename"
+                enabled: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && !_ed.isDraw(n))
+                }
+                onTriggered: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    if (!n)
+                        return
+                    var mem = _ed.targetMember()
+                    var mi = -1
+                    if (mem && n.members) {
+                        for (var i = 0; i < n.members.length; i++) {
+                            if (n.members[i] === mem) {
+                                mi = i
+                                break
+                            }
+                        }
+                    }
+                    _ed.beginRename(n.id, mi)
                 }
             }
             MenuSeparator {}
