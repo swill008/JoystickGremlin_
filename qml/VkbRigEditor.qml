@@ -229,21 +229,54 @@ Item {
         } else if (dragKind.indexOf("draw-") === 0) {
             applyDrawResize(n, mx, my, dragKind.slice(5), altOff)
         } else if (dragKind === "member" && n.members && dragMember >= 0 && dragMember < n.members.length) {
+            var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
+            var mm = n.members[dragMember]
             if (themeLayout(n)) {
-                var gp = snapPos(mx - dragOffX, my - dragOffY, altOff)
-                n.chipFx = Math.max(0.01, Math.min(0.92, gp.x / Math.max(1, width)))
-                n.chipFy = Math.max(0.01, Math.min(0.92, gp.y / Math.max(1, height)))
+                var g = themeGeom(n)
+                var role = fiveWayRole(mm)
+                var home = g[role] || g.center
+                mm.offX = (mp.x - n.chipFx * width - home.x) / Math.max(1, width)
+                mm.offY = (mp.y - n.chipFy * height - home.y) / Math.max(1, height)
             } else {
                 bakeAlignToFree(n)
-                var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
-                n.members[dragMember].ox = mp.x / Math.max(1, width) - n.chipFx
-                n.members[dragMember].oy = mp.y / Math.max(1, height) - n.chipFy
+                mm.ox = mp.x / Math.max(1, width) - n.chipFx
+                mm.oy = mp.y / Math.max(1, height) - n.chipFy
             }
         }
         repaint()
     }
 
+    function isStyleKey(key) {
+        return key === "chipShape" || key === "chipSize" || key === "chipFill" || key === "fontSize"
+            || key === "color" || key === "border" || key === "textColor" || key === "highlight"
+            || key === "hlColor" || key === "hlBorder" || key === "hlText"
+    }
+
+    function targetMember() {
+        var n = nodeAt(selectedId)
+        if (!n || !isGroup(n) || groupEditId !== n.id || selectedMember < 0)
+            return null
+        var mem = n.members || []
+        if (selectedMember >= mem.length)
+            return null
+        return mem[selectedMember]
+    }
+
+    function styleVal(n, mem, key, fallback) {
+        if (mem && mem[key] !== undefined && mem[key] !== null && mem[key] !== "")
+            return mem[key]
+        if (n && n[key] !== undefined && n[key] !== null && n[key] !== "")
+            return n[key]
+        return fallback
+    }
+
     function applyField(key, val) {
+        var mem = targetMember()
+        if (mem && isStyleKey(key)) {
+            mem[key] = val
+            bump()
+            return
+        }
         var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
         for (var i = 0; i < ids.length; i++) {
             var n = nodeAt(ids[i])
@@ -255,12 +288,22 @@ Item {
 
     function fieldEq(key, val, fallback) {
         var n = nodeAt(selectedId)
-        if (!n)
-            return val === fallback
-        var cur = n[key]
+        var mem = targetMember()
+        var cur = styleVal(n, mem, key, undefined)
         if (cur === undefined || cur === null || cur === "")
             return val === fallback
         return cur === val
+    }
+
+    function resetMemberStyle() {
+        var mem = targetMember()
+        if (!mem)
+            return
+        var keys = ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor", "hlColor", "hlBorder", "hlText", "offX", "offY"]
+        var i
+        for (i = 0; i < keys.length; i++)
+            delete mem[keys[i]]
+        bump()
     }
 
     function snapPx(v) {
@@ -911,7 +954,7 @@ Item {
         if (themeLayout(n)) {
             var g = themeGeom(n)
             var r = fiveWayRole(mem)
-            return (g[r] || g.center).x
+            return (g[r] || g.center).x + (mem.offX || 0) * Math.max(1, _ed.width)
         }
         var ew = Math.max(1, _ed.width)
         var a = groupAlignH(n)
@@ -931,7 +974,7 @@ Item {
         if (themeLayout(n)) {
             var g = themeGeom(n)
             var r = fiveWayRole(mem)
-            return (g[r] || g.center).y
+            return (g[r] || g.center).y + (mem.offY || 0) * Math.max(1, _ed.height)
         }
         if (groupAlignH(n) !== "free")
             return cap + memberIndexOf(n, mem) * stackPitch(n)
@@ -1001,16 +1044,18 @@ Item {
         return Math.max(8, maxy - miny)
     }
 
-    function chipH(n) {
-        return Math.max(n && n.chipSize ? n.chipSize : 18, ((n && n.fontSize) || 10) + 8)
+    function chipH(n, mem) {
+        var sz = styleVal(n, mem, "chipSize", 18)
+        var fs = styleVal(n, mem, "fontSize", 10)
+        return Math.max(sz, fs + 8)
     }
 
-    function chipR(n, h) {
-        return ((n && n.chipShape) || "round") === "square" ? 0 : Math.max(2, h * 0.5)
+    function chipR(n, h, mem) {
+        return styleVal(n, mem, "chipShape", "round") === "square" ? 0 : Math.max(2, h * 0.5)
     }
 
-    function chipIsHollow(n) {
-        return ((n && n.chipFill) || "filled") === "hollow"
+    function chipIsHollow(n, mem) {
+        return styleVal(n, mem, "chipFill", "filled") === "hollow"
     }
 
     function hotSz(n) {
@@ -2080,11 +2125,15 @@ Item {
     }
 
     function themeGeom(n) {
-        var h = chipH(n)
         function bw(role) {
             var m = memByRole(n, role)
-            return m ? chipWGuess(n, m) : Math.max(18, h)
+            return m ? chipWGuess(n, m) : 24
         }
+        function bh(role) {
+            var m = memByRole(n, role)
+            return chipH(n, m)
+        }
+        var h = chipH(n, null)
         var wu = bw("up")
         var wl = bw("left")
         var wc = bw("center")
@@ -2105,18 +2154,24 @@ Item {
         rightX += shift
         upX += shift
         downX += shift
+        var hu = bh("up")
+        var hl = bh("left")
+        var hc = bh("center")
+        var hr = bh("right")
+        var hd = bh("down")
+        var rowH = Math.max(hl, hc, hr)
         var upY = cap
-        var rowY = cap + h + G
-        var downY = rowY + h + G
+        var rowY = cap + hu + G
+        var downY = rowY + rowH + G
         var maxx = Math.max(leftX + wl, pushX + wc, rightX + wr, upX + wu, downX + wd)
         return {
             up: { x: upX, y: upY },
-            left: { x: leftX, y: rowY },
-            center: { x: pushX, y: rowY },
-            right: { x: rightX, y: rowY },
+            left: { x: leftX, y: rowY + (rowH - hl) * 0.5 },
+            center: { x: pushX, y: rowY + (rowH - hc) * 0.5 },
+            right: { x: rightX, y: rowY + (rowH - hr) * 0.5 },
             down: { x: downX, y: downY },
             w: Math.max(8, maxx),
-            h: downY + h
+            h: downY + hd
         }
     }
 
@@ -2162,7 +2217,8 @@ Item {
         var n = nodeAt(id || selectedId)
         if (!isGroup(n))
             return
-        ensureMemberOffsets(n)
+        if (!themeLayout(n))
+            ensureMemberOffsets(n)
         groupEditId = n.id
         selectedMember = 0
         setSelection([n.id])
@@ -2216,10 +2272,11 @@ Item {
     }
 
     function chipWGuess(n, mem) {
-        var fs = (n && n.fontSize) ? n.fontSize : 10
+        var fs = styleVal(n, mem, "fontSize", 10)
+        var sz = styleVal(n, mem, "chipSize", 18)
         var s = mem ? memberLabel(n, mem) : friendlyOf(n, null)
-        var pad = Math.max(10, ((n && n.chipSize) || 18) * 0.55)
-        if (fiveWayFormat(n) === "mini")
+        var pad = Math.max(10, sz * 0.55)
+        if (fiveWayFormat(n) === "mini" && !memberHasCustomName(n, mem))
             return Math.max(18, fs + 10)
         return String(s).length * fs * 0.50 + pad
     }
@@ -2231,7 +2288,7 @@ Item {
         for (var i = mem.length - 1; i >= 0; i--) {
             var x = n.chipFx * width + groupMinX(n) + memberLocalX(n, mem[i])
             var y = n.chipFy * height + groupMinY(n) + memberLocalY(n, mem[i])
-            var h = chipH(n)
+            var h = chipH(n, mem[i])
             var w = chipWGuess(n, mem[i])
             if (mx >= x && mx <= x + w && my >= y && my <= y + h)
                 return i
@@ -2714,26 +2771,32 @@ Item {
             property int memberIndex: -1
             property string leafKind: "btn"
             property bool on: _ed.litOf(leafKind, hwId)
+            readonly property var mem: {
+                _ed.tick
+                return (node && node.members && memberIndex >= 0) ? node.members[memberIndex] : null
+            }
             width: implicitWidth
             height: implicitHeight
-            implicitWidth: { _ed.tick; return t.implicitWidth + Math.max(10, (node.chipSize || 18) * 0.55) }
-            implicitHeight: { _ed.tick; return _ed.chipH(node) }
-            radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node)) }
+            implicitWidth: { _ed.tick; return t.implicitWidth + Math.max(10, _ed.styleVal(node, mem, "chipSize", 18) * 0.55) }
+            implicitHeight: { _ed.tick; return _ed.chipH(node, mem) }
+            radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node, mem), mem) }
             color: {
                 _ed.tick
+                var hl = _ed.styleVal(node, mem, "highlight", true)
                 if (_ed.fiveWayFormat(node) === "mini") {
-                    return on && node.highlight ? (node.hlColor || "#14532D") : "transparent"
+                    return on && hl ? _ed.styleVal(node, mem, "hlColor", "#14532D") : "transparent"
                 }
-                if (_ed.chipIsHollow(node)) return "transparent"
-                return on && node.highlight ? (node.hlColor || "#14532D") : (node.color || "#18181B")
+                if (_ed.chipIsHollow(node, mem)) return "transparent"
+                return on && hl ? _ed.styleVal(node, mem, "hlColor", "#14532D") : _ed.styleVal(node, mem, "color", "#18181B")
             }
             border.color: {
                 _ed.tick
+                var hl = _ed.styleVal(node, mem, "highlight", true)
                 if (_ed.fiveWayFormat(node) === "mini")
-                    return on && node.highlight ? (node.hlBorder || "#22C55E") : "transparent"
-                return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
+                    return on && hl ? _ed.styleVal(node, mem, "hlBorder", "#22C55E") : "transparent"
+                return on && hl ? _ed.styleVal(node, mem, "hlBorder", "#22C55E") : _ed.styleVal(node, mem, "border", "#3F3F46")
             }
-            border.width: { _ed.tick; return _ed.chipIsHollow(node) ? 2 : 1 }
+            border.width: { _ed.tick; return _ed.chipIsHollow(node, mem) ? 2 : 1 }
             antialiasing: true
             SelRing {
                 on: {
@@ -2752,9 +2815,10 @@ Item {
                 anchors.centerIn: parent
                 color: {
                     _ed.tick
-                    return parent.on && node.highlight ? (node.hlText || "#BBF7D0") : (node.textColor || "#E4E4E7")
+                    var hl = _ed.styleVal(node, mem, "highlight", true)
+                    return parent.on && hl ? _ed.styleVal(node, mem, "hlText", "#BBF7D0") : _ed.styleVal(node, mem, "textColor", "#E4E4E7")
                 }
-                font.pixelSize: { _ed.tick; return node.fontSize || 10 }
+                font.pixelSize: { _ed.tick; return _ed.styleVal(node, mem, "fontSize", 10) }
                 text: {
                     _ed.tick
                     var m = node && node.members ? node.members[memberIndex] : null
@@ -2964,6 +3028,11 @@ Item {
                         _ed.selectedSpine = hit.spine
                     if (hit.kind === "member")
                         _ed.selectedMember = hit.member
+                    else if (_ed.groupEditId && _ed.groupEditId === hit.id) {
+                        var gn0 = _ed.nodeAt(hit.id)
+                        var mi0 = gn0 ? _ed.memberHit(gn0, m.x, m.y) : -1
+                        _ed.selectedMember = mi0
+                    }
                 } else {
                     _ctx.nodeId = ""
                     _ctx.seg = -1
@@ -3040,8 +3109,8 @@ Item {
                 var nm = _ed.nodeAt(hit.id)
                 if (nm && nm.members && nm.members[hit.member]) {
                     var mm = nm.members[hit.member]
-                    _ed.dragOffX = m.x - (nm.chipFx + (mm.ox || 0)) * width
-                    _ed.dragOffY = m.y - (nm.chipFy + (mm.oy || 0)) * height
+                    _ed.dragOffX = m.x - (nm.chipFx * width + _ed.groupMinX(nm) + _ed.memberLocalX(nm, mm))
+                    _ed.dragOffY = m.y - (nm.chipFy * height + _ed.groupMinY(nm) + _ed.memberLocalY(nm, mm))
                 }
                 _ed.bump()
                 return
@@ -3160,6 +3229,16 @@ Item {
                 _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
                 _ed.selectedSeg = (hit.seg !== undefined) ? hit.seg : 0
                 _ed.toggleSegCurve()
+                return
+            }
+            var gn = hit.id ? _ed.nodeAt(hit.id) : null
+            if (gn && _ed.isGroup(gn)) {
+                if (_ed.groupEditId !== gn.id)
+                    _ed.beginGroupEdit(gn.id)
+                var mi = (hit.member !== undefined && hit.member >= 0) ? hit.member : _ed.memberHit(gn, m.x, m.y)
+                if (mi >= 0)
+                    _ed.selectedMember = mi
+                _ed.bump()
             }
         }
         onWheel: (w) => {
@@ -3199,7 +3278,17 @@ Item {
         visible: _ed.interactive
         color: "#A1A1AA"
         font.pixelSize: 10
-        text: _ed.drawTool.length ? ("Draw " + _ed.drawTool + " — drag on empty. Esc cancels.") : "Right-click Chip / Draw / Group / Leader. Esc cancels draw tool and group edit."
+        text: {
+            if (_ed.drawTool.length)
+                return "Draw " + _ed.drawTool + " — drag on empty. Esc cancels."
+            if (_ed.groupEditId.length) {
+                var n = _ed.nodeAt(_ed.groupEditId)
+                var mem = _ed.targetMember()
+                var who = mem ? (_ed.roleWord(_ed.fiveWayRole(mem)) || "cell") : "group"
+                return "Edit group " + _ed.groupEditId + " · " + who + ". Drag a cell to nudge. Esc done."
+            }
+            return "Right-click Chip / Draw / Group / Leader. Edit group to style or drag one cell."
+        }
     }
 
     Canvas {
@@ -3242,6 +3331,9 @@ Item {
                 enabled: false
                 text: {
                     var n = _ed.nodeAt(_ed.selectedId)
+                    var mem = _ed.targetMember()
+                    if (n && mem)
+                        return (n.id || "group") + " · " + (_ed.roleWord(_ed.fiveWayRole(mem)) || _ed.memberLabel(n, mem))
                     return n ? (n.friendly || n.id || "Chip") : "Chip"
                 }
             }
@@ -3304,6 +3396,12 @@ Item {
                     checkable: true
                     checked: _ed.fieldEq("chipFill", "hollow", "filled")
                     onTriggered: _ed.applyField("chipFill", "hollow")
+                }
+                MenuSeparator {}
+                MenuItem {
+                    text: "Reset this cell"
+                    enabled: _ed.targetMember() !== null
+                    onTriggered: _ed.resetMemberStyle()
                 }
             }
             Menu {
