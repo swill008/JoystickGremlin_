@@ -4135,6 +4135,17 @@ Item {
         }
         MenuSeparator {}
         MenuItem {
+            text: "Clear Format"
+            enabled: _ed.ctxHasTheme()
+            onTriggered: {
+                var n = _ed.ctxTarget()
+                if (!n)
+                    return
+                _ed.selectedId = n.id
+                _ed.resetFiveWayFormat()
+            }
+        }
+        MenuItem {
             text: "Add spine"
             enabled: {
                 var n = _ed.ctxTarget()
