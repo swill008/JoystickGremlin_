@@ -40,6 +40,7 @@ Item {
     property int renameMember: -1
     property int tableRow: -1
     property int tableCol: -1
+    property int tableExtra: -1
     property string renameDraft: ""
     property string armRenameId: ""
     property int armRenameMember: -1
@@ -229,10 +230,10 @@ Item {
             }
             n.spines = Ls.spines
         } else if (dragKind === "tablecell") {
-            if (!isTable(n) || isLocked(n) || tableRow < 0 || tableCol < 0)
+            if (!isTable(n) || isLocked(n) || !tableHasTarget())
                 return
             ensureTable(n)
-            var cell = tableGetCell(n, tableRow, tableCol)
+            var cell = tableCurrentCell(n)
             if (!cell || !cell.free)
                 return
             var g1 = drawGeom(n)
@@ -1682,6 +1683,8 @@ Item {
             n.idCol = false
         if (!n.fontSize)
             n.fontSize = 10
+        if (!n.extras)
+            n.extras = []
         if (!n.rows || !n.rows.length)
             n.rows = [emptyTableRow(cols), emptyTableRow(cols)]
         var r
@@ -1698,13 +1701,11 @@ Item {
     }
 
     function tableMinW(n) {
-        var cols = (n && n.cols > 0) ? n.cols : 2
-        return Math.max(72, cols * 36)
+        return 16
     }
 
     function tableMinH(n) {
-        var rows = (n && n.rows && n.rows.length) ? n.rows.length : 2
-        return Math.max(48, rows * 22)
+        return 16
     }
 
     function tableHomeRect(n, row, col) {
@@ -1751,6 +1752,47 @@ Item {
         return !!(c && c.free)
     }
 
+    function tableExtraAt(n, i) {
+        if (!n || !n.extras || i < 0 || i >= n.extras.length)
+            return null
+        return n.extras[i]
+    }
+
+    function tableExtraRect(n, i) {
+        var e = tableExtraAt(n, i)
+        var g = drawGeom(n)
+        if (!e)
+            return { x: g.x, y: g.y, w: 16, h: 16 }
+        var cw = (e.cw > 0) ? e.cw * g.w : 16
+        var ch = (e.ch > 0) ? e.ch * g.h : 16
+        return {
+            x: g.x + (e.ox || 0) * g.w,
+            y: g.y + (e.oy || 0) * g.h,
+            w: Math.max(8, cw),
+            h: Math.max(8, ch)
+        }
+    }
+
+    function tableCurrentCell(n) {
+        if (!n)
+            return null
+        if (tableExtra >= 0)
+            return tableExtraAt(n, tableExtra)
+        return tableGetCell(n, tableRow, tableCol)
+    }
+
+    function tableHasTarget() {
+        return tableExtra >= 0 || (tableRow >= 0 && tableCol >= 0)
+    }
+
+    function tableCurrentRect(n) {
+        if (tableExtra >= 0)
+            return tableExtraRect(n, tableExtra)
+        if (tableRow >= 0 && tableCol >= 0)
+            return tableCellRect(n, tableRow, tableCol)
+        return drawGeom(n)
+    }
+
     function tableCellRect(n, row, col) {
         var home = tableHomeRect(n, row, col)
         var c = tableGetCell(n, row, col)
@@ -1766,8 +1808,15 @@ Item {
 
     function tableCellAt(n, mx, my) {
         if (!isTable(n))
-            return { row: -1, col: -1 }
+            return { row: -1, col: -1, extra: -1 }
         ensureTable(n)
+        var extras = n.extras || []
+        var ei
+        for (ei = extras.length - 1; ei >= 0; ei--) {
+            var er = tableExtraRect(n, ei)
+            if (mx >= er.x && mx <= er.x + er.w && my >= er.y && my <= er.y + er.h)
+                return { row: -1, col: -1, extra: ei }
+        }
         var rows = n.rows.length
         var cols = n.cols
         var r
@@ -1778,12 +1827,12 @@ Item {
                     continue
                 var rc = tableCellRect(n, r, c)
                 if (mx >= rc.x && mx <= rc.x + rc.w && my >= rc.y && my <= rc.y + rc.h)
-                    return { row: r, col: c }
+                    return { row: r, col: c, extra: -1 }
             }
         }
         var g = drawGeom(n)
         if (mx < g.x || my < g.y || mx > g.x + g.w || my > g.y + g.h)
-            return { row: -1, col: -1 }
+            return { row: -1, col: -1, extra: -1 }
         var row = Math.floor((my - g.y) / Math.max(1, g.h / Math.max(1, rows)))
         var idCol = !!n.idCol && cols > 1
         var idW = idCol ? Math.min(g.w * 0.32, Math.max(22, g.w * 0.22)) : 0
@@ -1801,33 +1850,40 @@ Item {
         if (col < 0) col = 0
         if (row > rows - 1) row = rows - 1
         if (col > cols - 1) col = cols - 1
-        return { row: row, col: col }
+        return { row: row, col: col, extra: -1 }
     }
 
     function setTableCellFree(on) {
         var n = nodeAt(selectedId)
-        if (!isTable(n) || tableRow < 0 || tableCol < 0)
+        if (!isTable(n) || !tableHasTarget())
             return
         ensureTable(n)
-        var cell = tableGetCell(n, tableRow, tableCol)
+        var cell = tableCurrentCell(n)
         if (!cell)
             return
+        var g = drawGeom(n)
         if (on) {
-            var home = tableHomeRect(n, tableRow, tableCol)
-            var g = drawGeom(n)
             if (!cell.free) {
-                cell.ox = (home.x - g.x) / Math.max(1, g.w)
-                cell.oy = (home.y - g.y) / Math.max(1, g.h)
-                cell.cw = home.w / Math.max(1, g.w)
-                cell.ch = home.h / Math.max(1, g.h)
+                if (tableExtra >= 0) {
+                    if (!(cell.cw > 0)) cell.cw = 0.4
+                    if (!(cell.ch > 0)) cell.ch = 0.4
+                } else {
+                    var home = tableHomeRect(n, tableRow, tableCol)
+                    cell.ox = (home.x - g.x) / Math.max(1, g.w)
+                    cell.oy = (home.y - g.y) / Math.max(1, g.h)
+                    cell.cw = home.w / Math.max(1, g.w)
+                    cell.ch = home.h / Math.max(1, g.h)
+                }
             }
             cell.free = true
         } else {
             cell.free = false
             cell.ox = 0
             cell.oy = 0
-            delete cell.cw
-            delete cell.ch
+            if (tableExtra < 0) {
+                delete cell.cw
+                delete cell.ch
+            }
         }
         bump()
     }
@@ -1836,16 +1892,17 @@ Item {
         var n = nodeAt(selectedId)
         if (!isTable(n))
             return
-        setTableCellFree(!tableCellIsFree(n, tableRow, tableCol))
+        var cell = tableCurrentCell(n)
+        setTableCellFree(!(cell && cell.free))
     }
 
     function placeTableCell(where) {
         var n = nodeAt(selectedId)
-        if (!isTable(n) || tableRow < 0 || tableCol < 0)
+        if (!isTable(n) || !tableHasTarget())
             return
         ensureTable(n)
         setTableCellFree(true)
-        var cell = tableGetCell(n, tableRow, tableCol)
+        var cell = tableCurrentCell(n)
         if (!cell)
             return
         var cw = cell.cw > 0 ? cell.cw : 0.5
@@ -1862,6 +1919,47 @@ Item {
             cell.oy = Math.max(0, 1 - ch)
         else if (where === "middle")
             cell.oy = Math.max(0, 0.5 - ch * 0.5)
+        bump()
+    }
+
+    function spawnEmptyCell() {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        ensureTable(n)
+        var g = drawGeom(n)
+        var src = tableCurrentRect(n)
+        var cw = src.w / Math.max(1, g.w)
+        var ch = src.h / Math.max(1, g.h)
+        if (!(cw > 0)) cw = 0.4
+        if (!(ch > 0)) ch = 0.4
+        var ox = (src.x - g.x) / Math.max(1, g.w) + 12 / Math.max(1, g.w)
+        var oy = (src.y - g.y) / Math.max(1, g.h) + 12 / Math.max(1, g.h)
+        if (!n.extras)
+            n.extras = []
+        n.extras.push({
+            text: "",
+            free: true,
+            ox: ox,
+            oy: oy,
+            cw: cw,
+            ch: ch
+        })
+        tableExtra = n.extras.length - 1
+        tableRow = -1
+        tableCol = -1
+        bump()
+    }
+
+    function deleteThisTableCell() {
+        var n = nodeAt(selectedId)
+        if (!isTable(n) || tableExtra < 0)
+            return
+        ensureTable(n)
+        if (!n.extras || tableExtra >= n.extras.length)
+            return
+        n.extras.splice(tableExtra, 1)
+        tableExtra = Math.min(tableExtra, n.extras.length - 1)
         bump()
     }
 
@@ -1985,7 +2083,7 @@ Item {
         deleteChip(n.id)
     }
 
-    function beginTableRename(id, row, col) {
+    function beginTableRename(id, row, col, extra) {
         var n = nodeAt(id)
         if (!isTable(n))
             return
@@ -1994,7 +2092,13 @@ Item {
         renameMember = -1
         tableRow = row
         tableCol = col
-        renameDraft = tableCellText(n, row, col)
+        tableExtra = (extra !== undefined && extra !== null) ? extra : -1
+        if (tableExtra >= 0) {
+            var ex = tableExtraAt(n, tableExtra)
+            renameDraft = ex && ex.text ? ex.text : ""
+        } else {
+            renameDraft = tableCellText(n, row, col)
+        }
         dragKind = ""
         Qt.callLater(function () {
             if (_nameEdit) {
@@ -2440,6 +2544,7 @@ Item {
         setSelection([st.id])
         tableRow = 0
         tableCol = 0
+        tableExtra = -1
         bump()
     }
 
@@ -2664,7 +2769,7 @@ Item {
         }
         if (isTable(n)) {
             var hitCell = tableCellAt(n, mx, my)
-            if (hitCell.row >= 0) {
+            if (hitCell.row >= 0 || hitCell.extra >= 0) {
                 if (isLocked(n))
                     return ""
                 return "body"
@@ -3251,8 +3356,8 @@ Item {
     function chipScreenRect(n, mem) {
         if (!n)
             return Qt.rect(0, 0, 40, 20)
-        if (isTable(n) && tableRow >= 0 && tableCol >= 0) {
-            var tr = tableCellRect(n, tableRow, tableCol)
+        if (isTable(n) && tableHasTarget()) {
+            var tr = tableCurrentRect(n)
             return Qt.rect(tr.x, tr.y, tr.w, tr.h)
         }
         if (isGroup(n) && mem) {
@@ -3300,10 +3405,15 @@ Item {
             return
         }
         var t = String(renameDraft || "").trim()
-        if (isTable(n) && tableRow >= 0 && tableCol >= 0) {
+        if (isTable(n) && tableHasTarget()) {
             ensureTable(n)
-            if (n.rows[tableRow] && n.rows[tableRow].cells && n.rows[tableRow].cells[tableCol])
+            if (tableExtra >= 0) {
+                var ex = tableExtraAt(n, tableExtra)
+                if (ex)
+                    ex.text = t
+            } else if (n.rows[tableRow] && n.rows[tableRow].cells && n.rows[tableRow].cells[tableCol]) {
                 n.rows[tableRow].cells[tableCol].text = t
+            }
         } else if (isGroup(n) && renameMember >= 0 && n.members && renameMember < n.members.length) {
             n.members[renameMember].friendly = t
         } else {
@@ -3893,6 +4003,77 @@ Item {
                         }
                     }
                 }
+                Repeater {
+                    model: {
+                        _ed.tick
+                        var n = node
+                        if (!n || n.shape !== "table" || !n.extras)
+                            return 0
+                        return n.extras.length
+                    }
+                    Rectangle {
+                        required property int index
+                        x: {
+                            _ed.tick
+                            var n = node
+                            if (!n)
+                                return 0
+                            var g = _ed.drawGeom(n)
+                            return _ed.tableExtraRect(n, index).x - g.x
+                        }
+                        y: {
+                            _ed.tick
+                            var n = node
+                            if (!n)
+                                return 0
+                            var g = _ed.drawGeom(n)
+                            return _ed.tableExtraRect(n, index).y - g.y
+                        }
+                        width: {
+                            _ed.tick
+                            return node ? _ed.tableExtraRect(node, index).w : 8
+                        }
+                        height: {
+                            _ed.tick
+                            return node ? _ed.tableExtraRect(node, index).h : 8
+                        }
+                        color: {
+                            _ed.tick
+                            return _ed.tableCellStyle(node, -1).fill
+                        }
+                        border.color: {
+                            _ed.tick
+                            var sel = _ed.isSelected(node.id) && _ed.tableExtra === index
+                            return sel ? "#FBBF24" : _ed.tableCellStyle(node, -1).border
+                        }
+                        border.width: {
+                            _ed.tick
+                            return (_ed.isSelected(node.id) && _ed.tableExtra === index) ? 2 : 1
+                        }
+                        Text {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            visible: {
+                                _ed.tick
+                                return !(_ed.renameId === node.id && _ed.tableExtra === index)
+                            }
+                            text: {
+                                _ed.tick
+                                var e = node && node.extras ? node.extras[index] : null
+                                return e && e.text ? e.text : ""
+                            }
+                            color: {
+                                _ed.tick
+                                return _ed.tableCellStyle(node, -1).text
+                            }
+                            font.pixelSize: { _ed.tick; return (node && node.fontSize) ? node.fontSize : 10 }
+                            elide: Text.ElideRight
+                            wrapMode: Text.NoWrap
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
             }
             Connections {
                 target: _ed
@@ -4243,7 +4424,9 @@ Item {
         focus: true
         Keys.onDeletePressed: {
             var n = _ed.nodeAt(_ed.selectedId)
-            if (_ed.isGroup(n))
+            if (_ed.isTable(n) && _ed.tableExtra >= 0)
+                _ed.deleteThisTableCell()
+            else if (_ed.isGroup(n))
                 _ed.ungroupSelection()
             else
                 _ed.deleteChip()
@@ -4251,7 +4434,9 @@ Item {
         Keys.onPressed: (e) => {
             if (e.key === Qt.Key_Backspace) {
                 var n = _ed.nodeAt(_ed.selectedId)
-                if (_ed.isGroup(n))
+                if (_ed.isTable(n) && _ed.tableExtra >= 0)
+                    _ed.deleteThisTableCell()
+                else if (_ed.isGroup(n))
                     _ed.ungroupSelection()
                 else
                     _ed.deleteChip()
@@ -4346,6 +4531,7 @@ Item {
                         var cell = _ed.tableCellAt(tn, m.x, m.y)
                         _ed.tableRow = cell.row
                         _ed.tableCol = cell.col
+                        _ed.tableExtra = (cell.extra !== undefined) ? cell.extra : -1
                         _ed.chipMenuRequested(m.x, m.y)
                         _ctx.close()
                         _tableCtx.close()
@@ -4399,11 +4585,14 @@ Item {
                     var tcell = _ed.tableCellAt(dn, m.x, m.y)
                     _ed.tableRow = tcell.row
                     _ed.tableCol = tcell.col
-                    var wantFree = tcell.row >= 0 && (_ed.tableCellIsFree(dn, tcell.row, tcell.col) || !!(m.modifiers & Qt.ShiftModifier))
+                    _ed.tableExtra = (tcell.extra !== undefined) ? tcell.extra : -1
+                    var extraHit = _ed.tableExtra >= 0
+                    var gridFree = tcell.row >= 0 && (_ed.tableCellIsFree(dn, tcell.row, tcell.col) || !!(m.modifiers & Qt.ShiftModifier))
+                    var wantFree = extraHit || gridFree
                     if (wantFree) {
-                        if (!_ed.tableCellIsFree(dn, tcell.row, tcell.col))
+                        if (!extraHit && !_ed.tableCellIsFree(dn, tcell.row, tcell.col))
                             _ed.setTableCellFree(true)
-                        var rc = _ed.tableCellRect(dn, tcell.row, tcell.col)
+                        var rc = extraHit ? _ed.tableExtraRect(dn, _ed.tableExtra) : _ed.tableCellRect(dn, tcell.row, tcell.col)
                         _ed.dragKind = "tablecell"
                         _ed.dragOffX = m.x - rc.x
                         _ed.dragOffY = m.y - rc.y
@@ -4651,8 +4840,9 @@ Item {
                 _ed.setSelection([gn.id])
                 _ed.tableRow = cell2.row
                 _ed.tableCol = cell2.col
-                if (cell2.row >= 0)
-                    _ed.beginTableRename(gn.id, cell2.row, cell2.col)
+                _ed.tableExtra = (cell2.extra !== undefined) ? cell2.extra : -1
+                if (cell2.row >= 0 || _ed.tableExtra >= 0)
+                    _ed.beginTableRename(gn.id, cell2.row, cell2.col, _ed.tableExtra)
                 return
             }
             if (gn && _ed.isGroup(gn)) {
@@ -4895,20 +5085,33 @@ Item {
             checkable: true
             enabled: {
                 _ed.tick
-                return _ed.tableRow >= 0 && _ed.tableCol >= 0
+                return _ed.tableHasTarget()
             }
             checked: {
                 _ed.tick
                 var n = _ed.nodeAt(_ed.selectedId)
-                return _ed.tableCellIsFree(n, _ed.tableRow, _ed.tableCol)
+                var c = _ed.tableCurrentCell(n)
+                return !!(c && c.free)
             }
             onTriggered: _ed.toggleTableCellFree()
+        }
+        MenuItem {
+            text: "Spawn empty cell"
+            onTriggered: _ed.spawnEmptyCell()
+        }
+        MenuItem {
+            text: "Delete this cell"
+            enabled: {
+                _ed.tick
+                return _ed.tableExtra >= 0
+            }
+            onTriggered: _ed.deleteThisTableCell()
         }
         Menu {
             title: "Place"
             enabled: {
                 _ed.tick
-                return _ed.tableRow >= 0 && _ed.tableCol >= 0
+                return _ed.tableHasTarget()
             }
             MenuItem { text: "Far left"; onTriggered: _ed.placeTableCell("left") }
             MenuItem { text: "Center"; onTriggered: _ed.placeTableCell("center") }
