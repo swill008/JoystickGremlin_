@@ -42,6 +42,8 @@ Item {
     property int tableCol: -1
     property int tableExtra: -1
     property string packWarn: ""
+    property var textFormatClip: null
+    property bool textPaintOn: false
     property string renameDraft: ""
     property string armRenameId: ""
     property int armRenameMember: -1
@@ -1698,6 +1700,43 @@ Item {
         if (theme === "sheet")
             return { fill: "#E4E4E7", border: "#18181B", text: "#18181B" }
         return { fill: "#18181B", border: "#3F3F46", text: "#E4E4E7" }
+    }
+
+    function textFormatKeys() {
+        return ["theme", "fontSize", "color", "border", "textColor", "fill", "fillOpacity", "borderOpacity", "stroke", "wrap", "scaleFont", "bold", "align", "valign"]
+    }
+
+    function copyTextFormat() {
+        var n = nodeAt(selectedId)
+        if (!isText(n))
+            return
+        var clip = {}
+        var keys = textFormatKeys()
+        var i
+        for (i = 0; i < keys.length; i++)
+            clip[keys[i]] = n[keys[i]]
+        textFormatClip = clip
+        textPaintOn = true
+        bump()
+    }
+
+    function applyTextFormat(id) {
+        if (!textFormatClip)
+            return
+        var ids = id ? [id] : ((selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : []))
+        var keys = textFormatKeys()
+        var i
+        var k
+        for (i = 0; i < ids.length; i++) {
+            var n = nodeAt(ids[i])
+            if (!isText(n))
+                continue
+            for (k = 0; k < keys.length; k++) {
+                if (textFormatClip[keys[k]] !== undefined)
+                    n[keys[k]] = textFormatClip[keys[k]]
+            }
+        }
+        bump()
     }
 
     function applyTextBoxSize(pw, ph) {
@@ -3621,6 +3660,9 @@ Item {
             _ctx.close()
         if (_tableCtx)
             _tableCtx.close()
+        if (_textCtx)
+            _textCtx.close()
+        textPaintOn = false
         cancelRename()
         armRenameId = ""
         armRenameMember = -1
@@ -5305,6 +5347,11 @@ Item {
                 else if (!_ed.isSelected(hit.id))
                     _ed.setSelection([hit.id])
                 var dn = dnPre
+                if (_ed.textPaintOn && _ed.isText(dn)) {
+                    _ed.applyTextFormat(dn.id)
+                    _ed.dragKind = ""
+                    return
+                }
                 if (_ed.plantSnap && _ed.isOverlay(dn)) {
                     _ed.addSocketAt(dn, m.x, m.y)
                     return
@@ -5744,6 +5791,8 @@ Item {
                 return _ed.packWarn
             if (_ed.dragKind === "tablecell")
                 return "Dragging free cell. Handles still resize the table."
+            if (_ed.textPaintOn)
+                return "Format painter — click a text box. Esc cancels."
             if (_ed.drawTool === "text")
                 return "Draw text — drag a box. Double-click to edit. Esc cancels."
             if (_ed.drawTool === "table")
@@ -6036,6 +6085,26 @@ Item {
         }
         MenuItem { text: "Delete text box"; onTriggered: _ed.deleteChip() }
         MenuItem { text: "Duplicate"; onTriggered: _ed.duplicateSelection() }
+        MenuItem { text: "Copy format"; onTriggered: _ed.copyTextFormat() }
+        MenuItem {
+            text: "Paint format"
+            enabled: {
+                _ed.tick
+                return !!_ed.textFormatClip
+            }
+            checkable: true
+            checked: {
+                _ed.tick
+                return _ed.textPaintOn
+            }
+            onTriggered: {
+                if (!_ed.textFormatClip)
+                    return
+                _ed.applyTextFormat()
+                _ed.textPaintOn = true
+                _ed.bump()
+            }
+        }
         MenuSeparator {}
         Menu {
             title: "Size"
