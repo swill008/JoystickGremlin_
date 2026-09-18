@@ -96,6 +96,26 @@ class HardwareProfile(QtCore.QObject):
         return True
 
     @QtCore.Slot(str, str, result=str)
+    def copyOverlay(self, source_url: str, device_name: str) -> str:
+        src = to_local_path(source_url)
+        if not src.is_file():
+            return ""
+        ext = src.suffix.lower() or ".png"
+        if ext not in (".jpg", ".jpeg", ".png", ".webp", ".bmp"):
+            ext = ".png"
+        folder = _maps_dir() / "overlays"
+        folder.mkdir(parents=True, exist_ok=True)
+        dest = folder / f"{_slug(device_name)}_{src.stem}{ext}"
+        n = 1
+        while dest.exists() and dest.resolve() != src.resolve():
+            dest = folder / f"{_slug(device_name)}_{src.stem}_{n}{ext}"
+            n += 1
+        if dest.resolve() != src.resolve():
+            shutil.copy2(src, dest)
+        self.imageChanged.emit()
+        return f"qml/maps/overlays/{dest.name}"
+
+    @QtCore.Slot(str, str, result=str)
     def copyImage(self, source_url: str, device_name: str) -> str:
         src = to_local_path(source_url)
         if not src.is_file():
@@ -136,6 +156,9 @@ class HardwareProfile(QtCore.QObject):
         alt = _maps_dir() / Path(s).name
         if alt.is_file():
             return alt.as_uri()
+        ov = _maps_dir() / "overlays" / Path(s).name
+        if ov.is_file():
+            return ov.as_uri()
         return ""
 
     @QtCore.Slot(str, result=str)
@@ -143,6 +166,8 @@ class HardwareProfile(QtCore.QObject):
         s = (url_or_path or "").strip().replace("\\", "/")
         if not s or "vkb_gladiator_rig" in s:
             return "qml/images/vkb_gladiator_rig.jpg"
+        if s.startswith("qml/maps/overlays/"):
+            return s
         if s.startswith("qml/maps/"):
             return s
         if s.startswith("qml/images/"):
@@ -154,6 +179,8 @@ class HardwareProfile(QtCore.QObject):
         name = src.name
         if name and "_photo" in name:
             return f"qml/maps/{name}"
+        if "/overlays/" in s.replace("\\", "/") or (name and src.parent.name == "overlays"):
+            return f"qml/maps/overlays/{name}"
         if "qml/maps/" in s:
             return "qml/maps/" + s.split("qml/maps/")[-1]
         return s
