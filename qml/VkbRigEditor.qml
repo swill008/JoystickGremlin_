@@ -211,14 +211,25 @@ Item {
             var fy = Math.max(0.01, Math.min(0.92, cp.y / Math.max(1, height)))
             var dFx = fx - n.chipFx
             var dFy = fy - n.chipFy
-            var ids = (selectedIds && selectedIds.length) ? selectedIds : [selectedId]
-            for (var i = 0; i < ids.length; i++) {
-                var q = nodeAt(ids[i])
-                if (!q)
-                    continue
-                q.chipFx = Math.max(0.01, Math.min(0.92, q.chipFx + dFx))
-                q.chipFy = Math.max(0.01, Math.min(0.92, q.chipFy + dFy))
-                refreshChipPack(q)
+            var pack = tablePackOf(n)
+            if (!pack) {
+                var ids0 = (selectedIds && selectedIds.length) ? selectedIds : [selectedId]
+                var pi
+                for (pi = 0; !pack && pi < ids0.length; pi++)
+                    pack = tablePackOf(nodeAt(ids0[pi]))
+            }
+            if (pack) {
+                moveTablePack(pack, dFx, dFy)
+            } else {
+                var ids = (selectedIds && selectedIds.length) ? selectedIds : [selectedId]
+                for (var i = 0; i < ids.length; i++) {
+                    var q = nodeAt(ids[i])
+                    if (!q)
+                        continue
+                    q.chipFx = Math.max(0.01, Math.min(0.92, q.chipFx + dFx))
+                    q.chipFy = Math.max(0.01, Math.min(0.92, q.chipFy + dFy))
+                    refreshChipPack(q)
+                }
             }
         } else if (dragKind === "spine" && dragSpine >= 0) {
             var Ls = currentLeader(n)
@@ -259,8 +270,11 @@ Item {
                     qn.chipFy = Math.max(0.01, Math.min(0.92, qn.chipFy + ddy / Math.max(1, height)))
                 }
             } else {
+                var oldFx = n.fx || 0
+                var oldFy = n.fy || 0
                 n.fx = Math.max(0, Math.min(0.98, np.x / Math.max(1, width)))
                 n.fy = Math.max(0, Math.min(0.98, np.y / Math.max(1, height)))
+                shiftIndependentParts(n, n.fx - oldFx, n.fy - oldFy)
             }
             followTablePacked(n)
             syncOverlayChips(n)
@@ -271,7 +285,10 @@ Item {
         } else if (dragKind.indexOf("draw-") === 0) {
             if (isLocked(n))
                 return
+            var rzOldFx = n.fx || 0
+            var rzOldFy = n.fy || 0
             applyDrawResize(n, mx, my, dragKind.slice(5), altOff)
+            shiftIndependentParts(n, (n.fx || 0) - rzOldFx, (n.fy || 0) - rzOldFy)
             followTablePacked(n)
             syncOverlayChips(n)
         } else if (dragKind === "member" && n.members && dragMember >= 0 && dragMember < n.members.length) {
@@ -2699,11 +2716,20 @@ Item {
         var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
         if (!ids.length)
             return
+        var seenPack = {}
         var i
         for (i = 0; i < ids.length; i++) {
             var n = nodeAt(ids[i])
             if (!n)
                 continue
+            var pack = tablePackOf(n)
+            if (pack) {
+                if (!seenPack[pack.id]) {
+                    seenPack[pack.id] = true
+                    moveTablePack(pack, dx, dy)
+                }
+                continue
+            }
             if (isDraw(n)) {
                 if (isLocked(n))
                     continue
@@ -2718,8 +2744,11 @@ Item {
                         qn.chipFy = Math.max(0.01, Math.min(0.92, qn.chipFy + dy))
                     }
                 } else {
-                    n.fx = Math.max(0, Math.min(0.98, (n.fx || 0) + dx))
-                    n.fy = Math.max(0, Math.min(0.98, (n.fy || 0) + dy))
+                    var oldFx = n.fx || 0
+                    var oldFy = n.fy || 0
+                    n.fx = Math.max(0, Math.min(0.98, oldFx + dx))
+                    n.fy = Math.max(0, Math.min(0.98, oldFy + dy))
+                    shiftIndependentParts(n, n.fx - oldFx, n.fy - oldFy)
                 }
                 followTablePacked(n)
             } else {
@@ -3661,6 +3690,51 @@ Item {
         }
     }
 
+    function tablePackOf(n) {
+        if (!n)
+            return null
+        if (isTable(n) && tableIsPacked(n))
+            return n
+        if (n.packId) {
+            var t = nodeAt(n.packId)
+            if (isTable(t))
+                return t
+        }
+        return null
+    }
+
+    function shiftIndependentParts(table, dFx, dFy) {
+        if (!isTable(table) || (!dFx && !dFy))
+            return
+        function bump(cell) {
+            if (!cell || !cell.independent)
+                return
+            cell.efx = (cell.efx || 0) + dFx
+            cell.efy = (cell.efy || 0) + dFy
+        }
+        var extras = table.extras || []
+        var i
+        for (i = 0; i < extras.length; i++)
+            bump(extras[i])
+        var rows = table.rows || []
+        var r
+        var c
+        for (r = 0; r < rows.length; r++) {
+            var cells = rows[r] && rows[r].cells ? rows[r].cells : []
+            for (c = 0; c < cells.length; c++)
+                bump(cells[c])
+        }
+    }
+
+    function moveTablePack(table, dFx, dFy) {
+        if (!isTable(table) || isLocked(table))
+            return
+        table.fx = Math.max(0, Math.min(0.98, (table.fx || 0) + dFx))
+        table.fy = Math.max(0, Math.min(0.98, (table.fy || 0) + dFy))
+        shiftIndependentParts(table, dFx, dFy)
+        followTablePacked(table)
+    }
+
     function refreshChipPack(chip) {
         if (!chip || !chip.packId)
             return
@@ -3710,7 +3784,7 @@ Item {
 
     function canUngroup() {
         var n = nodeAt(selectedId)
-        if (tableIsPacked(n))
+        if (tableIsPacked(n) || (n && n.packId))
             return true
         return isGroup(n) && (selectedIds || []).length <= 1
     }
@@ -3895,6 +3969,11 @@ Item {
 
     function ungroupSelection() {
         var n = nodeAt(selectedId)
+        if (n && n.packId) {
+            var packedTable = nodeAt(n.packId)
+            if (isTable(packedTable))
+                n = packedTable
+        }
         if (tableIsPacked(n)) {
             detachTablePacked(n)
             bump()
@@ -4035,6 +4114,16 @@ Item {
             }
             if (hit && ids.indexOf(n.id) < 0)
                 ids.push(n.id)
+            if (hit && isTable(n) && n.packed) {
+                var pk = n.packed
+                var p
+                for (p = 0; p < pk.length; p++) {
+                    if (ids.indexOf(pk[p]) < 0)
+                        ids.push(pk[p])
+                }
+            }
+            if (hit && n.packId && ids.indexOf(n.packId) < 0)
+                ids.push(n.packId)
         }
         setSelection(ids)
     }
