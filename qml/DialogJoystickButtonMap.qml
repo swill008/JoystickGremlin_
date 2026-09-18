@@ -49,6 +49,8 @@ Window {
     property string storedImage: ""
     property string liveImage: ""
     property bool pendingWorldMigrate: false
+    property bool pendingSceneMigrate: false
+    property bool sceneShifted: false
     property string selectedId: ""
     property var selectedNode: null
     property bool _allowClose: false
@@ -214,6 +216,66 @@ Window {
         photoOverride = _hw.imageUrl(storedImage)
     }
 
+    function sceneShiftList(list) {
+        if (!list)
+            return
+        function pos(v) { return Math.max(0, Math.min(1, 0.25 + (v || 0) * 0.5)) }
+        function sz(v) { return (v || 0) * 0.5 }
+        function mapEnd(e) {
+            if (e && e.type === "free") {
+                e.fx = pos(e.fx)
+                e.fy = pos(e.fy)
+            }
+        }
+        function mapSpines(arr) {
+            if (!arr)
+                return
+            var s
+            for (s = 0; s < arr.length; s++) {
+                arr[s].fx = pos(arr[s].fx)
+                arr[s].fy = pos(arr[s].fy)
+            }
+        }
+        var i
+        var k
+        for (i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (!n)
+                continue
+            if (n.chipFx !== undefined) n.chipFx = pos(n.chipFx)
+            if (n.chipFy !== undefined) n.chipFy = pos(n.chipFy)
+            if (n.fx !== undefined) n.fx = pos(n.fx)
+            if (n.fy !== undefined) n.fy = pos(n.fy)
+            if (n.fw !== undefined) n.fw = sz(n.fw)
+            if (n.fh !== undefined) n.fh = sz(n.fh)
+            var extras = n.extras || []
+            for (k = 0; k < extras.length; k++) {
+                if (!extras[k])
+                    continue
+                if (extras[k].efx !== undefined) extras[k].efx = pos(extras[k].efx)
+                if (extras[k].efy !== undefined) extras[k].efy = pos(extras[k].efy)
+                if (extras[k].efw !== undefined) extras[k].efw = sz(extras[k].efw)
+                if (extras[k].efh !== undefined) extras[k].efh = sz(extras[k].efh)
+            }
+            var mem = n.members || []
+            for (k = 0; k < mem.length; k++) {
+                if (mem[k].ox !== undefined) mem[k].ox = sz(mem[k].ox)
+                if (mem[k].oy !== undefined) mem[k].oy = sz(mem[k].oy)
+                if (mem[k].offX !== undefined) mem[k].offX = sz(mem[k].offX)
+                if (mem[k].offY !== undefined) mem[k].offY = sz(mem[k].offY)
+            }
+            mapSpines(n.spines)
+            mapEnd(n.from)
+            mapEnd(n.to)
+            var leads = n.leaders || []
+            for (k = 0; k < leads.length; k++) {
+                mapSpines(leads[k].spines)
+                mapEnd(leads[k].from)
+                mapEnd(leads[k].to)
+            }
+        }
+    }
+
     function loadLive() {
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
@@ -226,7 +288,14 @@ Window {
         if (doc.ui)
             applyUi(doc.ui)
         applyImage(liveImage)
-        pendingWorldMigrate = Number(doc.worldRev || 0) < 1
+        var rev = Number(doc.worldRev || 0)
+        pendingWorldMigrate = rev < 1
+        pendingSceneMigrate = rev < 2
+        if (rev >= 1 && rev < 2 && !sceneShifted) {
+            sceneShiftList(liveNodes)
+            sceneShifted = true
+            pendingSceneMigrate = false
+        }
         applyGridToEditor()
         return true
     }
@@ -272,10 +341,10 @@ Window {
             kind: "control.hardware",
             device: targetName,
             space: "world",
-            page: 16000,
-            pageW: 16000,
-            pageH: 9000,
-            worldRev: 1,
+            page: 32000,
+            pageW: 32000,
+            pageH: 18000,
+            worldRev: 2,
             image: image,
             imageWidth: 899,
             imageHeight: 920,
@@ -485,7 +554,7 @@ Window {
                 },
                 {
                     h: "World page",
-                    b: "Layout lives on a 16000 × 9000 world page (16:9). The editor contain-fits that page (letterbox if the window is not 16:9). Maximize does not stretch a plus — X and Y share the same page.\nThe photo is a layer under the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the page (world X = fx × 16000). Save stamps space world, pageW 16000, pageH 9000, worldRev 1.\nAn older map without worldRev 1 is converted once on Edit Mapping, then Save writes the new stamp so it will not convert twice."
+                    b: "Layout lives on a 32000 × 18000 world page (16:9). Reset view / 100% still frames the photo the way it used to (center half of the page). Zoom out to 50% shows the full page — that black around the stick is now on the grid and can take chips.\nThe photo is a layer in the center of the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the 32000 page. Save stamps space world, pageW 32000, pageH 18000, worldRev 2.\nA map on the old 16000 page (worldRev 1) is shifted into the center once on Edit Mapping. A map with no worldRev still converts from window space first."
                 },
                 {
                     h: "File",
@@ -497,7 +566,7 @@ Window {
                 },
                 {
                     h: "View, zoom, pan",
-                    b: "Scroll wheel zooms about the pointer, 50%–400%. The point under the cursor stays put at every step, including 400%. Middle-button drag pans. Before Edit Mapping, left-drag also pans. View → Reset view returns 100% and centered.\nA resize or photo reload keeps a valid zoom. It only recenters when zoom or pan is broken (NaN or out of range).\nView → Grid → Show grid — world page only, not the letterbox. Step is world counts (default 200). Size 4–400; 200 and 400 suit the 16000 page. Paint caps about 80 lines per axis so a fine step cannot stall the PC.\nSnap to grid — drag onto world-grid points.\nSnap to entities — snap to other chips, hots, frames.\nPage guides — while you drag a chip, table, text, or group, a green dashed line appears near the page center or an edge. Release snaps center-to-center or edge-to-edge. Packed table + chips move together.\nAlt while dragging skips grid, entity, and page-guide snap."
+                    b: "Scroll wheel zooms about the pointer, 50%–400%. 100% is the photo frame. 50% is the full 32000 page. 400% is 4× the photo frame. The point under the cursor stays put. Middle-button drag pans. Before Edit Mapping, left-drag also pans. View → Reset view returns 100% (photo frame) and centered.\nA resize or photo reload keeps a valid zoom. It only recenters when zoom or pan is broken (NaN or out of range).\nView → Grid → Show grid — the full world page. Step is world counts (default 200). Size 4–400; 400 suits the 32000 page. Paint caps about 80 lines per axis so a fine step cannot stall the PC.\nSnap to grid — drag onto world-grid points.\nSnap to entities — snap to other chips, hots, frames.\nPage guides — while you drag a chip, table, text, or group, a green dashed line appears near the page center or an edge. Release snaps center-to-center or edge-to-edge. Packed table + chips move together.\nAlt while dragging skips grid, entity, and page-guide snap."
                 },
                 {
                     h: "Reservoir",
@@ -545,7 +614,7 @@ Window {
                 },
                 {
                     h: "Save and live map",
-                    b: "Save writes kind control.hardware for VKBsim Gladiator EVO R. Nodes, image path, ui (grid), space world, page 16000×9000, and worldRev 1 go to the hardware profile.\nThe live face rebinds dest labels from pairing / vJoy / Xbox the same way as before. Theme and chip names are layout only.\nHardware ids on this grip stay locked (buttons 1–29, hat 1, axes 1–4)."
+                    b: "Save writes kind control.hardware for VKBsim Gladiator EVO R. Nodes, image path, ui (grid), space world, page 32000×18000, and worldRev 2 go to the hardware profile.\nThe live face rebinds dest labels from pairing / vJoy / Xbox the same way as before. Theme and chip names are layout only.\nHardware ids on this grip stay locked (buttons 1–29, hat 1, axes 1–4)."
                 }
             ]
             delegate: Column {
@@ -791,6 +860,10 @@ Window {
         if (pendingWorldMigrate && e.migrateFromWindowSpace) {
             e.migrateFromWindowSpace()
             pendingWorldMigrate = false
+        }
+        if (pendingSceneMigrate && e.migrateInnerPageToScene) {
+            e.migrateInnerPageToScene()
+            pendingSceneMigrate = false
         }
         if (e.repaint)
             e.repaint()
@@ -1142,7 +1215,7 @@ Window {
                 spacing: 8
                 Label {
                     visible: editing
-                    text: _cardLoader.item ? (Math.round(_cardLoader.item.zoom * 100) + "%") : "100%"
+                    text: _cardLoader.item ? (Math.round(_cardLoader.item.viewPct * 100) + "%") : "100%"
                     color: "#E4E4E7"
                     font.pixelSize: 12
                 }
