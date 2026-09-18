@@ -4021,53 +4021,6 @@ Item {
                 MenuItem { text: "Pressed fill…"; onTriggered: _ed.pickColor("hlColor") }
                 MenuItem { text: "Pressed outline…"; onTriggered: _ed.pickColor("hlBorder") }
                 MenuItem { text: "Pressed text…"; onTriggered: _ed.pickColor("hlText") }
-                MenuSeparator {}
-                MenuItem { text: "Leader…"; onTriggered: _ed.pickColor("leaderColor") }
-                MenuItem { text: "Hotspot…"; onTriggered: _ed.pickColor("hotColor") }
-            }
-            Menu {
-                title: "Hotspot"
-                Menu {
-                    id: _hotSzMenu
-                    title: "Size"
-                    Instantiator {
-                        model: [4, 6, 8, 9, 10, 12, 14, 16, 20, 24, 28]
-                        delegate: MenuItem {
-                            required property int modelData
-                            text: "" + modelData
-                            checkable: true
-                            checked: _ed.fieldEq("hotSize", modelData, 9)
-                            onTriggered: _ed.applyField("hotSize", modelData)
-                        }
-                        onObjectAdded: (i, obj) => _hotSzMenu.insertItem(i, obj)
-                        onObjectRemoved: (i, obj) => _hotSzMenu.removeItem(obj)
-                    }
-                }
-                MenuItem {
-                    text: "Round"
-                    checkable: true
-                    checked: _ed.fieldEq("hotShape", "round", "round")
-                    onTriggered: _ed.applyField("hotShape", "round")
-                }
-                MenuItem {
-                    text: "Square"
-                    checkable: true
-                    checked: _ed.fieldEq("hotShape", "square", "round")
-                    onTriggered: _ed.applyField("hotShape", "square")
-                }
-                MenuSeparator {}
-                MenuItem {
-                    text: "Filled"
-                    checkable: true
-                    checked: _ed.fieldEq("hotFill", "filled", "filled")
-                    onTriggered: _ed.applyField("hotFill", "filled")
-                }
-                MenuItem {
-                    text: "Hollow"
-                    checkable: true
-                    checked: _ed.fieldEq("hotFill", "hollow", "filled")
-                    onTriggered: _ed.applyField("hotFill", "hollow")
-                }
             }
             MenuItem {
                 text: "Highlight on press"
@@ -4090,6 +4043,72 @@ Item {
                 }
                 onTriggered: _ed.deleteChip()
             }
+        }
+        Menu {
+            title: "Hotspot"
+            visible: _ed.ctxHasMapItem()
+            height: visible ? implicitHeight : 0
+            enabled: {
+                var n = _ed.ctxTarget()
+                return !!(n && !_ed.isDraw(n))
+            }
+            Menu {
+                id: _hotSzMenu
+                title: "Size"
+                Instantiator {
+                    model: [4, 6, 8, 9, 10, 12, 14, 16, 20, 24, 28]
+                    delegate: MenuItem {
+                        required property int modelData
+                        text: "" + modelData
+                        checkable: true
+                        checked: _ed.fieldEq("hotSize", modelData, 9)
+                        onTriggered: _ed.applyField("hotSize", modelData)
+                    }
+                    onObjectAdded: (i, obj) => _hotSzMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _hotSzMenu.removeItem(obj)
+                }
+            }
+            MenuItem {
+                text: "Round"
+                checkable: true
+                checked: _ed.fieldEq("hotShape", "round", "round")
+                onTriggered: _ed.applyField("hotShape", "round")
+            }
+            MenuItem {
+                text: "Square"
+                checkable: true
+                checked: _ed.fieldEq("hotShape", "square", "round")
+                onTriggered: _ed.applyField("hotShape", "square")
+            }
+            MenuSeparator {}
+            MenuItem {
+                text: "Filled"
+                checkable: true
+                checked: _ed.fieldEq("hotFill", "filled", "filled")
+                onTriggered: _ed.applyField("hotFill", "filled")
+            }
+            MenuItem {
+                text: "Hollow"
+                checkable: true
+                checked: _ed.fieldEq("hotFill", "hollow", "filled")
+                onTriggered: _ed.applyField("hotFill", "hollow")
+            }
+            MenuSeparator {}
+            MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("hotColor") } }
+        }
+        Menu {
+            title: "Leader End"
+            visible: _ed.ctxHasMapItem()
+            height: visible ? implicitHeight : 0
+            enabled: {
+                var n = _ed.ctxTarget()
+                return !!(n && !_ed.isDraw(n))
+            }
+            MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
+            MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
+            MenuSeparator {}
+            MenuItem { text: "Reconnect to this chip"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("from") } }
+            MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
         }
         Menu {
             title: "Group"
@@ -4225,14 +4244,6 @@ Item {
             MenuSeparator {}
             MenuItem { text: "Add leader"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addLeader() } }
             MenuItem { text: "Branch from this end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.selectedLeader = _ctx.leader; _ed.addBranch() } }
-            Menu {
-                title: "Attach"
-                MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
-                MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
-                MenuItem { text: "Reconnect to this chip"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("from") } }
-                MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
-            }
-            MenuSeparator {}
             MenuItem {
                 text: "Clear all spines"
                 enabled: {
