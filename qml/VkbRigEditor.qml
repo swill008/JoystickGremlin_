@@ -4780,15 +4780,64 @@ Item {
         }
         Menu {
             title: "Font size"
-            MenuItem { text: "8"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !!(n && n.fontSize === 8) }; onTriggered: _ed.setTableFont(8) }
-            MenuItem { text: "10"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !n || n.fontSize === 10 || !n.fontSize }; onTriggered: _ed.setTableFont(10) }
-            MenuItem { text: "12"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !!(n && n.fontSize === 12) }; onTriggered: _ed.setTableFont(12) }
-            MenuItem { text: "14"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !!(n && n.fontSize === 14) }; onTriggered: _ed.setTableFont(14) }
-            MenuItem { text: "16"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !!(n && n.fontSize === 16) }; onTriggered: _ed.setTableFont(16) }
+            MenuItem {
+                text: "8"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 8)
+                }
+                onTriggered: _ed.setTableFont(8)
+            }
+            MenuItem {
+                text: "10"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || !n.fontSize || n.fontSize === 10
+                }
+                onTriggered: _ed.setTableFont(10)
+            }
+            MenuItem {
+                text: "12"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 12)
+                }
+                onTriggered: _ed.setTableFont(12)
+            }
+            MenuItem {
+                text: "14"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 14)
+                }
+                onTriggered: _ed.setTableFont(14)
+            }
+            MenuItem {
+                text: "16"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 16)
+                }
+                onTriggered: _ed.setTableFont(16)
+            }
         }
         MenuSeparator {}
         MenuItem {
-            text: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return _ed.isLocked(n) ? "Unpin" : "Pin" }
+            text: {
+                _ed.tick
+                var n = _ed.nodeAt(_ed.selectedId)
+                return _ed.isLocked(n) ? "Unpin" : "Pin"
+            }
             onTriggered: _ed.toggleLock()
         }
         MenuItem {
