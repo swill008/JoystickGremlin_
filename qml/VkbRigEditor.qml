@@ -960,32 +960,56 @@ Item {
         bump()
     }
 
+    function stripLeaders(n) {
+        if (!n || isDraw(n))
+            return
+        n.leaders = []
+        n.spines = []
+        n.from = undefined
+        n.to = undefined
+    }
+
     function deleteLeader() {
-        var n = nodeAt(selectedId)
-        if (!n)
-            return
-        var ls = ensureLeaders(n)
-        if (!ls.length)
-            return
-        var i = selectedLeader
-        if (i < 0 || i >= ls.length)
-            i = 0
-        ls.splice(i, 1)
-        n.leaders = ls
-        if (ls.length) {
-            selectedLeader = Math.min(i, ls.length - 1)
-            var L = ls[selectedLeader]
-            n.spines = L.spines || []
-            n.from = L.from
-            n.to = L.to
-        } else {
-            selectedLeader = 0
-            selectedSpine = -1
-            n.spines = []
-            n.from = undefined
-            n.to = undefined
+        var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
+        if (!ids.length && _ctx && _ctx.nodeId)
+            ids = [_ctx.nodeId]
+        var i
+        var any = false
+        for (i = 0; i < ids.length; i++) {
+            var n = nodeAt(ids[i])
+            if (!n || isDraw(n))
+                continue
+            var ls = ensureLeaders(n)
+            if (!ls.length) {
+                stripLeaders(n)
+                any = true
+                continue
+            }
+            if (ids.length > 1) {
+                stripLeaders(n)
+                any = true
+                continue
+            }
+            var li = selectedLeader
+            if (li < 0 || li >= ls.length)
+                li = 0
+            ls.splice(li, 1)
+            n.leaders = ls
+            if (ls.length) {
+                selectedLeader = Math.min(li, ls.length - 1)
+                var L = ls[selectedLeader]
+                n.spines = L.spines || []
+                n.from = L.from
+                n.to = L.to
+            } else {
+                stripLeaders(n)
+                selectedLeader = 0
+                selectedSpine = -1
+            }
+            any = true
         }
-        bump()
+        if (any)
+            bump()
     }
 
     function groupAlignH(n) {
@@ -4494,10 +4518,22 @@ Item {
                 }
             }
             MenuItem {
-                text: "Delete leader"
+                text: {
+                    _ed.tick
+                    var ids = _ed.selectedIds || []
+                    return ids.length > 1 ? "Delete leaders" : "Delete leader"
+                }
+                enabled: {
+                    var ids = (_ed.selectedIds && _ed.selectedIds.length) ? _ed.selectedIds : [_ed.selectedId]
+                    var i
+                    for (i = 0; i < ids.length; i++) {
+                        var n = _ed.nodeAt(ids[i])
+                        if (n && !_ed.isDraw(n) && _ed.leaderList(n).length)
+                            return true
+                    }
+                    return false
+                }
                 onTriggered: {
-                    _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                    _ed.selectedLeader = _ctx.leader
                     _ed.deleteLeader()
                 }
             }
