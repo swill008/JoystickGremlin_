@@ -3773,6 +3773,16 @@ Item {
             else if (!isDraw(n))
                 chipNodes.push(n)
         }
+        if (!tables.length && chipNodes.length) {
+            var inferred = tablesUnderChips(chipNodes)
+            if (inferred.length > 1) {
+                packWarn = "Chips sit on more than one table."
+                bump()
+                return
+            }
+            if (inferred.length === 1)
+                tables = inferred
+        }
         if (tables.length > 1) {
             packWarn = "Group one table at a time."
             bump()
@@ -3939,6 +3949,70 @@ Item {
         bump()
     }
 
+    function rectHitsBand(r, x0, y0, x1, y1) {
+        if (!r)
+            return false
+        return r.x < x1 && r.x + r.w > x0 && r.y < y1 && r.y + r.h > y0
+    }
+
+    function tableHitsBand(n, x0, y0, x1, y1) {
+        if (!isTable(n))
+            return false
+        if (rectHitsBand(drawGeom(n), x0, y0, x1, y1))
+            return true
+        var extras = n.extras || []
+        var i
+        for (i = 0; i < extras.length; i++) {
+            if (rectHitsBand(tableExtraRect(n, i), x0, y0, x1, y1))
+                return true
+        }
+        var r
+        var c
+        var rows = (n.rows && n.rows.length) ? n.rows.length : 0
+        var cols = n.cols > 0 ? n.cols : 0
+        for (r = 0; r < rows; r++) {
+            for (c = 0; c < cols; c++) {
+                if (tableCellIsFree(n, r, c) && rectHitsBand(tableCellRect(n, r, c), x0, y0, x1, y1))
+                    return true
+            }
+        }
+        return false
+    }
+
+    function tablesUnderChips(chips) {
+        var out = []
+        var seen = {}
+        var list = nodes || []
+        var i
+        var t
+        for (i = 0; i < chips.length; i++) {
+            var chip = chips[i]
+            var b = chipBounds(chip)
+            var cx = b.x + b.w * 0.5
+            var cy = b.y + b.h * 0.5
+            var j
+            for (j = 0; j < list.length; j++) {
+                t = list[j]
+                if (!isTable(t) || seen[t.id])
+                    continue
+                var g = drawGeom(t)
+                var hit = cx >= g.x && cx <= g.x + g.w && cy >= g.y && cy <= g.y + g.h
+                var ei
+                var extras = t.extras || []
+                for (ei = 0; !hit && ei < extras.length; ei++) {
+                    var er = tableExtraRect(t, ei)
+                    if (cx >= er.x && cx <= er.x + er.w && cy >= er.y && cy <= er.y + er.h)
+                        hit = true
+                }
+                if (!hit)
+                    continue
+                seen[t.id] = true
+                out.push(t)
+            }
+        }
+        return out
+    }
+
     function selectBand(add) {
         var x0 = Math.min(bandX0, bandX1)
         var y0 = Math.min(bandY0, bandY1)
@@ -3947,15 +4021,20 @@ Item {
         var ids = add ? (selectedIds || []).slice() : []
         var list = nodes || []
         for (var i = 0; i < list.length; i++) {
-            var it = _chips.itemAt(i)
-            if (!it)
-                continue
-            var cx = it.x + it.width * 0.5
-            var cy = it.y + it.height * 0.5
-            if (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1) {
-                if (ids.indexOf(list[i].id) < 0)
-                    ids.push(list[i].id)
+            var n = list[i]
+            var hit = false
+            if (isTable(n)) {
+                hit = tableHitsBand(n, x0, y0, x1, y1)
+            } else {
+                var it = _chips.itemAt(i)
+                if (!it)
+                    continue
+                var cx = it.x + it.width * 0.5
+                var cy = it.y + it.height * 0.5
+                hit = cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1
             }
+            if (hit && ids.indexOf(n.id) < 0)
+                ids.push(n.id)
         }
         setSelection(ids)
     }
