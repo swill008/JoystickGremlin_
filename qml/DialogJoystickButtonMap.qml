@@ -278,10 +278,7 @@ Window {
             liveNodes = JSON.parse(JSON.stringify(nodes))
             liveImage = image
             applyImage(liveImage)
-            editing = false
-            workNodes = []
-            selectedId = ""
-            selectedNode = null
+            hydrateOverlays(liveNodes)
         }
     }
 
@@ -444,7 +441,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nImport overlay… — add a PNG/JPEG plate (5-way plus, etc.) on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nImport overlay… — add a PNG/JPEG plate (5-way plus, etc.) on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
                 },
                 {
                     h: "Edit menu",
