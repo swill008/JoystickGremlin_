@@ -1444,6 +1444,19 @@ Item {
         return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
     }
 
+    function clearAllSpines(id) {
+        var n = nodeAt(id || selectedId)
+        if (!n)
+            return
+        var ls = ensureLeaders(n)
+        var i
+        for (i = 0; i < ls.length; i++)
+            ls[i].spines = []
+        n.spines = []
+        selectedSpine = -1
+        bump()
+    }
+
     function addSpineAt(id, mx, my) {
         var n = nodeAt(id)
         if (!n) {
@@ -3232,10 +3245,13 @@ Item {
                 return
             }
             if (hit.kind === "line" && !shift) {
+                _ed.setSelection([hit.id])
                 _ed.selectedId = hit.id
                 _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
                 _ed.selectedSeg = (hit.seg !== undefined) ? hit.seg : 0
-                _ed.addSpineAt(hit.id, m.x, m.y)
+                _ed.selectedSpine = -1
+                _ed.dragKind = ""
+                _ed.bump()
                 return
             }
             if (hit.kind === "from" || hit.kind === "to") {
@@ -4016,6 +4032,13 @@ Item {
                 MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
             }
             MenuSeparator {}
+            MenuItem {
+                text: "Clear all spines"
+                onTriggered: {
+                    _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                    _ed.clearAllSpines(_ed.selectedId)
+                }
+            }
             MenuItem {
                 text: "Delete spine"
                 enabled: _ed.selectedSpine >= 0
