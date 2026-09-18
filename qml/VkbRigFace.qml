@@ -22,11 +22,13 @@ Item {
     property var destAxis: ({})
     property var destHat: ({})
     property int destTick: 0
-    property real zoom: 1
+    property real zoom: 2
     property real panX: 0
     property real panY: 0
-    readonly property real zoomMin: 0.5
-    readonly property real zoomMax: 4.0
+    readonly property real zoomMin: 1.0
+    readonly property real zoomMax: 8.0
+    readonly property real zoomFit: 2.0
+    readonly property real viewPct: zoom / zoomFit
 
     readonly property real _pw: _img.paintedWidth
     readonly property real _ph: _img.paintedHeight
@@ -47,7 +49,7 @@ Item {
     }
 
     function resetView() {
-        zoom = 1
+        zoom = zoomFit
         panX = 0
         panY = 0
         pingEditor()
@@ -118,8 +120,10 @@ Item {
             vx = vw * 0.5
             vy = vh * 0.5
         }
-        if (Math.abs(z1 - 1) < 0.015)
-            z1 = 1
+        if (Math.abs(z1 - zoomFit) < 0.03)
+            z1 = zoomFit
+        else if (Math.abs(z1 - zoomMin) < 0.015)
+            z1 = zoomMin
         var wx = (vx - panX - W * 0.5) / z0 + W * 0.5
         var wy = (vy - panY - H * 0.5) / z0 + H * 0.5
         zoom = z1
