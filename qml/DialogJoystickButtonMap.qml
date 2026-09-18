@@ -320,6 +320,12 @@ Window {
         return null
     }
 
+    function openColorField(field, hex, anchorItem) {
+        if (!_colorPop)
+            return
+        _colorPop.openField(field, hex, anchorItem)
+    }
+
     function applySelected() {
         var n = currentNode()
         selectedNode = n
@@ -1111,7 +1117,7 @@ Window {
                             function onSelectedChanged() { _buttonMap.applySelected() }
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
-                            function onColorPickRequested(field, hex) { _buttonMap._colorPop.openField(field, hex, null) }
+                            function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }
                             function onDrawToolChanged() { _buttonMap.resTick++ }
                             function onHistoryChanged() {
                                 _buttonMap.applySelected()
