@@ -217,8 +217,21 @@ Window {
     }
 
     function enterEdit() {
-        loadLive()
-        workNodes = JSON.parse(JSON.stringify(liveNodes || []))
+        if (editing)
+            return
+        try {
+            loadLive()
+        } catch (e) {
+            console.warn("Button Map loadLive failed", e)
+        }
+        var src = []
+        try {
+            src = JSON.parse(JSON.stringify(liveNodes || []))
+        } catch (e2) {
+            console.warn("Button Map clone nodes failed", e2)
+            src = []
+        }
+        workNodes = src
         applyImage(liveImage.length ? liveImage : stockImage)
         editing = true
         selectedId = ""
@@ -834,6 +847,156 @@ Window {
         }
     }
 
+    menuBar: MenuBar {
+        Menu {
+            title: "File"
+            MenuItem {
+                text: "Edit Mapping"
+                enabled: !_buttonMap.editing
+                onTriggered: _buttonMap.enterEdit()
+            }
+            MenuItem { text: "Save"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
+            MenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
+            MenuSeparator {}
+            MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
+            MenuSeparator {}
+            MenuItem { text: "Choose background…"; enabled: editing; onTriggered: _imageDialog.open() }
+            MenuItem {
+                text: "Clear image"
+                enabled: editing
+                onTriggered: {
+                    _hw.clearImage(targetName)
+                    applyImage(stockImage)
+                }
+            }
+            MenuSeparator {}
+            MenuItem {
+                text: "Exit"
+                onTriggered: _buttonMap.close()
+            }
+        }
+        Menu {
+            title: "Edit"
+            MenuItem {
+                text: "Undo"
+                enabled: { var e = _ed(); return e ? e.canUndo : false }
+                onTriggered: { var e = _ed(); if (e) e.undo() }
+            }
+            MenuItem {
+                text: "Redo"
+                enabled: { var e = _ed(); return e ? e.canRedo : false }
+                onTriggered: { var e = _ed(); if (e) e.redo() }
+            }
+            MenuSeparator {}
+            MenuItem {
+                text: "Duplicate"
+                enabled: { var e = _ed(); return e && e.selectedId !== "" }
+                onTriggered: { var e = _ed(); if (e) e.duplicateSelection() }
+            }
+            MenuItem {
+                text: "Copy"
+                enabled: { var e = _ed(); return e && e.selectedId !== "" }
+                onTriggered: { var e = _ed(); if (e) e.copySelection() }
+            }
+            MenuItem {
+                text: "Paste"
+                enabled: { var e = _ed(); return e && e.clip && e.clip.length }
+                onTriggered: { var e = _ed(); if (e) e.pasteClipboard() }
+            }
+        }
+        Menu {
+            title: "View"
+            MenuItem {
+                text: "Reset view"
+                onTriggered: {
+                    if (_cardLoader.item)
+                        _cardLoader.item.resetView()
+                }
+            }
+            MenuSeparator {}
+            Menu {
+                title: "Grid"
+                MenuItem {
+                    text: "Show grid"
+                    checkable: true
+                    checked: _buttonMap.gridOn
+                    onTriggered: _buttonMap.setGridPref("gridOn", checked)
+                }
+                MenuItem {
+                    text: "Snap to grid"
+                    checkable: true
+                    checked: _buttonMap.snapOn
+                    onTriggered: _buttonMap.setGridPref("snapOn", checked)
+                }
+                MenuItem {
+                    text: "Snap to entities"
+                    checkable: true
+                    checked: _buttonMap.snapEntOn
+                    onTriggered: _buttonMap.setGridPref("snapEntOn", checked)
+                }
+                MenuSeparator {}
+                Menu {
+                    title: "Size"
+                    MenuItem {
+                        text: "4"
+                        checkable: true
+                        checked: { var e = _ed(); return e && e.gridSize === 4 }
+                        onTriggered: _buttonMap.setGridPref("gridSize", 4)
+                    }
+                    MenuItem {
+                        text: "8"
+                        checkable: true
+                        checked: { var e = _ed(); return e && e.gridSize === 8 }
+                        onTriggered: _buttonMap.setGridPref("gridSize", 8)
+                    }
+                    MenuItem {
+                        text: "12"
+                        checkable: true
+                        checked: { var e = _ed(); return e && e.gridSize === 12 }
+                        onTriggered: _buttonMap.setGridPref("gridSize", 12)
+                    }
+                    MenuItem {
+                        text: "16"
+                        checkable: true
+                        checked: { var e = _ed(); return e && e.gridSize === 16 }
+                        onTriggered: _buttonMap.setGridPref("gridSize", 16)
+                    }
+                    MenuItem {
+                        text: "24"
+                        checkable: true
+                        checked: { var e = _ed(); return e && e.gridSize === 24 }
+                        onTriggered: _buttonMap.setGridPref("gridSize", 24)
+                    }
+                    MenuItem {
+                        text: "32"
+                        checkable: true
+                        checked: { var e = _ed(); return e && e.gridSize === 32 }
+                        onTriggered: _buttonMap.setGridPref("gridSize", 32)
+                    }
+                    MenuItem {
+                        text: "48"
+                        checkable: true
+                        checked: { var e = _ed(); return e && e.gridSize === 48 }
+                        onTriggered: _buttonMap.setGridPref("gridSize", 48)
+                    }
+                    MenuItem {
+                        text: "64"
+                        checkable: true
+                        checked: { var e = _ed(); return e && e.gridSize === 64 }
+                        onTriggered: _buttonMap.setGridPref("gridSize", 64)
+                    }
+                }
+            }
+        }
+        Menu {
+            title: "Help"
+            MenuItem {
+                text: "Editor help"
+                onTriggered: _helpDlg.open()
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -843,155 +1006,6 @@ Window {
             RowLayout {
                 anchors.fill: parent
                 spacing: 8
-                MenuBar {
-                    Menu {
-                        title: "File"
-                        MenuItem {
-                            text: "Edit Mapping"
-                            enabled: !editing
-                            onTriggered: enterEdit()
-                        }
-                        MenuItem { text: "Save"; enabled: editing; onTriggered: saveEdit() }
-                        MenuItem { text: "Cancel"; enabled: editing; onTriggered: cancelEdit() }
-                        MenuSeparator {}
-                        MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
-                        MenuSeparator {}
-                        MenuItem { text: "Choose background…"; enabled: editing; onTriggered: _imageDialog.open() }
-                        MenuItem {
-                            text: "Clear image"
-                            enabled: editing
-                            onTriggered: {
-                                _hw.clearImage(targetName)
-                                applyImage(stockImage)
-                            }
-                        }
-                        MenuSeparator {}
-                        MenuItem {
-                            text: "Exit"
-                            onTriggered: _buttonMap.close()
-                        }
-                    }
-                    Menu {
-                        title: "Edit"
-                        MenuItem {
-                            text: "Undo"
-                            enabled: { var e = _ed(); return e ? e.canUndo : false }
-                            onTriggered: { var e = _ed(); if (e) e.undo() }
-                        }
-                        MenuItem {
-                            text: "Redo"
-                            enabled: { var e = _ed(); return e ? e.canRedo : false }
-                            onTriggered: { var e = _ed(); if (e) e.redo() }
-                        }
-                        MenuSeparator {}
-                        MenuItem {
-                            text: "Duplicate"
-                            enabled: { var e = _ed(); return e && e.selectedId !== "" }
-                            onTriggered: { var e = _ed(); if (e) e.duplicateSelection() }
-                        }
-                        MenuItem {
-                            text: "Copy"
-                            enabled: { var e = _ed(); return e && e.selectedId !== "" }
-                            onTriggered: { var e = _ed(); if (e) e.copySelection() }
-                        }
-                        MenuItem {
-                            text: "Paste"
-                            enabled: { var e = _ed(); return e && e.clip && e.clip.length }
-                            onTriggered: { var e = _ed(); if (e) e.pasteClipboard() }
-                        }
-                    }
-                    Menu {
-                        title: "View"
-                        MenuItem {
-                            text: "Reset view"
-                            onTriggered: {
-                                if (_cardLoader.item)
-                                    _cardLoader.item.resetView()
-                            }
-                        }
-                        MenuSeparator {}
-                        Menu {
-                            title: "Grid"
-                            MenuItem {
-                                text: "Show grid"
-                                checkable: true
-                                checked: _buttonMap.gridOn
-                                onTriggered: _buttonMap.setGridPref("gridOn", checked)
-                            }
-                            MenuItem {
-                                text: "Snap to grid"
-                                checkable: true
-                                checked: _buttonMap.snapOn
-                                onTriggered: _buttonMap.setGridPref("snapOn", checked)
-                            }
-                            MenuItem {
-                                text: "Snap to entities"
-                                checkable: true
-                                checked: _buttonMap.snapEntOn
-                                onTriggered: _buttonMap.setGridPref("snapEntOn", checked)
-                            }
-                            MenuSeparator {}
-                            Menu {
-                                title: "Size"
-                                MenuItem {
-                                    text: "4"
-                                    checkable: true
-                                    checked: { var e = _ed(); return e && e.gridSize === 4 }
-                                    onTriggered: _buttonMap.setGridPref("gridSize", 4)
-                                }
-                                MenuItem {
-                                    text: "8"
-                                    checkable: true
-                                    checked: { var e = _ed(); return e && e.gridSize === 8 }
-                                    onTriggered: _buttonMap.setGridPref("gridSize", 8)
-                                }
-                                MenuItem {
-                                    text: "12"
-                                    checkable: true
-                                    checked: { var e = _ed(); return e && e.gridSize === 12 }
-                                    onTriggered: _buttonMap.setGridPref("gridSize", 12)
-                                }
-                                MenuItem {
-                                    text: "16"
-                                    checkable: true
-                                    checked: { var e = _ed(); return e && e.gridSize === 16 }
-                                    onTriggered: _buttonMap.setGridPref("gridSize", 16)
-                                }
-                                MenuItem {
-                                    text: "24"
-                                    checkable: true
-                                    checked: { var e = _ed(); return e && e.gridSize === 24 }
-                                    onTriggered: _buttonMap.setGridPref("gridSize", 24)
-                                }
-                                MenuItem {
-                                    text: "32"
-                                    checkable: true
-                                    checked: { var e = _ed(); return e && e.gridSize === 32 }
-                                    onTriggered: _buttonMap.setGridPref("gridSize", 32)
-                                }
-                                MenuItem {
-                                    text: "48"
-                                    checkable: true
-                                    checked: { var e = _ed(); return e && e.gridSize === 48 }
-                                    onTriggered: _buttonMap.setGridPref("gridSize", 48)
-                                }
-                                MenuItem {
-                                    text: "64"
-                                    checkable: true
-                                    checked: { var e = _ed(); return e && e.gridSize === 64 }
-                                    onTriggered: _buttonMap.setGridPref("gridSize", 64)
-                                }
-                            }
-                        }
-                    }
-                    Menu {
-                        title: "Help"
-                        MenuItem {
-                            text: "Editor help"
-                            onTriggered: _helpDlg.open()
-                        }
-                    }
-                }
                 Label {
                     visible: editing
                     text: _cardLoader.item ? (Math.round(_cardLoader.item.zoom * 100) + "%") : "100%"
