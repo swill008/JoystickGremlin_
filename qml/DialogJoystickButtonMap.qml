@@ -63,6 +63,10 @@ Window {
     property real poolY: 0
     property int chipPopW: 280
     property int chipPopH: 480
+    property bool gridOn: true
+    property bool snapOn: true
+    property bool snapEntOn: true
+    property int gridSize: 8
     property bool chipPopPlaced: false
     property real panelW: 0
     property real panelH: 160
@@ -205,13 +209,10 @@ Window {
         }
         liveNodes = JSON.parse(JSON.stringify(doc.nodes))
         liveImage = doc.image && doc.image.length ? doc.image : stockImage
-        if (doc.ui) {
-            if (doc.ui.chipPopW >= 240)
-                chipPopW = doc.ui.chipPopW
-            if (doc.ui.chipPopH >= 200)
-                chipPopH = doc.ui.chipPopH
-        }
+        if (doc.ui)
+            applyUi(doc.ui)
         applyImage(liveImage)
+        applyGridToEditor()
         return true
     }
 
@@ -225,6 +226,7 @@ Window {
         Qt.callLater(function() {
             refreshReservoir()
             clampPool()
+            applyGridToEditor()
         })
     }
 
@@ -242,7 +244,7 @@ Window {
             image: image,
             imageWidth: 899,
             imageHeight: 920,
-            ui: { chipPopW: chipPopW, chipPopH: chipPopH },
+            ui: uiBag(),
             nodes: nodes
         }
         if (_hw.save(targetName, JSON.stringify(doc))) {
@@ -648,7 +650,47 @@ Window {
         persistChipPopUi()
     }
 
-    function persistChipPopUi() {
+    function uiBag() {
+        return {
+            chipPopW: chipPopW,
+            chipPopH: chipPopH,
+            gridOn: gridOn,
+            snapOn: snapOn,
+            snapEntOn: snapEntOn,
+            gridSize: gridSize
+        }
+    }
+
+    function applyUi(ui) {
+        if (!ui)
+            return
+        if (ui.chipPopW >= 240)
+            chipPopW = ui.chipPopW
+        if (ui.chipPopH >= 200)
+            chipPopH = ui.chipPopH
+        if (ui.gridOn === true || ui.gridOn === false)
+            gridOn = ui.gridOn
+        if (ui.snapOn === true || ui.snapOn === false)
+            snapOn = ui.snapOn
+        if (ui.snapEntOn === true || ui.snapEntOn === false)
+            snapEntOn = ui.snapEntOn
+        if (ui.gridSize >= 4)
+            gridSize = ui.gridSize
+    }
+
+    function applyGridToEditor() {
+        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
+        if (!e)
+            return
+        e.gridOn = gridOn
+        e.snapOn = snapOn
+        e.snapEntOn = snapEntOn
+        e.gridSize = gridSize
+        if (e.repaint)
+            e.repaint()
+    }
+
+    function persistUi() {
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
         if (!doc) {
@@ -659,8 +701,21 @@ Window {
                 nodes: liveNodes || []
             }
         }
-        doc.ui = { chipPopW: chipPopW, chipPopH: chipPopH }
+        doc.ui = uiBag()
         _hw.save(targetName, JSON.stringify(doc))
+    }
+
+    function persistChipPopUi() {
+        persistUi()
+    }
+
+    function setGridPref(key, val) {
+        if (key === "gridOn") gridOn = val
+        else if (key === "snapOn") snapOn = val
+        else if (key === "snapEntOn") snapEntOn = val
+        else if (key === "gridSize") gridSize = val
+        applyGridToEditor()
+        persistUi()
     }
 
     function openChipMenu(x, y) {
@@ -830,41 +885,20 @@ Window {
                             MenuItem {
                                 text: "Show grid"
                                 checkable: true
-                                checked: {
-                                    var e = _ed()
-                                    return e ? e.gridOn : true
-                                }
-                                onTriggered: {
-                                    var e = _ed()
-                                    if (e)
-                                        e.gridOn = checked
-                                }
+                                checked: _buttonMap.gridOn
+                                onTriggered: _buttonMap.setGridPref("gridOn", checked)
                             }
                             MenuItem {
                                 text: "Snap to grid"
                                 checkable: true
-                                checked: {
-                                    var e = _ed()
-                                    return e ? e.snapOn : true
-                                }
-                                onTriggered: {
-                                    var e = _ed()
-                                    if (e)
-                                        e.snapOn = checked
-                                }
+                                checked: _buttonMap.snapOn
+                                onTriggered: _buttonMap.setGridPref("snapOn", checked)
                             }
                             MenuItem {
                                 text: "Snap to entities"
                                 checkable: true
-                                checked: {
-                                    var e = _ed()
-                                    return e ? e.snapEntOn : true
-                                }
-                                onTriggered: {
-                                    var e = _ed()
-                                    if (e)
-                                        e.snapEntOn = checked
-                                }
+                                checked: _buttonMap.snapEntOn
+                                onTriggered: _buttonMap.setGridPref("snapEntOn", checked)
                             }
                             MenuSeparator {}
                             Menu {
@@ -873,49 +907,49 @@ Window {
                                     text: "4"
                                     checkable: true
                                     checked: { var e = _ed(); return e && e.gridSize === 4 }
-                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 4 }
+                                    onTriggered: _buttonMap.setGridPref("gridSize", 4)
                                 }
                                 MenuItem {
                                     text: "8"
                                     checkable: true
                                     checked: { var e = _ed(); return e && e.gridSize === 8 }
-                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 8 }
+                                    onTriggered: _buttonMap.setGridPref("gridSize", 8)
                                 }
                                 MenuItem {
                                     text: "12"
                                     checkable: true
                                     checked: { var e = _ed(); return e && e.gridSize === 12 }
-                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 12 }
+                                    onTriggered: _buttonMap.setGridPref("gridSize", 12)
                                 }
                                 MenuItem {
                                     text: "16"
                                     checkable: true
                                     checked: { var e = _ed(); return e && e.gridSize === 16 }
-                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 16 }
+                                    onTriggered: _buttonMap.setGridPref("gridSize", 16)
                                 }
                                 MenuItem {
                                     text: "24"
                                     checkable: true
                                     checked: { var e = _ed(); return e && e.gridSize === 24 }
-                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 24 }
+                                    onTriggered: _buttonMap.setGridPref("gridSize", 24)
                                 }
                                 MenuItem {
                                     text: "32"
                                     checkable: true
                                     checked: { var e = _ed(); return e && e.gridSize === 32 }
-                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 32 }
+                                    onTriggered: _buttonMap.setGridPref("gridSize", 32)
                                 }
                                 MenuItem {
                                     text: "48"
                                     checkable: true
                                     checked: { var e = _ed(); return e && e.gridSize === 48 }
-                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 48 }
+                                    onTriggered: _buttonMap.setGridPref("gridSize", 48)
                                 }
                                 MenuItem {
                                     text: "64"
                                     checkable: true
                                     checked: { var e = _ed(); return e && e.gridSize === 64 }
-                                    onTriggered: { var e = _ed(); if (e) e.gridSize = 64 }
+                                    onTriggered: _buttonMap.setGridPref("gridSize", 64)
                                 }
                             }
                         }
@@ -1095,6 +1129,7 @@ Window {
                         onLoaded: {
                             _hasTarget.hit = true
                             _cardLoader.item = item
+                            Qt.callLater(_buttonMap.applyGridToEditor)
                         }
                     }
                 }
