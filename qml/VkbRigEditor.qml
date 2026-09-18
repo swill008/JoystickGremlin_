@@ -1494,6 +1494,23 @@ Item {
         return best
     }
 
+    function deleteSpineAt(id, leader, index) {
+        var n = nodeAt(id)
+        if (!n || index === undefined || index < 0)
+            return false
+        selectedId = id
+        if (leader !== undefined)
+            selectedLeader = leader
+        var L = currentLeader(n)
+        if (!L || !L.spines || index >= L.spines.length)
+            return false
+        L.spines.splice(index, 1)
+        n.spines = L.spines
+        selectedSpine = -1
+        bump()
+        return true
+    }
+
     function deleteSelection() {
         var n = nodeAt(selectedId)
         if (!n)
@@ -3265,6 +3282,14 @@ Item {
             var hit = _ed.hitTest(m.x, m.y)
             var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
             if (m.button === Qt.RightButton) {
+                if (hit.kind === "spine") {
+                    if (!shift && !_ed.isSelected(hit.id))
+                        _ed.setSelection([hit.id])
+                    _ed.selectedId = hit.id
+                    _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
+                    _ed.deleteSpineAt(hit.id, hit.leader, hit.spine)
+                    return
+                }
                 if (hit.id) {
                     if (!shift && !_ed.isSelected(hit.id))
                         _ed.setSelection([hit.id])
@@ -3729,10 +3754,7 @@ Item {
                 var n = _ed.ctxTarget()
                 if (!n)
                     return
-                _ed.selectedId = n.id
-                if (_ctx.kind === "spine" && _ed.selectedSpine < 0)
-                    _ed.selectedSpine = _ctx.seg
-                _ed.deleteSelection()
+                _ed.deleteSpineAt(n.id, _ctx.leader, _ed.selectedSpine)
             }
         }
         MenuSeparator {
