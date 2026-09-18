@@ -4997,6 +4997,7 @@ Item {
                 border.width: 1
             }
             Text {
+                renderType: Text.NativeRendering
                 visible: { _ed.tick; return _ed.captionH(_grp.node) > 0 }
                 text: { _ed.tick; return _ed.fiveWayCaption(_grp.node) }
                 color: "#E4E4E7"
@@ -5126,6 +5127,7 @@ Item {
                             return sel ? 2 : 1
                         }
                         Text {
+                            renderType: Text.NativeRendering
                             anchors.fill: parent
                             anchors.margins: 3
                             visible: {
@@ -5223,6 +5225,7 @@ Item {
                             return (_ed.isSelected(node.id) && _ed.tableExtra === index) ? 2 : 1
                         }
                         Text {
+                            renderType: Text.NativeRendering
                             anchors.fill: parent
                             anchors.margins: 3
                             visible: {
@@ -5317,6 +5320,7 @@ Item {
                     }
                 }
                 Text {
+                    renderType: Text.NativeRendering
                     anchors.fill: parent
                     anchors.margins: 4
                     visible: {
@@ -5489,6 +5493,7 @@ Item {
                 on: { _ed.tick; return _ed.isSelected(node.id) }
             }
             Text {
+                renderType: Text.NativeRendering
                 id: _lab
                 anchors.centerIn: parent
                 color: {
@@ -5552,6 +5557,7 @@ Item {
                 }
             }
             Text {
+                renderType: Text.NativeRendering
                 id: t
                 anchors.centerIn: parent
                 color: {
@@ -6299,6 +6305,7 @@ Item {
     }
 
     Text {
+        renderType: Text.NativeRendering
         id: _textFit
         visible: false
         width: 100
