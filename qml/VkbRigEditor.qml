@@ -46,6 +46,7 @@ Item {
     property int dragLeader: 0
     property string drawTool: ""
     property bool plantSnap: false
+    property string overlayHoverId: ""
     property real drawX0: 0
     property real drawY0: 0
     property real drawX1: 0
@@ -1650,6 +1651,35 @@ Item {
         var p = it.mapFromItem(_ed, mx, my)
         var r = pinLocal()
         return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h
+    }
+
+    function overlayContains(n, mx, my) {
+        if (!isOverlay(n))
+            return false
+        if (hitOverlayPin(n, mx, my))
+            return true
+        var i = nodeIndex(n.id)
+        var it = (i >= 0 && _chips) ? _chips.itemAt(i) : null
+        if (!it)
+            return false
+        var p = it.mapFromItem(_ed, mx, my)
+        return p.x >= 0 && p.y >= 0 && p.x <= it.width && p.y <= it.height
+    }
+
+    function setOverlayHover(mx, my) {
+        var list = nodes || []
+        var id = ""
+        var i
+        for (i = list.length - 1; i >= 0; i--) {
+            if (overlayContains(list[i], mx, my)) {
+                id = list[i].id
+                break
+            }
+        }
+        if (overlayHoverId === id)
+            return
+        overlayHoverId = id
+        bump()
     }
 
     function addOverlay(rel, fileUrl) {
@@ -3355,7 +3385,11 @@ Item {
             Repeater {
                 model: (_ed.interactive && node && node.shape === "image") ? 1 : 0
                 Rectangle {
-                    width: 16
+                    visible: {
+                    _ed.tick
+                    return !!(node && _ed.overlayHoverId === node.id)
+                }
+                width: 16
                     height: 16
                     x: -2
                     y: -18
@@ -3901,9 +3935,16 @@ Item {
                 _ed.setSelection([])
             _ed.bump()
         }
+        onExited: {
+            if (_ed.overlayHoverId) {
+                _ed.overlayHoverId = ""
+                _ed.bump()
+            }
+        }
         onPositionChanged: (m) => {
             _ed.altHeld = !!(m.modifiers & Qt.AltModifier)
             _ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
+            _ed.setOverlayHover(m.x, m.y)
             if (!_ed.dragKind) {
                 return
             }
