@@ -43,6 +43,11 @@ function toggleComponent(componentSpec)
     createComponent(componentSpec)
 }
 
+function windowOf(componentSpec)
+{
+    return _openWindows[componentSpec] || null
+}
+
 function capitalize(value)
 {
     return value.replace(/\b\w/g, l => l.toUpperCase())
