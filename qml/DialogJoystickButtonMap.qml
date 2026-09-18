@@ -196,6 +196,17 @@ Window {
         }
     }
 
+    function hydrateOverlays(list) {
+        if (!list)
+            return
+        var i
+        for (i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (n && n.shape === "image" && n.src)
+                n.srcUrl = _hw.imageUrl(n.src)
+        }
+    }
+
     function applyImage(rel) {
         storedImage = rel && rel.length ? rel : stockImage
         photoOverride = _hw.imageUrl(storedImage)
@@ -208,6 +219,7 @@ Window {
             return false
         }
         liveNodes = JSON.parse(JSON.stringify(doc.nodes))
+        hydrateOverlays(liveNodes)
         liveImage = doc.image && doc.image.length ? doc.image : stockImage
         if (doc.ui)
             applyUi(doc.ui)
@@ -232,6 +244,7 @@ Window {
             src = []
         }
         workNodes = src
+        hydrateOverlays(workNodes)
         applyImage(liveImage.length ? liveImage : stockImage)
         editing = true
         selectedId = ""
@@ -240,6 +253,7 @@ Window {
             refreshReservoir()
             clampPool()
             applyGridToEditor()
+            hydrateOverlays((_ed() && _ed().nodes) ? _ed().nodes : workNodes)
         })
     }
 
@@ -430,7 +444,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nImport overlay… — add a PNG/JPEG plate (5-way plus, etc.) on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
                 },
                 {
                     h: "Edit menu",
@@ -474,7 +488,7 @@ Window {
                 },
                 {
                     h: "Draw",
-                    b: "Right-click → Draw.\nAround selection — rectangle, rounded, ellipse, triangle, or diamond around selected chips; it moves with them.\nFree drag — pick a shape, drag on empty photo. Shift locks aspect. Esc or Cancel tool drops the tool. Yellow Drawing in the toolbar means a tool is armed.\nCorner handles resize. Detach from chips turns an around-frame into a free frame.\nShape, Padding, Rotate (0/90/180/270, ±15), Filled / Hollow, Fill color…, Stroke color…, Stroke width, Opacity.\nBring forward / Send back. Hollow frames click through to chips inside."
+                    b: "Right-click → Draw.\nAround selection — rectangle, rounded, ellipse, triangle, or diamond around selected chips; it moves with them.\nFree drag — pick a shape, drag on empty photo. Shift locks aspect. Esc or Cancel tool drops the tool. Yellow Drawing in the toolbar means a tool is armed.\nCorner handles resize. Detach from chips turns an around-frame into a free frame.\nShape, Padding, Rotate (0/90/180/270, ±15), Filled / Hollow, Fill color…, Stroke color…, Stroke width, Opacity.\nBring forward / Send back. Hollow frames click through to chips inside.\nOverlay images: File → Import overlay… then Draw → Lock overlay, Add snap point (click the plate), Clear snap points. Drop a chip on a white socket to snap. Transform while unlocked (move, 8 handles, Shift+corner square, Rotate menu). Locked overlay does not move."
                 },
                 {
                     h: "Select and move",
@@ -847,6 +861,19 @@ Window {
         }
     }
 
+    FileDialog {
+        id: _overlayDialog
+        title: "Import overlay image"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
+        onAccepted: {
+            var rel = _hw.copyOverlay(selectedFile, targetName)
+            var e = _ed()
+            if (rel.length && e)
+                e.addOverlay(rel, _hw.imageUrl(rel))
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -866,6 +893,11 @@ Window {
                 MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
                 MenuSeparator {}
                 MenuItem { text: "Choose background…"; enabled: editing; onTriggered: _imageDialog.open() }
+                MenuItem {
+                    text: "Import overlay…"
+                    enabled: editing
+                    onTriggered: _overlayDialog.open()
+                }
                 MenuItem {
                     text: "Clear image"
                     enabled: editing
