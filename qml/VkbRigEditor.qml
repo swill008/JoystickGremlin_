@@ -2072,6 +2072,17 @@ Item {
         return ""
     }
 
+    function ctxTarget() {
+        tick
+        return nodeAt((_ctx && _ctx.nodeId) || selectedId)
+    }
+
+    function ctxHasTheme() {
+        tick
+        var n = ctxTarget()
+        return !!(n && isFiveWay(n) && fiveWayFormat(n) !== "")
+    }
+
     function fiveWayRole(mem) {
         var r = String((mem && mem.role) || "").toLowerCase()
         if (r === "push")
@@ -3611,7 +3622,10 @@ Item {
         MenuSeparator {}
         Menu {
             title: "Chip"
-            enabled: _ed.selectedId !== "" && !_ed.isDraw(_ed.nodeAt(_ed.selectedId))
+            enabled: {
+                var n = _ed.ctxTarget()
+                return !!(n && !_ed.isDraw(n))
+            }
             MenuItem {
                 enabled: false
                 text: {
@@ -3937,6 +3951,7 @@ Item {
 
         Menu {
             title: "Group"
+            enabled: _ed.canGroup() || _ed.isGroup(_ed.ctxTarget()) || _ed.groupEditId !== ""
             MenuItem {
                 text: "Group selected"
                 enabled: _ed.canGroup()
@@ -3944,15 +3959,15 @@ Item {
             }
             MenuItem {
                 text: "Break group"
-                enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
+                enabled: _ed.isGroup(_ed.ctxTarget())
                 onTriggered: {
-                    _ed.setSelection([_ctx.nodeId])
+                    _ed.setSelection([_ctx.nodeId || _ed.selectedId])
                     _ed.ungroupSelection()
                 }
             }
             MenuItem {
                 text: "Edit group"
-                enabled: _ed.isGroup(_ed.nodeAt(_ctx.nodeId))
+                enabled: _ed.isGroup(_ed.ctxTarget())
                 onTriggered: _ed.beginGroupEdit(_ctx.nodeId)
             }
             MenuItem {
@@ -3963,27 +3978,9 @@ Item {
             MenuSeparator {}
             Menu {
                 title: "Apply Format"
-                enabled: _ed.isFiveWay(_ed.nodeAt(_ctx.nodeId || _ed.selectedId))
-                MenuItem {
-                    text: "Reset theme"
-                    enabled: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)).length > 0
-                    onTriggered: {
-                        _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                        _ed.resetFiveWayFormat()
-                    }
-                }
-                MenuSeparator {}
+                enabled: _ed.isFiveWay(_ed.ctxTarget())
                 Menu {
                     title: "5-Way"
-                    MenuItem {
-                        text: "Reset theme"
-                        enabled: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)).length > 0
-                        onTriggered: {
-                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                            _ed.resetFiveWayFormat()
-                        }
-                    }
-                    MenuSeparator {}
                     MenuItem {
                         text: "Plus cluster"
                         checkable: true
@@ -4022,14 +4019,29 @@ Item {
                     }
                 }
             }
+            MenuItem {
+                text: "Clear Format"
+                enabled: _ed.ctxHasTheme()
+                onTriggered: {
+                    var n = _ed.ctxTarget()
+                    if (!n)
+                        return
+                    _ed.selectedId = n.id
+                    _ed.resetFiveWayFormat()
+                }
+            }
             MenuSeparator {}
-            MenuItem { text: "Align left"; onTriggered: _ed.setAlignH("left") }
-            MenuItem { text: "Align center"; onTriggered: _ed.setAlignH("center") }
-            MenuItem { text: "Align right"; onTriggered: _ed.setAlignH("right") }
-            MenuItem { text: "Free layout"; onTriggered: _ed.setAlignH("free") }
+            MenuItem { text: "Align left"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("left") }
+            MenuItem { text: "Align center"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("center") }
+            MenuItem { text: "Align right"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("right") }
+            MenuItem { text: "Free layout"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("free") }
         }
         Menu {
             title: "Leader"
+            enabled: {
+                var n = _ed.ctxTarget()
+                return !!(n && !_ed.isDraw(n))
+            }
             MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("leaderColor") } }
             Menu {
                 id: _leadWMenu
