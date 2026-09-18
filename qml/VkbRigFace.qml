@@ -564,7 +564,6 @@ Item {
             if (!_face.editing) {
                 ed.selectedId = ""
                 ed.selectedSpine = -1
-                _face.resetView()
             }
             ed.bump()
         }
