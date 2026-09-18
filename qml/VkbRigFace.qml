@@ -60,14 +60,14 @@ Item {
             return
         if (!(zoom >= zoomMin && zoom <= zoomMax))
             zoom = 1
-        var ww = _world.width * zoom
-        var hh = _world.height * zoom
+        var ww = _world.width
+        var hh = _world.height
         var mx = vw * 0.20
         var my = vh * 0.20
-        panX = Math.min(panX, vw - mx)
-        panX = Math.max(panX, mx - ww)
-        panY = Math.min(panY, vh - my)
-        panY = Math.max(panY, my - hh)
+        panX = Math.min(panX, vw - mx - ww * 0.5)
+        panX = Math.max(panX, mx - ww * 0.5)
+        panY = Math.min(panY, vh - my - hh * 0.5)
+        panY = Math.max(panY, my - hh * 0.5)
     }
 
     function viewOffScreen() {
@@ -79,13 +79,11 @@ Item {
             return true
         if (panX !== panX || panY !== panY)
             return true
-        var ww = _world.width * zoom
-        var hh = _world.height * zoom
-        if (ww < 8 || hh < 8)
-            return false
-        if (panX + ww < 8 || panY + hh < 8)
+        var cx = panX + _world.width * 0.5
+        var cy = panY + _world.height * 0.5
+        if (cx < 8 || cy < 8)
             return true
-        if (panX > vw - 8 || panY > vh - 8)
+        if (cx > vw - 8 || cy > vh - 8)
             return true
         return false
     }
@@ -105,11 +103,17 @@ Item {
         if (Math.abs(z1 - z0) < 0.0001) {
             return
         }
-        var cx = (vx - panX) / z0
-        var cy = (vy - panY) / z0
+        var W = _world.width
+        var H = _world.height
+        var vw = _viewport.width
+        var vh = _viewport.height
+        vx = vw * 0.5
+        vy = vh * 0.5
+        var wx = (vx - panX - W * 0.5) / z0 + W * 0.5
+        var wy = (vy - panY - H * 0.5) / z0 + H * 0.5
         zoom = z1
-        panX = vx - cx * z1
-        panY = vy - cy * z1
+        panX = vx - (wx - W * 0.5) * z1 - W * 0.5
+        panY = vy - (wy - H * 0.5) * z1 - H * 0.5
         if (Math.abs(zoom - 1) < 0.015) {
             zoom = 1
             panX = 0
@@ -328,7 +332,7 @@ Item {
             height: parent.height
             x: _face.panX
             y: _face.panY
-            transformOrigin: Item.TopLeft
+            transformOrigin: Item.Center
             scale: _face.zoom
 
     ColumnLayout {
