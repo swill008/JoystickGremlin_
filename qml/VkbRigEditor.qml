@@ -904,7 +904,8 @@ Item {
     function memberLocalX(n, mem) {
         if (themeLayout(n)) {
             var cell = themeCell(n)
-            return plusCell(mem).c * (cell.w + cell.gap)
+            var w = chipWGuess(n, mem)
+            return plusCell(mem).c * (cell.w + cell.gap) + Math.max(0, (cell.w - w) * 0.5)
         }
         var ew = Math.max(1, _ed.width)
         var a = groupAlignH(n)
@@ -2055,11 +2056,17 @@ Item {
     }
 
     function themeCell(n) {
-        var f = fiveWayFormat(n)
-        var fs = (n && n.fontSize) ? n.fontSize : 10
+        var mem = (n && n.members) ? n.members : []
         var h = chipH(n)
-        var w = f === "mini" ? Math.max(18, fs + 10) : Math.max(36, fs * 4 + 12)
-        return { w: w, h: h, gap: 3 }
+        var w = 8
+        var i
+        for (i = 0; i < mem.length; i++)
+            w = Math.max(w, chipWGuess(n, mem[i]))
+        if (fiveWayFormat(n) === "mini")
+            w = Math.max(w, Math.max(18, ((n && n.fontSize) || 10) + 10))
+        var ring = 4
+        var gap = Math.max(8, ring * 2 + 2)
+        return { w: w, h: h, gap: gap }
     }
 
     function applyFiveWayFormat(fmt) {
