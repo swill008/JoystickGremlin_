@@ -194,7 +194,7 @@ Item {
             return
         if (dragKind === "from" || dragKind === "to") {
             var ep2 = snapPos(mx, my, altOff)
-            var fr2 = { type: "free", fx: ep2.x / Math.max(1, width), fy: ep2.y / Math.max(1, height) }
+            var fr2 = { type: "free", fx: xToFx(ep2.x), fy: yToFy(ep2.y) }
             var Ld = currentLeader(n)
             if (!Ld)
                 return
@@ -242,8 +242,8 @@ Item {
             if (!Ls.spines) Ls.spines = []
             if (dragSpine < Ls.spines.length) {
                 var sp = snapPos(mx, my, altOff)
-                Ls.spines[dragSpine].fx = Math.max(0, Math.min(1, sp.x / Math.max(1, width)))
-                Ls.spines[dragSpine].fy = Math.max(0, Math.min(1, sp.y / Math.max(1, height)))
+                Ls.spines[dragSpine].fx = xToFx(sp.x)
+                Ls.spines[dragSpine].fy = yToFy(sp.y)
             }
             n.spines = Ls.spines
         } else if (dragKind === "tablecell") {
@@ -311,8 +311,8 @@ Item {
                 mm.offY = (mp.y - fyToY(n.chipFy) - home.y) / Math.max(1, spaceRect().h)
             } else {
                 bakeAlignToFree(n)
-                mm.ox = mp.x / Math.max(1, width) - n.chipFx
-                mm.oy = mp.y / Math.max(1, height) - n.chipFy
+                mm.ox = xToFx(mp.x) - n.chipFx
+                mm.oy = yToFy(mp.y) - n.chipFy
             }
         }
         repaint()
@@ -978,8 +978,8 @@ Item {
             },
             to: {
                 type: "free",
-                fx: Math.max(0.02, Math.min(0.95, (a.x + 48) / Math.max(1, width))),
-                fy: Math.max(0.02, Math.min(0.95, (a.y + 36) / Math.max(1, height)))
+                fx: xToFx(a.x + 48),
+                fy: yToFy(a.y + 36)
             },
             spines: [],
             curve: false,
@@ -1006,13 +1006,13 @@ Item {
                 type: origin && origin.type ? origin.type : "free",
                 id: origin ? origin.id : "",
                 pin: origin ? origin.pin : "",
-                fx: origin ? origin.fx : (p.x / Math.max(1, width)),
-                fy: origin ? origin.fy : (p.y / Math.max(1, height))
+                fx: origin ? origin.fx : xToFx(p.x),
+                fy: origin ? origin.fy : yToFy(p.y)
             },
             to: {
                 type: "free",
-                fx: Math.max(0.02, Math.min(0.95, (p.x + 56) / Math.max(1, width))),
-                fy: Math.max(0.02, Math.min(0.95, (p.y - 44) / Math.max(1, height)))
+                fx: xToFx(p.x + 56),
+                fy: yToFy(p.y - 44)
             },
             spines: [],
             curve: true,
@@ -1277,7 +1277,7 @@ Item {
 
     function attachNear(x, y) {
         var list = nodes || []
-        var best = { type: "free", fx: x / Math.max(1, width), fy: y / Math.max(1, height) }
+        var best = { type: "free", fx: xToFx(x), fy: yToFy(y) }
         var bestD = 16
         var i
         for (i = 0; i < list.length; i++) {
@@ -1312,7 +1312,7 @@ Item {
         if (!L)
             return
         var p = endPt(which === "to" ? L.to : L.from)
-        var free = { type: "free", fx: p.x / Math.max(1, width), fy: p.y / Math.max(1, height) }
+        var free = { type: "free", fx: xToFx(p.x), fy: yToFy(p.y) }
         if (which === "to") L.to = free
         else L.from = free
         if (selectedLeader === 0) {
@@ -1388,7 +1388,7 @@ Item {
         var b = endPt(L.to)
         if (L.spines && L.spines.length)
             return
-        L.spines = [{ fx: ((a.x + b.x) * 0.5) / Math.max(1, width), fy: ((a.y + b.y) * 0.5) / Math.max(1, height), curve: L.curve !== false }]
+        L.spines = [{ fx: xToFx((a.x + b.x) * 0.5), fy: yToFy((a.y + b.y) * 0.5), curve: L.curve !== false }]
         n.spines = L.spines
     }
 
@@ -1420,7 +1420,7 @@ Item {
             oy = -oy
         }
         if (!L.spines) L.spines = []
-        L.spines.push({ fx: (mx + ox) / Math.max(1, width), fy: (my + oy) / Math.max(1, height), curve: true })
+        L.spines.push({ fx: xToFx(mx + ox), fy: yToFy(my + oy), curve: true })
         n.spines = L.spines
         selectedId = n.id
         selectedSpine = L.spines.length - 1
@@ -1623,7 +1623,7 @@ Item {
         }
         var spn = snapPos(mx, my, false)
         var curved = (forceCurve === true) ? true : segIsCurve(L, best)
-        L.spines.splice(best, 0, { fx: spn.x / Math.max(1, width), fy: spn.y / Math.max(1, height), curve: curved })
+        L.spines.splice(best, 0, { fx: xToFx(spn.x), fy: yToFy(spn.y), curve: curved })
         n.spines = L.spines
         selectedId = id
         selectedSpine = best
@@ -2561,8 +2561,8 @@ Item {
             }
             var pt = socketWorld(n, sock)
             var bw = chipBounds(q)
-            q.chipFx = Math.max(0.01, Math.min(0.92, (pt.x - bw.w * 0.5) / Math.max(1, width)))
-            q.chipFy = Math.max(0.01, Math.min(0.92, (pt.y - bw.h * 0.5) / Math.max(1, height)))
+            q.chipFx = xToFx(pt.x - bw.w * 0.5)
+            q.chipFy = yToFy(pt.y - bw.h * 0.5)
         }
     }
 
@@ -2642,6 +2642,75 @@ Item {
             w: side,
             h: side
         }
+    }
+
+    function migrateFromWindowSpace() {
+        var list = nodes || []
+        var side = spaceRect()
+        if (side.w < 8 || width < 8)
+            return
+        function mapEnd(e) {
+            if (e && e.type === "free") {
+                e.fx = xToFx((e.fx || 0) * width)
+                e.fy = yToFy((e.fy || 0) * height)
+            }
+        }
+        function mapSpines(arr) {
+            if (!arr)
+                return
+            var s
+            for (s = 0; s < arr.length; s++) {
+                arr[s].fx = xToFx((arr[s].fx || 0) * width)
+                arr[s].fy = yToFy((arr[s].fy || 0) * height)
+            }
+        }
+        var i
+        var k
+        for (i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (!n)
+                continue
+            if (n.chipFx !== undefined)
+                n.chipFx = xToFx((n.chipFx || 0) * width)
+            if (n.chipFy !== undefined)
+                n.chipFy = yToFy((n.chipFy || 0) * height)
+            if (n.kind === "draw" || n.shape) {
+                n.fx = xToFx((n.fx || 0) * width)
+                n.fy = yToFy((n.fy || 0) * height)
+                n.fw = ((n.fw || 0) * width) / Math.max(1, side.w)
+                n.fh = ((n.fh || 0) * height) / Math.max(1, side.h)
+                var extras = n.extras || []
+                for (k = 0; k < extras.length; k++) {
+                    if (!extras[k] || !extras[k].independent)
+                        continue
+                    extras[k].efx = xToFx((extras[k].efx || 0) * width)
+                    extras[k].efy = yToFy((extras[k].efy || 0) * height)
+                    extras[k].efw = ((extras[k].efw || 0) * width) / Math.max(1, side.w)
+                    extras[k].efh = ((extras[k].efh || 0) * height) / Math.max(1, side.h)
+                }
+            }
+            var mem = n.members || []
+            for (k = 0; k < mem.length; k++) {
+                if (mem[k].ox !== undefined)
+                    mem[k].ox = ((mem[k].ox || 0) * width) / Math.max(1, side.w)
+                if (mem[k].oy !== undefined)
+                    mem[k].oy = ((mem[k].oy || 0) * height) / Math.max(1, side.h)
+                if (mem[k].offX !== undefined)
+                    mem[k].offX = ((mem[k].offX || 0) * width) / Math.max(1, side.w)
+                if (mem[k].offY !== undefined)
+                    mem[k].offY = ((mem[k].offY || 0) * height) / Math.max(1, side.h)
+            }
+            mapSpines(n.spines)
+            mapEnd(n.from)
+            mapEnd(n.to)
+            var leads = n.leaders || []
+            for (k = 0; k < leads.length; k++) {
+                mapSpines(leads[k].spines)
+                mapEnd(leads[k].from)
+                mapEnd(leads[k].to)
+            }
+        }
+        bump()
     }
 
     function worldToX(wx) {
@@ -3120,7 +3189,7 @@ Item {
             if (n)
                 src.push(n)
         }
-        pasteNodes(src, 16 / Math.max(1, width), 16 / Math.max(1, height))
+        pasteNodes(src, 16 / Math.max(1, spaceRect().w), 16 / Math.max(1, spaceRect().h))
     }
 
     function copySelection() {
@@ -3136,7 +3205,7 @@ Item {
     }
 
     function pasteClipboard() {
-        pasteNodes(clip || [], 16 / Math.max(1, width), 16 / Math.max(1, height))
+        pasteNodes(clip || [], 16 / Math.max(1, spaceRect().w), 16 / Math.max(1, spaceRect().h))
     }
 
     function bringForward() {
@@ -4322,18 +4391,16 @@ Item {
         var prefix = n.kind === "axis_stack" ? "A" : ""
         var created = []
         var i
-        var ew = Math.max(1, width)
-        var eh = Math.max(1, height)
         for (i = 0; i < mem.length; i++) {
-            var px = n.chipFx * ew + groupMinX(n) + memberLocalX(n, mem[i])
-            var py = n.chipFy * eh + groupMinY(n) + memberLocalY(n, mem[i])
+            var px = fxToX(n.chipFx) + groupMinX(n) + memberLocalX(n, mem[i])
+            var py = fyToY(n.chipFy) + groupMinY(n) + memberLocalY(n, mem[i])
             created.push({
                 id: _uid("b"), kind: leafKind, hwId: mem[i].hwId, prefix: prefix,
                 label: "",
                 friendly: carryFriendly(mem[i].friendly, defaultFriendly(leafKind, mem[i].hwId)),
                 nx: n.nx, ny: n.ny,
-                chipFx: Math.max(0.02, Math.min(0.9, px / ew)),
-                chipFy: Math.max(0.02, Math.min(0.9, py / eh)),
+                chipFx: xToFx(px),
+                chipFy: yToFy(py),
                 pin: st.pin, spines: [], curve: st.curve,
                 color: st.color, border: st.border, textColor: st.textColor,
                 highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
@@ -5571,7 +5638,7 @@ Item {
                     if (!L0)
                         return
                     var ep = _ed.endPt(hit.kind === "to" ? L0.to : L0.from)
-                    var fr = { type: "free", fx: ep.x / Math.max(1, width), fy: ep.y / Math.max(1, height) }
+                    var fr = { type: "free", fx: xToFx(ep.x), fy: yToFy(ep.y) }
                     if (hit.kind === "to") L0.to = fr
                     else L0.from = fr
                 }
