@@ -474,7 +474,7 @@ Window {
                 },
                 {
                     h: "Groups",
-                    b: "Shift-click or rubber-band two or more chips, then Group → Group selected (Ctrl+G). Extra leaders drop; one remains.\nBreak group (Ctrl+Shift+G) or Delete on a group splits members back to singles.\nEdit group unlocks that group only. Other groups stay locked.\nDouble-click or right-click a member to target it. Drag that member to offset it. Chip style writes to that member only.\nDouble-click the member again to rename it.\nDone editing group or Esc ends the session. Double-click empty photo ends edit and clears the selection.\nSaved group style profiles are not in yet — each group keeps its own format and overrides."
+                    b: "Shift-click or rubber-band two or more chips, then Group → Group selected (Ctrl+G). Extra leaders drop; one remains. Table + chips: rubber-band the table and those chips, then Group — chips ride the plate, no 5-way. One table only. Break group on the table detaches chips and keeps the table.\nBreak group (Ctrl+Shift+G) or Delete on a group splits members back to singles.\nEdit group unlocks that group only. Other groups stay locked.\nDouble-click or right-click a member to target it. Drag that member to offset it. Chip style writes to that member only.\nDouble-click the member again to rename it.\nDone editing group or Esc ends the session. Double-click empty photo ends edit and clears the selection.\nSaved group style profiles are not in yet — each group keeps its own format and overrides."
                 },
                 {
                     h: "Format and Align",
