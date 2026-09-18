@@ -27,7 +27,7 @@ Item {
     property real panY: 0
     readonly property real zoomMin: 1.0
     readonly property real zoomMax: 8.0
-    readonly property real zoomFit: 2.0
+    readonly property real zoomFit: 4 / 3
     readonly property real viewPct: zoom / zoomFit
 
     readonly property real _pw: _img.paintedWidth
