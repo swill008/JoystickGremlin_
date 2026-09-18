@@ -481,7 +481,11 @@ Window {
             model: [
                 {
                     h: "Overview",
-                    b: "Button Map is a photo of the VKBsim Gladiator EVO R with chips on the hardware contacts. File → Edit Mapping starts a session. The live window uses the same layout; pressing the stick still lights the matching chip. Layout does not change bindings.\n\nFile → Save writes control.hardware (qml/maps/vkb_evo_r.json) and becomes the live map. File → Cancel drops the session. Closing with unsaved work asks first.\nF1 or Help → Editor help opens this page."
+                    b: "Button Map is a photo of the VKBsim Gladiator EVO R with chips on the hardware contacts. File → Edit Mapping starts a session. The live window uses the same layout; pressing the stick still lights the matching chip. Layout does not change bindings.\n\nFile → Save writes control.hardware (qml/maps/vkb_evo_r.json) and becomes the live map. File → Cancel drops the session. Closing the main Gremlin window while Button Map is open runs the same unsaved check. Closing this window with unsaved work asks first.\nF1 or Help → Editor help opens this page."
+                },
+                {
+                    h: "World page",
+                    b: "Layout lives on a 16000 × 9000 world page (16:9). The editor contain-fits that page (letterbox if the window is not 16:9). Maximize does not stretch a plus — X and Y share the same page.\nThe photo is a layer under the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the page (world X = fx × 16000). Save stamps space world, pageW 16000, pageH 9000, worldRev 1.\nAn older map without worldRev 1 is converted once on Edit Mapping, then Save writes the new stamp so it will not convert twice."
                 },
                 {
                     h: "File",
@@ -493,7 +497,7 @@ Window {
                 },
                 {
                     h: "View, zoom, pan",
-                    b: "Scroll wheel zooms about 50%–400%. Middle-button drag pans. View → Reset view returns 100% and centered.\nA resize or photo reload keeps a valid zoom. It only recenters when zoom or pan is broken (NaN or out of range).\nView → Grid → Show grid — overlay. Saved with the map.\nSnap to grid — drag onto grid points. Size 4 / 8 / 16 / 32.\nSnap to entities — snap to other chips, hots, frames.\nAlt while dragging skips snap."
+                    b: "Scroll wheel zooms about 50%–400%. Middle-button drag pans. View → Reset view returns 100% and centered.\nA resize or photo reload keeps a valid zoom. It only recenters when zoom or pan is broken (NaN or out of range).\nView → Grid → Show grid — world page only, not the letterbox. Step is world counts (default 200). Size 4–400; 200 and 400 suit the 16000 page. Paint caps about 80 lines per axis so a fine step cannot stall the PC.\nSnap to grid — drag onto world-grid points.\nSnap to entities — snap to other chips, hots, frames.\nPage guides — while you drag a chip, table, text, or group, a green dashed line appears near the page center or an edge. Release snaps center-to-center or edge-to-edge. Packed table + chips move together.\nAlt while dragging skips grid, entity, and page-guide snap."
                 },
                 {
                     h: "Reservoir",
@@ -529,11 +533,11 @@ Window {
                 },
                 {
                     h: "Draw",
-                    b: "Right-click → Draw.\nAround selection — rectangle, rounded, ellipse, triangle, or diamond around selected chips; it moves with them.\nFree drag — pick a shape, drag on empty photo. Shift locks aspect. Esc or Cancel tool drops the tool. Yellow Drawing in the toolbar means a tool is armed.\nTable — Draw → Free drag → Table. World is a 16000×9000 page (16:9), letterboxed in the editor; photo is a layer. Text — Draw → Free drag → Text. Drag a box; double-click to type. Right-click the box for the text-only menu (theme, font, color, opacity, align, bold, pin). Packs with a table like chips. Drag a box; a blank 1×2 lands (one row, two columns). Handles resize the whole plate; cells share the new size. Right-click the table for the table-only menu (add/insert/delete row or column, ID column, Free position, Place left/center/right/top/middle/bottom, theme, font, pin, z, delete). Free position unlocks that cell so you can drag it; Shift+drag also unlocks and moves it. Spawn empty cell adds a blank free box the same size (no text, not a grid slot). Spawned cells get their own handles and start Independent of table so plate resize does not move them. Independent of table on a free cell stores editor position/size. Delete this cell removes a spawned box only. The plate can shrink to 8 px, same floor as a spawned cell. Locked cells still move the whole table. Offsets are fractions of the plate so a resize keeps the cell’s place. Double-click a cell to type. Themes: Gremlin dark, Gremlin hollow, Sheet.\nCorner handles resize. Detach from chips turns an around-frame into a free frame.\nShape, Padding, Rotate (0/90/180/270, ±15), Filled / Hollow, Fill color…, Stroke color…, Stroke width, Opacity.\nBring forward / Send back. Hollow frames click through to chips inside.\nOverlay images: File → Import overlay… then transform. A pin sits at the top-left of the plate. Click the pin (or Draw → Pin overlay) to freeze it: the plus clicks through to chips and leaders; only the pin stays live. Click the pin again to unpin and move/resize. Add snap point, Clear snap points. Drop a chip on a white socket to snap. Save writes pinned."
+                    b: "Right-click → Draw.\nAround selection — rectangle, rounded, ellipse, triangle, or diamond around selected chips; it moves with them.\nFree drag — pick a shape, drag on empty photo. Shift locks aspect. Esc or Cancel tool drops the tool. Yellow Drawing in the toolbar means a tool is armed.\nTable — Draw → Free drag → Table. Rubber-band the first size. A blank 1×2 lands (one row, two columns). Handles resize the whole plate; cells share the new size. Right-click the table for the table-only menu (add/insert/delete row or column, ID column, Free position, Place left/center/right/top/middle/bottom, theme, font, pin, z, delete). Free position unlocks that cell so you can drag it; Shift+drag also unlocks and moves it. Spawn empty cell adds a blank free box the same size (no text, not a grid slot). Spawned cells get their own handles and start Independent of table so plate resize does not move them. Independent of table on a free cell stores page position/size. Delete this cell removes a spawned box only. The plate can shrink to 8 px, same floor as a spawned cell. Locked cells still move the whole table. Offsets are fractions of the plate so a resize keeps the cell’s place. Double-click a cell to type. Themes: Gremlin dark, Gremlin hollow, Sheet.\nText — Draw → Free drag → Text. Rubber-band the first size; Size submenu has Caption / Small / Medium / Large / Title / Wide. Double-click to type. Right-click the box for the text-only menu: Duplicate, Delete text box, theme, font, color, opacity, align, bold, word wrap (refits the box), scale font on resize, pin, z, Copy format / Paint format, Clear formatting, Copy text (plain). Packs with a table like chips.\nCorner handles resize. Detach from chips turns an around-frame into a free frame.\nShape, Padding, Rotate (0/90/180/270, ±15), Filled / Hollow, Fill color…, Stroke color…, Stroke width, Opacity.\nBring forward / Send back. Hollow frames click through to chips inside.\nOverlay images: File → Import overlay… then transform. A pin sits at the top-left of the plate. Click the pin (or Draw → Pin overlay) to freeze it: the plus clicks through to chips and leaders; only the pin stays live. Click the pin again to unpin and move/resize. Add snap point, Clear snap points. Drop a chip on a white socket to snap. Save writes pinned."
                 },
                 {
                     h: "Select and move",
-                    b: "Click selects. Shift-click or Ctrl-click toggles. Drag empty glass to rubber-band.\nArrows nudge 1 px. Shift+arrows nudge by the grid size.\nDuplicate / Copy / Paste under Edit. Pasted items offset so they do not stack."
+                    b: "Click selects. Shift-click or Ctrl-click toggles. Drag empty glass to rubber-band.\nArrows nudge one view pixel. Shift+arrows nudge by the world-grid step.\nDrag near the page center or an edge — green guide; release snaps to that line.\nDuplicate / Copy / Paste under Edit. Pasted items offset on the page so they do not stack."
                 },
                 {
                     h: "Keyboard",
@@ -541,7 +545,7 @@ Window {
                 },
                 {
                     h: "Save and live map",
-                    b: "Save writes kind control.hardware for VKBsim Gladiator EVO R. Nodes, image path, and ui (grid) go to the hardware profile.\nThe live face rebinds dest labels from pairing / vJoy / Xbox the same way as before. Theme and chip names are layout only.\nHardware ids on this grip stay locked (buttons 1–29, hat 1, axes 1–4)."
+                    b: "Save writes kind control.hardware for VKBsim Gladiator EVO R. Nodes, image path, ui (grid), space world, page 16000×9000, and worldRev 1 go to the hardware profile.\nThe live face rebinds dest labels from pairing / vJoy / Xbox the same way as before. Theme and chip names are layout only.\nHardware ids on this grip stay locked (buttons 1–29, hat 1, axes 1–4)."
                 }
             ]
             delegate: Column {
@@ -1106,6 +1110,18 @@ Window {
                             checkable: true
                             checked: { var e = _ed(); return e && e.gridSize === 64 }
                             onTriggered: _buttonMap.setGridPref("gridSize", 64)
+                        }
+                        MenuItem {
+                            text: "200"
+                            checkable: true
+                            checked: { var e = _ed(); return e && e.gridSize === 200 }
+                            onTriggered: _buttonMap.setGridPref("gridSize", 200)
+                        }
+                        MenuItem {
+                            text: "400"
+                            checkable: true
+                            checked: { var e = _ed(); return e && e.gridSize === 400 }
+                            onTriggered: _buttonMap.setGridPref("gridSize", 400)
                         }
                     }
                 }
