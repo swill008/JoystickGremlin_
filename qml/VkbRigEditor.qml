@@ -623,6 +623,20 @@ Item {
             return Qt.point(0, 0)
         if (end.type === "free")
             return Qt.point((end.fx || 0) * width, (end.fy || 0) * height)
+        if (end.type === "member") {
+            var gn = nodeAt(end.id)
+            if (!gn || !gn.members || end.member < 0 || end.member >= gn.members.length)
+                return chipXY(gn || {})
+            var gm = gn.members[end.member]
+            var gx = gn.chipFx * width + groupMinX(gn) + memberLocalX(gn, gm)
+            var gy = gn.chipFy * height + groupMinY(gn) + memberLocalY(gn, gm)
+            var gw = chipWGuess(gn, gm)
+            var gh = chipH(gn)
+            var pin = end.pin || "right"
+            var px = pin === "left" ? gx : (pin === "top" || pin === "bottom" ? gx + gw * 0.5 : gx + gw)
+            var py = pin === "top" ? gy : (pin === "bottom" ? gy + gh : gy + gh * 0.5)
+            return Qt.point(px, py)
+        }
         if (end.type === "chip") {
             var cn = nodeAt(end.id)
             var it = _chips.itemAt(nodeIndex(end.id))
@@ -648,6 +662,11 @@ Item {
     function leaderList(n) {
         if (!n || n.kind === "draw")
             return []
+        if (fiveWayFormat(n) === "radial") {
+            if (n.leaders && n.leaders.length)
+                return n.leaders
+            return buildRadialLeaders(n)
+        }
         if (n.leaders)
             return n.leaders
         return [_legacyLeader(n)]
@@ -883,6 +902,10 @@ Item {
     }
 
     function memberLocalX(n, mem) {
+        if (themeLayout(n)) {
+            var cell = themeCell(n)
+            return plusCell(mem).c * (cell.w + cell.gap)
+        }
         var ew = Math.max(1, _ed.width)
         var a = groupAlignH(n)
         var w = chipWGuess(n, mem)
@@ -897,13 +920,20 @@ Item {
     }
 
     function memberLocalY(n, mem) {
+        var cap = captionH(n)
+        if (themeLayout(n)) {
+            var cell = themeCell(n)
+            return cap + plusCell(mem).r * (cell.h + cell.gap)
+        }
         if (groupAlignH(n) !== "free")
-            return memberIndexOf(n, mem) * stackPitch(n)
+            return cap + memberIndexOf(n, mem) * stackPitch(n)
         var eh = Math.max(1, _ed.height)
         return (mem.oy || 0) * eh - groupMinY(n)
     }
 
     function groupMinX(n) {
+        if (themeLayout(n))
+            return 0
         if (groupAlignH(n) !== "free")
             return 0
         var mem = (n && n.members) ? n.members : []
@@ -915,6 +945,8 @@ Item {
     }
 
     function groupMinY(n) {
+        if (themeLayout(n))
+            return 0
         if (groupAlignH(n) !== "free")
             return 0
         var mem = (n && n.members) ? n.members : []
@@ -929,6 +961,10 @@ Item {
         var mem = (n && n.members) ? n.members : []
         if (!mem.length)
             return 40
+        if (themeLayout(n)) {
+            var cell = themeCell(n)
+            return cell.w * 3 + cell.gap * 2
+        }
         if (groupAlignH(n) !== "free") {
             var maxw = 8
             for (var i = 0; i < mem.length; i++)
@@ -947,8 +983,12 @@ Item {
         var mem = (n && n.members) ? n.members : []
         if (!mem.length)
             return 20
+        if (themeLayout(n)) {
+            var cell = themeCell(n)
+            return captionH(n) + cell.h * 3 + cell.gap * 2
+        }
         if (groupAlignH(n) !== "free")
-            return Math.max(8, mem.length * stackPitch(n) - 2)
+            return Math.max(8, captionH(n) + mem.length * stackPitch(n) - 2)
         var eh = Math.max(1, _ed.height)
         var miny = groupMinY(n)
         var maxy = miny
@@ -1896,6 +1936,165 @@ Item {
         return !!(n.members && n.members.length)
     }
 
+    function isFiveWay(n) {
+        if (!isGroup(n) || n.kind === "axis_stack")
+            return false
+        var mem = n.members || []
+        if (mem.length !== 5)
+            return false
+        var roles = {}
+        var ids = []
+        var i
+        for (i = 0; i < mem.length; i++) {
+            if (mem[i].role)
+                roles[String(mem[i].role).toLowerCase()] = true
+            ids.push(mem[i].hwId)
+        }
+        if (roles.up && roles.down && roles.left && roles.right && (roles.center || roles.push))
+            return true
+        ids.sort(function (a, b) { return a - b })
+        return (ids[0] === 6 && ids[4] === 10) || (ids[0] === 11 && ids[4] === 15) || (ids[0] === 16 && ids[4] === 20)
+    }
+
+    function fiveWayFormat(n) {
+        var f = n && n.format ? String(n.format) : ""
+        if (f === "plus" || f === "mini" || f === "card" || f === "radial")
+            return f
+        return ""
+    }
+
+    function fiveWayRole(mem) {
+        var r = String((mem && mem.role) || "").toLowerCase()
+        if (r === "push")
+            return "center"
+        return r
+    }
+
+    function fiveWayCaption(n) {
+        var id = n && n.id ? String(n.id) : ""
+        if (id === "p610")
+            return "Head 5-way"
+        if (id === "p1115")
+            return "Top-right 5-way"
+        if (id === "p1620")
+            return "Wheel 5-way"
+        return "5-way"
+    }
+
+    function captionH(n) {
+        var f = fiveWayFormat(n)
+        if (f === "card" || f === "plus" || f === "mini")
+            return Math.max(14, ((n && n.fontSize) || 10) + 4)
+        return 0
+    }
+
+    function themeLayout(n) {
+        var f = fiveWayFormat(n)
+        return f === "plus" || f === "mini" || f === "radial"
+    }
+
+    function ensureFiveWayRoles(n) {
+        var mem = n.members || []
+        var i
+        var ok = mem.length === 5
+        for (i = 0; i < mem.length; i++) {
+            var r = fiveWayRole(mem[i])
+            if (!(r === "up" || r === "down" || r === "left" || r === "right" || r === "center"))
+                ok = false
+        }
+        if (ok)
+            return
+        var ids = []
+        for (i = 0; i < mem.length; i++)
+            ids.push(mem[i].hwId)
+        var min = ids.length ? Math.min.apply(null, ids) : 0
+        var map = {}
+        if (min === 6 || min === 11 || min === 16) {
+            map[min] = "up"
+            map[min + 1] = "right"
+            map[min + 2] = "down"
+            map[min + 3] = "left"
+            map[min + 4] = "center"
+        }
+        var fallback = ["up", "left", "center", "right", "down"]
+        for (i = 0; i < mem.length; i++) {
+            if (map[mem[i].hwId])
+                mem[i].role = map[mem[i].hwId]
+            else if (!mem[i].role)
+                mem[i].role = fallback[i] || "center"
+        }
+    }
+
+    function memberLabel(n, mem) {
+        var f = fiveWayFormat(n)
+        var r = fiveWayRole(mem)
+        if (f === "mini") {
+            if (r === "up") return "▲"
+            if (r === "down") return "▼"
+            if (r === "left") return "◀"
+            if (r === "right") return "▶"
+            if (r === "center") return "●"
+        }
+        if (f === "plus" || f === "card" || f === "radial") {
+            if (r === "up") return "Up"
+            if (r === "down") return "Down"
+            if (r === "left") return "Left"
+            if (r === "right") return "Right"
+            if (r === "center") return "Push"
+        }
+        return friendlyOf(n, mem)
+    }
+
+    function plusCell(mem) {
+        var r = fiveWayRole(mem)
+        if (r === "up") return { c: 1, r: 0 }
+        if (r === "left") return { c: 0, r: 1 }
+        if (r === "right") return { c: 2, r: 1 }
+        if (r === "down") return { c: 1, r: 2 }
+        return { c: 1, r: 1 }
+    }
+
+    function themeCell(n) {
+        var f = fiveWayFormat(n)
+        var fs = (n && n.fontSize) ? n.fontSize : 10
+        var h = chipH(n)
+        var w = f === "mini" ? Math.max(18, fs + 10) : Math.max(36, fs * 4 + 12)
+        return { w: w, h: h, gap: 3 }
+    }
+
+    function applyFiveWayFormat(fmt) {
+        var id = selectedId || groupEditId
+        var n = nodeAt(id)
+        if (!isFiveWay(n))
+            return
+        if (fmt !== "plus" && fmt !== "mini" && fmt !== "card" && fmt !== "radial")
+            return
+        ensureFiveWayRoles(n)
+        n.format = fmt
+        if (fmt === "radial") {
+            n.leaders = buildRadialLeaders(n)
+        } else if (n.leaders && n.leaders.length > 1) {
+            n.leaders = [n.leaders[0]]
+        }
+        bump()
+    }
+
+    function buildRadialLeaders(n) {
+        var mem = n.members || []
+        var out = []
+        var i
+        for (i = 0; i < mem.length; i++) {
+            out.push({
+                id: n.id + "_R" + i,
+                from: { type: "member", id: n.id, member: i, pin: "right" },
+                to: { type: "hot", id: n.id },
+                spines: [],
+                curve: false
+            })
+        }
+        return out
+    }
+
     function beginGroupEdit(id) {
         var n = nodeAt(id || selectedId)
         if (!isGroup(n))
@@ -1955,8 +2154,10 @@ Item {
 
     function chipWGuess(n, mem) {
         var fs = (n && n.fontSize) ? n.fontSize : 10
-        var s = mem ? friendlyOf(n, mem) : friendlyOf(n, null)
+        var s = mem ? memberLabel(n, mem) : friendlyOf(n, null)
         var pad = Math.max(10, ((n && n.chipSize) || 18) * 0.55)
+        if (fiveWayFormat(n) === "mini")
+            return Math.max(18, fs + 10)
         return String(s).length * fs * 0.50 + pad
     }
 
@@ -2299,6 +2500,30 @@ Item {
         Item {
             id: _grp
             property var node: ({ members: [] })
+            Rectangle {
+                visible: { _ed.tick; return _ed.fiveWayFormat(_grp.node) === "mini" }
+                anchors.fill: parent
+                radius: 4
+                color: {
+                    _ed.tick
+                    var n = _grp.node || {}
+                    return n.color || "#18181B"
+                }
+                border.color: {
+                    _ed.tick
+                    var n = _grp.node || {}
+                    return n.border || "#3F3F46"
+                }
+                border.width: 1
+            }
+            Text {
+                visible: { _ed.tick; return _ed.captionH(_grp.node) > 0 }
+                text: { _ed.tick; return _ed.fiveWayCaption(_grp.node) }
+                color: "#E4E4E7"
+                font.pixelSize: { _ed.tick; return (_grp.node && _grp.node.fontSize) ? _grp.node.fontSize : 10 }
+                x: 2
+                y: 0
+            }
             Repeater {
                 model: { _ed.tick; return (_grp.node && _grp.node.members) ? _grp.node.members.length : 0 }
                 delegate: Loader {
@@ -2433,11 +2658,16 @@ Item {
             radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node)) }
             color: {
                 _ed.tick
+                if (_ed.fiveWayFormat(node) === "mini") {
+                    return on && node.highlight ? (node.hlColor || "#14532D") : "transparent"
+                }
                 if (_ed.chipIsHollow(node)) return "transparent"
                 return on && node.highlight ? (node.hlColor || "#14532D") : (node.color || "#18181B")
             }
             border.color: {
                 _ed.tick
+                if (_ed.fiveWayFormat(node) === "mini")
+                    return on && node.highlight ? (node.hlBorder || "#22C55E") : "transparent"
                 return on && node.highlight ? (node.hlBorder || "#22C55E") : (node.border || "#3F3F46")
             }
             border.width: { _ed.tick; return _ed.chipIsHollow(node) ? 2 : 1 }
@@ -2465,7 +2695,7 @@ Item {
                 text: {
                     _ed.tick
                     var m = node && node.members ? node.members[memberIndex] : null
-                    return _ed.friendlyOf(node, m)
+                    return _ed.memberLabel(node, m)
                 }
             }
         }
@@ -3247,6 +3477,50 @@ Item {
                 text: "Done editing group"
                 enabled: _ed.groupEditId !== ""
                 onTriggered: _ed.endGroupEdit()
+            }
+            MenuSeparator {}
+            Menu {
+                title: "Apply Format"
+                enabled: _ed.isFiveWay(_ed.nodeAt(_ctx.nodeId || _ed.selectedId))
+                Menu {
+                    title: "5-Way"
+                    MenuItem {
+                        text: "Plus cluster"
+                        checkable: true
+                        checked: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)) === "plus"
+                        onTriggered: {
+                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                            _ed.applyFiveWayFormat("plus")
+                        }
+                    }
+                    MenuItem {
+                        text: "Mini hat"
+                        checkable: true
+                        checked: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)) === "mini"
+                        onTriggered: {
+                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                            _ed.applyFiveWayFormat("mini")
+                        }
+                    }
+                    MenuItem {
+                        text: "Named card"
+                        checkable: true
+                        checked: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)) === "card"
+                        onTriggered: {
+                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                            _ed.applyFiveWayFormat("card")
+                        }
+                    }
+                    MenuItem {
+                        text: "Radial leaders"
+                        checkable: true
+                        checked: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)) === "radial"
+                        onTriggered: {
+                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                            _ed.applyFiveWayFormat("radial")
+                        }
+                    }
+                }
             }
             MenuSeparator {}
             MenuItem { text: "Align left"; onTriggered: _ed.setAlignH("left") }
