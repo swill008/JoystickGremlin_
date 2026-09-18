@@ -46,8 +46,12 @@ Item {
     property int tableCol: -1
     property int tableExtra: -1
     property string packWarn: ""
-    readonly property real worldPageW: 16000
-    readonly property real worldPageH: 9000
+    readonly property real worldPageW: 32000
+    readonly property real worldPageH: 18000
+    readonly property real innerPageW: 16000
+    readonly property real innerPageH: 9000
+    readonly property real innerPadX: 0.25
+    readonly property real innerPadY: 0.25
     readonly property string worldSpace: "world"
     property var textFormatClip: null
     property bool textPaintOn: false
@@ -235,8 +239,8 @@ Item {
                     var q = nodeAt(ids[i])
                     if (!q)
                         continue
-                    q.chipFx = q.chipFx + dFx
-                    q.chipFy = q.chipFy + dFy
+                    q.chipFx = clamp01(q.chipFx + dFx)
+                    q.chipFy = clamp01(q.chipFy + dFy)
                     refreshChipPack(q)
                 }
             }
@@ -280,8 +284,8 @@ Item {
                     var qn = nodeAt(around[ai])
                     if (!qn || isDraw(qn))
                         continue
-                    qn.chipFx = qn.chipFx + ddx / Math.max(1, spaceRect().w)
-                    qn.chipFy = qn.chipFy + ddy / Math.max(1, spaceRect().h)
+                    qn.chipFx = clamp01(qn.chipFx + ddx / Math.max(1, spaceRect().w))
+                    qn.chipFy = clamp01(qn.chipFy + ddy / Math.max(1, spaceRect().h))
                 }
             } else {
                 var oldFx = n.fx || 0
@@ -2847,6 +2851,20 @@ Item {
         }
     }
 
+    function innerPageRect() {
+        var s = spaceRect()
+        return {
+            x: s.x + s.w * innerPadX,
+            y: s.y + s.h * innerPadY,
+            w: s.w * (innerPageW / worldPageW),
+            h: s.h * (innerPageH / worldPageH)
+        }
+    }
+
+    function clamp01(v) {
+        return Math.max(0, Math.min(1, v))
+    }
+
     function migrateFromWindowSpace() {
         var list = nodes || []
         var side = spaceRect()
@@ -2902,6 +2920,82 @@ Item {
                     mem[k].offX = ((mem[k].offX || 0) * width) / Math.max(1, side.w)
                 if (mem[k].offY !== undefined)
                     mem[k].offY = ((mem[k].offY || 0) * height) / Math.max(1, side.h)
+            }
+            mapSpines(n.spines)
+            mapEnd(n.from)
+            mapEnd(n.to)
+            var leads = n.leaders || []
+            for (k = 0; k < leads.length; k++) {
+                mapSpines(leads[k].spines)
+                mapEnd(leads[k].from)
+                mapEnd(leads[k].to)
+            }
+        }
+        bump()
+    }
+
+    function migrateInnerPageToScene() {
+        var list = nodes || []
+        function pos(v) { return clamp01(innerPadX + (v || 0) * (innerPageW / worldPageW)) }
+        function posY(v) { return clamp01(innerPadY + (v || 0) * (innerPageH / worldPageH)) }
+        function sz(v) { return (v || 0) * (innerPageW / worldPageW) }
+        function szY(v) { return (v || 0) * (innerPageH / worldPageH) }
+        function mapEnd(e) {
+            if (e && e.type === "free") {
+                e.fx = pos(e.fx)
+                e.fy = posY(e.fy)
+            }
+        }
+        function mapSpines(arr) {
+            if (!arr)
+                return
+            var s
+            for (s = 0; s < arr.length; s++) {
+                arr[s].fx = pos(arr[s].fx)
+                arr[s].fy = posY(arr[s].fy)
+            }
+        }
+        var i
+        var k
+        for (i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (!n)
+                continue
+            if (n.chipFx !== undefined)
+                n.chipFx = pos(n.chipFx)
+            if (n.chipFy !== undefined)
+                n.chipFy = posY(n.chipFy)
+            if (n.fx !== undefined)
+                n.fx = pos(n.fx)
+            if (n.fy !== undefined)
+                n.fy = posY(n.fy)
+            if (n.fw !== undefined)
+                n.fw = sz(n.fw)
+            if (n.fh !== undefined)
+                n.fh = szY(n.fh)
+            var extras = n.extras || []
+            for (k = 0; k < extras.length; k++) {
+                if (!extras[k])
+                    continue
+                if (extras[k].efx !== undefined)
+                    extras[k].efx = pos(extras[k].efx)
+                if (extras[k].efy !== undefined)
+                    extras[k].efy = posY(extras[k].efy)
+                if (extras[k].efw !== undefined)
+                    extras[k].efw = sz(extras[k].efw)
+                if (extras[k].efh !== undefined)
+                    extras[k].efh = szY(extras[k].efh)
+            }
+            var mem = n.members || []
+            for (k = 0; k < mem.length; k++) {
+                if (mem[k].ox !== undefined)
+                    mem[k].ox = sz(mem[k].ox)
+                if (mem[k].oy !== undefined)
+                    mem[k].oy = szY(mem[k].oy)
+                if (mem[k].offX !== undefined)
+                    mem[k].offX = sz(mem[k].offX)
+                if (mem[k].offY !== undefined)
+                    mem[k].offY = szY(mem[k].offY)
             }
             mapSpines(n.spines)
             mapEnd(n.from)
@@ -5489,10 +5583,10 @@ Item {
     Image {
         id: _pagePhoto
         z: 0
-        x: _ed.spaceRect().x
-        y: _ed.spaceRect().y
-        width: _ed.spaceRect().w
-        height: _ed.spaceRect().h
+        x: _ed.innerPageRect().x
+        y: _ed.innerPageRect().y
+        width: _ed.innerPageRect().w
+        height: _ed.innerPageRect().h
         fillMode: Image.PreserveAspectFit
         asynchronous: true
         cache: true
