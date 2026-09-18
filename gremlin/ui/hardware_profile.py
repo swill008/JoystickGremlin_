@@ -536,7 +536,7 @@ class HardwareProfile(QtCore.QObject):
                 payload["page"] = 32000
                 payload["pageW"] = 32000
                 payload["pageH"] = 18000
-        payload["photoWell"] = 0.75
+                payload["photoWell"] = 0.75
                 payload.pop("worldRev", None)
                 out = self._file_for(device)
                 out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
