@@ -348,8 +348,8 @@ Window {
             pageW: 32000,
             pageH: 18000,
             image: image,
-            imageWidth: 899,
-            imageHeight: 920,
+            imageWidth: 1348,
+            imageHeight: 1380,
             ui: uiBag(),
             nodes: nodes
         }
