@@ -3850,13 +3850,13 @@ Item {
             onTriggered: _ed.clearGroupFormat()
         }
         MenuSeparator {}
-        MenuItem {
-            text: "Chip"
+        Menu {
+            title: "Chip"
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
-            menu: Menu {
+
 
             MenuItem {
                 enabled: false
@@ -3990,15 +3990,15 @@ Item {
                 onTriggered: _ed.deleteChip()
             }
         
-            }
+            
         }
-        MenuItem {
-            text: "Hotspot"
+        Menu {
+            title: "Hotspot"
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
-            menu: Menu {
+
 
             Menu {
                 id: _hotSzMenu
@@ -4044,15 +4044,15 @@ Item {
             MenuSeparator {}
             MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("hotColor") } }
         
-            }
+            
         }
-        MenuItem {
-            text: "Leader End"
+        Menu {
+            title: "Leader End"
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
-            menu: Menu {
+
 
             MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
             MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
@@ -4060,12 +4060,12 @@ Item {
             MenuItem { text: "Reconnect to this chip"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("from") } }
             MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
         
-            }
+            
         }
-        MenuItem {
-            text: "Group"
+        Menu {
+            title: "Group"
             enabled: _ed.canGroup() || _ed.isGroup(_ed.ctxTarget()) || _ed.groupEditId !== ""
-            menu: Menu {
+
 
             MenuItem {
                 text: "Group selected"
@@ -4091,12 +4091,12 @@ Item {
                 onTriggered: _ed.endGroupEdit()
             }
         
-            }
+            
         }
-        MenuItem {
-            text: "Format"
+        Menu {
+            title: "Format"
             enabled: _ed.isFiveWay(_ed.ctxTarget()) || _ed.ctxHasTheme()
-            menu: Menu {
+
 
             Menu {
                 title: "5-Way"
@@ -4144,27 +4144,27 @@ Item {
                 onTriggered: _ed.clearGroupFormat()
             }
         
-            }
+            
         }
-        MenuItem {
-            text: "Align"
+        Menu {
+            title: "Align"
             enabled: _ed.isGroup(_ed.ctxTarget())
-            menu: Menu {
+
 
             MenuItem { text: "Align left"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("left") }
             MenuItem { text: "Align center"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("center") }
             MenuItem { text: "Align right"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("right") }
             MenuItem { text: "Free layout"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("free") }
         
-            }
+            
         }
-        MenuItem {
-            text: "Leader"
+        Menu {
+            title: "Leader"
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
-            menu: Menu {
+
 
             MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("leaderColor") } }
             Menu {
@@ -4236,12 +4236,12 @@ Item {
                 }
             }
         
-            }
+            
         }
-        MenuItem {
-            text: "Draw"
+        Menu {
+            title: "Draw"
             enabled: true
-            menu: Menu {
+
 
             Menu {
                 title: "Around selection"
@@ -4383,7 +4383,7 @@ Item {
                 onTriggered: _ed.deleteChip()
             }
         
-            }
+            
         }
 
 
