@@ -3904,14 +3904,20 @@ Item {
             visible: _ed.ctxIsLeader()
             height: visible ? implicitHeight : 0
         }
-        Menu {
-            title: "Chip"
+        MenuItem {
+            text: "Chip"
             visible: _ed.ctxHasMapItem()
             height: visible ? implicitHeight : 0
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
+            hoverEnabled: true
+            onHoveredChanged: {
+                if (hovered && enabled && menu && !menu.opened)
+                    menu.open()
+            }
+            menu: Menu {
             MenuItem {
                 enabled: false
                 text: {
@@ -4043,15 +4049,23 @@ Item {
                 }
                 onTriggered: _ed.deleteChip()
             }
+        
+            }
         }
-        Menu {
-            title: "Hotspot"
+        MenuItem {
+            text: "Hotspot"
             visible: _ed.ctxHasMapItem()
             height: visible ? implicitHeight : 0
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
+            hoverEnabled: true
+            onHoveredChanged: {
+                if (hovered && enabled && menu && !menu.opened)
+                    menu.open()
+            }
+            menu: Menu {
             Menu {
                 id: _hotSzMenu
                 title: "Size"
@@ -4095,26 +4109,42 @@ Item {
             }
             MenuSeparator {}
             MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("hotColor") } }
+        
+            }
         }
-        Menu {
-            title: "Leader End"
+        MenuItem {
+            text: "Leader End"
             visible: _ed.ctxHasMapItem()
             height: visible ? implicitHeight : 0
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
+            hoverEnabled: true
+            onHoveredChanged: {
+                if (hovered && enabled && menu && !menu.opened)
+                    menu.open()
+            }
+            menu: Menu {
             MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
             MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
             MenuSeparator {}
             MenuItem { text: "Reconnect to this chip"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("from") } }
             MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
+        
+            }
         }
-        Menu {
-            title: "Group"
+        MenuItem {
+            text: "Group"
             visible: _ed.ctxHasMapItem() || _ed.canGroup() || _ed.groupEditId !== ""
             height: visible ? implicitHeight : 0
             enabled: _ed.canGroup() || _ed.isGroup(_ed.ctxTarget()) || _ed.groupEditId !== ""
+            hoverEnabled: true
+            onHoveredChanged: {
+                if (hovered && enabled && menu && !menu.opened)
+                    menu.open()
+            }
+            menu: Menu {
             MenuItem {
                 text: "Group selected"
                 enabled: _ed.canGroup()
@@ -4138,12 +4168,20 @@ Item {
                 enabled: _ed.groupEditId !== ""
                 onTriggered: _ed.endGroupEdit()
             }
+        
+            }
         }
-        Menu {
-            title: "Format"
+        MenuItem {
+            text: "Format"
             visible: _ed.ctxHasMapItem()
             height: visible ? implicitHeight : 0
             enabled: _ed.isFiveWay(_ed.ctxTarget()) || _ed.ctxHasTheme()
+            hoverEnabled: true
+            onHoveredChanged: {
+                if (hovered && enabled && menu && !menu.opened)
+                    menu.open()
+            }
+            menu: Menu {
             Menu {
                 title: "5-Way"
                 enabled: _ed.isFiveWay(_ed.ctxTarget())
@@ -4189,25 +4227,41 @@ Item {
                 enabled: _ed.ctxHasGroupFormat()
                 onTriggered: _ed.clearGroupFormat()
             }
+        
+            }
         }
-        Menu {
-            title: "Align"
+        MenuItem {
+            text: "Align"
             visible: _ed.ctxHasMapItem()
             height: visible ? implicitHeight : 0
             enabled: _ed.isGroup(_ed.ctxTarget())
+            hoverEnabled: true
+            onHoveredChanged: {
+                if (hovered && enabled && menu && !menu.opened)
+                    menu.open()
+            }
+            menu: Menu {
             MenuItem { text: "Align left"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("left") }
             MenuItem { text: "Align center"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("center") }
             MenuItem { text: "Align right"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("right") }
             MenuItem { text: "Free layout"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("free") }
+        
+            }
         }
-        Menu {
-            title: "Leader"
+        MenuItem {
+            text: "Leader"
             visible: _ed.ctxHasMapItem()
             height: visible ? implicitHeight : 0
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
+            hoverEnabled: true
+            onHoveredChanged: {
+                if (hovered && enabled && menu && !menu.opened)
+                    menu.open()
+            }
+            menu: Menu {
             MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("leaderColor") } }
             Menu {
                 id: _leadWMenu
@@ -4276,9 +4330,20 @@ Item {
                     _ed.deleteLeader()
                 }
             }
+        
+            }
         }
-        Menu {
-            title: "Draw"
+        MenuItem {
+            text: "Draw"
+            visible: true
+            height: visible ? implicitHeight : 0
+            enabled: true
+            hoverEnabled: true
+            onHoveredChanged: {
+                if (hovered && enabled && menu && !menu.opened)
+                    menu.open()
+            }
+            menu: Menu {
             Menu {
                 title: "Around selection"
                 enabled: {
@@ -4417,6 +4482,8 @@ Item {
                 text: "Delete drawing"
                 enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
                 onTriggered: _ed.deleteChip()
+            }
+        
             }
         }
 
