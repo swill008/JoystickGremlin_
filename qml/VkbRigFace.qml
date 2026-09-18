@@ -118,6 +118,10 @@ Item {
         panY = vy - (wy - H * 0.5) * z1 - H * 0.5
         if (Math.abs(zoom - 1) < 0.015)
             zoom = 1
+        if (Math.abs(zoom - zoomMax) < 0.0001) {
+            panX = 0
+            panY = 0
+        }
         clampPan()
         pingEditor()
     }
