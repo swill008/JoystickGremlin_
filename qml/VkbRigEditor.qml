@@ -1446,7 +1446,7 @@ Item {
 
     function clearAllSpines(id) {
         var n = nodeAt(id || selectedId)
-        if (!n)
+        if (!n || isDraw(n))
             return
         var ls = ensureLeaders(n)
         var i
@@ -4034,9 +4034,17 @@ Item {
             MenuSeparator {}
             MenuItem {
                 text: "Clear all spines"
+                enabled: {
+                    var id = _ctx.nodeId || _ed.selectedId
+                    var n = _ed.nodeAt(id)
+                    return !!(n && !_ed.isDraw(n))
+                }
                 onTriggered: {
-                    _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                    _ed.clearAllSpines(_ed.selectedId)
+                    var id = _ctx.nodeId || _ed.selectedId
+                    if (!_ed.nodeAt(id))
+                        return
+                    _ed.selectedId = id
+                    _ed.clearAllSpines(id)
                 }
             }
             MenuItem {
