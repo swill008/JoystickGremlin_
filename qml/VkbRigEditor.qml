@@ -3911,47 +3911,49 @@ Item {
                 enabled: _ed.groupEditId !== ""
                 onTriggered: _ed.endGroupEdit()
             }
-            MenuSeparator {}
+        }
+        Menu {
+            title: "Format"
+            visible: _ed.ctxHasMapItem()
+            height: visible ? implicitHeight : 0
+            enabled: _ed.isFiveWay(_ed.ctxTarget()) || _ed.ctxHasTheme()
             Menu {
-                title: "Apply Format"
+                title: "5-Way"
                 enabled: _ed.isFiveWay(_ed.ctxTarget())
-                Menu {
-                    title: "5-Way"
-                    MenuItem {
-                        text: "Plus cluster"
-                        checkable: true
-                        checked: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)) === "plus"
-                        onTriggered: {
-                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                            _ed.applyFiveWayFormat("plus")
-                        }
+                MenuItem {
+                    text: "Plus cluster"
+                    checkable: true
+                    checked: _ed.fiveWayFormat(_ed.ctxTarget()) === "plus"
+                    onTriggered: {
+                        _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                        _ed.applyFiveWayFormat("plus")
                     }
-                    MenuItem {
-                        text: "Mini hat"
-                        checkable: true
-                        checked: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)) === "mini"
-                        onTriggered: {
-                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                            _ed.applyFiveWayFormat("mini")
-                        }
+                }
+                MenuItem {
+                    text: "Mini hat"
+                    checkable: true
+                    checked: _ed.fiveWayFormat(_ed.ctxTarget()) === "mini"
+                    onTriggered: {
+                        _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                        _ed.applyFiveWayFormat("mini")
                     }
-                    MenuItem {
-                        text: "Named card"
-                        checkable: true
-                        checked: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)) === "card"
-                        onTriggered: {
-                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                            _ed.applyFiveWayFormat("card")
-                        }
+                }
+                MenuItem {
+                    text: "Named card"
+                    checkable: true
+                    checked: _ed.fiveWayFormat(_ed.ctxTarget()) === "card"
+                    onTriggered: {
+                        _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                        _ed.applyFiveWayFormat("card")
                     }
-                    MenuItem {
-                        text: "Radial leaders"
-                        checkable: true
-                        checked: _ed.fiveWayFormat(_ed.nodeAt(_ctx.nodeId || _ed.selectedId)) === "radial"
-                        onTriggered: {
-                            _ed.selectedId = _ctx.nodeId || _ed.selectedId
-                            _ed.applyFiveWayFormat("radial")
-                        }
+                }
+                MenuItem {
+                    text: "Radial leaders"
+                    checkable: true
+                    checked: _ed.fiveWayFormat(_ed.ctxTarget()) === "radial"
+                    onTriggered: {
+                        _ed.selectedId = _ctx.nodeId || _ed.selectedId
+                        _ed.applyFiveWayFormat("radial")
                     }
                 }
             }
@@ -3966,7 +3968,12 @@ Item {
                     _ed.resetFiveWayFormat()
                 }
             }
-            MenuSeparator {}
+        }
+        Menu {
+            title: "Align"
+            visible: _ed.ctxHasMapItem()
+            height: visible ? implicitHeight : 0
+            enabled: _ed.isGroup(_ed.ctxTarget())
             MenuItem { text: "Align left"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("left") }
             MenuItem { text: "Align center"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("center") }
             MenuItem { text: "Align right"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("right") }
