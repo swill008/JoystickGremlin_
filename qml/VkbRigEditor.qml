@@ -228,6 +228,21 @@ Item {
                 Ls.spines[dragSpine].fy = Math.max(0, Math.min(1, sp.y / Math.max(1, height)))
             }
             n.spines = Ls.spines
+        } else if (dragKind === "tablecell") {
+            if (!isTable(n) || isLocked(n) || tableRow < 0 || tableCol < 0)
+                return
+            ensureTable(n)
+            var cell = tableGetCell(n, tableRow, tableCol)
+            if (!cell || !cell.free)
+                return
+            var g1 = drawGeom(n)
+            var tp = snapEnt(mx - dragOffX, my - dragOffY, altOff)
+            cell.ox = (tp.x - g1.x) / Math.max(1, g1.w)
+            cell.oy = (tp.y - g1.y) / Math.max(1, g1.h)
+            if (cell.ox < -0.6) cell.ox = -0.6
+            if (cell.oy < -0.6) cell.oy = -0.6
+            if (cell.ox > 1.4) cell.ox = 1.4
+            if (cell.oy > 1.4) cell.oy = 1.4
         } else if (dragKind === "draw") {
             if (isLocked(n))
                 return
@@ -1692,7 +1707,7 @@ Item {
         return Math.max(48, rows * 22)
     }
 
-    function tableCellRect(n, row, col) {
+    function tableHomeRect(n, row, col) {
         var g = drawGeom(n)
         ensureTable(n)
         var rows = n.rows.length
@@ -1720,15 +1735,55 @@ Item {
         return { x: x, y: g.y + row * rowH, w: Math.max(8, w), h: Math.max(8, rowH) }
     }
 
+    function tableGetCell(n, row, col) {
+        if (!n || !n.rows || row < 0 || col < 0)
+            return null
+        if (row >= n.rows.length)
+            return null
+        var cells = n.rows[row].cells || []
+        if (col >= cells.length)
+            return null
+        return cells[col]
+    }
+
+    function tableCellIsFree(n, row, col) {
+        var c = tableGetCell(n, row, col)
+        return !!(c && c.free)
+    }
+
+    function tableCellRect(n, row, col) {
+        var home = tableHomeRect(n, row, col)
+        var c = tableGetCell(n, row, col)
+        if (!c || !c.free)
+            return home
+        var g = drawGeom(n)
+        var cw = (c.cw > 0) ? c.cw * g.w : home.w
+        var ch = (c.ch > 0) ? c.ch * g.h : home.h
+        var x = g.x + (c.ox || 0) * g.w
+        var y = g.y + (c.oy || 0) * g.h
+        return { x: x, y: y, w: Math.max(8, cw), h: Math.max(8, ch) }
+    }
+
     function tableCellAt(n, mx, my) {
         if (!isTable(n))
             return { row: -1, col: -1 }
         ensureTable(n)
+        var rows = n.rows.length
+        var cols = n.cols
+        var r
+        var c
+        for (r = rows - 1; r >= 0; r--) {
+            for (c = cols - 1; c >= 0; c--) {
+                if (!tableCellIsFree(n, r, c))
+                    continue
+                var rc = tableCellRect(n, r, c)
+                if (mx >= rc.x && mx <= rc.x + rc.w && my >= rc.y && my <= rc.y + rc.h)
+                    return { row: r, col: c }
+            }
+        }
         var g = drawGeom(n)
         if (mx < g.x || my < g.y || mx > g.x + g.w || my > g.y + g.h)
             return { row: -1, col: -1 }
-        var rows = n.rows.length
-        var cols = n.cols
         var row = Math.floor((my - g.y) / Math.max(1, g.h / Math.max(1, rows)))
         var idCol = !!n.idCol && cols > 1
         var idW = idCol ? Math.min(g.w * 0.32, Math.max(22, g.w * 0.22)) : 0
@@ -1747,6 +1802,67 @@ Item {
         if (row > rows - 1) row = rows - 1
         if (col > cols - 1) col = cols - 1
         return { row: row, col: col }
+    }
+
+    function setTableCellFree(on) {
+        var n = nodeAt(selectedId)
+        if (!isTable(n) || tableRow < 0 || tableCol < 0)
+            return
+        ensureTable(n)
+        var cell = tableGetCell(n, tableRow, tableCol)
+        if (!cell)
+            return
+        if (on) {
+            var home = tableHomeRect(n, tableRow, tableCol)
+            var g = drawGeom(n)
+            if (!cell.free) {
+                cell.ox = (home.x - g.x) / Math.max(1, g.w)
+                cell.oy = (home.y - g.y) / Math.max(1, g.h)
+                cell.cw = home.w / Math.max(1, g.w)
+                cell.ch = home.h / Math.max(1, g.h)
+            }
+            cell.free = true
+        } else {
+            cell.free = false
+            cell.ox = 0
+            cell.oy = 0
+            delete cell.cw
+            delete cell.ch
+        }
+        bump()
+    }
+
+    function toggleTableCellFree() {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        setTableCellFree(!tableCellIsFree(n, tableRow, tableCol))
+    }
+
+    function placeTableCell(where) {
+        var n = nodeAt(selectedId)
+        if (!isTable(n) || tableRow < 0 || tableCol < 0)
+            return
+        ensureTable(n)
+        setTableCellFree(true)
+        var cell = tableGetCell(n, tableRow, tableCol)
+        if (!cell)
+            return
+        var cw = cell.cw > 0 ? cell.cw : 0.5
+        var ch = cell.ch > 0 ? cell.ch : 0.5
+        if (where === "left")
+            cell.ox = 0
+        else if (where === "right")
+            cell.ox = Math.max(0, 1 - cw)
+        else if (where === "center")
+            cell.ox = Math.max(0, 0.5 - cw * 0.5)
+        else if (where === "top")
+            cell.oy = 0
+        else if (where === "bottom")
+            cell.oy = Math.max(0, 1 - ch)
+        else if (where === "middle")
+            cell.oy = Math.max(0, 0.5 - ch * 0.5)
+        bump()
     }
 
     function tableCellStyle(n, col) {
@@ -2544,6 +2660,14 @@ Item {
             for (t = 0; t < hs.length; t++) {
                 if (Math.hypot(p.x - hs[t][0], p.y - hs[t][1]) < 8)
                     return hs[t][2]
+            }
+        }
+        if (isTable(n)) {
+            var hitCell = tableCellAt(n, mx, my)
+            if (hitCell.row >= 0) {
+                if (isLocked(n))
+                    return ""
+                return "body"
             }
         }
         if (p.x < 0 || p.y < 0 || p.x > w || p.y > h)
@@ -3684,6 +3808,7 @@ Item {
             Item {
                 id: _tableFace
                 anchors.fill: parent
+                clip: false
                 visible: { _ed.tick; return !!(node && node.shape === "table") }
                 Repeater {
                     model: {
@@ -4247,11 +4372,13 @@ Item {
                 return
             }
             if (hit.kind === "draw") {
-                if (shift)
+                var dnPre = _ed.nodeAt(hit.id)
+                var shiftCell = shift && _ed.isTable(dnPre) && hit.handle === "body"
+                if (shift && !shiftCell)
                     _ed.toggleSelected(hit.id)
                 else if (!_ed.isSelected(hit.id))
                     _ed.setSelection([hit.id])
-                var dn = _ed.nodeAt(hit.id)
+                var dn = dnPre
                 if (_ed.plantSnap && _ed.isOverlay(dn)) {
                     _ed.addSocketAt(dn, m.x, m.y)
                     return
@@ -4268,6 +4395,23 @@ Item {
                     _ed.rzY0 = g.y
                     _ed.rzX1 = g.x + g.w
                     _ed.rzY1 = g.y + g.h
+                } else if (_ed.isTable(dn)) {
+                    var tcell = _ed.tableCellAt(dn, m.x, m.y)
+                    _ed.tableRow = tcell.row
+                    _ed.tableCol = tcell.col
+                    var wantFree = tcell.row >= 0 && (_ed.tableCellIsFree(dn, tcell.row, tcell.col) || !!(m.modifiers & Qt.ShiftModifier))
+                    if (wantFree) {
+                        if (!_ed.tableCellIsFree(dn, tcell.row, tcell.col))
+                            _ed.setTableCellFree(true)
+                        var rc = _ed.tableCellRect(dn, tcell.row, tcell.col)
+                        _ed.dragKind = "tablecell"
+                        _ed.dragOffX = m.x - rc.x
+                        _ed.dragOffY = m.y - rc.y
+                    } else {
+                        _ed.dragKind = "draw"
+                        _ed.dragOffX = m.x - g.x
+                        _ed.dragOffY = m.y - g.y
+                    }
                 } else {
                     _ed.dragKind = "draw"
                     _ed.dragOffX = m.x - g.x
@@ -4654,6 +4798,8 @@ Item {
         color: "#A1A1AA"
         font.pixelSize: 10
         text: {
+            if (_ed.dragKind === "tablecell")
+                return "Dragging free cell. Handles still resize the table."
             if (_ed.drawTool === "table")
                 return "Draw table — drag a box. Blank 2×2. Esc cancels."
             if (_ed.drawTool.length)
@@ -4743,6 +4889,34 @@ Item {
                 return !!(n && n.idCol)
             }
             onTriggered: _ed.toggleTableIdCol()
+        }
+        MenuItem {
+            text: "Free position"
+            checkable: true
+            enabled: {
+                _ed.tick
+                return _ed.tableRow >= 0 && _ed.tableCol >= 0
+            }
+            checked: {
+                _ed.tick
+                var n = _ed.nodeAt(_ed.selectedId)
+                return _ed.tableCellIsFree(n, _ed.tableRow, _ed.tableCol)
+            }
+            onTriggered: _ed.toggleTableCellFree()
+        }
+        Menu {
+            title: "Place"
+            enabled: {
+                _ed.tick
+                return _ed.tableRow >= 0 && _ed.tableCol >= 0
+            }
+            MenuItem { text: "Far left"; onTriggered: _ed.placeTableCell("left") }
+            MenuItem { text: "Center"; onTriggered: _ed.placeTableCell("center") }
+            MenuItem { text: "Far right"; onTriggered: _ed.placeTableCell("right") }
+            MenuSeparator {}
+            MenuItem { text: "Top"; onTriggered: _ed.placeTableCell("top") }
+            MenuItem { text: "Middle"; onTriggered: _ed.placeTableCell("middle") }
+            MenuItem { text: "Bottom"; onTriggered: _ed.placeTableCell("bottom") }
         }
         MenuSeparator {}
         Menu {
