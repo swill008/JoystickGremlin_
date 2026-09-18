@@ -1062,6 +1062,76 @@ Item {
         return ls[i]
     }
 
+    function hollowMarkPad(end) {
+        if (!end)
+            return null
+        if (end.type === "hot") {
+            var hn = nodeAt(end.id)
+            if (!hn)
+                return null
+            if ((hn.hotFill || "filled") !== "hollow")
+                return null
+            var hs = hotSz(hn)
+            var r = hs * 0.5 + 2
+            if ((hn.hotShape || "round") === "square")
+                return { shape: "square", hw: r, hh: r }
+            return { shape: "round", r: r }
+        }
+        if (end.type === "chip" || end.type === "member") {
+            var cn = nodeAt(end.id)
+            if (!cn)
+                return null
+            var mem = null
+            if (end.type === "member" && cn.members && end.member >= 0 && end.member < cn.members.length)
+                mem = cn.members[end.member]
+            if (!chipIsHollow(cn, mem))
+                return null
+            var w = chipWGuess(cn, mem)
+            var h = chipH(cn, mem)
+            var shape = styleVal(cn, mem, "chipShape", "round")
+            if (shape === "square")
+                return { shape: "square", hw: w * 0.5 + 1, hh: h * 0.5 + 1 }
+            return { shape: "round", r: Math.min(w, h) * 0.5 + 1 }
+        }
+        return null
+    }
+
+    function pullToCircle(prev, center, r) {
+        var dx = center.x - prev.x
+        var dy = center.y - prev.y
+        var len = Math.hypot(dx, dy)
+        if (len < 0.001)
+            return prev
+        if (len <= r)
+            return prev
+        var u = r / len
+        return Qt.point(center.x - dx * u, center.y - dy * u)
+    }
+
+    function pullToBox(prev, center, hw, hh) {
+        var dx = center.x - prev.x
+        var dy = center.y - prev.y
+        if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001)
+            return prev
+        var tx = Math.abs(dx) < 0.001 ? 1e9 : hw / Math.abs(dx)
+        var ty = Math.abs(dy) < 0.001 ? 1e9 : hh / Math.abs(dy)
+        var t = Math.min(tx, ty)
+        if (t > 1)
+            return prev
+        return Qt.point(center.x - t * dx, center.y - t * dy)
+    }
+
+    function clipHollowEnd(prev, tip, end) {
+        var pad = hollowMarkPad(end)
+        if (!pad)
+            return tip
+        if (end.type === "chip" || end.type === "member")
+            return tip
+        if (pad.shape === "square")
+            return pullToBox(prev, tip, pad.hw, pad.hh)
+        return pullToCircle(prev, tip, pad.r)
+    }
+
     function pathPtsL(L) {
         if (!L)
             return []
@@ -1071,6 +1141,10 @@ Item {
             pts.push(Qt.point(fxToX(spines[s].fx), fyToY(spines[s].fy)))
         }
         pts.push(endPt(L.to))
+        if (pts.length >= 2) {
+            pts[0] = clipHollowEnd(pts[1], pts[0], L.from)
+            pts[pts.length - 1] = clipHollowEnd(pts[pts.length - 2], pts[pts.length - 1], L.to)
+        }
         return pts
     }
 
