@@ -470,10 +470,7 @@ Item {
         return physNames[k] || ""
     }
 
-    function defaultFriendly(kind, hwId) {
-        var p = physicalName(kind, hwId)
-        if (p.length)
-            return p
+    function hardwareLabel(kind, hwId) {
         var lk = leafKind(kind)
         if (lk === "axis")
             return "Axis " + hwId
@@ -482,10 +479,25 @@ Item {
         return "Button " + hwId
     }
 
-    // "" means the user cleared the label — always show the hardware name.
-    // Missing/null is "never set" and themes may use Up/Left/Push.
+    function defaultFriendly(kind, hwId) {
+        return hardwareLabel(kind, hwId)
+    }
+
     function isClearedFriendly(v) {
         return v === "" || (typeof v === "string" && !String(v).trim().length)
+    }
+
+    function isUserFriendly(kind, hwId, v) {
+        if (v === undefined || v === null || isClearedFriendly(v))
+            return false
+        var t = String(v).trim()
+        if (!t.length)
+            return false
+        if (t === hardwareLabel(kind, hwId))
+            return false
+        if (t === physicalName(kind, hwId))
+            return false
+        return true
     }
 
     function carryFriendly(v, fallback) {
@@ -498,24 +510,27 @@ Item {
 
     function friendlyOf(n, mem) {
         if (mem) {
-            if (isClearedFriendly(mem.friendly))
-                return defaultFriendly((n && n.kind === "axis_stack") ? "axis" : "btn", mem.hwId)
-            if (mem.friendly && String(mem.friendly).length)
-                return mem.friendly
             var lk = (n && n.kind === "axis_stack") ? "axis" : "btn"
-            return defaultFriendly(lk, mem.hwId)
+            if (isUserFriendly(lk, mem.hwId, mem.friendly))
+                return String(mem.friendly).trim()
+            return hardwareLabel(lk, mem.hwId)
         }
         if (!n)
             return ""
-        if (isClearedFriendly(n.friendly))
-            return defaultFriendly(n.kind, n.hwId)
-        if (n.friendly && String(n.friendly).length)
-            return n.friendly
-        if (n.label && String(n.label).length)
-            return n.label
-        if (isGroup(n))
+        if (isGroup(n)) {
+            if (n.friendly && !isClearedFriendly(n.friendly) && n.friendly !== n.id)
+                return n.friendly
+            if (n.label && String(n.label).length)
+                return n.label
             return n.id
-        return defaultFriendly(n.kind, n.hwId)
+        }
+        if (isDraw(n))
+            return (n.friendly && String(n.friendly).length) ? n.friendly : "Draw"
+        if (isUserFriendly(n.kind, n.hwId, n.friendly))
+            return String(n.friendly).trim()
+        if (n.label && String(n.label).length && isUserFriendly(n.kind, n.hwId, n.label))
+            return String(n.label).trim()
+        return hardwareLabel(n.kind, n.hwId)
     }
 
     function fullNameOf(kind, hwId) {
@@ -2515,43 +2530,21 @@ Item {
 
     function systemName(n, mem) {
         if (mem)
-            return defaultFriendly((n && n.kind === "axis_stack") ? "axis" : "btn", mem.hwId)
+            return hardwareLabel((n && n.kind === "axis_stack") ? "axis" : "btn", mem.hwId)
         if (!n)
             return ""
-        return defaultFriendly(n.kind, n.hwId)
+        return hardwareLabel(n.kind, n.hwId)
     }
 
     function memberHasCustomName(n, mem) {
-        if (!mem || mem.friendly === undefined || mem.friendly === null)
+        if (!mem)
             return false
-        if (!String(mem.friendly).length)
-            return false
-        return String(mem.friendly) !== systemName(n, mem)
+        var lk = (n && n.kind === "axis_stack") ? "axis" : "btn"
+        return isUserFriendly(lk, mem.hwId, mem.friendly)
     }
 
     function memberLabel(n, mem) {
-        if (!mem) {
-            if (n && isClearedFriendly(n.friendly))
-                return systemName(n, null)
-            return friendlyOf(n, null)
-        }
-        if (isClearedFriendly(mem.friendly))
-            return systemName(n, mem)
-        if (memberHasCustomName(n, mem))
-            return String(mem.friendly)
-        var f = fiveWayFormat(n)
-        var r = fiveWayRole(mem)
-        if (f === "mini") {
-            if (r === "up") return "▲"
-            if (r === "down") return "▼"
-            if (r === "left") return "◀"
-            if (r === "right") return "▶"
-            if (r === "center") return "●"
-        }
-        var rw = roleWord(r)
-        if ((f === "plus" || f === "card" || f === "radial") && rw)
-            return rw
-        return systemName(n, mem)
+        return friendlyOf(n, mem)
     }
 
     function memByRole(n, role) {
@@ -4138,7 +4131,7 @@ Item {
                     var mem = _ed.targetMember()
                     if (n && mem)
                         return (n.id || "group") + " · " + (_ed.roleWord(_ed.fiveWayRole(mem)) || _ed.memberLabel(n, mem))
-                    return n ? (n.friendly || n.id || "Chip") : "Chip"
+                    return n ? (_ed.friendlyOf(n, mem) || n.id || "Chip") : "Chip"
                 }
             }
             MenuItem {
