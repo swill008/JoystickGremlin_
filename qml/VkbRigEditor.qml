@@ -54,6 +54,9 @@ Item {
     property real rzX1: 0
     property real rzY1: 0
     property var clip: []
+    property bool lineArm: false
+    property real lineArmX: 0
+    property real lineArmY: 0
     signal selectedChanged()
     signal chipMenuRequested(real x, real y)
     signal historyChanged()
@@ -1457,17 +1460,17 @@ Item {
         bump()
     }
 
-    function addSpineAt(id, mx, my) {
+    function addSpineAt(id, mx, my, forceCurve) {
         var n = nodeAt(id)
         if (!n) {
-            return
+            return -1
         }
         if (!n.spines) {
             n.spines = []
         }
         var L = currentLeader(n)
         if (!L)
-            return
+            return -1
         if (!L.spines)
             L.spines = []
         var pts = pathPtsL(L)
@@ -1481,13 +1484,14 @@ Item {
             }
         }
         var spn = snapPos(mx, my, false)
-        var curved = segIsCurve(L, best)
+        var curved = (forceCurve === true) ? true : segIsCurve(L, best)
         L.spines.splice(best, 0, { fx: spn.x / Math.max(1, width), fy: spn.y / Math.max(1, height), curve: curved })
         n.spines = L.spines
         selectedId = id
         selectedSpine = best
         selectedChanged()
         bump()
+        return best
     }
 
     function deleteSelection() {
@@ -3325,7 +3329,10 @@ Item {
                 _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
                 _ed.selectedSeg = (hit.seg !== undefined) ? hit.seg : 0
                 _ed.selectedSpine = -1
-                _ed.dragKind = ""
+                _ed.lineArm = true
+                _ed.lineArmX = m.x
+                _ed.lineArmY = m.y
+                _ed.dragKind = "linearm"
                 _ed.bump()
                 return
             }
@@ -3432,9 +3439,30 @@ Item {
                     _ed.banding = true
                 return
             }
+            if (_ed.dragKind === "linearm") {
+                if (Math.hypot(m.x - _ed.lineArmX, m.y - _ed.lineArmY) <= 6)
+                    return
+                var sid = _ed.addSpineAt(_ed.selectedId, _ed.lineArmX, _ed.lineArmY, true)
+                _ed.lineArm = false
+                if (sid < 0) {
+                    _ed.dragKind = ""
+                    return
+                }
+                _ed.dragKind = "spine"
+                _ed.dragSpine = sid
+                _ed.selectedSpine = sid
+                _ed.applyPointer(m.x, m.y, _ed.altHeld)
+                return
+            }
             _ed.applyPointer(m.x, m.y, _ed.altHeld)
         }
         onReleased: (m) => {
+            if (_ed.dragKind === "linearm") {
+                _ed.lineArm = false
+                _ed.dragKind = ""
+                _ed.bump()
+                return
+            }
             if (_ed.dragKind === "drawnew") {
                 _ed.addDrawFree(_ed.drawTool, _ed.drawX0, _ed.drawY0, _ed.drawX1, _ed.drawY1)
                 _ed.dragKind = ""
