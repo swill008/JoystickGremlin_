@@ -58,6 +58,8 @@ Item {
         var vh = _viewport.height
         if (vw < 8 || vh < 8)
             return
+        if (!(zoom >= zoomMin && zoom <= zoomMax))
+            zoom = 1
         var ww = _world.width * zoom
         var hh = _world.height * zoom
         var mx = vw * 0.20
@@ -66,6 +68,34 @@ Item {
         panX = Math.max(panX, mx - ww)
         panY = Math.min(panY, vh - my)
         panY = Math.max(panY, my - hh)
+    }
+
+    function viewOffScreen() {
+        var vw = _viewport.width
+        var vh = _viewport.height
+        if (vw < 8 || vh < 8)
+            return false
+        if (!(zoom >= zoomMin && zoom <= zoomMax))
+            return true
+        if (panX !== panX || panY !== panY)
+            return true
+        var ww = _world.width * zoom
+        var hh = _world.height * zoom
+        if (ww < 8 || hh < 8)
+            return false
+        if (panX + ww < 8 || panY + hh < 8)
+            return true
+        if (panX > vw - 8 || panY > vh - 8)
+            return true
+        return false
+    }
+
+    function recoverView() {
+        if (viewOffScreen())
+            resetView()
+        else
+            clampPan()
+        pingEditor()
     }
 
     function zoomAt(vx, vy, factor) {
@@ -85,6 +115,7 @@ Item {
             panX = 0
             panY = 0
         }
+        clampPan()
         pingEditor()
     }
 
@@ -383,7 +414,10 @@ Item {
                     cache: true
                     onStatusChanged: {
                         _lines.requestPaint()
-                        _face.pingEditor()
+                        if (status === Image.Ready)
+                            Qt.callLater(_face.recoverView)
+                        else
+                            _face.pingEditor()
                     }
                     onPaintedWidthChanged: {
                         _lines.requestPaint()
@@ -593,12 +627,12 @@ Item {
     Connections {
         target: _face
         function onWidthChanged() {
+            Qt.callLater(_face.recoverView)
             _lines.requestPaint()
-            _face.pingEditor()
         }
         function onHeightChanged() {
+            Qt.callLater(_face.recoverView)
             _lines.requestPaint()
-            _face.pingEditor()
         }
         function onLiveStampChanged() {
             _lines.requestPaint()
