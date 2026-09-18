@@ -1372,6 +1372,11 @@ Item {
         var n
         for (i = 0; i < list.length; i++) {
             n = list[i]
+            if (isOverlay(n) && hitOverlayPin(n, mx, my))
+                return { kind: "overlayPin", id: n.id, spine: -1 }
+        }
+        for (i = 0; i < list.length; i++) {
+            n = list[i]
             if (n.kind === "draw")
                 continue
             var ls = leaderList(n)
@@ -1628,7 +1633,23 @@ Item {
     }
 
     function isLocked(n) {
-        return !!(n && n.locked)
+        return !!(n && (n.pinned || n.locked))
+    }
+
+    function pinLocal() {
+        return { x: -2, y: -18, w: 16, h: 16 }
+    }
+
+    function hitOverlayPin(n, mx, my) {
+        if (!isOverlay(n) || !interactive)
+            return false
+        var i = nodeIndex(n.id)
+        var it = (i >= 0 && _chips) ? _chips.itemAt(i) : null
+        if (!it)
+            return false
+        var p = it.mapFromItem(_ed, mx, my)
+        var r = pinLocal()
+        return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h
     }
 
     function addOverlay(rel, fileUrl) {
@@ -1638,6 +1659,7 @@ Item {
         st.src = rel || ""
         st.srcUrl = fileUrl || ""
         st.locked = false
+        st.pinned = false
         st.sockets = []
         st.zLayer = 2
         st.fill = "filled"
@@ -1653,11 +1675,13 @@ Item {
         return st.id
     }
 
-    function toggleLock() {
-        var n = nodeAt(selectedId)
+    function toggleLock(id) {
+        var n = nodeAt(id || selectedId)
         if (!isDraw(n))
             return
-        n.locked = !n.locked
+        var on = !isLocked(n)
+        n.pinned = on
+        n.locked = on
         plantSnap = false
         bump()
     }
@@ -2213,6 +2237,8 @@ Item {
             }
         }
         if (p.x < 0 || p.y < 0 || p.x > w || p.y > h)
+            return ""
+        if (isLocked(n))
             return ""
         if (n.shape === "image" || n.fill === "filled")
             return "body"
@@ -3327,6 +3353,36 @@ Item {
                 }
             }
             Repeater {
+                model: (_ed.interactive && node && node.shape === "image") ? 1 : 0
+                Rectangle {
+                    width: 16
+                    height: 16
+                    x: -2
+                    y: -18
+                    radius: 3
+                    z: 8
+                    color: {
+                        _ed.tick
+                        return _ed.isLocked(node) ? "#FBBF24" : "#18181B"
+                    }
+                    border.color: {
+                        _ed.tick
+                        return _ed.isLocked(node) ? "#18181B" : "#A1A1AA"
+                    }
+                    border.width: 1
+                    Rectangle {
+                        width: 6
+                        height: 6
+                        radius: 1
+                        anchors.centerIn: parent
+                        color: {
+                            _ed.tick
+                            return _ed.isLocked(node) ? "#18181B" : "#A1A1AA"
+                        }
+                    }
+                }
+            }
+            Repeater {
                 model: (_ed.interactive && node && _ed.isSelected(node.id) && !_ed.isLocked(node)) ? 8 : 0
                 Rectangle {
                     required property int index
@@ -3704,6 +3760,13 @@ Item {
                 _ed.chipMenuRequested(m.x, m.y)
                 _ctx.close()
                 _ctx.popup()
+                return
+            }
+            if (hit.kind === "overlayPin") {
+                _ed.setSelection([hit.id])
+                _ed.selectedId = hit.id
+                _ed.toggleLock(hit.id)
+                _ed.dragKind = ""
                 return
             }
             if (hit.kind === "draw") {
@@ -4545,8 +4608,8 @@ Item {
             enabled: true
 
             MenuItem {
-                text: { _ed.tick; var n = _ed.ctxTarget(); return (n && n.locked) ? "Unlock overlay" : "Lock overlay" }
-                enabled: { var n = _ed.ctxTarget(); return _ed.isDraw(n) }
+                text: { _ed.tick; var n = _ed.ctxTarget(); return _ed.isLocked(n) ? "Unpin overlay" : "Pin overlay" }
+                enabled: { var n = _ed.ctxTarget(); return _ed.isOverlay(n) || _ed.isDraw(n) }
                 onTriggered: {
                     _ed.selectedId = _ctx.nodeId || _ed.selectedId
                     _ed.toggleLock()
