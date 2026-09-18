@@ -100,6 +100,32 @@ class HardwareProfile(QtCore.QObject):
         self.documentChanged.emit()
         return True
 
+    @QtCore.Slot(str, str, result=bool)
+    def saveUi(self, device_name: str, json_text: str) -> bool:
+        """Write only the ui block. Do not stamp page size or rewrite nodes."""
+        name = device_name or self._device_name
+        path = self._file_for(name)
+        try:
+            incoming = json.loads(json_text)
+        except json.JSONDecodeError:
+            return False
+        if not path.is_file():
+            return self.save(name, json_text)
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return False
+        if not isinstance(payload, dict):
+            return False
+        payload["ui"] = incoming.get("ui", payload.get("ui") or {})
+        payload.pop("worldRev", None)
+        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        self._path = str(path)
+        self._text = path.read_text(encoding="utf-8")
+        self.pathChanged.emit()
+        self.documentChanged.emit()
+        return True
+
     @QtCore.Slot(str, str, result=str)
     def copyOverlay(self, source_url: str, device_name: str) -> str:
         src = to_local_path(source_url)
