@@ -608,15 +608,15 @@ Item {
             var mem = n.members || []
             var lk = n.kind === "axis_stack" ? "axis" : "btn"
             for (var i = 0; i < mem.length; i++) {
-                if (!mem[i].friendly || !String(mem[i].friendly).length)
+                if (mem[i].friendly === undefined || mem[i].friendly === null)
                     mem[i].friendly = defaultFriendly(lk, mem[i].hwId)
             }
-            if (!n.friendly || !String(n.friendly).length)
+            if (n.friendly === undefined || n.friendly === null)
                 n.friendly = n.label && n.label.length ? n.label : n.id
         } else if (isDraw(n)) {
-            if (!n.friendly || !String(n.friendly).length)
+            if (n.friendly === undefined || n.friendly === null)
                 n.friendly = "Draw"
-        } else if (!n.friendly || !String(n.friendly).length) {
+        } else if (n.friendly === undefined || n.friendly === null) {
             n.friendly = (n.label && n.label.length) ? n.label : defaultFriendly(n.kind, n.hwId)
         }
     }
@@ -2091,16 +2091,30 @@ Item {
         return ""
     }
 
+    function systemName(n, mem) {
+        if (mem)
+            return defaultFriendly((n && n.kind === "axis_stack") ? "axis" : "btn", mem.hwId)
+        if (!n)
+            return ""
+        return defaultFriendly(n.kind, n.hwId)
+    }
+
     function memberHasCustomName(n, mem) {
-        if (!mem || !mem.friendly || !String(mem.friendly).length)
+        if (!mem || mem.friendly === undefined || mem.friendly === null)
             return false
-        var lk = (n && n.kind === "axis_stack") ? "axis" : "btn"
-        return String(mem.friendly) !== defaultFriendly(lk, mem.hwId)
+        if (!String(mem.friendly).length)
+            return false
+        return String(mem.friendly) !== systemName(n, mem)
     }
 
     function memberLabel(n, mem) {
-        if (!mem)
+        if (!mem) {
+            if (n && n.friendly === "")
+                return systemName(n, null)
             return friendlyOf(n, null)
+        }
+        if (mem.friendly === "")
+            return systemName(n, mem)
         if (memberHasCustomName(n, mem))
             return String(mem.friendly)
         var f = fiveWayFormat(n)
@@ -2115,7 +2129,7 @@ Item {
         var rw = roleWord(r)
         if ((f === "plus" || f === "card" || f === "radial") && rw)
             return rw
-        return friendlyOf(n, mem)
+        return systemName(n, mem)
     }
 
     function memByRole(n, role) {
@@ -2310,10 +2324,7 @@ Item {
         }
         var t = String(renameDraft || "").trim()
         if (isGroup(n) && renameMember >= 0 && n.members && renameMember < n.members.length) {
-            if (t.length)
-                n.members[renameMember].friendly = t
-            else
-                delete n.members[renameMember].friendly
+            n.members[renameMember].friendly = t
         } else {
             n.friendly = t
         }
