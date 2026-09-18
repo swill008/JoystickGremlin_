@@ -852,6 +852,7 @@ Window {
         spacing: 0
 
         MenuBar {
+            Layout.fillWidth: true
             Menu {
                 title: "File"
                 MenuItem {
