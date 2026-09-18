@@ -454,7 +454,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss. If the write or re-read fails, a red Save failed warning appears instead.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nImport overlay… — add a PNG/JPEG plate (5-way plus, etc.) on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss. If the write or re-read fails, a red Save failed warning appears. Click OK to dismiss it — clicking outside does not close it.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nImport overlay… — add a PNG/JPEG plate (5-way plus, etc.) on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
                 },
                 {
                     h: "Edit menu",
@@ -890,7 +890,9 @@ Window {
         dim: false
         focus: true
         padding: 16
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        closePolicy: _buttonMap.saveOk
+                     ? (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
+                     : Popup.NoAutoClose
         parent: Overlay.overlay
         x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : Math.round((_buttonMap.width - width) / 2)
         y: Overlay.overlay ? Math.round((Overlay.overlay.height - height) / 2) : Math.round((_buttonMap.height - height) / 2)
@@ -900,11 +902,21 @@ Window {
             border.width: 1
             radius: 4
         }
-        contentItem: Text {
-            text: _buttonMap.saveOk ? "Mapping saved" : "Save failed"
-            color: _buttonMap.saveOk ? "#E4E4E7" : "#FECACA"
-            font.pixelSize: 14
-            horizontalAlignment: Text.AlignHCenter
+        contentItem: Column {
+            spacing: 12
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: _buttonMap.saveOk ? "Mapping saved" : "Save failed"
+                color: _buttonMap.saveOk ? "#E4E4E7" : "#FECACA"
+                font.pixelSize: 14
+                horizontalAlignment: Text.AlignHCenter
+            }
+            Button {
+                visible: !_buttonMap.saveOk
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "OK"
+                onClicked: _savedPop.close()
+            }
         }
     }
 
