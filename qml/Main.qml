@@ -55,7 +55,37 @@ ApplicationWindow {
         }
     }
 
+    function buttonMapWindow() {
+        return Helpers.windowOf("DialogJoystickButtonMap.qml")
+    }
+
+    function buttonMapNeedsLeave() {
+        var w = buttonMapWindow()
+        if (!w)
+            return false
+        if (!w.editing)
+            return false
+        if (typeof w.isDirty !== "function")
+            return false
+        return w.isDirty()
+    }
+
+    function offerButtonMapLeaveThenQuit() {
+        var w = buttonMapWindow()
+        if (!w)
+            return false
+        if (typeof w.requestLeaveForAppQuit === "function") {
+            w.requestLeaveForAppQuit()
+            return true
+        }
+        return false
+    }
+
     function deactivateThenQuit() {
+        if (buttonMapNeedsLeave()) {
+            offerButtonMapLeaveThenQuit()
+            return
+        }
         if (backend && backend.gremlinActive) {
             backend.toggleActiveState()
         }
@@ -567,6 +597,11 @@ ApplicationWindow {
         _windowPlacement.save(_root)
         if (backend && backend.profileContainsUnsavedChanges) {
             _saveBeforeQuitDialog.open()
+            close.accepted = false
+            return
+        }
+        if (buttonMapNeedsLeave()) {
+            offerButtonMapLeaveThenQuit()
             close.accepted = false
         }
     }
