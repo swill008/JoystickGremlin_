@@ -482,8 +482,24 @@ Item {
         return "Button " + hwId
     }
 
+    // "" means the user cleared the label — always show the hardware name.
+    // Missing/null is "never set" and themes may use Up/Left/Push.
+    function isClearedFriendly(v) {
+        return v === "" || (typeof v === "string" && !String(v).trim().length)
+    }
+
+    function carryFriendly(v, fallback) {
+        if (isClearedFriendly(v))
+            return ""
+        if (v !== undefined && v !== null && String(v).length)
+            return v
+        return fallback
+    }
+
     function friendlyOf(n, mem) {
         if (mem) {
+            if (isClearedFriendly(mem.friendly))
+                return defaultFriendly((n && n.kind === "axis_stack") ? "axis" : "btn", mem.hwId)
             if (mem.friendly && String(mem.friendly).length)
                 return mem.friendly
             var lk = (n && n.kind === "axis_stack") ? "axis" : "btn"
@@ -491,6 +507,8 @@ Item {
         }
         if (!n)
             return ""
+        if (isClearedFriendly(n.friendly))
+            return defaultFriendly(n.kind, n.hwId)
         if (n.friendly && String(n.friendly).length)
             return n.friendly
         if (n.label && String(n.label).length)
@@ -2513,11 +2531,11 @@ Item {
 
     function memberLabel(n, mem) {
         if (!mem) {
-            if (n && n.friendly === "")
+            if (n && isClearedFriendly(n.friendly))
                 return systemName(n, null)
             return friendlyOf(n, null)
         }
-        if (mem.friendly === "")
+        if (isClearedFriendly(mem.friendly))
             return systemName(n, mem)
         if (memberHasCustomName(n, mem))
             return String(mem.friendly)
@@ -2930,7 +2948,7 @@ Item {
                 role: parts[i].role || ("m" + i),
                 ox: parts[i].src.chipFx - ox0,
                 oy: parts[i].src.chipFy - oy0,
-                friendly: parts[i].friendly || parts[i].src.friendly || defaultFriendly(parts[i].kind, parts[i].hwId)
+                friendly: carryFriendly(parts[i].friendly, carryFriendly(parts[i].src && parts[i].src.friendly, defaultFriendly(parts[i].kind, parts[i].hwId)))
             })
         var g = {
             id: _uid("g"), kind: kind, members: members,
@@ -2991,7 +3009,7 @@ Item {
             created.push({
                 id: _uid("b"), kind: leafKind, hwId: mem[i].hwId, prefix: prefix,
                 label: "",
-                friendly: mem[i].friendly || defaultFriendly(leafKind, mem[i].hwId),
+                friendly: carryFriendly(mem[i].friendly, defaultFriendly(leafKind, mem[i].hwId)),
                 nx: n.nx, ny: n.ny,
                 chipFx: Math.max(0.02, Math.min(0.9, px / ew)),
                 chipFy: Math.max(0.02, Math.min(0.9, py / eh)),
