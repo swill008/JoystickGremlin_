@@ -47,6 +47,9 @@ Item {
     property string drawTool: ""
     property bool plantSnap: false
     property string overlayHoverId: ""
+    property string hoverHwLabel: ""
+    property real hoverTipX: 0
+    property real hoverTipY: 0
     property real drawX0: 0
     property real drawY0: 0
     property real drawX1: 0
@@ -376,6 +379,7 @@ Item {
             groupEditId = ""
             selectedMember = -1
             dragMember = -1
+            hoverHwLabel = ""
             cancelRename()
             armRenameId = ""
             armRenameMember = -1
@@ -2616,6 +2620,38 @@ Item {
         return hardwareLabel(n.kind, n.hwId)
     }
 
+    function hoverLabelAt(mx, my) {
+        var list = nodes || []
+        var i
+        for (i = list.length - 1; i >= 0; i--) {
+            var n = list[i]
+            if (!n || isDraw(n))
+                continue
+            if (isGroup(n)) {
+                var mi = memberHit(n, mx, my)
+                if (mi >= 0 && n.members && n.members[mi])
+                    return systemName(n, n.members[mi])
+                continue
+            }
+            var it = _chips.itemAt(i)
+            if (!it)
+                continue
+            var p = it.mapFromItem(_ed, mx, my)
+            if (p.x >= 0 && p.y >= 0 && p.x <= it.width && p.y <= it.height)
+                return systemName(n, null)
+        }
+        return ""
+    }
+
+    function setChipTip(mx, my) {
+        hoverTipX = mx
+        hoverTipY = my
+        if (dragKind || banding || renameId)
+            hoverHwLabel = ""
+        else
+            hoverHwLabel = hoverLabelAt(mx, my)
+    }
+
     function memberHasCustomName(n, mem) {
         if (!mem)
             return false
@@ -3936,6 +3972,7 @@ Item {
             _ed.bump()
         }
         onExited: {
+            _ed.hoverHwLabel = ""
             if (_ed.overlayHoverId) {
                 _ed.overlayHoverId = ""
                 _ed.bump()
@@ -3945,6 +3982,7 @@ Item {
             _ed.altHeld = !!(m.modifiers & Qt.AltModifier)
             _ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
             _ed.setOverlayHover(m.x, m.y)
+            _ed.setChipTip(m.x, m.y)
             if (!_ed.dragKind) {
                 return
             }
@@ -4101,6 +4139,25 @@ Item {
             face.zoomAt(vx, vy, Math.pow(1.0012, dy))
             w.accepted = true
         }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        z: 8
+        enabled: !_ed.interactive
+        hoverEnabled: true
+        acceptedButtons: Qt.NoButton
+        onPositionChanged: (m) => _ed.setChipTip(m.x, m.y)
+        onExited: _ed.hoverHwLabel = ""
+    }
+
+    ToolTip {
+        visible: _ed.hoverHwLabel.length > 0 && !_ed.dragKind && !_ed.renameId
+        text: _ed.hoverHwLabel
+        delay: 400
+        timeout: 4000
+        x: _ed.hoverTipX + 14
+        y: _ed.hoverTipY + 16
     }
 
     TextInput {
