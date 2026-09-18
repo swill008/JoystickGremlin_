@@ -3423,6 +3423,7 @@ Item {
                     _ctx.leader = 0
                 }
                 _ed.chipMenuRequested(m.x, m.y)
+                _ctx.close()
                 _ctx.popup()
                 return
             }
@@ -3595,6 +3596,7 @@ Item {
                 _ed.spineHoldArm = false
                 if (m.button === Qt.RightButton) {
                     _ed.chipMenuRequested(_ed.spineHoldX, _ed.spineHoldY)
+                    _ctx.close()
                     _ctx.popup()
                 }
                 return
@@ -3844,59 +3846,68 @@ Item {
         }
         MenuItem {
             text: "Clear Format"
-            visible: _ed.isGroup(_ed.ctxTarget())
-            enabled: _ed.ctxHasGroupFormat()
+            enabled: _ed.isGroup(_ed.ctxTarget()) && _ed.ctxHasGroupFormat()
             onTriggered: _ed.clearGroupFormat()
         }
         MenuSeparator {}
-        MenuItem {
-            text: "Add spine"
-            visible: _ed.ctxIsLeader()
-            enabled: {
-                var n = _ed.ctxTarget()
-                return !!(n && !_ed.isDraw(n))
+        Instantiator {
+            model: {
+                _ed.tick
+                return _ed.ctxIsLeader() ? ["add", "convert", "delete", "clear"] : []
             }
-            onTriggered: {
-                var n = _ed.ctxTarget()
-                if (!n)
-                    return
-                _ed.selectedId = n.id
-                _ed.selectedLeader = _ctx.leader
-                _ed.ensureMidSpine(n)
-                _ed.bump()
+            delegate: MenuItem {
+                required property string modelData
+                text: modelData === "add" ? "Add spine"
+                    : modelData === "convert" ? "Convert spine"
+                    : modelData === "delete" ? "Delete selected spine"
+                    : "Clear spines"
+                enabled: {
+                    _ed.tick
+                    if (modelData === "add") {
+                        var n = _ed.ctxTarget()
+                        return !!(n && !_ed.isDraw(n))
+                    }
+                    if (modelData === "convert" || modelData === "delete")
+                        return _ed.ctxHasSelectedSpine()
+                    return _ed.ctxHasSpines()
+                }
+                onTriggered: {
+                    var n = _ed.ctxTarget()
+                    if (!n)
+                        return
+                    _ed.selectedId = n.id
+                    _ed.selectedLeader = _ctx.leader
+                    if (modelData === "add") {
+                        _ed.ensureMidSpine(n)
+                        _ed.bump()
+                    } else if (modelData === "convert") {
+                        _ed.convertSelectedSpine()
+                    } else if (modelData === "delete") {
+                        _ed.deleteSpineAt(n.id, _ctx.leader, _ed.ctxSpineIndex())
+                    } else {
+                        _ed.clearAllSpines(n.id)
+                    }
+                }
+            }
+            onObjectAdded: function(index, object) {
+                _ctx.insertItem(4 + index, object)
+            }
+            onObjectRemoved: function(index, object) {
+                _ctx.removeItem(object)
             }
         }
-        MenuItem {
-            text: "Convert spine"
-            visible: _ed.ctxIsLeader()
-            enabled: _ed.ctxHasSelectedSpine()
-            onTriggered: _ed.convertSelectedSpine()
-        }
-        MenuItem {
-            text: "Delete selected spine"
-            visible: _ed.ctxIsLeader()
-            enabled: _ed.ctxHasSelectedSpine()
-            onTriggered: {
-                var n = _ed.ctxTarget()
-                if (!n)
-                    return
-                _ed.deleteSpineAt(n.id, _ctx.leader, _ed.ctxSpineIndex())
+        Instantiator {
+            model: {
+                _ed.tick
+                return _ed.ctxIsLeader() ? [1] : []
             }
-        }
-        MenuItem {
-            text: "Clear spines"
-            visible: _ed.ctxIsLeader()
-            enabled: _ed.ctxHasSpines()
-            onTriggered: {
-                var n = _ed.ctxTarget()
-                if (!n)
-                    return
-                _ed.selectedId = n.id
-                _ed.clearAllSpines(n.id)
+            delegate: MenuSeparator {}
+            onObjectAdded: function(index, object) {
+                _ctx.insertItem(4 + 4 + index, object)
             }
-        }
-        MenuSeparator {
-            visible: _ed.ctxIsLeader()
+            onObjectRemoved: function(index, object) {
+                _ctx.removeItem(object)
+            }
         }
         Menu {
             title: "Chip"
