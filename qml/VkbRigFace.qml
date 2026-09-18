@@ -91,7 +91,7 @@ Item {
     }
 
     function recoverView() {
-        if (viewOffScreen())
+        if (panX !== panX || panY !== panY || !(zoom >= zoomMin && zoom <= zoomMax))
             resetView()
         else
             clampPan()
