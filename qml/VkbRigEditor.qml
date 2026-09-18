@@ -3782,11 +3782,27 @@ Item {
         return (selectedIds || []).length >= 2
     }
 
+    function packTableFromSelection() {
+        var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
+        var i
+        for (i = 0; i < ids.length; i++) {
+            var n = nodeAt(ids[i])
+            if (tableIsPacked(n))
+                return n
+            if (n && n.packId) {
+                var t = nodeAt(n.packId)
+                if (tableIsPacked(t))
+                    return t
+            }
+        }
+        return null
+    }
+
     function canUngroup() {
-        var n = nodeAt(selectedId)
-        if (tableIsPacked(n) || (n && n.packId))
+        if (packTableFromSelection())
             return true
-        return isGroup(n) && (selectedIds || []).length <= 1
+        var n = nodeAt(selectedId) || ctxTarget()
+        return isGroup(n)
     }
 
     function _uid(prefix) {
@@ -3968,17 +3984,15 @@ Item {
     }
 
     function ungroupSelection() {
-        var n = nodeAt(selectedId)
-        if (n && n.packId) {
-            var packedTable = nodeAt(n.packId)
-            if (isTable(packedTable))
-                n = packedTable
-        }
-        if (tableIsPacked(n)) {
-            detachTablePacked(n)
+        var packed = packTableFromSelection()
+        if (packed) {
+            detachTablePacked(packed)
             bump()
             return
         }
+        var n = nodeAt(selectedId)
+        if (!isGroup(n))
+            n = ctxTarget()
         if (!isGroup(n))
             return
         var mem = n.members || []
@@ -4902,7 +4916,7 @@ Item {
             var n = _ed.nodeAt(_ed.selectedId)
             if (_ed.isTable(n) && _ed.tableExtra >= 0)
                 _ed.deleteThisTableCell()
-            else if (_ed.isGroup(n))
+            else if (_ed.canUngroup())
                 _ed.ungroupSelection()
             else
                 _ed.deleteChip()
@@ -4912,7 +4926,7 @@ Item {
                 var n = _ed.nodeAt(_ed.selectedId)
                 if (_ed.isTable(n) && _ed.tableExtra >= 0)
                     _ed.deleteThisTableCell()
-                else if (_ed.isGroup(n))
+                else if (_ed.canUngroup())
                     _ed.ungroupSelection()
                 else
                     _ed.deleteChip()
@@ -5714,6 +5728,14 @@ Item {
         }
         MenuSeparator {}
         MenuItem {
+            text: "Break group"
+            enabled: {
+                _ed.tick
+                return _ed.canUngroup()
+            }
+            onTriggered: _ed.ungroupSelection()
+        }
+        MenuItem {
             text: {
                 _ed.tick
                 var n = _ed.pinTarget()
@@ -5981,7 +6003,7 @@ Item {
         }
         Menu {
             title: "Group"
-            enabled: _ed.canGroup() || _ed.isGroup(_ed.ctxTarget()) || _ed.groupEditId !== ""
+            enabled: _ed.canGroup() || _ed.canUngroup() || _ed.isGroup(_ed.ctxTarget()) || _ed.groupEditId !== ""
 
 
             MenuItem {
@@ -5991,11 +6013,11 @@ Item {
             }
             MenuItem {
                 text: "Break group"
-                enabled: _ed.isGroup(_ed.ctxTarget())
-                onTriggered: {
-                    _ed.setSelection([_ctx.nodeId || _ed.selectedId])
-                    _ed.ungroupSelection()
+                enabled: {
+                    _ed.tick
+                    return _ed.canUngroup() || _ed.isGroup(_ed.ctxTarget())
                 }
+                onTriggered: _ed.ungroupSelection()
             }
             MenuItem {
                 text: "Edit group"
