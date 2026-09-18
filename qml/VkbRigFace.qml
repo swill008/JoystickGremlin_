@@ -107,20 +107,28 @@ Item {
         var H = _world.height
         var vw = _viewport.width
         var vh = _viewport.height
-        vx = vw * 0.5
-        vy = vh * 0.5
+        if (!(vx === vx) || !(vy === vy)) {
+            vx = vw * 0.5
+            vy = vh * 0.5
+        }
         var wx = (vx - panX - W * 0.5) / z0 + W * 0.5
         var wy = (vy - panY - H * 0.5) / z0 + H * 0.5
         zoom = z1
         panX = vx - (wx - W * 0.5) * z1 - W * 0.5
         panY = vy - (wy - H * 0.5) * z1 - H * 0.5
-        if (Math.abs(zoom - 1) < 0.015) {
+        if (Math.abs(zoom - 1) < 0.015)
             zoom = 1
-            panX = 0
-            panY = 0
-        }
         clampPan()
         pingEditor()
+    }
+
+    function zoomAtItem(item, ix, iy, factor) {
+        if (!item || !_viewport) {
+            zoomAt(_viewport ? _viewport.width * 0.5 : 0, _viewport ? _viewport.height * 0.5 : 0, factor)
+            return
+        }
+        var p = item.mapToItem(_viewport, ix, iy)
+        zoomAt(p.x, p.y, factor)
     }
 
     function hwButton(id) { return host && host.hwButton ? host.hwButton(id) : 0 }
@@ -599,6 +607,20 @@ Item {
     }
 
         } // _world
+
+        WheelHandler {
+            target: _viewport
+            enabled: !_face.editing
+            onWheel: (w) => {
+                var dy = w.pixelDelta.y !== 0 ? w.pixelDelta.y : w.angleDelta.y
+                if (dy === 0) {
+                    w.accepted = false
+                    return
+                }
+                _face.zoomAt(w.x, w.y, Math.pow(1.0012, dy))
+                w.accepted = true
+            }
+        }
 
         DragHandler {
             id: _midPan
