@@ -101,7 +101,7 @@ Format and Align are first-level drawers, not inside Group.
 
 Picking the theme that is already on **re-applies** it: stock layout, cell offsets and style overrides cleared, names kept.
 
-**Clear Format** (first menu when a theme is on, or Format → Clear Format) removes the theme. Align then owns the stack.
+**Clear Format** sits under Undo/Redo on a group click, and also in Format → Clear Format. It strips the 5-Way theme and every cell override (size, shape, colors, offsets). Names, Align, and the group stay. Enabled when a theme or any cell override exists.
 
 **Align** left / center / right / Free layout — only when the target is a group.
 
@@ -113,8 +113,9 @@ The first screen follows the click target.
 
 | Click | First screen |
 |---|---|
-| Leader or spine handle | Undo, Add spine, Clear spines, Delete selected spine (handle selected), then Chip / Group / Format / Align / Leader / Draw |
-| Chip or group | Undo, Chip, Group, Format, Align, Leader, Draw. Clear Format when a 5-Way theme is on |
+| Group | Undo, Redo, Clear Format (theme or cell overrides), then Chip / Group / Format / Align / Leader / Draw |
+| Leader or spine handle | Undo, Redo, Clear Format if the line belongs to a group, then Add spine, Convert spine, Delete selected spine, Clear spines, then the family drawers |
+| Chip | Undo, Chip, Group, Format, Align, Leader, Draw |
 | Empty photo | Undo and Draw |
 
 Gray items are gated: no selection, not a group, not a 5-way, or no spines.
@@ -128,10 +129,10 @@ A leader is the line from chip (or group) to the hotspot.
 | Click the line | Select only. Does not add a spine |
 | Drag a segment | Plant a **curved** spine at the grab point; the handle follows the drag |
 | Click a handle | Select it (orange) |
-| Short right-click on a handle | Menu. Use **Delete selected spine** |
+| Short right-click on a handle | Menu. **Convert spine** flips curved ↔ straight (no check mark). **Delete selected spine** removes that handle |
 | Hold right-click ~½ s on a handle | Delete that handle. No menu |
 
-**First menu on a line:** Add spine (mid-point), Clear spines (needs a selection and existing spines).
+**First menu on a line or handle:** Add spine, Convert spine, Delete selected spine, Clear spines. Convert and Delete need a selected handle. Convert is a plain action — no check mark.
 
 **Leader submenu:** Color…, Weight 0.8–4.0, Add straight / curved spine, This segment or All segments Curved / Straight, Add leader, Branch from this end, Attach (detach / reconnect chip or hotspot ends), Clear all spines, Delete spine, Delete leader.
 
