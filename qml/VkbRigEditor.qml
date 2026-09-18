@@ -30,6 +30,10 @@ Item {
     property bool gridOn: true
     property bool snapOn: true
     property bool snapEntOn: true
+    property real guideX: -1
+    property real guideY: -1
+    property string guideXKind: ""
+    property string guideYKind: ""
     property int gridSize: 200
     property bool altHeld: false
     property bool shiftHeld: false
@@ -316,6 +320,10 @@ Item {
                 mm.oy = yToFy(mp.y) - n.chipFy
             }
         }
+        if (n && (dragKind === "chip" || dragKind === "draw" || dragKind === "tablecell" || dragKind === "member"))
+            updateMoveGuides(n)
+        else
+            clearMoveGuides()
         repaint()
     }
 
@@ -418,6 +426,116 @@ Item {
 
     function snapPx(v) {
         return worldToX(snapWorld(xToWorld(v)))
+    }
+
+    function nodeBox(n) {
+        if (!n)
+            return { x: 0, y: 0, w: 8, h: 8 }
+        if (isDraw(n))
+            return drawGeom(n)
+        if (isGroup(n)) {
+            return {
+                x: fxToX(n.chipFx) + groupMinX(n),
+                y: fyToY(n.chipFy) + groupMinY(n),
+                w: Math.max(8, groupSpanW(n)),
+                h: Math.max(8, groupSpanH(n))
+            }
+        }
+        return chipBounds(n)
+    }
+
+    function clearMoveGuides() {
+        guideX = -1
+        guideY = -1
+        guideXKind = ""
+        guideYKind = ""
+    }
+
+    function updateMoveGuides(n) {
+        clearMoveGuides()
+        if (!n || altHeld)
+            return
+        var s = spaceRect()
+        var b = nodeBox(n)
+        var slop = 10
+        var cx = b.x + b.w * 0.5
+        var cy = b.y + b.h * 0.5
+        var pageCx = s.x + s.w * 0.5
+        var pageCy = s.y + s.h * 0.5
+        var dC = Math.abs(cx - pageCx)
+        var dL = Math.abs(b.x - s.x)
+        var dR = Math.abs(b.x + b.w - (s.x + s.w))
+        var bestX = slop + 1
+        if (dC <= slop && dC <= bestX) {
+            guideX = pageCx
+            guideXKind = "center"
+            bestX = dC
+        }
+        if (dL <= slop && dL < bestX) {
+            guideX = s.x
+            guideXKind = "left"
+            bestX = dL
+        }
+        if (dR <= slop && dR < bestX) {
+            guideX = s.x + s.w
+            guideXKind = "right"
+        }
+        var dCy = Math.abs(cy - pageCy)
+        var dT = Math.abs(b.y - s.y)
+        var dB = Math.abs(b.y + b.h - (s.y + s.h))
+        var bestY = slop + 1
+        if (dCy <= slop && dCy <= bestY) {
+            guideY = pageCy
+            guideYKind = "center"
+            bestY = dCy
+        }
+        if (dT <= slop && dT < bestY) {
+            guideY = s.y
+            guideYKind = "top"
+            bestY = dT
+        }
+        if (dB <= slop && dB < bestY) {
+            guideY = s.y + s.h
+            guideYKind = "bottom"
+        }
+    }
+
+    function commitGuideSnap() {
+        if (guideX < 0 && guideY < 0)
+            return
+        var n = nodeAt(selectedId)
+        if (!n)
+            return
+        var b = nodeBox(n)
+        var nx = b.x
+        var ny = b.y
+        if (guideXKind === "center")
+            nx = guideX - b.w * 0.5
+        else if (guideXKind === "left")
+            nx = guideX
+        else if (guideXKind === "right")
+            nx = guideX - b.w
+        if (guideYKind === "center")
+            ny = guideY - b.h * 0.5
+        else if (guideYKind === "top")
+            ny = guideY
+        else if (guideYKind === "bottom")
+            ny = guideY - b.h
+        var dx = nx - b.x
+        var dy = ny - b.y
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5)
+            return
+        var pack = tablePackOf(n)
+        if (pack) {
+            moveTablePack(pack, dx / Math.max(1, spaceRect().w), dy / Math.max(1, spaceRect().h))
+        } else if (isDraw(n)) {
+            n.fx = xToFx(nx)
+            n.fy = yToFy(ny)
+            followTablePacked(n)
+        } else {
+            n.chipFx = xToFx(nx - (isGroup(n) ? groupMinX(n) : 0))
+            n.chipFy = yToFy(ny - (isGroup(n) ? groupMinY(n) : 0))
+        }
     }
 
     function snapPos(x, y, altOff) {
@@ -3851,6 +3969,7 @@ Item {
         endGroupEdit()
         drawTool = ""
         dragKind = ""
+        clearMoveGuides()
         dragSpine = -1
         dragMember = -1
         banding = false
@@ -5288,6 +5407,37 @@ Item {
     }
 
     Canvas {
+        id: _guides
+        anchors.fill: parent
+        z: 2
+        visible: _ed.interactive && (_ed.guideX >= 0 || _ed.guideY >= 0)
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            ctx.strokeStyle = "#22C55E"
+            ctx.lineWidth = 1
+            ctx.setLineDash([5, 4])
+            if (_ed.guideX >= 0) {
+                ctx.beginPath()
+                ctx.moveTo(_ed.guideX + 0.5, 0)
+                ctx.lineTo(_ed.guideX + 0.5, height)
+                ctx.stroke()
+            }
+            if (_ed.guideY >= 0) {
+                ctx.beginPath()
+                ctx.moveTo(0, _ed.guideY + 0.5)
+                ctx.lineTo(width, _ed.guideY + 0.5)
+                ctx.stroke()
+            }
+        }
+        Connections {
+            target: _ed
+            function onGuideXChanged() { _guides.requestPaint() }
+            function onGuideYChanged() { _guides.requestPaint() }
+        }
+    }
+
+    Canvas {
         id: _grid
         anchors.fill: parent
         z: 1
@@ -5827,7 +5977,10 @@ Item {
             if (_ed.dragKind) {
                 if (_ed.dragKind === "chip" || _ed.dragKind === "member")
                     _ed.snapChipToSocket(_ed.selectedId, m.x, m.y)
+                if (_ed.dragKind === "chip" || _ed.dragKind === "draw" || _ed.dragKind === "tablecell" || _ed.dragKind === "member")
+                    _ed.commitGuideSnap()
                 _ed.dragKind = ""
+                _ed.clearMoveGuides()
                 _ed.bump()
             }
         }
