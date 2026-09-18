@@ -2110,6 +2110,59 @@ Item {
         return !!(n && isFiveWay(n) && fiveWayFormat(n) !== "")
     }
 
+    function memberHasOverride(mem) {
+        if (!mem)
+            return false
+        var keys = ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor",
+                    "hlColor", "hlBorder", "hlText", "offX", "offY"]
+        var i
+        for (i = 0; i < keys.length; i++) {
+            var v = mem[keys[i]]
+            if (v !== undefined && v !== null && v !== "")
+                return true
+        }
+        return false
+    }
+
+    function ctxHasGroupFormat() {
+        tick
+        var n = ctxTarget()
+        if (!n || !isGroup(n))
+            return false
+        if (fiveWayFormat(n) !== "")
+            return true
+        var mem = n.members || []
+        var i
+        for (i = 0; i < mem.length; i++) {
+            if (memberHasOverride(mem[i]))
+                return true
+        }
+        return false
+    }
+
+    function clearGroupFormat() {
+        var n = ctxTarget() || nodeAt(selectedId)
+        if (!n || !isGroup(n))
+            return
+        selectedId = n.id
+        var mem = n.members || []
+        var keys = ["chipShape", "chipSize", "chipFill", "fontSize", "color", "border", "textColor",
+                    "hlColor", "hlBorder", "hlText", "offX", "offY"]
+        var i
+        var k
+        for (i = 0; i < mem.length; i++) {
+            for (k = 0; k < keys.length; k++)
+                delete mem[i][keys[k]]
+        }
+        if (isFiveWay(n)) {
+            clearThemeMemberLayout(n)
+            delete n.format
+            if (n.leaders && n.leaders.length > 1)
+                n.leaders = [n.leaders[0]]
+        }
+        bump()
+    }
+
     function ctxHasSpines() {
         tick
         var n = ctxTarget()
@@ -3789,6 +3842,13 @@ Item {
             enabled: _ed.canRedo
             onTriggered: _ed.redo()
         }
+        MenuItem {
+            text: "Clear Format"
+            visible: _ed.isGroup(_ed.ctxTarget())
+            height: visible ? implicitHeight : 0
+            enabled: _ed.ctxHasGroupFormat()
+            onTriggered: _ed.clearGroupFormat()
+        }
         MenuSeparator {}
         MenuItem {
             text: "Add spine"
@@ -4107,14 +4167,8 @@ Item {
             }
             MenuItem {
                 text: "Clear Format"
-                enabled: _ed.ctxHasTheme()
-                onTriggered: {
-                    var n = _ed.ctxTarget()
-                    if (!n)
-                        return
-                    _ed.selectedId = n.id
-                    _ed.resetFiveWayFormat()
-                }
+                enabled: _ed.ctxHasGroupFormat()
+                onTriggered: _ed.clearGroupFormat()
             }
         }
         Menu {
@@ -4356,18 +4410,5 @@ Item {
         }
 
 
-        MenuItem {
-            text: "Clear Format"
-            visible: _ed.ctxHasTheme()
-            height: visible ? implicitHeight : 0
-            enabled: _ed.ctxHasTheme()
-            onTriggered: {
-                var n = _ed.ctxTarget()
-                if (!n)
-                    return
-                _ed.selectedId = n.id
-                _ed.resetFiveWayFormat()
-            }
-        }
     }
 }
