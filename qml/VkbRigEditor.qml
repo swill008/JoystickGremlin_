@@ -6010,6 +6010,8 @@ Item {
                     _ed.beginTextRename(n.id)
             }
         }
+        MenuItem { text: "Delete text box"; onTriggered: _ed.deleteChip() }
+        MenuItem { text: "Duplicate"; onTriggered: _ed.duplicateSelection() }
         MenuSeparator {}
         Menu {
             title: "Theme"
@@ -6272,8 +6274,6 @@ Item {
         }
         MenuItem { text: "Bring forward"; onTriggered: _ed.bringForward() }
         MenuItem { text: "Send back"; onTriggered: _ed.sendBack() }
-        MenuSeparator {}
-        MenuItem { text: "Delete text box"; onTriggered: _ed.deleteChip() }
     }
 
     Menu {
