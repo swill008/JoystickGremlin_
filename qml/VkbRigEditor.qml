@@ -765,7 +765,9 @@ Item {
     }
 
     function chipXY(n) {
-        return Qt.point(n.chipFx * width, n.chipFy * height)
+        if (!n)
+            return Qt.point(0, 0)
+        return Qt.point(fxToX(n.chipFx), fyToY(n.chipFy))
     }
 
     function pinPt(n, item, side) {
@@ -814,8 +816,8 @@ Item {
             if (!gn || !gn.members || end.member < 0 || end.member >= gn.members.length)
                 return chipXY(gn || {})
             var gm = gn.members[end.member]
-            var gx = gn.chipFx * width + groupMinX(gn) + memberLocalX(gn, gm)
-            var gy = gn.chipFy * height + groupMinY(gn) + memberLocalY(gn, gm)
+            var gx = fxToX(gn.chipFx) + groupMinX(gn) + memberLocalX(gn, gm)
+            var gy = fyToY(gn.chipFy) + groupMinY(gn) + memberLocalY(gn, gm)
             var gw = chipWGuess(gn, gm)
             var gh = chipH(gn)
             var pin = end.pin || "right"
@@ -2627,14 +2629,6 @@ Item {
     }
 
     function spaceRect() {
-        if (face && typeof face.photoPt === "function") {
-            var a = face.photoPt(0, 0)
-            var b = face.photoPt(1, 1)
-            var sw = b.x - a.x
-            var sh = b.y - a.y
-            if (sw > 8 && sh > 8)
-                return { x: a.x, y: a.y, w: sw, h: sh }
-        }
         return { x: 0, y: 0, w: Math.max(1, width), h: Math.max(1, height) }
     }
 
@@ -3788,15 +3782,15 @@ Item {
         }
         if (isGroup(n) && mem) {
             return Qt.rect(
-                n.chipFx * width + groupMinX(n) + memberLocalX(n, mem),
-                n.chipFy * height + groupMinY(n) + memberLocalY(n, mem),
+                fxToX(n.chipFx) + groupMinX(n) + memberLocalX(n, mem),
+                fyToY(n.chipFy) + groupMinY(n) + memberLocalY(n, mem),
                 Math.max(24, chipWGuess(n, mem)),
                 chipH(n, mem)
             )
         }
         return Qt.rect(
-            n.chipFx * width,
-            n.chipFy * height,
+            fxToX(n.chipFx),
+            fyToY(n.chipFy),
             Math.max(24, chipWGuess(n, null)),
             chipH(n, null)
         )
@@ -5562,8 +5556,8 @@ Item {
                 var nm = _ed.nodeAt(hit.id)
                 if (nm && nm.members && nm.members[hit.member]) {
                     var mm = nm.members[hit.member]
-                    _ed.dragOffX = m.x - (nm.chipFx * width + _ed.groupMinX(nm) + _ed.memberLocalX(nm, mm))
-                    _ed.dragOffY = m.y - (nm.chipFy * height + _ed.groupMinY(nm) + _ed.memberLocalY(nm, mm))
+                    _ed.dragOffX = m.x - (_ed.fxToX(nm.chipFx) + _ed.groupMinX(nm) + _ed.memberLocalX(nm, mm))
+                    _ed.dragOffY = m.y - (_ed.fyToY(nm.chipFy) + _ed.groupMinY(nm) + _ed.memberLocalY(nm, mm))
                 }
                 _ed.bump()
                 return
@@ -5580,8 +5574,8 @@ Item {
                 _ed.dragSpine = -1
                 var n2 = _ed.nodeAt(hit.id)
                 if (n2) {
-                    _ed.dragOffX = m.x - n2.chipFx * width
-                    _ed.dragOffY = m.y - n2.chipFy * height
+                    _ed.dragOffX = m.x - _ed.fxToX(n2.chipFx)
+                    _ed.dragOffY = m.y - _ed.fyToY(n2.chipFy)
                 }
                 _ed.bump()
                 return
