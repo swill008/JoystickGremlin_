@@ -3444,7 +3444,7 @@ Item {
         rightPadding: 4
         onTextChanged: _ed.renameDraft = text
         onAccepted: _ed.commitRename()
-        Keys.onEscapePressed: {
+        Keys.onEscapePressed: (event) => {
             _ed.cancelRename()
             event.accepted = true
         }
