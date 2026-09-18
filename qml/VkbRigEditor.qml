@@ -3720,6 +3720,21 @@ Item {
                 _ed.clearAllSpines(n.id)
             }
         }
+        MenuItem {
+            text: "Delete selected spine"
+            visible: _ed.ctxIsLeader()
+            height: visible ? implicitHeight : 0
+            enabled: _ed.selectedSpine >= 0 || _ctx.kind === "spine"
+            onTriggered: {
+                var n = _ed.ctxTarget()
+                if (!n)
+                    return
+                _ed.selectedId = n.id
+                if (_ctx.kind === "spine" && _ed.selectedSpine < 0)
+                    _ed.selectedSpine = _ctx.seg
+                _ed.deleteSelection()
+            }
+        }
         MenuSeparator {
             visible: _ed.ctxIsLeader()
             height: visible ? implicitHeight : 0
