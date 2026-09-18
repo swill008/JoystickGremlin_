@@ -425,7 +425,7 @@ Window {
                 },
                 {
                     h: "Groups",
-                    b: "Select two or more chips (Shift-click or rubber-band), then right-click → Group → Group selected. Grouping drops extra leaders and keeps one.\nBreak group (or Delete on a group) splits members back to singles.\nAlign left / center / right stacks members; Free layout lets you drag members inside Edit group.\nRight-click → Group → Edit group to move members; Done editing group to finish."
+                    b: "Select two or more chips (Shift-click or rubber-band), then right-click → Group → Group selected. Grouping drops extra leaders and keeps one.\nBreak group (or Delete on a group) splits members back to singles.\nAlign left / center / right stacks members; Free layout lets you drag members inside Edit group.\nRight-click → Group → Edit group to move members; Done editing group to finish.\n5-Way Theme: on a 5-member hat group, Group → Apply Format → 5-Way picks Plus cluster, Mini hat, Named card, or Radial leaders. Format is presentation only — hardware ids stay grouped. Save writes it to the control.hardware profile."
                 },
                 {
                     h: "Leaders",
@@ -674,6 +674,41 @@ Window {
         MenuSeparator {}
         MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
         MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
+        MenuSeparator {}
+        Menu {
+            title: "Apply Format"
+            enabled: {
+                var e = _ed()
+                return !!(e && e.isFiveWay(e.nodeAt(e.selectedId)))
+            }
+            Menu {
+                title: "5-Way"
+                MenuItem {
+                    text: "Plus cluster"
+                    checkable: true
+                    checked: { var e = _ed(); return !!(e && e.fiveWayFormat(e.nodeAt(e.selectedId)) === "plus") }
+                    onTriggered: { var e = _ed(); if (e) e.applyFiveWayFormat("plus") }
+                }
+                MenuItem {
+                    text: "Mini hat"
+                    checkable: true
+                    checked: { var e = _ed(); return !!(e && e.fiveWayFormat(e.nodeAt(e.selectedId)) === "mini") }
+                    onTriggered: { var e = _ed(); if (e) e.applyFiveWayFormat("mini") }
+                }
+                MenuItem {
+                    text: "Named card"
+                    checkable: true
+                    checked: { var e = _ed(); return !!(e && e.fiveWayFormat(e.nodeAt(e.selectedId)) === "card") }
+                    onTriggered: { var e = _ed(); if (e) e.applyFiveWayFormat("card") }
+                }
+                MenuItem {
+                    text: "Radial leaders"
+                    checkable: true
+                    checked: { var e = _ed(); return !!(e && e.fiveWayFormat(e.nodeAt(e.selectedId)) === "radial") }
+                    onTriggered: { var e = _ed(); if (e) e.applyFiveWayFormat("radial") }
+                }
+            }
+        }
         MenuSeparator {}
         MenuItem { text: "Align left"; onTriggered: { var e = _ed(); if (e) e.setAlignH("left") } }
         MenuItem { text: "Align center"; onTriggered: { var e = _ed(); if (e) e.setAlignH("center") } }
