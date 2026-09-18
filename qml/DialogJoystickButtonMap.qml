@@ -48,6 +48,7 @@ Window {
     property string photoOverride: ""
     property string storedImage: ""
     property string liveImage: ""
+    property bool pendingWorldMigrate: false
     property string selectedId: ""
     property var selectedNode: null
     property bool _allowClose: false
@@ -225,6 +226,7 @@ Window {
         if (doc.ui)
             applyUi(doc.ui)
         applyImage(liveImage)
+        pendingWorldMigrate = Number(doc.worldRev || 0) < 1
         applyGridToEditor()
         return true
     }
@@ -271,6 +273,7 @@ Window {
             device: targetName,
             space: "world",
             page: 2000,
+            worldRev: 1,
             image: image,
             imageWidth: 899,
             imageHeight: 920,
@@ -779,6 +782,10 @@ Window {
         e.snapOn = snapOn
         e.snapEntOn = snapEntOn
         e.gridSize = gridSize
+        if (pendingWorldMigrate && e.migrateFromWindowSpace) {
+            e.migrateFromWindowSpace()
+            pendingWorldMigrate = false
+        }
         if (e.repaint)
             e.repaint()
     }
