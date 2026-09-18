@@ -89,7 +89,7 @@ class HardwareProfile(QtCore.QObject):
         payload["page"] = 32000
         payload["pageW"] = 32000
         payload["pageH"] = 18000
-        payload["worldRev"] = 2
+        payload.pop("worldRev", None)
         image = str(payload.get("image") or "")
         payload["image"] = self.toRelative(image)
         path.parent.mkdir(parents=True, exist_ok=True)
