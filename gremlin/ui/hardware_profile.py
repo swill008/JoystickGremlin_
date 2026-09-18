@@ -85,6 +85,8 @@ class HardwareProfile(QtCore.QObject):
             return False
         payload["kind"] = "control.hardware"
         payload["device"] = name
+        payload["space"] = "world"
+        payload["page"] = 2000
         image = str(payload.get("image") or "")
         payload["image"] = self.toRelative(image)
         path.parent.mkdir(parents=True, exist_ok=True)
