@@ -49,6 +49,10 @@ Window {
     property string storedImage: ""
     property string liveImage: ""
     property bool fittedOldPage: false
+    property bool fittedThisEdit: false
+    property real viewPctSave: 1
+    property real viewPanX: 0
+    property real viewPanY: 0
     property string selectedId: ""
     property var selectedNode: null
     property bool _allowClose: false
@@ -286,12 +290,8 @@ Window {
         if (doc.ui)
             applyUi(doc.ui)
         applyImage(liveImage)
-        var oldPage = Number(doc.pageW || doc.page || 0)
-        if (oldPage > 0 && oldPage < 32000 && !fittedOldPage) {
-            sceneShiftList(liveNodes)
-            fittedOldPage = true
-        }
         applyGridToEditor()
+        applyViewToFace()
         return true
     }
 
@@ -314,6 +314,7 @@ Window {
         hydrateOverlays(workNodes)
         applyImage(liveImage.length ? liveImage : stockImage)
         editing = true
+        fittedThisEdit = false
         selectedId = ""
         selectedNode = null
         Qt.callLater(function() {
@@ -548,11 +549,11 @@ Window {
                 },
                 {
                     h: "World page",
-                    b: "Layout lives on a 32000 × 18000 world page (16:9). Reset view / 100% still frames the photo the way it used to (center half of the page). Zoom out to 50% shows the full page — that black around the stick is now on the grid and can take chips.\nThe photo is a layer in the center of the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the 32000 page. Save stamps space world, pageW 32000, pageH 18000. There is one page size."
+                    b: "Layout lives on a 32000 × 18000 world page (16:9). Reset view / 100% still frames the photo the way it used to (center half of the page). Zoom out to 50% shows the full page — that black around the stick is now on the grid and can take chips.\nThe photo is a layer in the center of the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the 32000 page. Save Mapping writes nodes, page 32000×18000, and ui into this one profile. Grid / snap writes only ui — it does not change page size or chip positions.\nFit to photo frame — once per edit if chips look twice as big as the photo after the page change. Look, then Save. It does not run by itself."
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss. If the write or re-read fails, a red Save failed warning appears. Click OK to dismiss it — clicking outside does not close it.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss. If the write or re-read fails, a red Save failed warning appears. Click OK to dismiss it — clicking outside does not close it.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nFit to photo frame — once, if the saved layout is twice as large as the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
                 },
                 {
                     h: "Edit menu",
@@ -560,7 +561,7 @@ Window {
                 },
                 {
                     h: "View, zoom, pan",
-                    b: "Scroll wheel zooms about the pointer, 50%–400%. 100% is the photo frame. 50% is the full 32000 page. 400% is 4× the photo frame. The point under the cursor stays put. Middle-button drag pans. Before Edit Mapping, left-drag also pans. View → Reset view returns 100% (photo frame) and centered.\nA resize or photo reload keeps a valid zoom. It only recenters when zoom or pan is broken (NaN or out of range).\nView → Grid → Show grid — the full world page. Step is world counts (default 200). Size 4–400; 400 suits the 32000 page. Paint caps about 80 lines per axis so a fine step cannot stall the PC.\nSnap to grid — drag onto world-grid points.\nSnap to entities — snap to other chips, hots, frames.\nPage guides — while you drag a chip, table, text, or group, a green dashed line appears near the page center or an edge. Release snaps center-to-center or edge-to-edge. Packed table + chips move together.\nAlt while dragging skips grid, entity, and page-guide snap."
+                    b: "Scroll wheel zooms about the pointer, 50%–400%. 100% is the photo frame. 50% is the full 32000 page. 400% is 4× the photo frame. The point under the cursor stays put. Middle-button drag pans. Before Edit Mapping, left-drag also pans. View → Reset view returns 100% (photo frame) and centered. Zoom and pan are stored in the profile ui and restored on open.\nA resize or photo reload keeps a valid zoom. It only recenters when zoom or pan is broken (NaN or out of range).\nView → Grid → Show grid — the full world page. Step is world counts (default 200). Size 4–400; 400 suits the 32000 page. Paint caps about 80 lines per axis so a fine step cannot stall the PC.\nSnap to grid — drag onto world-grid points.\nSnap to entities — snap to other chips, hots, frames.\nPage guides — while you drag a chip, table, text, or group, a green dashed line appears near the page center or an edge. Release snaps center-to-center or edge-to-edge. Packed table + chips move together.\nAlt while dragging skips grid, entity, and page-guide snap."
                 },
                 {
                     h: "Reservoir",
@@ -815,14 +816,39 @@ Window {
         persistChipPopUi()
     }
 
+    function captureView() {
+        var f = _cardLoader.item
+        if (!f)
+            return
+        viewPctSave = f.viewPct || 1
+        viewPanX = f.panX || 0
+        viewPanY = f.panY || 0
+    }
+
+    function applyViewToFace() {
+        var f = _cardLoader.item
+        if (!f || !f.zoomFit)
+            return
+        var z = (viewPctSave || 1) * f.zoomFit
+        f.zoom = Math.max(f.zoomMin, Math.min(f.zoomMax, z))
+        f.panX = viewPanX
+        f.panY = viewPanY
+        if (f.clampPan)
+            f.clampPan()
+    }
+
     function uiBag() {
+        captureView()
         return {
             chipPopW: chipPopW,
             chipPopH: chipPopH,
             gridOn: gridOn,
             snapOn: snapOn,
             snapEntOn: snapEntOn,
-            gridSize: gridSize
+            gridSize: gridSize,
+            viewPct: viewPctSave,
+            panX: viewPanX,
+            panY: viewPanY
         }
     }
 
@@ -841,6 +867,12 @@ Window {
             snapEntOn = ui.snapEntOn
         if (ui.gridSize >= 4)
             gridSize = ui.gridSize
+        if (ui.viewPct > 0)
+            viewPctSave = ui.viewPct
+        if (ui.panX === ui.panX)
+            viewPanX = ui.panX
+        if (ui.panY === ui.panY)
+            viewPanY = ui.panY
     }
 
     function applyGridToEditor() {
@@ -851,18 +883,23 @@ Window {
         e.snapOn = snapOn
         e.snapEntOn = snapEntOn
         e.gridSize = gridSize
-        var oldPage = 0
-        try {
-            var raw = parseDoc(_hw.load(targetName))
-            oldPage = raw ? Number(raw.pageW || raw.page || 0) : 0
-        } catch (err) {
-            oldPage = 0
-        }
-        if (oldPage > 0 && oldPage < 32000 && !fittedOldPage && e.migrateInnerPageToScene) {
-            e.migrateInnerPageToScene()
-            fittedOldPage = true
-        }
         if (e.repaint)
+            e.repaint()
+        applyViewToFace()
+    }
+
+
+    function fitToPhotoFrame() {
+        if (fittedThisEdit)
+            return
+        var e = _ed()
+        if (e && e.migrateInnerPageToScene) {
+            e.migrateInnerPageToScene()
+        } else {
+            sceneShiftList(editing ? workNodes : liveNodes)
+        }
+        fittedThisEdit = true
+        if (e && e.repaint)
             e.repaint()
     }
 
@@ -878,7 +915,10 @@ Window {
             }
         }
         doc.ui = uiBag()
-        _hw.save(targetName, JSON.stringify(doc))
+        if (_hw.saveUi)
+            _hw.saveUi(targetName, JSON.stringify(doc))
+        else
+            _hw.save(targetName, JSON.stringify(doc))
     }
 
     function persistChipPopUi() {
@@ -1050,6 +1090,11 @@ Window {
                 MenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
                 MenuSeparator {}
                 MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
+                MenuItem {
+                    text: "Fit to photo frame"
+                    enabled: editing && !fittedThisEdit
+                    onTriggered: fitToPhotoFrame()
+                }
                 MenuSeparator {}
                 MenuItem { text: "Choose background…"; enabled: editing; onTriggered: _imageDialog.open() }
                 MenuItem {
@@ -1100,8 +1145,11 @@ Window {
                 MenuItem {
                     text: "Reset view"
                     onTriggered: {
-                        if (_cardLoader.item)
-                            _cardLoader.item.resetView()
+                        var f = _cardLoader.item
+                        if (f && f.resetView)
+                            f.resetView()
+                        captureView()
+                        persistUi()
                     }
                 }
                 MenuSeparator {}
