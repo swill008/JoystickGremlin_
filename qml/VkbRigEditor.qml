@@ -238,12 +238,21 @@ Item {
                 return
             var g1 = drawGeom(n)
             var tp = snapEnt(mx - dragOffX, my - dragOffY, altOff)
-            cell.ox = (tp.x - g1.x) / Math.max(1, g1.w)
-            cell.oy = (tp.y - g1.y) / Math.max(1, g1.h)
-            if (cell.ox < -0.6) cell.ox = -0.6
-            if (cell.oy < -0.6) cell.oy = -0.6
-            if (cell.ox > 1.4) cell.ox = 1.4
-            if (cell.oy > 1.4) cell.oy = 1.4
+            var cw = (cell.cw > 0) ? cell.cw * g1.w : 16
+            var ch = (cell.ch > 0) ? cell.ch * g1.h : 16
+            var nx = tp.x
+            var ny = tp.y
+            var pad = 4
+            if (nx < pad)
+                nx = pad
+            if (ny < pad)
+                ny = pad
+            if (nx + cw > width - pad)
+                nx = width - pad - cw
+            if (ny + ch > height - pad)
+                ny = height - pad - ch
+            cell.ox = (nx - g1.x) / Math.max(1, g1.w)
+            cell.oy = (ny - g1.y) / Math.max(1, g1.h)
         } else if (dragKind === "draw") {
             if (isLocked(n))
                 return
