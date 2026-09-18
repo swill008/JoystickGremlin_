@@ -2083,6 +2083,20 @@ Item {
         return !!(n && isFiveWay(n) && fiveWayFormat(n) !== "")
     }
 
+    function ctxHasSpines() {
+        tick
+        var n = ctxTarget()
+        if (!n || isDraw(n))
+            return false
+        var ls = leaderList(n)
+        var i
+        for (i = 0; i < ls.length; i++) {
+            if (ls[i].spines && ls[i].spines.length)
+                return true
+        }
+        return !!(n.spines && n.spines.length)
+    }
+
     function fiveWayRole(mem) {
         var r = String((mem && mem.role) || "").toLowerCase()
         if (r === "push")
@@ -4117,6 +4131,34 @@ Item {
                     _ed.selectedLeader = _ctx.leader
                     _ed.deleteLeader()
                 }
+            }
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: "Add spine"
+            enabled: {
+                var n = _ed.ctxTarget()
+                return !!(n && !_ed.isDraw(n))
+            }
+            onTriggered: {
+                var n = _ed.ctxTarget()
+                if (!n)
+                    return
+                _ed.selectedId = n.id
+                _ed.selectedLeader = _ctx.leader
+                _ed.ensureMidSpine(n)
+                _ed.bump()
+            }
+        }
+        MenuItem {
+            text: "Clear spines"
+            enabled: _ed.ctxHasSpines()
+            onTriggered: {
+                var n = _ed.ctxTarget()
+                if (!n)
+                    return
+                _ed.selectedId = n.id
+                _ed.clearAllSpines(n.id)
             }
         }
     }
