@@ -79,6 +79,7 @@ Window {
     property real _prmX: 0
     property real _prmY: 0
     property string _prEdge: ""
+    property bool saveOk: true
 
     function clampPool() {
         var box = _poolFloat
@@ -275,15 +276,22 @@ Window {
             nodes: nodes
         }
         var payload = JSON.stringify(doc)
-        if (!_hw.save(targetName, payload))
+        if (!_hw.save(targetName, payload)) {
+            saveOk = false
+            _savedPop.open()
             return
+        }
         var check = parseDoc(_hw.load(targetName))
-        if (!check || !check.nodes)
+        if (!check || !check.nodes) {
+            saveOk = false
+            _savedPop.open()
             return
+        }
         liveNodes = JSON.parse(JSON.stringify(nodes))
         liveImage = image
         applyImage(liveImage)
         hydrateOverlays(liveNodes)
+        saveOk = true
         _savedPop.open()
     }
 
@@ -446,7 +454,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nImport overlay… — add a PNG/JPEG plate (5-way plus, etc.) on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss. If the write or re-read fails, a red Save failed warning appears instead.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nImport overlay… — add a PNG/JPEG plate (5-way plus, etc.) on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
                 },
                 {
                     h: "Edit menu",
@@ -887,14 +895,14 @@ Window {
         x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : Math.round((_buttonMap.width - width) / 2)
         y: Overlay.overlay ? Math.round((Overlay.overlay.height - height) / 2) : Math.round((_buttonMap.height - height) / 2)
         background: Rectangle {
-            color: "#18181B"
-            border.color: "#3F3F46"
+            color: _buttonMap.saveOk ? "#18181B" : "#450A0A"
+            border.color: _buttonMap.saveOk ? "#3F3F46" : "#DC2626"
             border.width: 1
             radius: 4
         }
         contentItem: Text {
-            text: "Mapping saved"
-            color: "#E4E4E7"
+            text: _buttonMap.saveOk ? "Mapping saved" : "Save failed"
+            color: _buttonMap.saveOk ? "#E4E4E7" : "#FECACA"
             font.pixelSize: 14
             horizontalAlignment: Text.AlignHCenter
         }
