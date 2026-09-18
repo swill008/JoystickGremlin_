@@ -300,6 +300,31 @@ Item {
         return cur === val
     }
 
+    function styleDefault(key) {
+        if (key === "color") return "#18181B"
+        if (key === "border") return "#3F3F46"
+        if (key === "textColor") return "#E4E4E7"
+        if (key === "hlColor") return "#14532D"
+        if (key === "hlBorder") return "#22C55E"
+        if (key === "hlText") return "#BBF7D0"
+        if (key === "leaderColor") return "#A1A1AA"
+        if (key === "hotColor") return "#F4F4F5"
+        return ""
+    }
+
+    function pickColor(field) {
+        var n = nodeAt(selectedId)
+        var mem = (field === "leaderColor" || field === "hotColor") ? null : targetMember()
+        colorPickRequested(field, styleVal(n, mem, field, styleDefault(field)))
+    }
+
+    function leaderWidthOf(n) {
+        var w = n && n.leaderWidth
+        if (!(w > 0))
+            return 1.1
+        return Math.max(0.5, Math.min(4, w))
+    }
+
     function resetMemberStyle() {
         var mem = targetMember()
         if (!mem)
@@ -3039,8 +3064,9 @@ Item {
                 for (li = 0; li < ls.length; li++) {
                     var L = ls[li]
                     var leadSel = sel && _ed.selectedLeader === li
-                    ctx.strokeStyle = leadSel ? "#FBBF24" : (sel ? "#D4D4D8" : "#A1A1AA")
-                    ctx.lineWidth = leadSel ? 1.8 : 1.1
+                    var lw = _ed.leaderWidthOf(n)
+                    ctx.strokeStyle = leadSel ? "#FBBF24" : (sel ? "#D4D4D8" : (n.leaderColor || "#A1A1AA"))
+                    ctx.lineWidth = leadSel ? Math.max(lw, lw + 0.4) : lw
                     ctx.lineJoin = "round"
                     ctx.lineCap = "round"
                     _ed.strokeLeader(ctx, n, _ed.pathPtsL(L), L)
@@ -3049,7 +3075,7 @@ Item {
                 var hs = _ed.hotSz(n)
                 var hShape = n.hotShape || "round"
                 var hFill = n.hotFill || "filled"
-                _ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : "#F4F4F5")
+                _ed.drawMark(ctx, hot.x, hot.y, hs, hShape, hFill, sel ? "#FBBF24" : (n.hotColor || "#F4F4F5"))
                 if (_ed.interactive) {
                     for (li = 0; li < ls.length; li++) {
                         var L2 = ls[li]
@@ -3647,6 +3673,19 @@ Item {
                 }
             }
             Menu {
+                title: "Colors"
+                MenuItem { text: "Fill…"; onTriggered: _ed.pickColor("color") }
+                MenuItem { text: "Outline…"; onTriggered: _ed.pickColor("border") }
+                MenuItem { text: "Text…"; onTriggered: _ed.pickColor("textColor") }
+                MenuSeparator {}
+                MenuItem { text: "Pressed fill…"; onTriggered: _ed.pickColor("hlColor") }
+                MenuItem { text: "Pressed outline…"; onTriggered: _ed.pickColor("hlBorder") }
+                MenuItem { text: "Pressed text…"; onTriggered: _ed.pickColor("hlText") }
+                MenuSeparator {}
+                MenuItem { text: "Leader…"; onTriggered: _ed.pickColor("leaderColor") }
+                MenuItem { text: "Hotspot…"; onTriggered: _ed.pickColor("hotColor") }
+            }
+            Menu {
                 title: "Hotspot"
                 Menu {
                     id: _hotSzMenu
@@ -3933,6 +3972,27 @@ Item {
         }
         Menu {
             title: "Leader"
+            MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("leaderColor") } }
+            Menu {
+                id: _leadWMenu
+                title: "Weight"
+                Instantiator {
+                    model: [8, 11, 15, 20, 25, 30, 40]
+                    delegate: MenuItem {
+                        required property int modelData
+                        text: (modelData / 10).toFixed(1)
+                        checkable: true
+                        checked: {
+                            var n = _ed.nodeAt(_ed.selectedId)
+                            return Math.round(_ed.leaderWidthOf(n) * 10) === modelData
+                        }
+                        onTriggered: _ed.applyField("leaderWidth", modelData / 10)
+                    }
+                    onObjectAdded: (i, obj) => _leadWMenu.insertItem(i, obj)
+                    onObjectRemoved: (i, obj) => _leadWMenu.removeItem(obj)
+                }
+            }
+            MenuSeparator {}
             MenuItem { text: "Add straight spine"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.ensureMidSpine(_ed.nodeAt(_ed.selectedId)); _ed.bump() } }
             MenuItem { text: "Add curved spine"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.addCurveSpine(_ed.nodeAt(_ed.selectedId)) } }
             Menu {
