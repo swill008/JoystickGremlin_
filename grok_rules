@@ -5,7 +5,10 @@ Any change to rules is written here. Do not keep a second unofficial list.
 
 1. Do not move large files. Edit files using copy/replace/paste and patch operations. Keep the structure of the program. Warn the user if a change could break a previous version.
 2. Any patches generated or cleanup necessary Grok is required to fix/patch themself. Do not ask the user unless Grok is unable to do so.
-3. Plan first. No code until you say go.
+3. Plan first. No code until the user gives explicit confirmation.
+   3.1 Confirmation is one of: go, ok go, code it, implement, land it, push it.
+   3.2 Thoughts, analysis, options, “what would you do”, and screenshots are not confirmation. Answer those with a plan only.
+   3.3 Do not start a patch, PUT, or commit until that confirmation is in the same turn or the immediately preceding turn for that exact change.
 4. Announce every git push.
 5. Branch: only Xbox_integration_ViGEmClient_dll for Xbox work. Optimization line stays on R15-OSC-Optimization. Do not mix Xbox commits onto Optimization unless you say merge.
 6. Do not touch feature/osc-streamdeck unless you say so.
