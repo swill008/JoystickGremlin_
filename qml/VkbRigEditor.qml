@@ -209,8 +209,8 @@ Item {
             n.ny = Math.max(0, Math.min(1, p.y))
         } else if (dragKind === "chip") {
             var cp = snapPos(mx - dragOffX, my - dragOffY, altOff)
-            var fx = Math.max(0.01, Math.min(0.92, cp.x / Math.max(1, width)))
-            var fy = Math.max(0.01, Math.min(0.92, cp.y / Math.max(1, height)))
+            var fx = xToFx(cp.x)
+            var fy = yToFy(cp.y)
             var dFx = fx - n.chipFx
             var dFy = fy - n.chipFy
             var pack = tablePackOf(n)
@@ -228,8 +228,8 @@ Item {
                     var q = nodeAt(ids[i])
                     if (!q)
                         continue
-                    q.chipFx = Math.max(0.01, Math.min(0.92, q.chipFx + dFx))
-                    q.chipFy = Math.max(0.01, Math.min(0.92, q.chipFy + dFy))
+                    q.chipFx = q.chipFx + dFx
+                    q.chipFy = q.chipFy + dFy
                     refreshChipPack(q)
                 }
             }
@@ -263,7 +263,7 @@ Item {
             var ddx = np.x - g0.x
             var ddy = np.y - g0.y
             if (packDraw && !isTable(n)) {
-                moveTablePack(packDraw, ddx / Math.max(1, width), ddy / Math.max(1, height))
+                moveTablePack(packDraw, ddx / Math.max(1, spaceRect().w), ddy / Math.max(1, spaceRect().h))
                 return
             }
             var around = n.around || []
@@ -273,14 +273,14 @@ Item {
                     var qn = nodeAt(around[ai])
                     if (!qn || isDraw(qn))
                         continue
-                    qn.chipFx = Math.max(0.01, Math.min(0.92, qn.chipFx + ddx / Math.max(1, width)))
-                    qn.chipFy = Math.max(0.01, Math.min(0.92, qn.chipFy + ddy / Math.max(1, height)))
+                    qn.chipFx = qn.chipFx + ddx / Math.max(1, spaceRect().w)
+                    qn.chipFy = qn.chipFy + ddy / Math.max(1, spaceRect().h)
                 }
             } else {
                 var oldFx = n.fx || 0
                 var oldFy = n.fy || 0
-                n.fx = Math.max(0, Math.min(0.98, np.x / Math.max(1, width)))
-                n.fy = Math.max(0, Math.min(0.98, np.y / Math.max(1, height)))
+                n.fx = xToFx(np.x)
+                n.fy = yToFy(np.y)
                 shiftIndependentParts(n, n.fx - oldFx, n.fy - oldFy)
             }
             followTablePacked(n)
@@ -1770,8 +1770,8 @@ Item {
         if (!isText(n) || !_textFit)
             return
         var pad = 8
-        var ew = Math.max(1, width)
-        var eh = Math.max(1, height)
+        var ew = Math.max(1, spaceRect().w)
+        var eh = Math.max(1, spaceRect().h)
         _textFit.text = (n.text && String(n.text).length) ? String(n.text) : "Text"
         _textFit.font.pixelSize = n.fontSize > 0 ? n.fontSize : 12
         _textFit.font.bold = !!n.bold
@@ -1808,8 +1808,8 @@ Item {
         var n = nodeAt(selectedId)
         if (!isText(n))
             return
-        n.fw = Math.max(8, pw) / Math.max(1, width)
-        n.fh = Math.max(8, ph) / Math.max(1, height)
+        n.fw = Math.max(8, pw) / Math.max(1, spaceRect().w)
+        n.fh = Math.max(8, ph) / Math.max(1, spaceRect().h)
         bump()
     }
 
@@ -1961,10 +1961,10 @@ Item {
     function tablePartWorldRect(n, cell, fallback) {
         if (cell && cell.independent && cell.efw > 0 && cell.efh > 0) {
             return {
-                x: (cell.efx || 0) * width,
-                y: (cell.efy || 0) * height,
-                w: Math.max(8, cell.efw * width),
-                h: Math.max(8, cell.efh * height)
+                x: fxToX(cell.efx || 0),
+                y: fyToY(cell.efy || 0),
+                w: fwToW(cell.efw),
+                h: fhToH(cell.efh)
             }
         }
         return fallback
@@ -1975,16 +1975,17 @@ Item {
             return
         w = Math.max(8, w)
         h = Math.max(8, h)
+        var s = spaceRect()
         var pad = 4
-        if (x < pad) x = pad
-        if (y < pad) y = pad
-        if (x + w > width - pad) x = Math.max(pad, width - pad - w)
-        if (y + h > height - pad) y = Math.max(pad, height - pad - h)
+        if (x < s.x + pad) x = s.x + pad
+        if (y < s.y + pad) y = s.y + pad
+        if (x + w > s.x + s.w - pad) x = Math.max(s.x + pad, s.x + s.w - pad - w)
+        if (y + h > s.y + s.h - pad) y = Math.max(s.y + pad, s.y + s.h - pad - h)
         if (cell.independent) {
-            cell.efx = x / Math.max(1, width)
-            cell.efy = y / Math.max(1, height)
-            cell.efw = w / Math.max(1, width)
-            cell.efh = h / Math.max(1, height)
+            cell.efx = xToFx(x)
+            cell.efy = yToFy(y)
+            cell.efw = w / Math.max(1, s.w)
+            cell.efh = h / Math.max(1, s.h)
             return
         }
         var g = drawGeom(n)
@@ -2217,10 +2218,10 @@ Item {
             oy: oy,
             cw: cw,
             ch: ch,
-            efx: (src.x + 12) / Math.max(1, width),
-            efy: (src.y + 12) / Math.max(1, height),
-            efw: src.w / Math.max(1, width),
-            efh: src.h / Math.max(1, height)
+            efx: xToFx(src.x + 12),
+            efy: yToFy(src.y + 12),
+            efw: src.w / Math.max(1, spaceRect().w),
+            efh: src.h / Math.max(1, spaceRect().h)
         })
         tableExtra = n.extras.length - 1
         tableRow = -1
@@ -2618,11 +2619,51 @@ Item {
         if (it && it.width > 1)
             return { x: it.x, y: it.y, w: it.width, h: it.height }
         return {
-            x: (n.chipFx || 0) * width,
-            y: (n.chipFy || 0) * height,
+            x: fxToX(n.chipFx || 0),
+            y: fyToY(n.chipFy || 0),
             w: 80,
             h: chipH(n)
         }
+    }
+
+    function spaceRect() {
+        if (face && typeof face.photoPt === "function") {
+            var a = face.photoPt(0, 0)
+            var b = face.photoPt(1, 1)
+            var sw = b.x - a.x
+            var sh = b.y - a.y
+            if (sw > 8 && sh > 8)
+                return { x: a.x, y: a.y, w: sw, h: sh }
+        }
+        return { x: 0, y: 0, w: Math.max(1, width), h: Math.max(1, height) }
+    }
+
+    function fxToX(fx) {
+        var s = spaceRect()
+        return s.x + (fx || 0) * s.w
+    }
+
+    function fyToY(fy) {
+        var s = spaceRect()
+        return s.y + (fy || 0) * s.h
+    }
+
+    function xToFx(px) {
+        var s = spaceRect()
+        return (px - s.x) / Math.max(1, s.w)
+    }
+
+    function yToFy(py) {
+        var s = spaceRect()
+        return (py - s.y) / Math.max(1, s.h)
+    }
+
+    function fwToW(fw) {
+        return Math.max(8, (fw || 0) * spaceRect().w)
+    }
+
+    function fhToH(fh) {
+        return Math.max(8, (fh || 0) * spaceRect().h)
     }
 
     function drawGeom(n) {
@@ -2648,10 +2689,10 @@ Item {
                 return { x: minx - pad, y: miny - pad, w: (maxx - minx) + pad * 2, h: (maxy - miny) + pad * 2 }
         }
         return {
-            x: ((n && n.fx) ? n.fx : 0) * width,
-            y: ((n && n.fy) ? n.fy : 0) * height,
-            w: Math.max(8, ((n && n.fw) ? n.fw : 0.08) * width),
-            h: Math.max(8, ((n && n.fh) ? n.fh : 0.06) * height)
+            x: fxToX(n && n.fx ? n.fx : 0),
+            y: fyToY(n && n.fy ? n.fy : 0),
+            w: fwToW(n && n.fw ? n.fw : 0.08),
+            h: fhToH(n && n.fh ? n.fh : 0.06)
         }
     }
 
@@ -2777,11 +2818,11 @@ Item {
             nw = Math.max(tableMinW(n), nw)
             nh = Math.max(tableMinH(n), nh)
         }
-        var oldH = (n.fh || 0) * Math.max(1, height)
-        n.fx = nx / Math.max(1, width)
-        n.fy = ny / Math.max(1, height)
-        n.fw = nw / Math.max(1, width)
-        n.fh = nh / Math.max(1, height)
+        var oldH = fhToH(n.fh || 0)
+        n.fx = xToFx(nx)
+        n.fy = yToFy(ny)
+        n.fw = nw / Math.max(1, spaceRect().w)
+        n.fh = nh / Math.max(1, spaceRect().h)
         if (isText(n) && n.scaleFont && oldH > 1) {
             var fs = n.fontSize > 0 ? n.fontSize : 12
             n.fontSize = Math.max(6, Math.min(72, Math.round(fs * (nh / oldH))))
@@ -2818,10 +2859,10 @@ Item {
         st.shape = shape
         st.around = around
         var g = drawGeom(st)
-        st.fx = g.x / Math.max(1, width)
-        st.fy = g.y / Math.max(1, height)
-        st.fw = g.w / Math.max(1, width)
-        st.fh = g.h / Math.max(1, height)
+        st.fx = xToFx(g.x)
+        st.fy = yToFy(g.y)
+        st.fw = g.w / Math.max(1, spaceRect().w)
+        st.fh = g.h / Math.max(1, spaceRect().h)
         nodes.push(st)
         setSelection([st.id])
         bump()
@@ -2842,10 +2883,10 @@ Item {
         var st = _drawStyle()
         st.id = _uid("d")
         st.shape = shape
-        st.fx = x / Math.max(1, width)
-        st.fy = y / Math.max(1, height)
-        st.fw = w / Math.max(1, width)
-        st.fh = h / Math.max(1, height)
+        st.fx = xToFx(x)
+        st.fy = yToFy(y)
+        st.fw = w / Math.max(1, spaceRect().w)
+        st.fh = h / Math.max(1, spaceRect().h)
         if (shape === "table") {
             st.fill = "filled"
             st.color = "#18181B"
@@ -2860,9 +2901,9 @@ Item {
             var minW = tableMinW(st)
             var minH = tableMinH(st)
             if (w < minW)
-                st.fw = minW / Math.max(1, width)
+                st.fw = minW / Math.max(1, spaceRect().w)
             if (h < minH)
-                st.fh = minH / Math.max(1, height)
+                st.fh = minH / Math.max(1, spaceRect().h)
         }
         if (shape === "text") {
             st.fill = "filled"
@@ -4430,7 +4471,7 @@ Item {
                     return 0
                 if (_ed.isDraw(node))
                     return _ed.drawGeom(node).x
-                var x = node.chipFx * _ed.width
+                var x = _ed.fxToX(node.chipFx)
                 if (_ed.isGroup(node))
                     x += _ed.groupMinX(node)
                 return x
@@ -4441,7 +4482,7 @@ Item {
                     return 0
                 if (_ed.isDraw(node))
                     return _ed.drawGeom(node).y
-                var y = node.chipFy * _ed.height
+                var y = _ed.fyToY(node.chipFy)
                 if (_ed.isGroup(node))
                     y += _ed.groupMinY(node)
                 return y
