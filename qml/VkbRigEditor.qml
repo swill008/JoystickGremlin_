@@ -1398,7 +1398,7 @@ Item {
         var n
         for (i = 0; i < list.length; i++) {
             n = list[i]
-            if (isOverlay(n) && hitOverlayPin(n, mx, my))
+            if (isPinnable(n) && hitOverlayPin(n, mx, my))
                 return { kind: "overlayPin", id: n.id, spine: -1 }
         }
         for (i = 0; i < list.length; i++) {
@@ -2265,8 +2265,22 @@ Item {
         return st.id
     }
 
-    function toggleLock(id) {
+    function pinTarget(id) {
         var n = nodeAt(id || selectedId)
+        if (isDraw(n))
+            return n
+        var ids = selectedIds || []
+        var i
+        for (i = 0; i < ids.length; i++) {
+            var q = nodeAt(ids[i])
+            if (isTable(q))
+                return q
+        }
+        return null
+    }
+
+    function toggleLock(id) {
+        var n = pinTarget(id)
         if (!isDraw(n))
             return
         var on = !isLocked(n)
@@ -4414,7 +4428,11 @@ Item {
                 Rectangle {
                     visible: {
                     _ed.tick
-                    return !!(node && _ed.overlayHoverId === node.id)
+                    if (!node)
+                        return false
+                    if (_ed.overlayHoverId === node.id)
+                        return true
+                    return _ed.isTable(node) && _ed.isSelected(node.id)
                 }
                 width: 16
                     height: 16
@@ -5530,10 +5548,19 @@ Item {
         MenuItem {
             text: {
                 _ed.tick
-                var n = _ed.nodeAt(_ed.selectedId)
+                var n = _ed.pinTarget()
                 return _ed.isLocked(n) ? "Unpin" : "Pin"
             }
-            onTriggered: _ed.toggleLock()
+            checkable: true
+            checked: {
+                _ed.tick
+                return _ed.isLocked(_ed.pinTarget())
+            }
+            onTriggered: {
+                var n = _ed.pinTarget()
+                if (n)
+                    _ed.toggleLock(n.id)
+            }
         }
         MenuItem {
             text: "Bring forward"
