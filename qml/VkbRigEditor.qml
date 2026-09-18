@@ -38,6 +38,8 @@ Item {
     property int dragMember: -1
     property string renameId: ""
     property int renameMember: -1
+    property int tableRow: -1
+    property int tableCol: -1
     property string renameDraft: ""
     property string armRenameId: ""
     property int armRenameMember: -1
@@ -1633,8 +1635,258 @@ Item {
         return !!(n && n.kind === "draw")
     }
 
+    function isTable(n) {
+        return !!(n && n.kind === "draw" && n.shape === "table")
+    }
+
     function isOverlay(n) {
         return !!(n && n.kind === "draw" && n.shape === "image")
+    }
+
+    function isPinnable(n) {
+        return isOverlay(n) || isTable(n)
+    }
+
+    function emptyTableRow(cols) {
+        var row = { cells: [] }
+        var i
+        var count = Math.max(1, cols || 2)
+        for (i = 0; i < count; i++)
+            row.cells.push({ text: "" })
+        return row
+    }
+
+    function ensureTable(n) {
+        if (!isTable(n))
+            return
+        var cols = (n.cols > 0) ? n.cols : 2
+        n.cols = cols
+        if (!n.theme || !String(n.theme).length)
+            n.theme = "gremlin"
+        if (n.idCol === undefined || n.idCol === null)
+            n.idCol = false
+        if (!n.fontSize)
+            n.fontSize = 10
+        if (!n.rows || !n.rows.length)
+            n.rows = [emptyTableRow(cols), emptyTableRow(cols)]
+        var r
+        for (r = 0; r < n.rows.length; r++) {
+            if (!n.rows[r])
+                n.rows[r] = emptyTableRow(cols)
+            if (!n.rows[r].cells)
+                n.rows[r].cells = []
+            while (n.rows[r].cells.length < cols)
+                n.rows[r].cells.push({ text: "" })
+            if (n.rows[r].cells.length > cols)
+                n.rows[r].cells = n.rows[r].cells.slice(0, cols)
+        }
+    }
+
+    function tableMinW(n) {
+        var cols = (n && n.cols > 0) ? n.cols : 2
+        return Math.max(72, cols * 36)
+    }
+
+    function tableMinH(n) {
+        var rows = (n && n.rows && n.rows.length) ? n.rows.length : 2
+        return Math.max(48, rows * 22)
+    }
+
+    function tableCellRect(n, row, col) {
+        var g = drawGeom(n)
+        ensureTable(n)
+        var rows = n.rows.length
+        var cols = n.cols
+        var idCol = !!n.idCol && cols > 1
+        var idW = idCol ? Math.min(g.w * 0.32, Math.max(22, g.w * 0.22)) : 0
+        var rest = Math.max(1, g.w - idW)
+        var other = Math.max(1, idCol ? cols - 1 : cols)
+        var colW = rest / other
+        var rowH = g.h / Math.max(1, rows)
+        var x = g.x
+        var w = colW
+        if (idCol) {
+            if (col <= 0) {
+                x = g.x
+                w = idW
+            } else {
+                x = g.x + idW + (col - 1) * colW
+                w = colW
+            }
+        } else {
+            w = g.w / Math.max(1, cols)
+            x = g.x + col * w
+        }
+        return { x: x, y: g.y + row * rowH, w: Math.max(8, w), h: Math.max(8, rowH) }
+    }
+
+    function tableCellAt(n, mx, my) {
+        if (!isTable(n))
+            return { row: -1, col: -1 }
+        ensureTable(n)
+        var g = drawGeom(n)
+        if (mx < g.x || my < g.y || mx > g.x + g.w || my > g.y + g.h)
+            return { row: -1, col: -1 }
+        var rows = n.rows.length
+        var cols = n.cols
+        var row = Math.floor((my - g.y) / Math.max(1, g.h / Math.max(1, rows)))
+        var idCol = !!n.idCol && cols > 1
+        var idW = idCol ? Math.min(g.w * 0.32, Math.max(22, g.w * 0.22)) : 0
+        var lx = mx - g.x
+        var col = 0
+        if (idCol) {
+            if (lx < idW)
+                col = 0
+            else
+                col = 1 + Math.floor((lx - idW) / Math.max(1, (g.w - idW) / Math.max(1, cols - 1)))
+        } else {
+            col = Math.floor(lx / Math.max(1, g.w / Math.max(1, cols)))
+        }
+        if (row < 0) row = 0
+        if (col < 0) col = 0
+        if (row > rows - 1) row = rows - 1
+        if (col > cols - 1) col = cols - 1
+        return { row: row, col: col }
+    }
+
+    function tableCellStyle(n, col) {
+        var theme = (n && n.theme) ? String(n.theme) : "gremlin"
+        var idCell = !!(n && n.idCol && col === 0)
+        if (theme === "hollow")
+            return { fill: "transparent", border: "#3F3F46", text: "#E4E4E7" }
+        if (theme === "sheet") {
+            if (idCell)
+                return { fill: "#18181B", border: "#18181B", text: "#F4F4F5" }
+            return { fill: "#E4E4E7", border: "#18181B", text: "#18181B" }
+        }
+        return { fill: "#18181B", border: "#3F3F46", text: "#E4E4E7" }
+    }
+
+    function tableCellText(n, row, col) {
+        if (!n || !n.rows || row < 0 || col < 0)
+            return ""
+        if (row >= n.rows.length)
+            return ""
+        var cells = n.rows[row].cells || []
+        if (col >= cells.length)
+            return ""
+        return cells[col].text || ""
+    }
+
+    function addTableRow(below) {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        ensureTable(n)
+        var at = (tableRow >= 0) ? tableRow : n.rows.length - 1
+        var row = emptyTableRow(n.cols)
+        if (below)
+            n.rows.splice(at + 1, 0, row)
+        else
+            n.rows.splice(Math.max(0, at), 0, row)
+        tableRow = below ? at + 1 : Math.max(0, at)
+        bump()
+    }
+
+    function deleteTableRow() {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        ensureTable(n)
+        if (n.rows.length <= 1)
+            return
+        var at = (tableRow >= 0) ? tableRow : n.rows.length - 1
+        n.rows.splice(at, 1)
+        tableRow = Math.min(at, n.rows.length - 1)
+        bump()
+    }
+
+    function addTableCol(right) {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        ensureTable(n)
+        var at = (tableCol >= 0) ? tableCol : n.cols - 1
+        var insert = right ? at + 1 : Math.max(0, at)
+        var r
+        for (r = 0; r < n.rows.length; r++) {
+            if (!n.rows[r].cells)
+                n.rows[r].cells = []
+            n.rows[r].cells.splice(insert, 0, { text: "" })
+        }
+        n.cols = n.cols + 1
+        tableCol = insert
+        bump()
+    }
+
+    function deleteTableCol() {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        ensureTable(n)
+        if (n.cols <= 1)
+            return
+        var at = (tableCol >= 0) ? tableCol : n.cols - 1
+        var r
+        for (r = 0; r < n.rows.length; r++) {
+            if (n.rows[r].cells)
+                n.rows[r].cells.splice(at, 1)
+        }
+        n.cols = n.cols - 1
+        tableCol = Math.min(at, n.cols - 1)
+        bump()
+    }
+
+    function toggleTableIdCol() {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        ensureTable(n)
+        n.idCol = !n.idCol
+        bump()
+    }
+
+    function setTableTheme(name) {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        n.theme = name || "gremlin"
+        bump()
+    }
+
+    function setTableFont(sz) {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        n.fontSize = sz
+        bump()
+    }
+
+    function deleteTable() {
+        var n = nodeAt(selectedId)
+        if (!isTable(n))
+            return
+        deleteChip(n.id)
+    }
+
+    function beginTableRename(id, row, col) {
+        var n = nodeAt(id)
+        if (!isTable(n))
+            return
+        ensureTable(n)
+        renameId = id
+        renameMember = -1
+        tableRow = row
+        tableCol = col
+        renameDraft = tableCellText(n, row, col)
+        dragKind = ""
+        Qt.callLater(function () {
+            if (_nameEdit) {
+                _nameEdit.forceActiveFocus()
+                _nameEdit.selectAll()
+            }
+        })
+        bump()
     }
 
     function isLocked(n) {
@@ -1646,7 +1898,7 @@ Item {
     }
 
     function hitOverlayPin(n, mx, my) {
-        if (!isOverlay(n) || !interactive)
+        if (!isPinnable(n) || !interactive)
             return false
         var i = nodeIndex(n.id)
         var it = (i >= 0 && _chips) ? _chips.itemAt(i) : null
@@ -1658,7 +1910,7 @@ Item {
     }
 
     function overlayContains(n, mx, my) {
-        if (!isOverlay(n))
+        if (!isPinnable(n))
             return false
         if (hitOverlayPin(n, mx, my))
             return true
@@ -1982,6 +2234,10 @@ Item {
         var ny = Math.min(y0, y1)
         var nw = Math.max(8, Math.abs(x1 - x0))
         var nh = Math.max(8, Math.abs(y1 - y0))
+        if (isTable(n)) {
+            nw = Math.max(tableMinW(n), nw)
+            nh = Math.max(tableMinH(n), nh)
+        }
         n.fx = nx / Math.max(1, width)
         n.fy = ny / Math.max(1, height)
         n.fw = nw / Math.max(1, width)
@@ -2046,8 +2302,28 @@ Item {
         st.fy = y / Math.max(1, height)
         st.fw = w / Math.max(1, width)
         st.fh = h / Math.max(1, height)
+        if (shape === "table") {
+            st.fill = "filled"
+            st.color = "#18181B"
+            st.border = "#3F3F46"
+            st.stroke = 1
+            st.theme = "gremlin"
+            st.cols = 2
+            st.idCol = false
+            st.fontSize = 10
+            st.rows = [emptyTableRow(2), emptyTableRow(2)]
+            st.zLayer = 2
+            var minW = tableMinW(st)
+            var minH = tableMinH(st)
+            if (w < minW)
+                st.fw = minW / Math.max(1, width)
+            if (h < minH)
+                st.fh = minH / Math.max(1, height)
+        }
         nodes.push(st)
         setSelection([st.id])
+        tableRow = 0
+        tableCol = 0
         bump()
     }
 
@@ -2274,7 +2550,7 @@ Item {
             return ""
         if (isLocked(n))
             return ""
-        if (n.shape === "image" || n.fill === "filled")
+        if (n.shape === "image" || n.shape === "table" || n.fill === "filled")
             return "body"
         var ring = Math.max(6, (n.stroke || 2) + 4)
         if (p.x <= ring || p.y <= ring || p.x >= w - ring || p.y >= h - ring)
@@ -2285,6 +2561,22 @@ Item {
     function paintDraw(ctx, n, w, h) {
         if (!n || n.shape === "image")
             return
+        if (n.shape === "table") {
+            ctx.save()
+            ctx.strokeStyle = n.border || "#3F3F46"
+            ctx.lineWidth = 1
+            ctx.fillStyle = n.color || "#18181B"
+            ctx.fillRect(0.5, 0.5, Math.max(1, w - 1), Math.max(1, h - 1))
+            ctx.strokeRect(0.5, 0.5, Math.max(1, w - 1), Math.max(1, h - 1))
+            ctx.beginPath()
+            ctx.moveTo(w * 0.5, 0)
+            ctx.lineTo(w * 0.5, h)
+            ctx.moveTo(0, h * 0.5)
+            ctx.lineTo(w, h * 0.5)
+            ctx.stroke()
+            ctx.restore()
+            return
+        }
         var stroke = n.stroke || 2
         var inset = stroke * 0.5 + 0.5
         var ww = Math.max(2, w - stroke)
@@ -2824,6 +3116,8 @@ Item {
         setSelection([])
         if (_ctx)
             _ctx.close()
+        if (_tableCtx)
+            _tableCtx.close()
         cancelRename()
         armRenameId = ""
         armRenameMember = -1
@@ -2833,6 +3127,10 @@ Item {
     function chipScreenRect(n, mem) {
         if (!n)
             return Qt.rect(0, 0, 40, 20)
+        if (isTable(n) && tableRow >= 0 && tableCol >= 0) {
+            var tr = tableCellRect(n, tableRow, tableCol)
+            return Qt.rect(tr.x, tr.y, tr.w, tr.h)
+        }
         if (isGroup(n) && mem) {
             return Qt.rect(
                 n.chipFx * width + groupMinX(n) + memberLocalX(n, mem),
@@ -2878,7 +3176,11 @@ Item {
             return
         }
         var t = String(renameDraft || "").trim()
-        if (isGroup(n) && renameMember >= 0 && n.members && renameMember < n.members.length) {
+        if (isTable(n) && tableRow >= 0 && tableCol >= 0) {
+            ensureTable(n)
+            if (n.rows[tableRow] && n.rows[tableRow].cells && n.rows[tableRow].cells[tableCol])
+                n.rows[tableRow].cells[tableCol].text = t
+        } else if (isGroup(n) && renameMember >= 0 && n.members && renameMember < n.members.length) {
             n.members[renameMember].friendly = t
         } else {
             n.friendly = t
@@ -3271,6 +3573,8 @@ Item {
                     item.node = Qt.binding(function() { return _wrap.node })
                     if (_wrap.node && _ed.isGroup(_wrap.node))
                         _ed.ensureMemberOffsets(_wrap.node)
+                    if (_wrap.node && _ed.isTable(_wrap.node))
+                        _ed.ensureTable(_wrap.node)
                 }
             }
         }
@@ -3364,14 +3668,105 @@ Item {
             anchors.fill: parent
             Canvas {
                 id: _dc
-                visible: { var n = node; return !(n && n.shape === "image") }
+                visible: {
+                    var n = node
+                    return !!(n && n.shape !== "image" && n.shape !== "table")
+                }
                 anchors.fill: parent
                 antialiasing: true
                 onPaint: {
                     var ctx = getContext("2d")
                     ctx.reset()
-                    if (node && node.shape !== "image")
+                    if (node && node.shape !== "image" && node.shape !== "table")
                         _ed.paintDraw(ctx, node, width, height)
+                }
+            }
+            Item {
+                id: _tableFace
+                anchors.fill: parent
+                visible: { _ed.tick; return !!(node && node.shape === "table") }
+                Repeater {
+                    model: {
+                        _ed.tick
+                        var n = node
+                        if (!n || n.shape !== "table")
+                            return 0
+                        var rows = (n.rows && n.rows.length) ? n.rows.length : 0
+                        var cols = (n.cols > 0) ? n.cols : 0
+                        return rows * cols
+                    }
+                    Rectangle {
+                        required property int index
+                        readonly property int row: {
+                            var n = node
+                            var cols = (n && n.cols > 0) ? n.cols : 2
+                            return Math.floor(index / cols)
+                        }
+                        readonly property int col: {
+                            var n = node
+                            var cols = (n && n.cols > 0) ? n.cols : 2
+                            return index % cols
+                        }
+                        x: {
+                            _ed.tick
+                            var n = node
+                            if (!n)
+                                return 0
+                            var g = _ed.drawGeom(n)
+                            return _ed.tableCellRect(n, row, col).x - g.x
+                        }
+                        y: {
+                            _ed.tick
+                            var n = node
+                            if (!n)
+                                return 0
+                            var g = _ed.drawGeom(n)
+                            return _ed.tableCellRect(n, row, col).y - g.y
+                        }
+                        width: {
+                            _ed.tick
+                            return node ? _ed.tableCellRect(node, row, col).w : 8
+                        }
+                        height: {
+                            _ed.tick
+                            return node ? _ed.tableCellRect(node, row, col).h : 8
+                        }
+                        color: {
+                            _ed.tick
+                            return _ed.tableCellStyle(node, col).fill
+                        }
+                        border.color: {
+                            _ed.tick
+                            var sel = _ed.isSelected(node.id) && _ed.tableRow === row && _ed.tableCol === col
+                            return sel ? "#FBBF24" : _ed.tableCellStyle(node, col).border
+                        }
+                        border.width: {
+                            _ed.tick
+                            var sel = _ed.isSelected(node.id) && _ed.tableRow === row && _ed.tableCol === col
+                            return sel ? 2 : 1
+                        }
+                        Text {
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            visible: {
+                                _ed.tick
+                                return !(_ed.renameId === node.id && _ed.tableRow === row && _ed.tableCol === col)
+                            }
+                            text: {
+                                _ed.tick
+                                return _ed.tableCellText(node, row, col)
+                            }
+                            color: {
+                                _ed.tick
+                                return _ed.tableCellStyle(node, col).text
+                            }
+                            font.pixelSize: { _ed.tick; return (node && node.fontSize) ? node.fontSize : 10 }
+                            elide: Text.ElideRight
+                            wrapMode: Text.NoWrap
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
                 }
             }
             Connections {
@@ -3419,7 +3814,7 @@ Item {
                 }
             }
             Repeater {
-                model: (_ed.interactive && node && node.shape === "image") ? 1 : 0
+                model: (_ed.interactive && node && _ed.isPinnable(node)) ? 1 : 0
                 Rectangle {
                     visible: {
                     _ed.tick
@@ -3821,6 +4216,17 @@ Item {
                         var mi0 = gn0 ? _ed.memberHit(gn0, m.x, m.y) : -1
                         _ed.selectedMember = mi0
                     }
+                    var tn = _ed.nodeAt(hit.id)
+                    if (_ed.isTable(tn)) {
+                        var cell = _ed.tableCellAt(tn, m.x, m.y)
+                        _ed.tableRow = cell.row
+                        _ed.tableCol = cell.col
+                        _ed.chipMenuRequested(m.x, m.y)
+                        _ctx.close()
+                        _tableCtx.close()
+                        _tableCtx.popup()
+                        return
+                    }
                 } else {
                     _ctx.nodeId = ""
                     _ctx.kind = ""
@@ -3828,6 +4234,7 @@ Item {
                     _ctx.leader = 0
                 }
                 _ed.chipMenuRequested(m.x, m.y)
+                _tableCtx.close()
                 _ctx.close()
                 _ctx.popup()
                 return
@@ -4095,6 +4502,15 @@ Item {
             if (_ed.renameId)
                 _ed.commitRename()
             var gn = hit.id ? _ed.nodeAt(hit.id) : null
+            if (gn && _ed.isTable(gn)) {
+                var cell2 = _ed.tableCellAt(gn, m.x, m.y)
+                _ed.setSelection([gn.id])
+                _ed.tableRow = cell2.row
+                _ed.tableCol = cell2.col
+                if (cell2.row >= 0)
+                    _ed.beginTableRename(gn.id, cell2.row, cell2.col)
+                return
+            }
             if (gn && _ed.isGroup(gn)) {
                 if (_ed.groupEditId !== gn.id)
                     _ed.beginGroupEdit(gn.id)
@@ -4238,6 +4654,8 @@ Item {
         color: "#A1A1AA"
         font.pixelSize: 10
         text: {
+            if (_ed.drawTool === "table")
+                return "Draw table — drag a box. Blank 2×2. Esc cancels."
             if (_ed.drawTool.length)
                 return "Draw " + _ed.drawTool + " — drag on empty. Esc cancels."
             if (_ed.groupEditId.length) {
@@ -4276,6 +4694,115 @@ Item {
                 return
             _ed.spineHoldArm = false
             _ed.deleteSpineAt(_ed.spineHoldId, _ed.spineHoldLeader, _ed.spineHoldIndex)
+        }
+    }
+
+    Menu {
+        id: _tableCtx
+        MenuItem {
+            text: "Add row below"
+            onTriggered: _ed.addTableRow(true)
+        }
+        MenuItem {
+            text: "Insert row above"
+            onTriggered: _ed.addTableRow(false)
+        }
+        MenuItem {
+            text: "Delete this row"
+            enabled: {
+                _ed.tick
+                var n = _ed.nodeAt(_ed.selectedId)
+                return !!(n && n.rows && n.rows.length > 1)
+            }
+            onTriggered: _ed.deleteTableRow()
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: "Add column right"
+            onTriggered: _ed.addTableCol(true)
+        }
+        MenuItem {
+            text: "Insert column left"
+            onTriggered: _ed.addTableCol(false)
+        }
+        MenuItem {
+            text: "Delete this column"
+            enabled: {
+                _ed.tick
+                var n = _ed.nodeAt(_ed.selectedId)
+                return !!(n && n.cols > 1)
+            }
+            onTriggered: _ed.deleteTableCol()
+        }
+        MenuItem {
+            text: "ID column"
+            checkable: true
+            checked: {
+                _ed.tick
+                var n = _ed.nodeAt(_ed.selectedId)
+                return !!(n && n.idCol)
+            }
+            onTriggered: _ed.toggleTableIdCol()
+        }
+        MenuSeparator {}
+        Menu {
+            title: "Theme"
+            MenuItem {
+                text: "Gremlin dark"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || !n.theme || n.theme === "gremlin"
+                }
+                onTriggered: _ed.setTableTheme("gremlin")
+            }
+            MenuItem {
+                text: "Gremlin hollow"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.theme === "hollow")
+                }
+                onTriggered: _ed.setTableTheme("hollow")
+            }
+            MenuItem {
+                text: "Sheet"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.theme === "sheet")
+                }
+                onTriggered: _ed.setTableTheme("sheet")
+            }
+        }
+        Menu {
+            title: "Font size"
+            MenuItem { text: "8"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !!(n && n.fontSize === 8) }; onTriggered: _ed.setTableFont(8) }
+            MenuItem { text: "10"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !n || n.fontSize === 10 || !n.fontSize }; onTriggered: _ed.setTableFont(10) }
+            MenuItem { text: "12"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !!(n && n.fontSize === 12) }; onTriggered: _ed.setTableFont(12) }
+            MenuItem { text: "14"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !!(n && n.fontSize === 14) }; onTriggered: _ed.setTableFont(14) }
+            MenuItem { text: "16"; checkable: true; checked: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return !!(n && n.fontSize === 16) }; onTriggered: _ed.setTableFont(16) }
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: { _ed.tick; var n = _ed.nodeAt(_ed.selectedId); return _ed.isLocked(n) ? "Unpin" : "Pin" }
+            onTriggered: _ed.toggleLock()
+        }
+        MenuItem {
+            text: "Bring forward"
+            onTriggered: _ed.bringForward()
+        }
+        MenuItem {
+            text: "Send back"
+            onTriggered: _ed.sendBack()
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: "Delete table"
+            onTriggered: _ed.deleteTable()
         }
     }
 
@@ -4758,13 +5285,17 @@ Item {
                 MenuItem { text: "Ellipse"; checkable: true; checked: _ed.drawTool === "ellipse"; onTriggered: _ed.setDrawTool("ellipse") }
                 MenuItem { text: "Triangle"; checkable: true; checked: _ed.drawTool === "triangle"; onTriggered: _ed.setDrawTool("triangle") }
                 MenuItem { text: "Diamond"; checkable: true; checked: _ed.drawTool === "diamond"; onTriggered: _ed.setDrawTool("diamond") }
+                MenuItem { text: "Table"; checkable: true; checked: _ed.drawTool === "table"; onTriggered: _ed.setDrawTool("table") }
                 MenuSeparator {}
                 MenuItem { text: "Cancel tool"; enabled: _ed.drawTool.length > 0; onTriggered: _ed.drawTool = "" }
             }
             MenuSeparator {}
             Menu {
                 title: "Shape"
-                enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
+                enabled: {
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return _ed.isDraw(n) && !_ed.isTable(n)
+                }
                 MenuItem { text: "Rectangle"; checkable: true; checked: _ed.fieldEq("shape", "rect", "rect"); onTriggered: _ed.applyField("shape", "rect") }
                 MenuItem { text: "Rounded"; checkable: true; checked: _ed.fieldEq("shape", "roundrect", "rect"); onTriggered: _ed.applyField("shape", "roundrect") }
                 MenuItem { text: "Ellipse"; checkable: true; checked: _ed.fieldEq("shape", "ellipse", "rect"); onTriggered: _ed.applyField("shape", "ellipse") }
