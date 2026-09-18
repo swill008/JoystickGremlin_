@@ -52,6 +52,14 @@ Item {
     readonly property real innerPageH: 9000
     readonly property real innerPadX: 0.25
     readonly property real innerPadY: 0.25
+    readonly property real uiRefW: 1600
+    readonly property real uiScale: {
+        var s = Math.min(width / Math.max(1, worldPageW), height / Math.max(1, worldPageH))
+        var sw = worldPageW * s
+        if (sw < 8)
+            return 1
+        return sw / uiRefW
+    }
     readonly property string worldSpace: "world"
     property var textFormatClip: null
     property bool textPaintOn: false
@@ -404,11 +412,17 @@ Item {
         colorPickRequested(field, styleVal(n, mem, field, styleDefault(field)))
     }
 
+    function uiPx(px) {
+        var v = (px || 0) * uiScale
+        return v < 1 ? 1 : v
+    }
+
     function leaderWidthOf(n) {
         var w = n && n.leaderWidth
         if (!(w > 0))
-            return 1.1
-        return Math.max(0.5, Math.min(4, w))
+            w = 1.1
+        w = Math.max(0.5, Math.min(4, w))
+        return Math.max(0.6, w * uiScale)
     }
 
     function resetMemberStyle() {
@@ -1483,7 +1497,7 @@ Item {
     function chipH(n, mem) {
         var sz = styleVal(n, mem, "chipSize", 18)
         var fs = styleVal(n, mem, "fontSize", 10)
-        return Math.max(sz, fs + 8)
+        return uiPx(Math.max(sz, fs + 8))
     }
 
     function chipR(n, h, mem) {
@@ -1495,7 +1509,7 @@ Item {
     }
 
     function hotSz(n) {
-        return (n && n.hotSize) ? n.hotSize : 9
+        return uiPx((n && n.hotSize) ? n.hotSize : 9)
     }
 
     function showLeaderHandles(n, li) {
@@ -2059,7 +2073,7 @@ Item {
         var ew = Math.max(1, spaceRect().w)
         var eh = Math.max(1, spaceRect().h)
         _textFit.text = (n.text && String(n.text).length) ? String(n.text) : "Text"
-        _textFit.font.pixelSize = n.fontSize > 0 ? n.fontSize : 12
+        _textFit.font.pixelSize = uiPx(n.fontSize > 0 ? n.fontSize : 12)
         _textFit.font.bold = !!n.bold
         if (n.wrap === false) {
             _textFit.wrapMode = Text.NoWrap
@@ -4296,8 +4310,8 @@ Item {
         var s = mem ? memberLabel(n, mem) : friendlyOf(n, null)
         var pad = Math.max(10, sz * 0.55)
         if (fiveWayFormat(n) === "mini" && !memberHasCustomName(n, mem))
-            return Math.max(18, fs + 10)
-        return String(s).length * fs * 0.50 + pad
+            return uiPx(Math.max(18, fs + 10))
+        return uiPx(String(s).length * fs * 0.50 + pad)
     }
 
     function memberHit(n, mx, my) {
@@ -4986,7 +5000,7 @@ Item {
                 visible: { _ed.tick; return _ed.captionH(_grp.node) > 0 }
                 text: { _ed.tick; return _ed.fiveWayCaption(_grp.node) }
                 color: "#E4E4E7"
-                font.pixelSize: { _ed.tick; return (_grp.node && _grp.node.fontSize) ? _grp.node.fontSize : 10 }
+                font.pixelSize: { _ed.tick; return _ed.uiPx((_grp.node && _grp.node.fontSize) ? _grp.node.fontSize : 10) }
                 x: 2
                 y: 0
             }
@@ -5126,7 +5140,7 @@ Item {
                                 _ed.tick
                                 return _ed.tableCellStyle(node, col).text
                             }
-                            font.pixelSize: { _ed.tick; return (node && node.fontSize) ? node.fontSize : 10 }
+                            font.pixelSize: { _ed.tick; return _ed.uiPx((node && node.fontSize) ? node.fontSize : 10) }
                             elide: Text.ElideRight
                             wrapMode: Text.NoWrap
                             horizontalAlignment: Text.AlignHCenter
@@ -5224,7 +5238,7 @@ Item {
                                 _ed.tick
                                 return _ed.tableCellStyle(node, -1).text
                             }
-                            font.pixelSize: { _ed.tick; return (node && node.fontSize) ? node.fontSize : 10 }
+                            font.pixelSize: { _ed.tick; return _ed.uiPx((node && node.fontSize) ? node.fontSize : 10) }
                             elide: Text.ElideRight
                             wrapMode: Text.NoWrap
                             horizontalAlignment: Text.AlignHCenter
@@ -5322,7 +5336,7 @@ Item {
                             return _ed.textThemeStyle(n).text
                         return n.textColor || "#E4E4E7"
                     }
-                    font.pixelSize: { _ed.tick; return (node && node.fontSize) ? node.fontSize : 12 }
+                    font.pixelSize: { _ed.tick; return _ed.uiPx((node && node.fontSize) ? node.fontSize : 12) }
                     font.bold: { _ed.tick; return !!(node && node.bold) }
                     wrapMode: {
                         _ed.tick
@@ -5457,7 +5471,7 @@ Item {
             property bool on: _ed.litOf(node.kind, node.hwId)
             width: implicitWidth
             height: implicitHeight
-            implicitWidth: { _ed.tick; return _lab.implicitWidth + Math.max(10, (node.chipSize || 18) * 0.55) }
+            implicitWidth: { _ed.tick; return _lab.implicitWidth + _ed.uiPx(Math.max(10, (node.chipSize || 18) * 0.55)) }
             implicitHeight: { _ed.tick; return _ed.chipH(node) }
             radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node)) }
             color: {
@@ -5481,7 +5495,7 @@ Item {
                     _ed.tick
                     return on && node.highlight ? (node.hlText || "#BBF7D0") : (node.textColor || "#E4E4E7")
                 }
-                font.pixelSize: { _ed.tick; return node.fontSize || 10 }
+                font.pixelSize: { _ed.tick; return _ed.uiPx(node.fontSize || 10) }
                 text: {
                     _ed.tick
                     return _ed.friendlyOf(node, null)
@@ -5504,7 +5518,7 @@ Item {
             }
             width: implicitWidth
             height: implicitHeight
-            implicitWidth: { _ed.tick; return t.implicitWidth + Math.max(10, _ed.styleVal(node, mem, "chipSize", 18) * 0.55) }
+            implicitWidth: { _ed.tick; return t.implicitWidth + _ed.uiPx(Math.max(10, _ed.styleVal(node, mem, "chipSize", 18) * 0.55)) }
             implicitHeight: { _ed.tick; return _ed.chipH(node, mem) }
             radius: { _ed.tick; return _ed.chipR(node, height || _ed.chipH(node, mem), mem) }
             color: {
@@ -5545,7 +5559,7 @@ Item {
                     var hl = _ed.styleVal(node, mem, "highlight", true)
                     return parent.on && hl ? _ed.styleVal(node, mem, "hlText", "#BBF7D0") : _ed.styleVal(node, mem, "textColor", "#E4E4E7")
                 }
-                font.pixelSize: { _ed.tick; return _ed.styleVal(node, mem, "fontSize", 10) }
+                font.pixelSize: { _ed.tick; return _ed.uiPx(_ed.styleVal(node, mem, "fontSize", 10)) }
                 visible: {
                     _ed.tick
                     return !(_ed.renameId === node.id && _ed.renameMember === memberIndex)
