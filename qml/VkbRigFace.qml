@@ -410,6 +410,7 @@ Item {
                     anchors.fill: parent
                     source: _face.photoOverride.length ? _face.photoOverride : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
                     fillMode: Image.PreserveAspectFit
+                    visible: !_editorLoader.item
                     asynchronous: true
                     cache: true
                     onStatusChanged: {
