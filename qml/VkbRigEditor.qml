@@ -2124,6 +2124,44 @@ Item {
         return !!(n.spines && n.spines.length)
     }
 
+    function ctxSpineIndex() {
+        tick
+        if (_ctx && _ctx.kind === "spine" && _ctx.seg >= 0)
+            return _ctx.seg
+        return selectedSpine
+    }
+
+    function ctxHasSelectedSpine() {
+        return ctxSpineIndex() >= 0
+    }
+
+    function ctxSpineCurved() {
+        tick
+        var n = ctxTarget()
+        var i = ctxSpineIndex()
+        if (!n || i < 0)
+            return false
+        var L = currentLeader(n)
+        return !!(L && L.spines && L.spines[i] && L.spines[i].curve)
+    }
+
+    function convertSelectedSpine() {
+        var n = ctxTarget()
+        var i = ctxSpineIndex()
+        if (!n || i < 0)
+            return
+        selectedId = n.id
+        if (_ctx)
+            selectedLeader = _ctx.leader
+        var L = currentLeader(n)
+        if (!L || !L.spines || i >= L.spines.length)
+            return
+        L.spines[i].curve = !L.spines[i].curve
+        n.spines = L.spines
+        selectedSpine = i
+        bump()
+    }
+
     function ctxMode() {
         tick
         var k = (_ctx && _ctx.kind) ? String(_ctx.kind) : ""
@@ -3771,6 +3809,27 @@ Item {
             }
         }
         MenuItem {
+            text: "Convert spine"
+            visible: _ed.ctxIsLeader()
+            height: visible ? implicitHeight : 0
+            checkable: true
+            checked: _ed.ctxSpineCurved()
+            enabled: _ed.ctxHasSelectedSpine()
+            onTriggered: _ed.convertSelectedSpine()
+        }
+        MenuItem {
+            text: "Delete selected spine"
+            visible: _ed.ctxIsLeader()
+            height: visible ? implicitHeight : 0
+            enabled: _ed.ctxHasSelectedSpine()
+            onTriggered: {
+                var n = _ed.ctxTarget()
+                if (!n)
+                    return
+                _ed.deleteSpineAt(n.id, _ctx.leader, _ed.ctxSpineIndex())
+            }
+        }
+        MenuItem {
             text: "Clear spines"
             visible: _ed.ctxIsLeader()
             height: visible ? implicitHeight : 0
@@ -3781,18 +3840,6 @@ Item {
                     return
                 _ed.selectedId = n.id
                 _ed.clearAllSpines(n.id)
-            }
-        }
-        MenuItem {
-            text: "Delete selected spine"
-            visible: _ed.ctxIsLeader()
-            height: visible ? implicitHeight : 0
-            enabled: _ed.selectedSpine >= 0 || _ctx.kind === "spine"
-            onTriggered: {
-                var n = _ed.ctxTarget()
-                if (!n)
-                    return
-                _ed.deleteSpineAt(n.id, _ctx.leader, _ed.selectedSpine)
             }
         }
         MenuSeparator {
