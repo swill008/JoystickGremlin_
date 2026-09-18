@@ -57,6 +57,12 @@ Item {
     property bool lineArm: false
     property real lineArmX: 0
     property real lineArmY: 0
+    property bool spineHoldArm: false
+    property string spineHoldId: ""
+    property int spineHoldLeader: 0
+    property int spineHoldIndex: -1
+    property real spineHoldX: 0
+    property real spineHoldY: 0
     signal selectedChanged()
     signal chipMenuRequested(real x, real y)
     signal historyChanged()
@@ -3287,7 +3293,18 @@ Item {
                         _ed.setSelection([hit.id])
                     _ed.selectedId = hit.id
                     _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
-                    _ed.deleteSpineAt(hit.id, hit.leader, hit.spine)
+                    _ed.selectedSpine = hit.spine
+                    _ctx.nodeId = hit.id
+                    _ctx.kind = "spine"
+                    _ctx.leader = (hit.leader !== undefined) ? hit.leader : 0
+                    _ctx.seg = hit.spine
+                    _ed.spineHoldArm = true
+                    _ed.spineHoldId = hit.id
+                    _ed.spineHoldLeader = _ctx.leader
+                    _ed.spineHoldIndex = hit.spine
+                    _ed.spineHoldX = m.x
+                    _ed.spineHoldY = m.y
+                    _spineHold.restart()
                     return
                 }
                 if (hit.id) {
@@ -3482,6 +3499,15 @@ Item {
             _ed.applyPointer(m.x, m.y, _ed.altHeld)
         }
         onReleased: (m) => {
+            if (_ed.spineHoldArm) {
+                _spineHold.stop()
+                _ed.spineHoldArm = false
+                if (m.button === Qt.RightButton) {
+                    _ed.chipMenuRequested(_ed.spineHoldX, _ed.spineHoldY)
+                    _ctx.popup()
+                }
+                return
+            }
             if (_ed.dragKind === "linearm") {
                 _ed.lineArm = false
                 _ed.dragKind = ""
@@ -3695,6 +3721,18 @@ Item {
         }
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
+    }
+
+    Timer {
+        id: _spineHold
+        interval: 450
+        repeat: false
+        onTriggered: {
+            if (!_ed.spineHoldArm)
+                return
+            _ed.spineHoldArm = false
+            _ed.deleteSpineAt(_ed.spineHoldId, _ed.spineHoldLeader, _ed.spineHoldIndex)
+        }
     }
 
     Menu {
