@@ -6119,7 +6119,7 @@ Item {
             }
         }
         onWheel: (w) => {
-            if (!_ed.interactive || !face || !face.zoomAt) {
+            if (!_ed.interactive || !face || !face.zoomAtItem) {
                 w.accepted = false
                 return
             }
@@ -6128,9 +6128,7 @@ Item {
                 w.accepted = false
                 return
             }
-            var vx = w.x * face.zoom + face.panX
-            var vy = w.y * face.zoom + face.panY
-            face.zoomAt(vx, vy, Math.pow(1.0012, dy))
+            face.zoomAtItem(this, w.x, w.y, Math.pow(1.0012, dy))
             w.accepted = true
         }
     }
