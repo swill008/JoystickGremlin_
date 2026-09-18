@@ -285,6 +285,67 @@ Window {
         }
     }
 
+
+    function remapPhotoWellList(list) {
+        if (!list)
+            return
+        function pos(v) { return Math.max(0, Math.min(1, 0.125 + ((v || 0) - 0.25) * 1.5)) }
+        function sz(v) { return (v || 0) * 1.5 }
+        function mapEnd(e) {
+            if (e && e.type === "free") {
+                e.fx = pos(e.fx)
+                e.fy = pos(e.fy)
+            }
+        }
+        function mapSpines(arr) {
+            if (!arr)
+                return
+            var s
+            for (s = 0; s < arr.length; s++) {
+                arr[s].fx = pos(arr[s].fx)
+                arr[s].fy = pos(arr[s].fy)
+            }
+        }
+        var i
+        var k
+        for (i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (!n)
+                continue
+            if (n.chipFx !== undefined) n.chipFx = pos(n.chipFx)
+            if (n.chipFy !== undefined) n.chipFy = pos(n.chipFy)
+            if (n.fx !== undefined) n.fx = pos(n.fx)
+            if (n.fy !== undefined) n.fy = pos(n.fy)
+            if (n.fw !== undefined) n.fw = sz(n.fw)
+            if (n.fh !== undefined) n.fh = sz(n.fh)
+            var extras = n.extras || []
+            for (k = 0; k < extras.length; k++) {
+                if (!extras[k])
+                    continue
+                if (extras[k].efx !== undefined) extras[k].efx = pos(extras[k].efx)
+                if (extras[k].efy !== undefined) extras[k].efy = pos(extras[k].efy)
+                if (extras[k].efw !== undefined) extras[k].efw = sz(extras[k].efw)
+                if (extras[k].efh !== undefined) extras[k].efh = sz(extras[k].efh)
+            }
+            var mem = n.members || []
+            for (k = 0; k < mem.length; k++) {
+                if (mem[k].ox !== undefined) mem[k].ox = sz(mem[k].ox)
+                if (mem[k].oy !== undefined) mem[k].oy = sz(mem[k].oy)
+                if (mem[k].offX !== undefined) mem[k].offX = sz(mem[k].offX)
+                if (mem[k].offY !== undefined) mem[k].offY = sz(mem[k].offY)
+            }
+            mapSpines(n.spines)
+            mapEnd(n.from)
+            mapEnd(n.to)
+            var leads = n.leaders || []
+            for (k = 0; k < leads.length; k++) {
+                mapSpines(leads[k].spines)
+                mapEnd(leads[k].from)
+                mapEnd(leads[k].to)
+            }
+        }
+    }
+
     function loadLive() {
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
@@ -297,6 +358,13 @@ Window {
         if (doc.ui)
             applyUi(doc.ui)
         applyImage(liveImage)
+        var well = Number(doc.photoWell || 0)
+        if (well < 0.74) {
+            remapPhotoWellList(liveNodes)
+            doc.nodes = liveNodes
+            doc.photoWell = 0.75
+            try { _hw.save(targetName, JSON.stringify(doc)) } catch (err) {}
+        }
         applyGridToEditor()
         applyViewToFace()
         return true
@@ -347,6 +415,7 @@ Window {
             page: 32000,
             pageW: 32000,
             pageH: 18000,
+            photoWell: 0.75,
             image: image,
             imageWidth: 1348,
             imageHeight: 1380,
@@ -556,7 +625,7 @@ Window {
                 },
                 {
                     h: "World page",
-                    b: "Layout lives on a 32000 × 18000 world page (16:9). Reset view / 100% still frames the photo the way it used to (center half of the page). Zoom out to 50% shows the full page — that black around the stick is now on the grid and can take chips.\nThe photo is a layer in the center of the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the 32000 page. Save Mapping writes nodes, page 32000×18000, and ui into this one profile. Grid / snap writes only ui — it does not change page size or chip positions.\nFit to photo frame — once per edit if chips look twice as big as the photo after the page change. Look, then Save. It does not run by itself."
+                    b: "Layout lives on a 32000 × 18000 world page (16:9). The rig photo uses the center 75% of the page. Reset view / 100% frames that photo. Zoom out to the full page to map the remaining grid.\nThe photo is a layer in the center of the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the 32000 page. Save Mapping writes nodes, page 32000×18000, and ui into this one profile. Grid / snap writes only ui — it does not change page size or chip positions.\nFit to photo frame — once per edit if chips look twice as big as the photo after the page change. Look, then Save. It does not run by itself."
                 },
                 {
                     h: "File",
