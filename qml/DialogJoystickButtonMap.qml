@@ -48,9 +48,7 @@ Window {
     property string photoOverride: ""
     property string storedImage: ""
     property string liveImage: ""
-    property bool pendingWorldMigrate: false
-    property bool pendingSceneMigrate: false
-    property bool sceneShifted: false
+    property bool fittedOldPage: false
     property string selectedId: ""
     property var selectedNode: null
     property bool _allowClose: false
@@ -288,13 +286,10 @@ Window {
         if (doc.ui)
             applyUi(doc.ui)
         applyImage(liveImage)
-        var rev = Number(doc.worldRev || 0)
-        pendingWorldMigrate = rev < 1
-        pendingSceneMigrate = rev < 2
-        if (rev >= 1 && rev < 2 && !sceneShifted) {
+        var oldPage = Number(doc.pageW || doc.page || 0)
+        if (oldPage > 0 && oldPage < 32000 && !fittedOldPage) {
             sceneShiftList(liveNodes)
-            sceneShifted = true
-            pendingSceneMigrate = false
+            fittedOldPage = true
         }
         applyGridToEditor()
         return true
@@ -344,7 +339,6 @@ Window {
             page: 32000,
             pageW: 32000,
             pageH: 18000,
-            worldRev: 2,
             image: image,
             imageWidth: 899,
             imageHeight: 920,
@@ -554,7 +548,7 @@ Window {
                 },
                 {
                     h: "World page",
-                    b: "Layout lives on a 32000 × 18000 world page (16:9). Reset view / 100% still frames the photo the way it used to (center half of the page). Zoom out to 50% shows the full page — that black around the stick is now on the grid and can take chips.\nThe photo is a layer in the center of the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the 32000 page. Save stamps space world, pageW 32000, pageH 18000, worldRev 2.\nA map on the old 16000 page (worldRev 1) is shifted into the center once on Edit Mapping. A map with no worldRev still converts from window space first."
+                    b: "Layout lives on a 32000 × 18000 world page (16:9). Reset view / 100% still frames the photo the way it used to (center half of the page). Zoom out to 50% shows the full page — that black around the stick is now on the grid and can take chips.\nThe photo is a layer in the center of the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the 32000 page. Save stamps space world, pageW 32000, pageH 18000. There is one page size."
                 },
                 {
                     h: "File",
@@ -614,7 +608,7 @@ Window {
                 },
                 {
                     h: "Save and live map",
-                    b: "Save writes kind control.hardware for VKBsim Gladiator EVO R. Nodes, image path, ui (grid), space world, page 32000×18000, and worldRev 2 go to the hardware profile.\nThe live face rebinds dest labels from pairing / vJoy / Xbox the same way as before. Theme and chip names are layout only.\nHardware ids on this grip stay locked (buttons 1–29, hat 1, axes 1–4)."
+                    b: "Save writes kind control.hardware for VKBsim Gladiator EVO R. Nodes, image path, ui (grid), space world, and page 32000×18000 go to the hardware profile.\nThe live face rebinds dest labels from pairing / vJoy / Xbox the same way as before. Theme and chip names are layout only.\nHardware ids on this grip stay locked (buttons 1–29, hat 1, axes 1–4)."
                 }
             ]
             delegate: Column {
@@ -857,13 +851,16 @@ Window {
         e.snapOn = snapOn
         e.snapEntOn = snapEntOn
         e.gridSize = gridSize
-        if (pendingWorldMigrate && e.migrateFromWindowSpace) {
-            e.migrateFromWindowSpace()
-            pendingWorldMigrate = false
+        var oldPage = 0
+        try {
+            var raw = parseDoc(_hw.load(targetName))
+            oldPage = raw ? Number(raw.pageW || raw.page || 0) : 0
+        } catch (err) {
+            oldPage = 0
         }
-        if (pendingSceneMigrate && e.migrateInnerPageToScene) {
+        if (oldPage > 0 && oldPage < 32000 && !fittedOldPage && e.migrateInnerPageToScene) {
             e.migrateInnerPageToScene()
-            pendingSceneMigrate = false
+            fittedOldPage = true
         }
         if (e.repaint)
             e.repaint()
