@@ -3845,7 +3845,6 @@ Item {
         MenuItem {
             text: "Clear Format"
             visible: _ed.isGroup(_ed.ctxTarget())
-            height: visible ? implicitHeight : 0
             enabled: _ed.ctxHasGroupFormat()
             onTriggered: _ed.clearGroupFormat()
         }
@@ -3853,7 +3852,6 @@ Item {
         MenuItem {
             text: "Add spine"
             visible: _ed.ctxIsLeader()
-            height: visible ? implicitHeight : 0
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
@@ -3871,14 +3869,12 @@ Item {
         MenuItem {
             text: "Convert spine"
             visible: _ed.ctxIsLeader()
-            height: visible ? implicitHeight : 0
             enabled: _ed.ctxHasSelectedSpine()
             onTriggered: _ed.convertSelectedSpine()
         }
         MenuItem {
             text: "Delete selected spine"
             visible: _ed.ctxIsLeader()
-            height: visible ? implicitHeight : 0
             enabled: _ed.ctxHasSelectedSpine()
             onTriggered: {
                 var n = _ed.ctxTarget()
@@ -3890,7 +3886,6 @@ Item {
         MenuItem {
             text: "Clear spines"
             visible: _ed.ctxIsLeader()
-            height: visible ? implicitHeight : 0
             enabled: _ed.ctxHasSpines()
             onTriggered: {
                 var n = _ed.ctxTarget()
@@ -3902,22 +3897,15 @@ Item {
         }
         MenuSeparator {
             visible: _ed.ctxIsLeader()
-            height: visible ? implicitHeight : 0
         }
-        MenuItem {
-            text: "Chip"
+        Menu {
+            title: "Chip"
             visible: _ed.ctxHasMapItem()
-            height: visible ? implicitHeight : 0
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
-            hoverEnabled: true
-            onHoveredChanged: {
-                if (hovered && enabled && menu && !menu.opened)
-                    menu.open()
-            }
-            menu: Menu {
+
             MenuItem {
                 enabled: false
                 text: {
@@ -4049,23 +4037,15 @@ Item {
                 }
                 onTriggered: _ed.deleteChip()
             }
-        
-            }
         }
-        MenuItem {
-            text: "Hotspot"
+        Menu {
+            title: "Hotspot"
             visible: _ed.ctxHasMapItem()
-            height: visible ? implicitHeight : 0
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
-            hoverEnabled: true
-            onHoveredChanged: {
-                if (hovered && enabled && menu && !menu.opened)
-                    menu.open()
-            }
-            menu: Menu {
+
             Menu {
                 id: _hotSzMenu
                 title: "Size"
@@ -4109,42 +4089,26 @@ Item {
             }
             MenuSeparator {}
             MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("hotColor") } }
-        
-            }
         }
-        MenuItem {
-            text: "Leader End"
+        Menu {
+            title: "Leader End"
             visible: _ed.ctxHasMapItem()
-            height: visible ? implicitHeight : 0
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
-            hoverEnabled: true
-            onHoveredChanged: {
-                if (hovered && enabled && menu && !menu.opened)
-                    menu.open()
-            }
-            menu: Menu {
+
             MenuItem { text: "Detach chip end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("from") } }
             MenuItem { text: "Detach hotspot end"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.detachEnd("to") } }
             MenuSeparator {}
             MenuItem { text: "Reconnect to this chip"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("from") } }
             MenuItem { text: "Reconnect to this hotspot"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.attachEndToSelf("to") } }
-        
-            }
         }
-        MenuItem {
-            text: "Group"
+        Menu {
+            title: "Group"
             visible: _ed.ctxHasMapItem() || _ed.canGroup() || _ed.groupEditId !== ""
-            height: visible ? implicitHeight : 0
             enabled: _ed.canGroup() || _ed.isGroup(_ed.ctxTarget()) || _ed.groupEditId !== ""
-            hoverEnabled: true
-            onHoveredChanged: {
-                if (hovered && enabled && menu && !menu.opened)
-                    menu.open()
-            }
-            menu: Menu {
+
             MenuItem {
                 text: "Group selected"
                 enabled: _ed.canGroup()
@@ -4168,20 +4132,12 @@ Item {
                 enabled: _ed.groupEditId !== ""
                 onTriggered: _ed.endGroupEdit()
             }
-        
-            }
         }
-        MenuItem {
-            text: "Format"
+        Menu {
+            title: "Format"
             visible: _ed.ctxHasMapItem()
-            height: visible ? implicitHeight : 0
             enabled: _ed.isFiveWay(_ed.ctxTarget()) || _ed.ctxHasTheme()
-            hoverEnabled: true
-            onHoveredChanged: {
-                if (hovered && enabled && menu && !menu.opened)
-                    menu.open()
-            }
-            menu: Menu {
+
             Menu {
                 title: "5-Way"
                 enabled: _ed.isFiveWay(_ed.ctxTarget())
@@ -4227,41 +4183,25 @@ Item {
                 enabled: _ed.ctxHasGroupFormat()
                 onTriggered: _ed.clearGroupFormat()
             }
-        
-            }
         }
-        MenuItem {
-            text: "Align"
+        Menu {
+            title: "Align"
             visible: _ed.ctxHasMapItem()
-            height: visible ? implicitHeight : 0
             enabled: _ed.isGroup(_ed.ctxTarget())
-            hoverEnabled: true
-            onHoveredChanged: {
-                if (hovered && enabled && menu && !menu.opened)
-                    menu.open()
-            }
-            menu: Menu {
+
             MenuItem { text: "Align left"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("left") }
             MenuItem { text: "Align center"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("center") }
             MenuItem { text: "Align right"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("right") }
             MenuItem { text: "Free layout"; enabled: _ed.isGroup(_ed.ctxTarget()); onTriggered: _ed.setAlignH("free") }
-        
-            }
         }
-        MenuItem {
-            text: "Leader"
+        Menu {
+            title: "Leader"
             visible: _ed.ctxHasMapItem()
-            height: visible ? implicitHeight : 0
             enabled: {
                 var n = _ed.ctxTarget()
                 return !!(n && !_ed.isDraw(n))
             }
-            hoverEnabled: true
-            onHoveredChanged: {
-                if (hovered && enabled && menu && !menu.opened)
-                    menu.open()
-            }
-            menu: Menu {
+
             MenuItem { text: "Color…"; onTriggered: { _ed.selectedId = _ctx.nodeId || _ed.selectedId; _ed.pickColor("leaderColor") } }
             Menu {
                 id: _leadWMenu
@@ -4330,20 +4270,12 @@ Item {
                     _ed.deleteLeader()
                 }
             }
-        
-            }
         }
-        MenuItem {
-            text: "Draw"
+        Menu {
+            title: "Draw"
             visible: true
-            height: visible ? implicitHeight : 0
             enabled: true
-            hoverEnabled: true
-            onHoveredChanged: {
-                if (hovered && enabled && menu && !menu.opened)
-                    menu.open()
-            }
-            menu: Menu {
+
             Menu {
                 title: "Around selection"
                 enabled: {
@@ -4482,8 +4414,6 @@ Item {
                 text: "Delete drawing"
                 enabled: _ed.isDraw(_ed.nodeAt(_ed.selectedId))
                 onTriggered: _ed.deleteChip()
-            }
-        
             }
         }
 
