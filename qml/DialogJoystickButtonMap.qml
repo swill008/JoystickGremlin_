@@ -1663,16 +1663,33 @@ Window {
                         rowSpacing: 6
                         Label { text: "Fill"; color: "#A1A1AA" }
                         ColorSwatch { hex: selectedNode && selectedNode.color ? selectedNode.color : "#18181B"; onPicked: _colorPop.openField("color", hex, this) }
-                        Label { text: "Border"; color: "#A1A1AA" }
+                        Label { text: "Outline"; color: "#A1A1AA" }
                         ColorSwatch { hex: selectedNode && selectedNode.border ? selectedNode.border : "#3F3F46"; onPicked: _colorPop.openField("border", hex, this) }
                         Label { text: "Text"; color: "#A1A1AA" }
                         ColorSwatch { hex: selectedNode && selectedNode.textColor ? selectedNode.textColor : "#E4E4E7"; onPicked: _colorPop.openField("textColor", hex, this) }
                         Label { text: "Highlight"; color: "#A1A1AA" }
                         ColorSwatch { hex: selectedNode && selectedNode.hlColor ? selectedNode.hlColor : "#14532D"; onPicked: _colorPop.openField("hlColor", hex, this) }
-                        Label { text: "HL border"; color: "#A1A1AA" }
+                        Label { text: "Pressed outline"; color: "#A1A1AA" }
                         ColorSwatch { hex: selectedNode && selectedNode.hlBorder ? selectedNode.hlBorder : "#22C55E"; onPicked: _colorPop.openField("hlBorder", hex, this) }
                         Label { text: "HL text"; color: "#A1A1AA" }
                         ColorSwatch { hex: selectedNode && selectedNode.hlText ? selectedNode.hlText : "#BBF7D0"; onPicked: _colorPop.openField("hlText", hex, this) }
+                        Label { text: "Leader"; color: "#A1A1AA" }
+                        ColorSwatch { hex: selectedNode && selectedNode.leaderColor ? selectedNode.leaderColor : "#A1A1AA"; onPicked: _colorPop.openField("leaderColor", hex, this) }
+                        Label { text: "Hotspot"; color: "#A1A1AA" }
+                        ColorSwatch { hex: selectedNode && selectedNode.hotColor ? selectedNode.hotColor : "#F4F4F5"; onPicked: _colorPop.openField("hotColor", hex, this) }
+                    }
+                    Label { text: "Leader weight"; color: "#A1A1AA" }
+                    Slider {
+                        Layout.fillWidth: true
+                        from: 5
+                        to: 40
+                        stepSize: 1
+                        value: selectedNode && selectedNode.leaderWidth > 0 ? selectedNode.leaderWidth * 10 : 11
+                        onMoved: {
+                            var e = _ed()
+                            if (e)
+                                e.applyField("leaderWidth", value / 10)
+                        }
                     }
                     Button {
                         text: "Delete chip"
