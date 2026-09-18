@@ -816,7 +816,11 @@ Window {
     Menu {
         id: _groupMenu
         MenuItem { text: "Group selected"; onTriggered: { var e = _ed(); if (e) e.groupSelection() } }
-        MenuItem { text: "Break group"; onTriggered: { var e = _ed(); if (e) e.ungroupSelection() } }
+        MenuItem {
+            text: "Break group"
+            enabled: { var e = _ed(); return !!(e && e.canUngroup()) }
+            onTriggered: { var e = _ed(); if (e) e.ungroupSelection() }
+        }
         MenuSeparator {}
         MenuItem { text: "Edit group"; onTriggered: { var e = _ed(); if (e) e.beginGroupEdit(e.selectedId) } }
         MenuItem { text: "Done editing group"; onTriggered: { var e = _ed(); if (e) e.endGroupEdit() } }
@@ -1639,7 +1643,10 @@ Window {
                 Button {
                     text: "Break group"
                     implicitHeight: 24
-                    visible: nodeIsGroup(selectedNode)
+                    visible: {
+                        var e = _ed()
+                        return !!(e && e.canUngroup()) || nodeIsGroup(selectedNode)
+                    }
                     onClicked: {
                         var e = _ed()
                         if (e)
