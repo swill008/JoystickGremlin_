@@ -30,7 +30,7 @@ Item {
     property bool gridOn: true
     property bool snapOn: true
     property bool snapEntOn: true
-    property int gridSize: 50
+    property int gridSize: 200
     property bool altHeld: false
     property bool shiftHeld: false
     property string groupEditId: ""
@@ -42,7 +42,8 @@ Item {
     property int tableCol: -1
     property int tableExtra: -1
     property string packWarn: ""
-    readonly property real worldPage: 2000
+    readonly property real worldPageW: 16000
+    readonly property real worldPageH: 9000
     readonly property string worldSpace: "world"
     property var textFormatClip: null
     property bool textPaintOn: false
@@ -2635,12 +2636,16 @@ Item {
     }
 
     function spaceRect() {
-        var side = Math.min(Math.max(1, width), Math.max(1, height))
+        var pw = Math.max(1, worldPageW)
+        var ph = Math.max(1, worldPageH)
+        var scale = Math.min(width / pw, height / ph)
+        var dw = pw * scale
+        var dh = ph * scale
         return {
-            x: (width - side) * 0.5,
-            y: (height - side) * 0.5,
-            w: side,
-            h: side
+            x: (width - dw) * 0.5,
+            y: (height - dh) * 0.5,
+            w: dw,
+            h: dh
         }
     }
 
@@ -2714,19 +2719,19 @@ Item {
     }
 
     function worldToX(wx) {
-        return spaceRect().x + (wx / worldPage) * spaceRect().w
+        return spaceRect().x + (wx / worldPageW) * spaceRect().w
     }
 
     function worldToY(wy) {
-        return spaceRect().y + (wy / worldPage) * spaceRect().h
+        return spaceRect().y + (wy / worldPageH) * spaceRect().h
     }
 
     function xToWorld(px) {
-        return (px - spaceRect().x) / Math.max(1, spaceRect().w) * worldPage
+        return (px - spaceRect().x) / Math.max(1, spaceRect().w) * worldPageW
     }
 
     function yToWorld(py) {
-        return (py - spaceRect().y) / Math.max(1, spaceRect().h) * worldPage
+        return (py - spaceRect().y) / Math.max(1, spaceRect().h) * worldPageH
     }
 
     function fxToX(fx) {
@@ -5291,8 +5296,13 @@ Item {
             var ctx = getContext("2d")
             ctx.reset()
             var s = _ed.spaceRect()
-            var page = _ed.worldPage
+            var pageW = _ed.worldPageW
+            var pageH = _ed.worldPageH
             var step = Math.max(1, _ed.gridSize)
+            if (pageW / step > 80)
+                step = Math.ceil(pageW / 80)
+            if (pageH / step > 80)
+                step = Math.max(step, Math.ceil(pageH / 80))
             var major = step * 4
             ctx.save()
             ctx.beginPath()
@@ -5302,24 +5312,32 @@ Item {
             ctx.strokeStyle = "#14FFFFFF"
             ctx.beginPath()
             var w
-            for (w = 0; w <= page; w += step) {
+            var px
+            var py
+            for (w = 0; w <= pageW; w += step) {
                 if (Math.round(w) % major === 0)
                     continue
-                var px = _ed.worldToX(w) + 0.5
-                var py = _ed.worldToY(w) + 0.5
+                px = _ed.worldToX(w) + 0.5
                 ctx.moveTo(px, s.y)
                 ctx.lineTo(px, s.y + s.h)
+            }
+            for (w = 0; w <= pageH; w += step) {
+                if (Math.round(w) % major === 0)
+                    continue
+                py = _ed.worldToY(w) + 0.5
                 ctx.moveTo(s.x, py)
                 ctx.lineTo(s.x + s.w, py)
             }
             ctx.stroke()
             ctx.strokeStyle = "#28FFFFFF"
             ctx.beginPath()
-            for (w = 0; w <= page; w += major) {
+            for (w = 0; w <= pageW; w += major) {
                 px = _ed.worldToX(w) + 0.5
-                py = _ed.worldToY(w) + 0.5
                 ctx.moveTo(px, s.y)
                 ctx.lineTo(px, s.y + s.h)
+            }
+            for (w = 0; w <= pageH; w += major) {
+                py = _ed.worldToY(w) + 0.5
                 ctx.moveTo(s.x, py)
                 ctx.lineTo(s.x + s.w, py)
             }
