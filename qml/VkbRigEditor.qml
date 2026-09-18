@@ -255,10 +255,15 @@ Item {
         } else if (dragKind === "draw") {
             if (isLocked(n))
                 return
+            var packDraw = tablePackOf(n)
             var g0 = drawGeom(n)
             var np = snapEnt(mx - dragOffX, my - dragOffY, altOff)
             var ddx = np.x - g0.x
             var ddy = np.y - g0.y
+            if (packDraw && !isTable(n)) {
+                moveTablePack(packDraw, ddx / Math.max(1, width), ddy / Math.max(1, height))
+                return
+            }
             var around = n.around || []
             if (around.length) {
                 var ai
@@ -343,8 +348,11 @@ Item {
         var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
         for (var i = 0; i < ids.length; i++) {
             var n = nodeAt(ids[i])
-            if (n)
+            if (n) {
                 n[key] = val
+                if (isText(n) && (key === "color" || key === "border" || key === "textColor"))
+                    delete n.theme
+            }
         }
         bump()
     }
@@ -1679,12 +1687,58 @@ Item {
         return !!(n && n.kind === "draw" && n.shape === "table")
     }
 
+    function isText(n) {
+        return !!(n && n.kind === "draw" && n.shape === "text")
+    }
+
+    function textThemeStyle(n) {
+        var theme = (n && n.theme) ? String(n.theme) : "gremlin"
+        if (theme === "hollow")
+            return { fill: "transparent", border: "#3F3F46", text: "#E4E4E7" }
+        if (theme === "sheet")
+            return { fill: "#E4E4E7", border: "#18181B", text: "#18181B" }
+        return { fill: "#18181B", border: "#3F3F46", text: "#E4E4E7" }
+    }
+
+    function applyTextTheme(theme) {
+        var n = nodeAt(selectedId)
+        if (!isText(n))
+            return
+        n.theme = theme || "gremlin"
+        var st = textThemeStyle(n)
+        n.color = st.fill
+        n.border = st.border
+        n.textColor = st.text
+        n.fill = (theme === "hollow") ? "hollow" : "filled"
+        bump()
+    }
+
+    function beginTextRename(id) {
+        var n = nodeAt(id)
+        if (!isText(n))
+            return
+        renameId = id
+        renameMember = -1
+        tableRow = -1
+        tableCol = -1
+        tableExtra = -1
+        renameDraft = n.text || ""
+        dragKind = ""
+        Qt.callLater(function () {
+            if (_nameEdit) {
+                _nameEdit.forceActiveFocus()
+                _nameEdit.selectAll()
+            }
+        })
+        bump()
+    }
+
     function isOverlay(n) {
         return !!(n && n.kind === "draw" && n.shape === "image")
     }
 
     function isPinnable(n) {
-        return isOverlay(n) || isTable(n)
+        return isOverlay(n) || isTable(n) || isText(n)
     }
 
     function emptyTableRow(cols) {
@@ -2683,6 +2737,26 @@ Item {
             if (h < minH)
                 st.fh = minH / Math.max(1, height)
         }
+        if (shape === "text") {
+            st.fill = "filled"
+            st.color = "#18181B"
+            st.border = "#3F3F46"
+            st.stroke = 1
+            st.theme = "gremlin"
+            st.text = "Text"
+            st.textColor = "#E4E4E7"
+            st.fontSize = 12
+            st.bold = false
+            st.align = "center"
+            st.valign = "middle"
+            st.fillOpacity = 1
+            st.borderOpacity = 1
+            st.zLayer = 3
+            if (w < 48)
+                st.fw = 48 / Math.max(1, width)
+            if (h < 20)
+                st.fh = 20 / Math.max(1, height)
+        }
         nodes.push(st)
         setSelection([st.id])
         tableRow = 0
@@ -2708,7 +2782,13 @@ Item {
         var n = nodeAt(selectedId)
         if (!isDraw(n))
             return
-        var hex = field === "border" ? (n.border || "#22C55E") : (n.color || "#14532D")
+        var hex = "#E4E4E7"
+        if (field === "border")
+            hex = n.border || "#3F3F46"
+        else if (field === "textColor")
+            hex = n.textColor || "#E4E4E7"
+        else
+            hex = n.color || "#18181B"
         colorPickRequested(field, hex)
     }
 
@@ -2950,7 +3030,7 @@ Item {
             return ""
         if (isLocked(n))
             return ""
-        if (n.shape === "image" || n.shape === "table" || n.fill === "filled")
+        if (n.shape === "image" || n.shape === "table" || n.shape === "text" || n.fill === "filled")
             return "body"
         var ring = Math.max(6, (n.stroke || 2) + 4)
         if (p.x <= ring || p.y <= ring || p.x >= w - ring || p.y >= h - ring)
@@ -2960,6 +3040,8 @@ Item {
 
     function paintDraw(ctx, n, w, h) {
         if (!n || n.shape === "image")
+            return
+        if (n.shape === "text")
             return
         if (n.shape === "table") {
             ctx.save()
@@ -3531,6 +3613,10 @@ Item {
             var tr = tableCurrentRect(n)
             return Qt.rect(tr.x, tr.y, tr.w, tr.h)
         }
+        if (isText(n) || isDraw(n)) {
+            var dg = drawGeom(n)
+            return Qt.rect(dg.x, dg.y, dg.w, dg.h)
+        }
         if (isGroup(n) && mem) {
             return Qt.rect(
                 n.chipFx * width + groupMinX(n) + memberLocalX(n, mem),
@@ -3576,7 +3662,9 @@ Item {
             return
         }
         var t = String(renameDraft || "").trim()
-        if (isTable(n) && tableHasTarget()) {
+        if (isText(n)) {
+            n.text = t
+        } else if (isTable(n) && tableHasTarget()) {
             ensureTable(n)
             if (tableExtra >= 0) {
                 var ex = tableExtraAt(n, tableExtra)
@@ -3677,10 +3765,10 @@ Item {
     }
 
     function followTablePacked(table) {
-        if (!isTable(table) || !table.packed)
+        if (!isTable(table))
             return
-        var ids = table.packed
         var i
+        var ids = table.packed || []
         for (i = 0; i < ids.length; i++) {
             var q = nodeAt(ids[i])
             if (!q || isDraw(q))
@@ -3688,6 +3776,28 @@ Item {
             q.chipFx = (table.fx || 0) + (q.packUx || 0) * (table.fw || 0)
             q.chipFy = (table.fy || 0) + (q.packUy || 0) * (table.fh || 0)
         }
+        var draws = table.packedDraw || []
+        for (i = 0; i < draws.length; i++) {
+            var d = nodeAt(draws[i])
+            if (!isText(d) && !isDraw(d))
+                continue
+            d.fx = (table.fx || 0) + (d.packUx || 0) * (table.fw || 0)
+            d.fy = (table.fy || 0) + (d.packUy || 0) * (table.fh || 0)
+        }
+    }
+
+    function attachDrawToTable(table, draw) {
+        if (!isTable(table) || !isDraw(draw) || draw.id === table.id)
+            return
+        if (!table.packedDraw)
+            table.packedDraw = []
+        if (table.packedDraw.indexOf(draw.id) < 0)
+            table.packedDraw.push(draw.id)
+        draw.packId = table.id
+        var fw = table.fw > 0 ? table.fw : 0.01
+        var fh = table.fh > 0 ? table.fh : 0.01
+        draw.packUx = ((draw.fx || 0) - (table.fx || 0)) / fw
+        draw.packUy = ((draw.fy || 0) - (table.fy || 0)) / fh
     }
 
     function tablePackOf(n) {
@@ -3759,9 +3869,9 @@ Item {
     }
 
     function detachTablePacked(table) {
-        if (!table || !table.packed)
+        if (!table)
             return
-        var ids = table.packed.slice()
+        var ids = (table.packed || []).slice()
         var i
         for (i = 0; i < ids.length; i++) {
             var q = nodeAt(ids[i])
@@ -3772,10 +3882,20 @@ Item {
             }
         }
         table.packed = []
+        var draws = (table.packedDraw || []).slice()
+        for (i = 0; i < draws.length; i++) {
+            var d = nodeAt(draws[i])
+            if (d) {
+                delete d.packId
+                delete d.packUx
+                delete d.packUy
+            }
+        }
+        table.packedDraw = []
     }
 
     function tableIsPacked(n) {
-        return !!(isTable(n) && n.packed && n.packed.length)
+        return !!(isTable(n) && ((n.packed && n.packed.length) || (n.packedDraw && n.packedDraw.length)))
     }
 
     function canGroup() {
@@ -3852,6 +3972,7 @@ Item {
         packWarn = ""
         var tables = []
         var chipNodes = []
+        var textNodes = []
         var i
         var n
         for (i = 0; i < ids.length; i++) {
@@ -3860,6 +3981,8 @@ Item {
                 continue
             if (isTable(n))
                 tables.push(n)
+            else if (isText(n))
+                textNodes.push(n)
             else if (!isDraw(n))
                 chipNodes.push(n)
         }
@@ -3879,17 +4002,21 @@ Item {
             return
         }
         if (tables.length === 1) {
-            if (!chipNodes.length) {
-                packWarn = "Select chips with the table to pack."
+            if (!chipNodes.length && !textNodes.length) {
+                packWarn = "Select chips or text with the table to pack."
                 bump()
                 return
             }
             var table = tables[0]
             for (i = 0; i < chipNodes.length; i++)
                 attachChipToTable(table, chipNodes[i])
+            for (i = 0; i < textNodes.length; i++)
+                attachDrawToTable(table, textNodes[i])
             var keep = [table.id]
             for (i = 0; i < chipNodes.length; i++)
                 keep.push(chipNodes[i].id)
+            for (i = 0; i < textNodes.length; i++)
+                keep.push(textNodes[i].id)
             setSelection(keep)
             bump()
             return
@@ -4128,12 +4255,17 @@ Item {
             }
             if (hit && ids.indexOf(n.id) < 0)
                 ids.push(n.id)
-            if (hit && isTable(n) && n.packed) {
-                var pk = n.packed
+            if (hit && isTable(n)) {
+                var pk = n.packed || []
                 var p
                 for (p = 0; p < pk.length; p++) {
                     if (ids.indexOf(pk[p]) < 0)
                         ids.push(pk[p])
+                }
+                var pd = n.packedDraw || []
+                for (p = 0; p < pd.length; p++) {
+                    if (ids.indexOf(pd[p]) < 0)
+                        ids.push(pd[p])
                 }
             }
             if (hit && n.packId && ids.indexOf(n.packId) < 0)
@@ -4340,14 +4472,14 @@ Item {
                 id: _dc
                 visible: {
                     var n = node
-                    return !!(n && n.shape !== "image" && n.shape !== "table")
+                    return !!(n && n.shape !== "image" && n.shape !== "table" && n.shape !== "text")
                 }
                 anchors.fill: parent
                 antialiasing: true
                 onPaint: {
                     var ctx = getContext("2d")
                     ctx.reset()
-                    if (node && node.shape !== "image" && node.shape !== "table")
+                    if (node && node.shape !== "image" && node.shape !== "table" && node.shape !== "text")
                         _ed.paintDraw(ctx, node, width, height)
                 }
             }
@@ -4561,6 +4693,92 @@ Item {
                     }
                 }
             }
+            Item {
+                visible: {
+                    _ed.tick
+                    return !!(node && node.shape === "text")
+                }
+                anchors.fill: parent
+                Rectangle {
+                    anchors.fill: parent
+                    color: {
+                        _ed.tick
+                        var n = node
+                        if (!n)
+                            return "#18181B"
+                        if (n.theme)
+                            return _ed.textThemeStyle(n).fill
+                        return n.color || "#18181B"
+                    }
+                    opacity: {
+                        _ed.tick
+                        var n = node
+                        if (n && n.fillOpacity !== undefined && n.fillOpacity !== null)
+                            return n.fillOpacity
+                        return 1
+                    }
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    color: "transparent"
+                    border.color: {
+                        _ed.tick
+                        var n = node
+                        if (!n)
+                            return "#3F3F46"
+                        if (n.theme)
+                            return _ed.textThemeStyle(n).border
+                        return n.border || "#3F3F46"
+                    }
+                    border.width: { _ed.tick; return (node && node.stroke) ? node.stroke : 1 }
+                    opacity: {
+                        _ed.tick
+                        var n = node
+                        if (n && n.borderOpacity !== undefined && n.borderOpacity !== null)
+                            return n.borderOpacity
+                        return 1
+                    }
+                }
+                Text {
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    visible: {
+                        _ed.tick
+                        return !(_ed.renameId === node.id)
+                    }
+                    text: {
+                        _ed.tick
+                        return (node && node.text) ? node.text : "Text"
+                    }
+                    color: {
+                        _ed.tick
+                        var n = node
+                        if (!n)
+                            return "#E4E4E7"
+                        if (n.theme)
+                            return _ed.textThemeStyle(n).text
+                        return n.textColor || "#E4E4E7"
+                    }
+                    font.pixelSize: { _ed.tick; return (node && node.fontSize) ? node.fontSize : 12 }
+                    font.bold: { _ed.tick; return !!(node && node.bold) }
+                    wrapMode: Text.WordWrap
+                    elide: Text.ElideRight
+                    horizontalAlignment: {
+                        _ed.tick
+                        var a = node && node.align ? node.align : "center"
+                        if (a === "left") return Text.AlignLeft
+                        if (a === "right") return Text.AlignRight
+                        return Text.AlignHCenter
+                    }
+                    verticalAlignment: {
+                        _ed.tick
+                        var a = node && node.valign ? node.valign : "middle"
+                        if (a === "top") return Text.AlignTop
+                        if (a === "bottom") return Text.AlignBottom
+                        return Text.AlignVCenter
+                    }
+                }
+            }
             Connections {
                 target: _ed
                 function onTickChanged() { if (_dc.visible) _dc.requestPaint() }
@@ -4614,7 +4832,7 @@ Item {
                         return false
                     if (_ed.overlayHoverId === node.id)
                         return true
-                    return _ed.isTable(node) && _ed.isSelected(node.id)
+                    return (_ed.isTable(node) || _ed.isText(node)) && _ed.isSelected(node.id)
                 }
                 width: 16
                     height: 16
@@ -5017,6 +5235,14 @@ Item {
                         _ed.selectedMember = mi0
                     }
                     var tn = _ed.nodeAt(hit.id)
+                    if (_ed.isText(tn)) {
+                        _ed.chipMenuRequested(m.x, m.y)
+                        _ctx.close()
+                        _tableCtx.close()
+                        _textCtx.close()
+                        _textCtx.popup()
+                        return
+                    }
                     if (_ed.isTable(tn)) {
                         var cell = _ed.tableCellAt(tn, m.x, m.y)
                         _ed.tableRow = cell.row
@@ -5332,6 +5558,11 @@ Item {
             if (_ed.renameId)
                 _ed.commitRename()
             var gn = hit.id ? _ed.nodeAt(hit.id) : null
+            if (gn && _ed.isText(gn)) {
+                _ed.setSelection([gn.id])
+                _ed.beginTextRename(gn.id)
+                return
+            }
             if (gn && _ed.isTable(gn)) {
                 var cell2 = _ed.tableCellAt(gn, m.x, m.y)
                 _ed.setSelection([gn.id])
@@ -5489,6 +5720,8 @@ Item {
                 return _ed.packWarn
             if (_ed.dragKind === "tablecell")
                 return "Dragging free cell. Handles still resize the table."
+            if (_ed.drawTool === "text")
+                return "Draw text — drag a box. Double-click to edit. Esc cancels."
             if (_ed.drawTool === "table")
                 return "Draw table — drag a box. Blank 1×2. Esc cancels."
             if (_ed.drawTool.length)
@@ -5765,6 +5998,282 @@ Item {
             text: "Delete table"
             onTriggered: _ed.deleteTable()
         }
+    }
+
+    Menu {
+        id: _textCtx
+        MenuItem {
+            text: "Edit text…"
+            onTriggered: {
+                var n = _ed.nodeAt(_ed.selectedId)
+                if (_ed.isText(n))
+                    _ed.beginTextRename(n.id)
+            }
+        }
+        MenuSeparator {}
+        Menu {
+            title: "Theme"
+            MenuItem {
+                text: "Gremlin dark"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || !n.theme || n.theme === "gremlin"
+                }
+                onTriggered: _ed.applyTextTheme("gremlin")
+            }
+            MenuItem {
+                text: "Gremlin hollow"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.theme === "hollow")
+                }
+                onTriggered: _ed.applyTextTheme("hollow")
+            }
+            MenuItem {
+                text: "Sheet"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.theme === "sheet")
+                }
+                onTriggered: _ed.applyTextTheme("sheet")
+            }
+        }
+        Menu {
+            title: "Font"
+            MenuItem {
+                text: "8"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 8)
+                }
+                onTriggered: _ed.applyField("fontSize", 8)
+            }
+            MenuItem {
+                text: "10"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 10)
+                }
+                onTriggered: _ed.applyField("fontSize", 10)
+            }
+            MenuItem {
+                text: "12"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || !n.fontSize || n.fontSize === 12
+                }
+                onTriggered: _ed.applyField("fontSize", 12)
+            }
+            MenuItem {
+                text: "14"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 14)
+                }
+                onTriggered: _ed.applyField("fontSize", 14)
+            }
+            MenuItem {
+                text: "16"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 16)
+                }
+                onTriggered: _ed.applyField("fontSize", 16)
+            }
+            MenuItem {
+                text: "18"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 18)
+                }
+                onTriggered: _ed.applyField("fontSize", 18)
+            }
+            MenuItem {
+                text: "24"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fontSize === 24)
+                }
+                onTriggered: _ed.applyField("fontSize", 24)
+            }
+        }
+        Menu {
+            title: "Color"
+            MenuItem { text: "Text…"; onTriggered: _ed.requestDrawColor("textColor") }
+            MenuItem { text: "Fill…"; onTriggered: _ed.requestDrawColor("color") }
+            MenuItem { text: "Stroke…"; onTriggered: _ed.requestDrawColor("border") }
+        }
+        Menu {
+            title: "Fill opacity"
+            MenuItem {
+                text: "0%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fillOpacity === 0)
+                }
+                onTriggered: _ed.applyField("fillOpacity", 0)
+            }
+            MenuItem {
+                text: "25%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fillOpacity === 0.25)
+                }
+                onTriggered: _ed.applyField("fillOpacity", 0.25)
+            }
+            MenuItem {
+                text: "50%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fillOpacity === 0.5)
+                }
+                onTriggered: _ed.applyField("fillOpacity", 0.5)
+            }
+            MenuItem {
+                text: "75%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.fillOpacity === 0.75)
+                }
+                onTriggered: _ed.applyField("fillOpacity", 0.75)
+            }
+            MenuItem {
+                text: "100%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || n.fillOpacity === undefined || n.fillOpacity === 1
+                }
+                onTriggered: _ed.applyField("fillOpacity", 1)
+            }
+        }
+        Menu {
+            title: "Stroke opacity"
+            MenuItem {
+                text: "0%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.borderOpacity === 0)
+                }
+                onTriggered: _ed.applyField("borderOpacity", 0)
+            }
+            MenuItem {
+                text: "25%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.borderOpacity === 0.25)
+                }
+                onTriggered: _ed.applyField("borderOpacity", 0.25)
+            }
+            MenuItem {
+                text: "50%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.borderOpacity === 0.5)
+                }
+                onTriggered: _ed.applyField("borderOpacity", 0.5)
+            }
+            MenuItem {
+                text: "75%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !!(n && n.borderOpacity === 0.75)
+                }
+                onTriggered: _ed.applyField("borderOpacity", 0.75)
+            }
+            MenuItem {
+                text: "100%"
+                checkable: true
+                checked: {
+                    _ed.tick
+                    var n = _ed.nodeAt(_ed.selectedId)
+                    return !n || n.borderOpacity === undefined || n.borderOpacity === 1
+                }
+                onTriggered: _ed.applyField("borderOpacity", 1)
+            }
+        }
+        Menu {
+            title: "Align"
+            MenuItem { text: "Left"; onTriggered: _ed.applyField("align", "left") }
+            MenuItem { text: "Center"; onTriggered: _ed.applyField("align", "center") }
+            MenuItem { text: "Right"; onTriggered: _ed.applyField("align", "right") }
+            MenuSeparator {}
+            MenuItem { text: "Top"; onTriggered: _ed.applyField("valign", "top") }
+            MenuItem { text: "Middle"; onTriggered: _ed.applyField("valign", "middle") }
+            MenuItem { text: "Bottom"; onTriggered: _ed.applyField("valign", "bottom") }
+        }
+        MenuItem {
+            text: "Bold"
+            checkable: true
+            checked: {
+                _ed.tick
+                var n = _ed.nodeAt(_ed.selectedId)
+                return !!(n && n.bold)
+            }
+            onTriggered: {
+                var n = _ed.nodeAt(_ed.selectedId)
+                _ed.applyField("bold", !(n && n.bold))
+            }
+        }
+        MenuSeparator {}
+        MenuItem {
+            text: {
+                _ed.tick
+                var n = _ed.pinTarget()
+                return _ed.isLocked(n) ? "Unpin" : "Pin"
+            }
+            checkable: true
+            checked: {
+                _ed.tick
+                return _ed.isLocked(_ed.pinTarget())
+            }
+            onTriggered: {
+                var n = _ed.pinTarget()
+                if (n)
+                    _ed.toggleLock(n.id)
+            }
+        }
+        MenuItem { text: "Bring forward"; onTriggered: _ed.bringForward() }
+        MenuItem { text: "Send back"; onTriggered: _ed.sendBack() }
+        MenuSeparator {}
+        MenuItem { text: "Delete text box"; onTriggered: _ed.deleteChip() }
     }
 
     Menu {
@@ -6247,6 +6756,7 @@ Item {
                 MenuItem { text: "Triangle"; checkable: true; checked: _ed.drawTool === "triangle"; onTriggered: _ed.setDrawTool("triangle") }
                 MenuItem { text: "Diamond"; checkable: true; checked: _ed.drawTool === "diamond"; onTriggered: _ed.setDrawTool("diamond") }
                 MenuItem { text: "Table"; checkable: true; checked: _ed.drawTool === "table"; onTriggered: _ed.setDrawTool("table") }
+                MenuItem { text: "Text"; checkable: true; checked: _ed.drawTool === "text"; onTriggered: _ed.setDrawTool("text") }
                 MenuSeparator {}
                 MenuItem { text: "Cancel tool"; enabled: _ed.drawTool.length > 0; onTriggered: _ed.drawTool = "" }
             }
@@ -6255,7 +6765,7 @@ Item {
                 title: "Shape"
                 enabled: {
                     var n = _ed.nodeAt(_ed.selectedId)
-                    return _ed.isDraw(n) && !_ed.isTable(n)
+                    return _ed.isDraw(n) && !_ed.isTable(n) && !_ed.isText(n)
                 }
                 MenuItem { text: "Rectangle"; checkable: true; checked: _ed.fieldEq("shape", "rect", "rect"); onTriggered: _ed.applyField("shape", "rect") }
                 MenuItem { text: "Rounded"; checkable: true; checked: _ed.fieldEq("shape", "roundrect", "rect"); onTriggered: _ed.applyField("shape", "roundrect") }
