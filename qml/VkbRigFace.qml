@@ -631,9 +631,9 @@ Item {
 
         DragHandler {
             id: _midPan
-            acceptedButtons: Qt.MiddleButton
+            acceptedButtons: _face.editing ? Qt.MiddleButton : (Qt.LeftButton | Qt.MiddleButton)
             target: null
-            enabled: _face.editing
+            enabled: true
             property real grabX: 0
             property real grabY: 0
             onActiveChanged: {
