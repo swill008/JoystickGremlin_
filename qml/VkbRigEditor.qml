@@ -87,6 +87,7 @@ Item {
     property real spineHoldY: 0
     signal selectedChanged()
     signal chipMenuRequested(real x, real y)
+    signal overlayImportRequested()
     signal historyChanged()
     signal colorPickRequested(string field, string hex)
 
@@ -7520,6 +7521,8 @@ Item {
                 MenuItem { text: "Diamond"; checkable: true; checked: _ed.drawTool === "diamond"; onTriggered: _ed.setDrawTool("diamond") }
                 MenuItem { text: "Table"; checkable: true; checked: _ed.drawTool === "table"; onTriggered: _ed.setDrawTool("table") }
                 MenuItem { text: "Text"; checkable: true; checked: _ed.drawTool === "text"; onTriggered: _ed.setDrawTool("text") }
+                MenuSeparator {}
+                MenuItem { text: "Import overlay…"; onTriggered: _ed.overlayImportRequested() }
                 MenuSeparator {}
                 MenuItem { text: "Cancel tool"; enabled: _ed.drawTool.length > 0; onTriggered: _ed.drawTool = "" }
             }
