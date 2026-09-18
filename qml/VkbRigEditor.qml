@@ -2234,6 +2234,22 @@ Item {
         bump()
     }
 
+    function cancelAllActions() {
+        endGroupEdit()
+        drawTool = ""
+        dragKind = ""
+        dragSpine = -1
+        dragMember = -1
+        banding = false
+        selectedSpine = -1
+        selectedLeader = 0
+        selectedSeg = -1
+        setSelection([])
+        if (_ctx)
+            _ctx.close()
+        bump()
+    }
+
     function ensureMemberOffsets(n) {
         var mem = n.members || []
         var i
@@ -2978,8 +2994,7 @@ Item {
                     _ed.deleteChip()
                 e.accepted = true
             } else if (e.key === Qt.Key_Escape) {
-                _ed.endGroupEdit()
-                _ed.drawTool = ""
+                _ed.cancelAllActions()
                 e.accepted = true
             } else if ((e.modifiers & Qt.ControlModifier) && e.key === Qt.Key_Z) {
                 if (e.modifiers & Qt.ShiftModifier)
@@ -3224,6 +3239,10 @@ Item {
         }
         onDoubleClicked: (m) => {
             var hit = _ed.hitTest(m.x, m.y)
+            if (!hit.kind || !hit.id) {
+                _ed.cancelAllActions()
+                return
+            }
             if (hit.kind === "line") {
                 _ed.selectedId = hit.id
                 _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
