@@ -86,10 +86,10 @@ class HardwareProfile(QtCore.QObject):
         payload["kind"] = "control.hardware"
         payload["device"] = name
         payload["space"] = "world"
-        payload["page"] = 16000
-        payload["pageW"] = 16000
-        payload["pageH"] = 9000
-        payload["worldRev"] = 1
+        payload["page"] = 32000
+        payload["pageW"] = 32000
+        payload["pageH"] = 18000
+        payload["worldRev"] = 2
         image = str(payload.get("image") or "")
         payload["image"] = self.toRelative(image)
         path.parent.mkdir(parents=True, exist_ok=True)
