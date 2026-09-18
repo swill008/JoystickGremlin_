@@ -905,18 +905,32 @@ Item {
         return item.mapToItem(_ed, x, y)
     }
 
-    function hotPt(n) {
-        if (!n || !face || !face.photoPt) {
-            return Qt.point(0, 0)
+    function pagePhotoRect() {
+        var s = spaceRect()
+        if (!_pagePhoto || _pagePhoto.paintedWidth < 8)
+            return s
+        var pw = _pagePhoto.paintedWidth
+        var ph = _pagePhoto.paintedHeight
+        return {
+            x: s.x + (s.w - pw) * 0.5,
+            y: s.y + (s.h - ph) * 0.5,
+            w: pw,
+            h: ph
         }
-        return face.photoPt(n.nx, n.ny)
+    }
+
+    function hotPt(n) {
+        if (!n)
+            return Qt.point(0, 0)
+        var p = pagePhotoRect()
+        return Qt.point(p.x + (n.nx || 0) * p.w, p.y + (n.ny || 0) * p.h)
     }
 
     function toPhoto(mx, my) {
-        if (!face || !face.toPhoto) {
+        var p = pagePhotoRect()
+        if (p.w < 1 || p.h < 1)
             return Qt.point(0, 0)
-        }
-        return face.toPhoto(mx, my)
+        return Qt.point((mx - p.x) / p.w, (my - p.y) / p.h)
     }
 
     function fromEnd(n) {
@@ -5404,6 +5418,27 @@ Item {
             _ed.seeded = true
             _ed.bump()
         }
+    }
+
+    Image {
+        id: _pagePhoto
+        z: 0
+        x: { _ed.tick; return _ed.spaceRect().x }
+        y: { _ed.tick; return _ed.spaceRect().y }
+        width: { _ed.tick; return _ed.spaceRect().w }
+        height: { _ed.tick; return _ed.spaceRect().h }
+        fillMode: Image.PreserveAspectFit
+        asynchronous: true
+        cache: true
+        source: {
+            _ed.tick
+            if (_ed.face && _ed.face.photoOverride && _ed.face.photoOverride.length)
+                return _ed.face.photoOverride
+            return Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+        }
+        onPaintedWidthChanged: _ed.bump()
+        onPaintedHeightChanged: _ed.bump()
+        onStatusChanged: if (status === Image.Ready) _ed.bump()
     }
 
     Canvas {
