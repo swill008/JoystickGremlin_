@@ -236,23 +236,9 @@ Item {
             var cell = tableCurrentCell(n)
             if (!cell || !cell.free)
                 return
-            var g1 = drawGeom(n)
+            var rc0 = tableCurrentRect(n)
             var tp = snapEnt(mx - dragOffX, my - dragOffY, altOff)
-            var cw = (cell.cw > 0) ? cell.cw * g1.w : 16
-            var ch = (cell.ch > 0) ? cell.ch * g1.h : 16
-            var nx = tp.x
-            var ny = tp.y
-            var pad = 4
-            if (nx < pad)
-                nx = pad
-            if (ny < pad)
-                ny = pad
-            if (nx + cw > width - pad)
-                nx = width - pad - cw
-            if (ny + ch > height - pad)
-                ny = height - pad - ch
-            cell.ox = (nx - g1.x) / Math.max(1, g1.w)
-            cell.oy = (ny - g1.y) / Math.max(1, g1.h)
+            writeTablePartRect(n, cell, tp.x, tp.y, rc0.w, rc0.h)
         } else if (dragKind === "draw") {
             if (isLocked(n))
                 return
@@ -275,6 +261,10 @@ Item {
                 n.fy = Math.max(0, Math.min(0.98, np.y / Math.max(1, height)))
             }
             syncOverlayChips(n)
+        } else if (dragKind.indexOf("cell-") === 0) {
+            if (!isTable(n) || isLocked(n) || !tableHasTarget())
+                return
+            applyTableCellResize(n, mx, my, dragKind.slice(5), altOff)
         } else if (dragKind.indexOf("draw-") === 0) {
             if (isLocked(n))
                 return
@@ -1767,19 +1757,86 @@ Item {
         return n.extras[i]
     }
 
+    function tablePartWorldRect(n, cell, fallback) {
+        if (cell && cell.independent && cell.efw > 0 && cell.efh > 0) {
+            return {
+                x: (cell.efx || 0) * width,
+                y: (cell.efy || 0) * height,
+                w: Math.max(8, cell.efw * width),
+                h: Math.max(8, cell.efh * height)
+            }
+        }
+        return fallback
+    }
+
+    function writeTablePartRect(n, cell, x, y, w, h) {
+        if (!cell)
+            return
+        w = Math.max(8, w)
+        h = Math.max(8, h)
+        var pad = 4
+        if (x < pad) x = pad
+        if (y < pad) y = pad
+        if (x + w > width - pad) x = Math.max(pad, width - pad - w)
+        if (y + h > height - pad) y = Math.max(pad, height - pad - h)
+        if (cell.independent) {
+            cell.efx = x / Math.max(1, width)
+            cell.efy = y / Math.max(1, height)
+            cell.efw = w / Math.max(1, width)
+            cell.efh = h / Math.max(1, height)
+            return
+        }
+        var g = drawGeom(n)
+        cell.ox = (x - g.x) / Math.max(1, g.w)
+        cell.oy = (y - g.y) / Math.max(1, g.h)
+        cell.cw = w / Math.max(1, g.w)
+        cell.ch = h / Math.max(1, g.h)
+    }
+
+    function setTableCellIndependent(on) {
+        var n = nodeAt(selectedId)
+        if (!isTable(n) || !tableHasTarget())
+            return
+        var cell = tableCurrentCell(n)
+        if (!cell)
+            return
+        var rc = tableCurrentRect(n)
+        if (on) {
+            cell.independent = true
+            cell.free = true
+            writeTablePartRect(n, cell, rc.x, rc.y, rc.w, rc.h)
+        } else {
+            cell.independent = false
+            delete cell.efx
+            delete cell.efy
+            delete cell.efw
+            delete cell.efh
+            writeTablePartRect(n, cell, rc.x, rc.y, rc.w, rc.h)
+        }
+        bump()
+    }
+
+    function tableCellHandlesOn(n) {
+        if (!interactive || !isTable(n) || isLocked(n) || !isSelected(n.id))
+            return false
+        if (tableExtra >= 0)
+            return true
+        var c = tableGetCell(n, tableRow, tableCol)
+        return !!(c && c.free)
+    }
+
     function tableExtraRect(n, i) {
         var e = tableExtraAt(n, i)
         var g = drawGeom(n)
         if (!e)
             return { x: g.x, y: g.y, w: 16, h: 16 }
-        var cw = (e.cw > 0) ? e.cw * g.w : 16
-        var ch = (e.ch > 0) ? e.ch * g.h : 16
-        return {
+        var follow = {
             x: g.x + (e.ox || 0) * g.w,
             y: g.y + (e.oy || 0) * g.h,
-            w: Math.max(8, cw),
-            h: Math.max(8, ch)
+            w: Math.max(8, (e.cw > 0) ? e.cw * g.w : 16),
+            h: Math.max(8, (e.ch > 0) ? e.ch * g.h : 16)
         }
+        return tablePartWorldRect(n, e, follow)
     }
 
     function tableCurrentCell(n) {
@@ -1808,11 +1865,13 @@ Item {
         if (!c || !c.free)
             return home
         var g = drawGeom(n)
-        var cw = (c.cw > 0) ? c.cw * g.w : home.w
-        var ch = (c.ch > 0) ? c.ch * g.h : home.h
-        var x = g.x + (c.ox || 0) * g.w
-        var y = g.y + (c.oy || 0) * g.h
-        return { x: x, y: y, w: Math.max(8, cw), h: Math.max(8, ch) }
+        var follow = {
+            x: g.x + (c.ox || 0) * g.w,
+            y: g.y + (c.oy || 0) * g.h,
+            w: Math.max(8, (c.cw > 0) ? c.cw * g.w : home.w),
+            h: Math.max(8, (c.ch > 0) ? c.ch * g.h : home.h)
+        }
+        return tablePartWorldRect(n, c, follow)
     }
 
     function tableCellAt(n, mx, my) {
@@ -1823,7 +1882,7 @@ Item {
         var ei
         for (ei = extras.length - 1; ei >= 0; ei--) {
             var er = tableExtraRect(n, ei)
-            if (mx >= er.x && mx <= er.x + er.w && my >= er.y && my <= er.y + er.h)
+            if (mx >= er.x - 8 && mx <= er.x + er.w + 8 && my >= er.y - 8 && my <= er.y + er.h + 8)
                 return { row: -1, col: -1, extra: ei }
         }
         var rows = n.rows.length
@@ -1914,20 +1973,23 @@ Item {
         var cell = tableCurrentCell(n)
         if (!cell)
             return
-        var cw = cell.cw > 0 ? cell.cw : 0.5
-        var ch = cell.ch > 0 ? cell.ch : 0.5
+        var rc = tableCurrentRect(n)
+        var g = drawGeom(n)
+        var x = rc.x
+        var y = rc.y
         if (where === "left")
-            cell.ox = 0
+            x = g.x
         else if (where === "right")
-            cell.ox = Math.max(0, 1 - cw)
+            x = g.x + g.w - rc.w
         else if (where === "center")
-            cell.ox = Math.max(0, 0.5 - cw * 0.5)
+            x = g.x + (g.w - rc.w) * 0.5
         else if (where === "top")
-            cell.oy = 0
+            y = g.y
         else if (where === "bottom")
-            cell.oy = Math.max(0, 1 - ch)
+            y = g.y + g.h - rc.h
         else if (where === "middle")
-            cell.oy = Math.max(0, 0.5 - ch * 0.5)
+            y = g.y + (g.h - rc.h) * 0.5
+        writeTablePartRect(n, cell, x, y, rc.w, rc.h)
         bump()
     }
 
@@ -1949,10 +2011,15 @@ Item {
         n.extras.push({
             text: "",
             free: true,
+            independent: true,
             ox: ox,
             oy: oy,
             cw: cw,
-            ch: ch
+            ch: ch,
+            efx: (src.x + 12) / Math.max(1, width),
+            efy: (src.y + 12) / Math.max(1, height),
+            efw: src.w / Math.max(1, width),
+            efh: src.h / Math.max(1, height)
         })
         tableExtra = n.extras.length - 1
         tableRow = -1
@@ -2427,6 +2494,34 @@ Item {
         return Qt.point(nearest(x, xs), nearest(y, ys))
     }
 
+    function applyTableCellResize(n, mx, my, handle, altOff) {
+        var cell = tableCurrentCell(n)
+        if (!cell)
+            return
+        cell.free = true
+        if (!cell.independent)
+            setTableCellIndependent(true)
+        cell = tableCurrentCell(n)
+        var p = snapEnt(mx, my, altOff)
+        var x0 = rzX0
+        var y0 = rzY0
+        var x1 = rzX1
+        var y1 = rzY1
+        if (handle.indexOf("n") >= 0)
+            y0 = p.y
+        if (handle.indexOf("s") >= 0)
+            y1 = p.y
+        if (handle.indexOf("w") >= 0)
+            x0 = p.x
+        if (handle.indexOf("e") >= 0)
+            x1 = p.x
+        var nx = Math.min(x0, x1)
+        var ny = Math.min(y0, y1)
+        var nw = Math.max(8, Math.abs(x1 - x0))
+        var nh = Math.max(8, Math.abs(y1 - y0))
+        writeTablePartRect(n, cell, nx, ny, nw, nh)
+    }
+
     function applyDrawResize(n, mx, my, handle, altOff) {
         if (!n)
             return
@@ -2765,7 +2860,21 @@ Item {
         var p = it.mapFromItem(_ed, mx, my)
         var w = it.width
         var h = it.height
-        if (interactive && isSelected(n.id) && !isLocked(n)) {
+        if (tableCellHandlesOn(n)) {
+            var cr = tableCurrentRect(n)
+            var chs = [
+                [cr.x, cr.y, "cell-nw"], [cr.x + cr.w, cr.y, "cell-ne"],
+                [cr.x, cr.y + cr.h, "cell-sw"], [cr.x + cr.w, cr.y + cr.h, "cell-se"],
+                [cr.x + cr.w * 0.5, cr.y, "cell-n"], [cr.x + cr.w * 0.5, cr.y + cr.h, "cell-s"],
+                [cr.x, cr.y + cr.h * 0.5, "cell-w"], [cr.x + cr.w, cr.y + cr.h * 0.5, "cell-e"]
+            ]
+            var ct
+            for (ct = 0; ct < chs.length; ct++) {
+                if (Math.hypot(mx - chs[ct][0], my - chs[ct][1]) < 8)
+                    return chs[ct][2]
+            }
+        }
+        if (interactive && isSelected(n.id) && !isLocked(n) && !tableCellHandlesOn(n)) {
             var hs = [
                 [0, 0, "nw"], [w, 0, "ne"], [0, h, "sw"], [w, h, "se"],
                 [w * 0.5, 0, "n"], [w * 0.5, h, "s"], [0, h * 0.5, "w"], [w, h * 0.5, "e"]
@@ -4010,6 +4119,33 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
+                        Repeater {
+                            model: {
+                                _ed.tick
+                                var n = node
+                                var on = _ed.interactive && n && _ed.isSelected(n.id) && !_ed.isLocked(n)
+                                on = on && _ed.tableExtra < 0 && _ed.tableRow === row && _ed.tableCol === col
+                                on = on && _ed.tableCellIsFree(n, row, col)
+                                return on ? 8 : 0
+                            }
+                            Rectangle {
+                                required property int index
+                                width: 8
+                                height: 8
+                                radius: 1
+                                z: 6
+                                color: "#FBBF24"
+                                border.color: "#18181B"
+                                x: {
+                                    var xs = [0, parent.width, 0, parent.width, parent.width * 0.5, parent.width * 0.5, 0, parent.width]
+                                    return xs[index] - 4
+                                }
+                                y: {
+                                    var ys = [0, 0, parent.height, parent.height, 0, parent.height, parent.height * 0.5, parent.height * 0.5]
+                                    return ys[index] - 4
+                                }
+                            }
+                        }
                     }
                 }
                 Repeater {
@@ -4080,6 +4216,29 @@ Item {
                             wrapMode: Text.NoWrap
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
+                        }
+                        Repeater {
+                            model: {
+                                _ed.tick
+                                return (_ed.interactive && node && _ed.isSelected(node.id) && !_ed.isLocked(node) && _ed.tableExtra === index) ? 8 : 0
+                            }
+                            Rectangle {
+                                required property int index
+                                width: 8
+                                height: 8
+                                radius: 1
+                                z: 6
+                                color: "#FBBF24"
+                                border.color: "#18181B"
+                                x: {
+                                    var xs = [0, parent.width, 0, parent.width, parent.width * 0.5, parent.width * 0.5, 0, parent.width]
+                                    return xs[index] - 4
+                                }
+                                y: {
+                                    var ys = [0, 0, parent.height, parent.height, 0, parent.height, parent.height * 0.5, parent.height * 0.5]
+                                    return ys[index] - 4
+                                }
+                            }
                         }
                     }
                 }
@@ -4163,7 +4322,7 @@ Item {
                 }
             }
             Repeater {
-                model: (_ed.interactive && node && _ed.isSelected(node.id) && !_ed.isLocked(node)) ? 8 : 0
+                model: (_ed.interactive && node && _ed.isSelected(node.id) && !_ed.isLocked(node) && !_ed.tableCellHandlesOn(node)) ? 8 : 0
                 Rectangle {
                     required property int index
                     width: 8
@@ -4584,7 +4743,14 @@ Item {
                     _ed.bump()
                     return
                 }
-                if (hit.handle && hit.handle !== "body") {
+                if (hit.handle && hit.handle.indexOf("cell-") === 0) {
+                    var crc = _ed.tableCurrentRect(dn)
+                    _ed.dragKind = hit.handle
+                    _ed.rzX0 = crc.x
+                    _ed.rzY0 = crc.y
+                    _ed.rzX1 = crc.x + crc.w
+                    _ed.rzY1 = crc.y + crc.h
+                } else if (hit.handle && hit.handle !== "body") {
                     _ed.dragKind = "draw-" + hit.handle
                     _ed.rzX0 = g.x
                     _ed.rzY0 = g.y
@@ -5103,6 +5269,25 @@ Item {
                 return !!(c && c.free)
             }
             onTriggered: _ed.toggleTableCellFree()
+        }
+        MenuItem {
+            text: "Independent of table"
+            checkable: true
+            enabled: {
+                _ed.tick
+                return _ed.tableHasTarget()
+            }
+            checked: {
+                _ed.tick
+                var n = _ed.nodeAt(_ed.selectedId)
+                var c = _ed.tableCurrentCell(n)
+                return !!(c && c.independent)
+            }
+            onTriggered: {
+                var n = _ed.nodeAt(_ed.selectedId)
+                var c = _ed.tableCurrentCell(n)
+                _ed.setTableCellIndependent(!(c && c.independent))
+            }
         }
         MenuItem {
             text: "Spawn empty cell"
