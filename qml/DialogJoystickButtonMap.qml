@@ -470,7 +470,7 @@ Window {
                 },
                 {
                     h: "Chips",
-                    b: "Left-drag moves the chip. The hotspot (dot on the photo) is the hardware contact — drag it separately.\nDefault label is the hardware id: Button 10, Axis 1, Hat 1. Friendly names are optional — Rename to set one. Clear the friendly name to show the hardware id again. Plus / card / mini do not replace that with Up/Left/Push unless you type it.\nRight-click → Chip:\n  Rename — optional friendly label. Empty falls back to Button N / Axis N / Hat N.\n  Font size.\n  Chip size, Round / Square, Filled / Hollow.\n  Colors — Fill, Outline, Text, Pressed fill / outline / text. Color… opens the HSV picker.\n  Highlight on press — live fill when the stick is down.\n  Reset this cell — drop member style overrides (Edit group only).\n  Delete chip — back to the reservoir.\nHotspot (photo input) and Leader End (wire stop) are their own first-level menus, not under Chip.\nDelete / Backspace on a single chip also returns it to the pool.\nYellow ring is selection."
+                    b: "Left-drag moves the chip. The hotspot (dot on the photo) is the hardware contact — drag it separately.\nDefault label is the hardware id: Button 10, Axis 1, Hat 1. Hover a chip for a tooltip with that hardware id. Friendly names are optional — Rename to set one. Clear the friendly name to show the hardware id again. Plus / card / mini do not replace that with Up/Left/Push unless you type it.\nRight-click → Chip:\n  Rename — optional friendly label. Empty falls back to Button N / Axis N / Hat N.\n  Font size.\n  Chip size, Round / Square, Filled / Hollow.\n  Colors — Fill, Outline, Text, Pressed fill / outline / text. Color… opens the HSV picker.\n  Highlight on press — live fill when the stick is down.\n  Reset this cell — drop member style overrides (Edit group only).\n  Delete chip — back to the reservoir.\nHotspot (photo input) and Leader End (wire stop) are their own first-level menus, not under Chip.\nDelete / Backspace on a single chip also returns it to the pool.\nYellow ring is selection."
                 },
                 {
                     h: "Groups",
@@ -1385,7 +1385,17 @@ Window {
                                             color: lit ? "#BBF7D0" : "#E4E4E7"
                                             font.pixelSize: 11
                                         }
+                                        ToolTip.visible: !_buttonMap.poolDrag && _poolChipHover.containsMouse
+                                        ToolTip.delay: 400
+                                        ToolTip.timeout: 4000
+                                        ToolTip.text: {
+                                            var e = _ed()
+                                            if (!e || !modelData)
+                                                return ""
+                                            return e.hardwareLabel(modelData.kind, modelData.hwId)
+                                        }
                                         MouseArea {
+                                            id: _poolChipHover
                                             anchors.fill: parent
                                             z: 2
                                             hoverEnabled: true
