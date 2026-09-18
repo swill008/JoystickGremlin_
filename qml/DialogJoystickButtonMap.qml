@@ -331,22 +331,46 @@ Window {
         discardEdit()
     }
 
+    function requestLeaveForAppQuit() {
+        show()
+        raise()
+        requestActivate()
+        if (_allowClose || !editing || !isDirty()) {
+            _allowClose = true
+            close()
+            Qt.quit()
+            return
+        }
+        _leaveDlg.kind = "appquit"
+        _leaveDlg.open()
+    }
+
     function confirmLeaveSave() {
         saveEdit()
         _leaveDlg.close()
-        if (!editing && _leaveDlg.kind === "close") {
+        if (!saveOk)
+            return
+        if (_leaveDlg.kind === "close") {
+            if (!editing) {
+                _allowClose = true
+                close()
+            }
+        } else if (_leaveDlg.kind === "appquit") {
             _allowClose = true
             close()
+            Qt.quit()
         }
     }
 
     function confirmLeaveDiscard() {
         discardEdit()
         _leaveDlg.close()
-        if (_leaveDlg.kind === "close") {
+        if (_leaveDlg.kind === "close" || _leaveDlg.kind === "appquit") {
             _allowClose = true
             close()
         }
+        if (_leaveDlg.kind === "appquit")
+            Qt.quit()
     }
 
     function currentNode() {
