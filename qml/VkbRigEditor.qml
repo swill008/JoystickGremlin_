@@ -3812,8 +3812,6 @@ Item {
             text: "Convert spine"
             visible: _ed.ctxIsLeader()
             height: visible ? implicitHeight : 0
-            checkable: true
-            checked: _ed.ctxSpineCurved()
             enabled: _ed.ctxHasSelectedSpine()
             onTriggered: _ed.convertSelectedSpine()
         }
