@@ -2655,10 +2655,15 @@ Item {
             nw = Math.max(tableMinW(n), nw)
             nh = Math.max(tableMinH(n), nh)
         }
+        var oldH = (n.fh || 0) * Math.max(1, height)
         n.fx = nx / Math.max(1, width)
         n.fy = ny / Math.max(1, height)
         n.fw = nw / Math.max(1, width)
         n.fh = nh / Math.max(1, height)
+        if (isText(n) && n.scaleFont && oldH > 1) {
+            var fs = n.fontSize > 0 ? n.fontSize : 12
+            n.fontSize = Math.max(6, Math.min(72, Math.round(fs * (nh / oldH))))
+        }
     }
 
     function _drawStyle() {
@@ -2751,6 +2756,8 @@ Item {
             st.valign = "middle"
             st.fillOpacity = 1
             st.borderOpacity = 1
+            st.wrap = true
+            st.scaleFont = false
             st.zLayer = 3
             if (w < 48)
                 st.fw = 48 / Math.max(1, width)
@@ -4761,7 +4768,10 @@ Item {
                     }
                     font.pixelSize: { _ed.tick; return (node && node.fontSize) ? node.fontSize : 12 }
                     font.bold: { _ed.tick; return !!(node && node.bold) }
-                    wrapMode: Text.WordWrap
+                    wrapMode: {
+                        _ed.tick
+                        return (node && node.wrap === false) ? Text.NoWrap : Text.WordWrap
+                    }
                     elide: Text.ElideRight
                     horizontalAlignment: {
                         _ed.tick
@@ -6252,6 +6262,32 @@ Item {
             onTriggered: {
                 var n = _ed.nodeAt(_ed.selectedId)
                 _ed.applyField("bold", !(n && n.bold))
+            }
+        }
+        MenuItem {
+            text: "Word wrap"
+            checkable: true
+            checked: {
+                _ed.tick
+                var n = _ed.nodeAt(_ed.selectedId)
+                return !n || n.wrap !== false
+            }
+            onTriggered: {
+                var n = _ed.nodeAt(_ed.selectedId)
+                _ed.applyField("wrap", !(n && n.wrap !== false))
+            }
+        }
+        MenuItem {
+            text: "Scale font with box"
+            checkable: true
+            checked: {
+                _ed.tick
+                var n = _ed.nodeAt(_ed.selectedId)
+                return !!(n && n.scaleFont)
+            }
+            onTriggered: {
+                var n = _ed.nodeAt(_ed.selectedId)
+                _ed.applyField("scaleFont", !(n && n.scaleFont))
             }
         }
         MenuSeparator {}
