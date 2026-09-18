@@ -1070,6 +1070,18 @@ Item {
         return (n && n.hotSize) ? n.hotSize : 9
     }
 
+    function showLeaderHandles(n, li) {
+        if (!interactive || !n || !isSelected(n.id))
+            return false
+        if (dragKind === "spine" && (dragLeader === li || selectedLeader === li))
+            return true
+        if (dragKind === "from" || dragKind === "to")
+            return selectedLeader === li
+        if (selectedLeader !== li)
+            return false
+        return selectedSpine >= 0 || selectedSeg >= 0
+    }
+
     function drawMark(ctx, x, y, size, shape, fill, color) {
         var r = Math.max(2, size * 0.5)
         ctx.beginPath()
@@ -1296,6 +1308,8 @@ Item {
             n = list[i]
             var lss = leaderList(n)
             for (var lk = 0; lk < lss.length; lk++) {
+                if (!showLeaderHandles(n, lk))
+                    continue
                 var spines = lss[lk].spines || []
                 for (var s = 0; s < spines.length; s++) {
                     var sx = spines[s].fx * width
@@ -3039,12 +3053,14 @@ Item {
                 if (_ed.interactive) {
                     for (li = 0; li < ls.length; li++) {
                         var L2 = ls[li]
-                        var leadSel2 = sel && _ed.selectedLeader === li
+                        if (!_ed.showLeaderHandles(n, li))
+                            continue
+                        var leadSel2 = true
                         var a = _ed.endPt(L2.from)
-                        _ed.drawMark(ctx, a.x, a.y, 8, "round", "filled", leadSel2 ? "#38BDF8" : "#64748B")
+                        _ed.drawMark(ctx, a.x, a.y, 8, "round", "filled", "#38BDF8")
                         if (L2.to && L2.to.type !== "hot") {
                             var tp = _ed.endPt(L2.to)
-                            _ed.drawMark(ctx, tp.x, tp.y, 8, "round", "filled", leadSel2 ? "#FB923C" : "#94A3B8")
+                            _ed.drawMark(ctx, tp.x, tp.y, 8, "round", "filled", "#FB923C")
                         }
                         var spines = L2.spines || []
                         for (var s = 0; s < spines.length; s++) {
@@ -3052,7 +3068,7 @@ Item {
                             var sy = spines[s].fy * height
                             ctx.beginPath()
                             ctx.arc(sx, sy, 5, 0, 6.3)
-                            ctx.fillStyle = (leadSel2 && _ed.selectedSpine === s) ? "#F59E0B" : "#94A3B8"
+                            ctx.fillStyle = (_ed.selectedSpine === s || (_ed.dragKind === "spine" && _ed.dragSpine === s)) ? "#F59E0B" : "#94A3B8"
                             ctx.fill()
                         }
                     }
@@ -3239,6 +3255,7 @@ Item {
                     _ed.setSelection([hit.id])
                 _ed.selectedId = hit.id
                 _ed.selectedSpine = -1
+                _ed.selectedSeg = -1
                 _ed.dragKind = "chip"
                 _ed.dragSpine = -1
                 var n2 = _ed.nodeAt(hit.id)
@@ -3255,8 +3272,10 @@ Item {
                 _ed.selectedId = hit.id
                 _ed.selectedSpine = hit.spine
                 _ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
-                if (hit.kind === "spine")
+                if (hit.kind === "spine") {
                     _ed.selectedSeg = hit.spine + 1
+                    _ed.dragLeader = (hit.leader !== undefined) ? hit.leader : 0
+                }
                 _ed.dragKind = hit.kind
                 _ed.dragSpine = hit.spine
                 _ed.bump()
