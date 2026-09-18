@@ -1686,7 +1686,7 @@ Item {
         if (!n.extras)
             n.extras = []
         if (!n.rows || !n.rows.length)
-            n.rows = [emptyTableRow(cols), emptyTableRow(cols)]
+            n.rows = [emptyTableRow(cols)]
         var r
         for (r = 0; r < n.rows.length; r++) {
             if (!n.rows[r])
@@ -1701,11 +1701,11 @@ Item {
     }
 
     function tableMinW(n) {
-        return 16
+        return 8
     }
 
     function tableMinH(n) {
-        return 16
+        return 8
     }
 
     function tableHomeRect(n, row, col) {
@@ -2531,7 +2531,7 @@ Item {
             st.cols = 2
             st.idCol = false
             st.fontSize = 10
-            st.rows = [emptyTableRow(2), emptyTableRow(2)]
+            st.rows = [emptyTableRow(2)]
             st.zLayer = 2
             var minW = tableMinW(st)
             var minH = tableMinH(st)
@@ -4991,7 +4991,7 @@ Item {
             if (_ed.dragKind === "tablecell")
                 return "Dragging free cell. Handles still resize the table."
             if (_ed.drawTool === "table")
-                return "Draw table — drag a box. Blank 2×2. Esc cancels."
+                return "Draw table — drag a box. Blank 1×2. Esc cancels."
             if (_ed.drawTool.length)
                 return "Draw " + _ed.drawTool + " — drag on empty. Esc cancels."
             if (_ed.groupEditId.length) {
