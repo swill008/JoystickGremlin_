@@ -41,6 +41,7 @@ Item {
     property int tableRow: -1
     property int tableCol: -1
     property int tableExtra: -1
+    property string packWarn: ""
     property string renameDraft: ""
     property string armRenameId: ""
     property int armRenameMember: -1
@@ -217,6 +218,7 @@ Item {
                     continue
                 q.chipFx = Math.max(0.01, Math.min(0.92, q.chipFx + dFx))
                 q.chipFy = Math.max(0.01, Math.min(0.92, q.chipFy + dFy))
+                refreshChipPack(q)
             }
         } else if (dragKind === "spine" && dragSpine >= 0) {
             var Ls = currentLeader(n)
@@ -260,6 +262,7 @@ Item {
                 n.fx = Math.max(0, Math.min(0.98, np.x / Math.max(1, width)))
                 n.fy = Math.max(0, Math.min(0.98, np.y / Math.max(1, height)))
             }
+            followTablePacked(n)
             syncOverlayChips(n)
         } else if (dragKind.indexOf("cell-") === 0) {
             if (!isTable(n) || isLocked(n) || !tableHasTarget())
@@ -269,6 +272,7 @@ Item {
             if (isLocked(n))
                 return
             applyDrawResize(n, mx, my, dragKind.slice(5), altOff)
+            followTablePacked(n)
             syncOverlayChips(n)
         } else if (dragKind === "member" && n.members && dragMember >= 0 && dragMember < n.members.length) {
             var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
@@ -1631,6 +1635,10 @@ Item {
         var idx = nodeIndex(nid)
         if (idx < 0)
             return false
+        if (tableIsPacked(n))
+            detachTablePacked(n)
+        else
+            detachChipFromTable(n)
         var list = nodes || []
         list.splice(idx, 1)
         var keep = []
@@ -2699,9 +2707,11 @@ Item {
                     n.fx = Math.max(0, Math.min(0.98, (n.fx || 0) + dx))
                     n.fy = Math.max(0, Math.min(0.98, (n.fy || 0) + dy))
                 }
+                followTablePacked(n)
             } else {
                 n.chipFx = Math.max(0.01, Math.min(0.92, (n.chipFx || 0) + dx))
                 n.chipFy = Math.max(0.01, Math.min(0.92, (n.chipFy || 0) + dy))
+                refreshChipPack(n)
             }
         }
         bump()
@@ -3609,12 +3619,86 @@ Item {
         return -1
     }
 
+    function attachChipToTable(table, chip) {
+        if (!table || !chip || isDraw(chip))
+            return
+        if (!table.packed)
+            table.packed = []
+        if (table.packed.indexOf(chip.id) < 0)
+            table.packed.push(chip.id)
+        chip.packId = table.id
+        var fw = table.fw > 0 ? table.fw : 0.01
+        var fh = table.fh > 0 ? table.fh : 0.01
+        chip.packUx = ((chip.chipFx || 0) - (table.fx || 0)) / fw
+        chip.packUy = ((chip.chipFy || 0) - (table.fy || 0)) / fh
+    }
+
+    function followTablePacked(table) {
+        if (!isTable(table) || !table.packed)
+            return
+        var ids = table.packed
+        var i
+        for (i = 0; i < ids.length; i++) {
+            var q = nodeAt(ids[i])
+            if (!q || isDraw(q))
+                continue
+            q.chipFx = (table.fx || 0) + (q.packUx || 0) * (table.fw || 0)
+            q.chipFy = (table.fy || 0) + (q.packUy || 0) * (table.fh || 0)
+        }
+    }
+
+    function refreshChipPack(chip) {
+        if (!chip || !chip.packId)
+            return
+        var table = nodeAt(chip.packId)
+        if (!isTable(table))
+            return
+        attachChipToTable(table, chip)
+    }
+
+    function detachChipFromTable(chip) {
+        if (!chip || !chip.packId)
+            return
+        var table = nodeAt(chip.packId)
+        if (isTable(table) && table.packed) {
+            var at = table.packed.indexOf(chip.id)
+            if (at >= 0)
+                table.packed.splice(at, 1)
+        }
+        delete chip.packId
+        delete chip.packUx
+        delete chip.packUy
+    }
+
+    function detachTablePacked(table) {
+        if (!table || !table.packed)
+            return
+        var ids = table.packed.slice()
+        var i
+        for (i = 0; i < ids.length; i++) {
+            var q = nodeAt(ids[i])
+            if (q) {
+                delete q.packId
+                delete q.packUx
+                delete q.packUy
+            }
+        }
+        table.packed = []
+    }
+
+    function tableIsPacked(n) {
+        return !!(isTable(n) && n.packed && n.packed.length)
+    }
+
     function canGroup() {
         return (selectedIds || []).length >= 2
     }
 
     function canUngroup() {
-        return isGroup(nodeAt(selectedId)) && (selectedIds || []).length <= 1
+        var n = nodeAt(selectedId)
+        if (tableIsPacked(n))
+            return true
+        return isGroup(n) && (selectedIds || []).length <= 1
     }
 
     function _uid(prefix) {
@@ -3661,10 +3745,43 @@ Item {
         var ids = selectedIds || []
         if (ids.length < 2)
             return
-        var parts = []
-        var chipIds = []
+        packWarn = ""
+        var tables = []
+        var chipNodes = []
         var i
         var n
+        for (i = 0; i < ids.length; i++) {
+            n = nodeAt(ids[i])
+            if (!n)
+                continue
+            if (isTable(n))
+                tables.push(n)
+            else if (!isDraw(n))
+                chipNodes.push(n)
+        }
+        if (tables.length > 1) {
+            packWarn = "Group one table at a time."
+            bump()
+            return
+        }
+        if (tables.length === 1) {
+            if (!chipNodes.length) {
+                packWarn = "Select chips with the table to pack."
+                bump()
+                return
+            }
+            var table = tables[0]
+            for (i = 0; i < chipNodes.length; i++)
+                attachChipToTable(table, chipNodes[i])
+            var keep = [table.id]
+            for (i = 0; i < chipNodes.length; i++)
+                keep.push(chipNodes[i].id)
+            setSelection(keep)
+            bump()
+            return
+        }
+        var parts = []
+        var chipIds = []
         for (i = 0; i < ids.length; i++) {
             var chunkN = nodeAt(ids[i])
             if (!chunkN || isDraw(chunkN))
@@ -3754,6 +3871,11 @@ Item {
 
     function ungroupSelection() {
         var n = nodeAt(selectedId)
+        if (tableIsPacked(n)) {
+            detachTablePacked(n)
+            bump()
+            return
+        }
         if (!isGroup(n))
             return
         var mem = n.members || []
@@ -5163,6 +5285,8 @@ Item {
         color: "#A1A1AA"
         font.pixelSize: 10
         text: {
+            if (_ed.packWarn.length)
+                return _ed.packWarn
             if (_ed.dragKind === "tablecell")
                 return "Dragging free cell. Handles still resize the table."
             if (_ed.drawTool === "table")
