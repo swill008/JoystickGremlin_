@@ -274,12 +274,17 @@ Window {
             ui: uiBag(),
             nodes: nodes
         }
-        if (_hw.save(targetName, JSON.stringify(doc))) {
-            liveNodes = JSON.parse(JSON.stringify(nodes))
-            liveImage = image
-            applyImage(liveImage)
-            hydrateOverlays(liveNodes)
-        }
+        var payload = JSON.stringify(doc)
+        if (!_hw.save(targetName, payload))
+            return
+        var check = parseDoc(_hw.load(targetName))
+        if (!check || !check.nodes)
+            return
+        liveNodes = JSON.parse(JSON.stringify(nodes))
+        liveImage = image
+        applyImage(liveImage)
+        hydrateOverlays(liveNodes)
+        _savedPop.open()
     }
 
     function editorNodesNow() {
@@ -441,7 +446,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nImport overlay… — add a PNG/JPEG plate (5-way plus, etc.) on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nChoose background… — pick a photo under the map.\nImport overlay… — add a PNG/JPEG plate (5-way plus, etc.) on top of the photo. Transform, lock, plant snap points, drop chips onto them.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
                 },
                 {
                     h: "Edit menu",
@@ -868,6 +873,30 @@ Window {
             var e = _ed()
             if (rel.length && e)
                 e.addOverlay(rel, _hw.imageUrl(rel))
+        }
+    }
+
+    Popup {
+        id: _savedPop
+        modal: true
+        dim: false
+        focus: true
+        padding: 16
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        parent: Overlay.overlay
+        x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : Math.round((_buttonMap.width - width) / 2)
+        y: Overlay.overlay ? Math.round((Overlay.overlay.height - height) / 2) : Math.round((_buttonMap.height - height) / 2)
+        background: Rectangle {
+            color: "#18181B"
+            border.color: "#3F3F46"
+            border.width: 1
+            radius: 4
+        }
+        contentItem: Text {
+            text: "Mapping saved"
+            color: "#E4E4E7"
+            font.pixelSize: 14
+            horizontalAlignment: Text.AlignHCenter
         }
     }
 
