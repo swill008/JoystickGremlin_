@@ -229,10 +229,16 @@ Item {
         } else if (dragKind.indexOf("draw-") === 0) {
             applyDrawResize(n, mx, my, dragKind.slice(5), altOff)
         } else if (dragKind === "member" && n.members && dragMember >= 0 && dragMember < n.members.length) {
-            bakeAlignToFree(n)
-            var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
-            n.members[dragMember].ox = mp.x / Math.max(1, width) - n.chipFx
-            n.members[dragMember].oy = mp.y / Math.max(1, height) - n.chipFy
+            if (themeLayout(n)) {
+                var gp = snapPos(mx - dragOffX, my - dragOffY, altOff)
+                n.chipFx = Math.max(0.01, Math.min(0.92, gp.x / Math.max(1, width)))
+                n.chipFy = Math.max(0.01, Math.min(0.92, gp.y / Math.max(1, height)))
+            } else {
+                bakeAlignToFree(n)
+                var mp = snapPos(mx - dragOffX, my - dragOffY, altOff)
+                n.members[dragMember].ox = mp.x / Math.max(1, width) - n.chipFx
+                n.members[dragMember].oy = mp.y / Math.max(1, height) - n.chipFy
+            }
         }
         repaint()
     }
@@ -903,9 +909,9 @@ Item {
 
     function memberLocalX(n, mem) {
         if (themeLayout(n)) {
-            var cell = themeCell(n)
-            var w = chipWGuess(n, mem)
-            return plusCell(mem).c * (cell.w + cell.gap) + Math.max(0, (cell.w - w) * 0.5)
+            var g = themeGeom(n)
+            var r = fiveWayRole(mem)
+            return (g[r] || g.center).x
         }
         var ew = Math.max(1, _ed.width)
         var a = groupAlignH(n)
@@ -923,8 +929,9 @@ Item {
     function memberLocalY(n, mem) {
         var cap = captionH(n)
         if (themeLayout(n)) {
-            var cell = themeCell(n)
-            return cap + plusCell(mem).r * (cell.h + cell.gap)
+            var g = themeGeom(n)
+            var r = fiveWayRole(mem)
+            return (g[r] || g.center).y
         }
         if (groupAlignH(n) !== "free")
             return cap + memberIndexOf(n, mem) * stackPitch(n)
@@ -962,10 +969,8 @@ Item {
         var mem = (n && n.members) ? n.members : []
         if (!mem.length)
             return 40
-        if (themeLayout(n)) {
-            var cell = themeCell(n)
-            return cell.w * 3 + cell.gap * 2
-        }
+        if (themeLayout(n))
+            return themeGeom(n).w
         if (groupAlignH(n) !== "free") {
             var maxw = 8
             for (var i = 0; i < mem.length; i++)
@@ -984,10 +989,8 @@ Item {
         var mem = (n && n.members) ? n.members : []
         if (!mem.length)
             return 20
-        if (themeLayout(n)) {
-            var cell = themeCell(n)
-            return captionH(n) + cell.h * 3 + cell.gap * 2
-        }
+        if (themeLayout(n))
+            return themeGeom(n).h
         if (groupAlignH(n) !== "free")
             return Math.max(8, captionH(n) + mem.length * stackPitch(n) - 2)
         var eh = Math.max(1, _ed.height)
@@ -2026,7 +2029,27 @@ Item {
         }
     }
 
+    function roleWord(r) {
+        if (r === "up") return "Up"
+        if (r === "down") return "Down"
+        if (r === "left") return "Left"
+        if (r === "right") return "Right"
+        if (r === "center") return "Push"
+        return ""
+    }
+
+    function memberHasCustomName(n, mem) {
+        if (!mem || !mem.friendly || !String(mem.friendly).length)
+            return false
+        var lk = (n && n.kind === "axis_stack") ? "axis" : "btn"
+        return String(mem.friendly) !== defaultFriendly(lk, mem.hwId)
+    }
+
     function memberLabel(n, mem) {
+        if (!mem)
+            return friendlyOf(n, null)
+        if (memberHasCustomName(n, mem))
+            return String(mem.friendly)
         var f = fiveWayFormat(n)
         var r = fiveWayRole(mem)
         if (f === "mini") {
@@ -2036,37 +2059,70 @@ Item {
             if (r === "right") return "▶"
             if (r === "center") return "●"
         }
-        if (f === "plus" || f === "card" || f === "radial") {
-            if (r === "up") return "Up"
-            if (r === "down") return "Down"
-            if (r === "left") return "Left"
-            if (r === "right") return "Right"
-            if (r === "center") return "Push"
-        }
+        var rw = roleWord(r)
+        if ((f === "plus" || f === "card" || f === "radial") && rw)
+            return rw
         return friendlyOf(n, mem)
     }
 
-    function plusCell(mem) {
-        var r = fiveWayRole(mem)
-        if (r === "up") return { c: 1, r: 0 }
-        if (r === "left") return { c: 0, r: 1 }
-        if (r === "right") return { c: 2, r: 1 }
-        if (r === "down") return { c: 1, r: 2 }
-        return { c: 1, r: 1 }
+    function memByRole(n, role) {
+        var mem = (n && n.members) ? n.members : []
+        var i
+        for (i = 0; i < mem.length; i++) {
+            if (fiveWayRole(mem[i]) === role)
+                return mem[i]
+        }
+        return null
+    }
+
+    function themeGap(n) {
+        return Math.max(8, 4 * 2 + 2)
+    }
+
+    function themeGeom(n) {
+        var h = chipH(n)
+        function bw(role) {
+            var m = memByRole(n, role)
+            return m ? chipWGuess(n, m) : Math.max(18, h)
+        }
+        var wu = bw("up")
+        var wl = bw("left")
+        var wc = bw("center")
+        var wr = bw("right")
+        var wd = bw("down")
+        var G = themeGap(n)
+        var cap = captionH(n)
+        var leftX = 0
+        var pushX = wl + G
+        var rightX = pushX + wc + G
+        var pushC = pushX + wc * 0.5
+        var upX = pushC - wu * 0.5
+        var downX = pushC - wd * 0.5
+        var minx = Math.min(0, upX, downX)
+        var shift = minx < 0 ? -minx : 0
+        leftX += shift
+        pushX += shift
+        rightX += shift
+        upX += shift
+        downX += shift
+        var upY = cap
+        var rowY = cap + h + G
+        var downY = rowY + h + G
+        var maxx = Math.max(leftX + wl, pushX + wc, rightX + wr, upX + wu, downX + wd)
+        return {
+            up: { x: upX, y: upY },
+            left: { x: leftX, y: rowY },
+            center: { x: pushX, y: rowY },
+            right: { x: rightX, y: rowY },
+            down: { x: downX, y: downY },
+            w: Math.max(8, maxx),
+            h: downY + h
+        }
     }
 
     function themeCell(n) {
-        var mem = (n && n.members) ? n.members : []
-        var h = chipH(n)
-        var w = 8
-        var i
-        for (i = 0; i < mem.length; i++)
-            w = Math.max(w, chipWGuess(n, mem[i]))
-        if (fiveWayFormat(n) === "mini")
-            w = Math.max(w, Math.max(18, ((n && n.fontSize) || 10) + 10))
-        var ring = 4
-        var gap = Math.max(8, ring * 2 + 2)
-        return { w: w, h: h, gap: gap }
+        var g = themeGeom(n)
+        return { w: g.w, h: chipH(n), gap: themeGap(n) }
     }
 
     function applyFiveWayFormat(fmt) {
