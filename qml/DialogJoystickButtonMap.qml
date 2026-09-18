@@ -433,7 +433,7 @@ Window {
                 },
                 {
                     h: "Chips",
-                    b: "Left-drag moves the chip. The hotspot (dot on the photo) is the hardware contact — drag it separately.\nRight-click → Chip:\n  Rename — friendly label. Empty friendly name falls back to the hardware / system name.\n  Font size.\n  Chip size, Round / Square, Filled / Hollow.\n  Colors — Fill, Outline, Text, Pressed fill / outline / text. Color… opens the HSV picker.\n  Leader… and Hotspot… colors from the same picker.\n  Hotspot size, Round / Square, Filled / Hollow.\n  Highlight on press — live fill when the stick is down.\n  Reset this cell — drop member style overrides (Edit group only).\n  Delete chip — back to the reservoir.\nDelete / Backspace on a single chip also returns it to the pool.\nYellow ring is selection."
+                    b: "Left-drag moves the chip. The hotspot (dot on the photo) is the hardware contact — drag it separately.\nRight-click → Chip:\n  Rename — friendly label. Empty friendly name falls back to the hardware / system name.\n  Font size.\n  Chip size, Round / Square, Filled / Hollow.\n  Colors — Fill, Outline, Text, Pressed fill / outline / text. Color… opens the HSV picker.\n  Highlight on press — live fill when the stick is down.\n  Reset this cell — drop member style overrides (Edit group only).\n  Delete chip — back to the reservoir.\nHotspot (photo input) and Leader End (wire stop) are their own first-level menus, not under Chip.\nDelete / Backspace on a single chip also returns it to the pool.\nYellow ring is selection."
                 },
                 {
                     h: "Groups",
@@ -445,7 +445,15 @@ Window {
                 },
                 {
                     h: "Context menu",
-                    b: "The first screen follows the click target.\nUndo / Redo always.\nGroup click — Clear Format under Redo when the group has a theme or cell overrides.\nLeader or handle — Add spine, Convert spine, Delete selected spine, Clear spines, then the family drawers.\nChip — Chip / Group / Format / Align / Leader / Draw.\nEmpty photo — Draw only.\nGray items are gated: no selection, not a group, no handle, or no spines."
+                    b: "The first screen follows the click target.\nUndo / Redo always.\nGroup click — Clear Format under Redo when the group has a theme or cell overrides.\nLeader or handle — Add spine, Convert spine, Delete selected spine, Clear spines, then the family drawers.\nChip / group — Chip, Hotspot, Leader End, Group, Format, Align, Leader, Draw.\nEmpty photo — Draw only.\nGray items are gated: no selection, not a group, no handle, or no spines."
+                },
+                {
+                    h: "Hotspot",
+                    b: "Hotspot is the input on the photo — the control you press — not the chip label.\nRight-click → Hotspot: Size, Round / Square, Filled / Hollow, Color… (HSV picker).\nThe yellow/white dot on the rig photo is this object."
+                },
+                {
+                    h: "Leader End",
+                    b: "Leader End is where the wire stops. It is not the hotspot fill.\nDetach chip end / Detach hotspot end — free that terminus.\nReconnect to this chip / Reconnect to this hotspot — snap it back.\nLeader (the next drawer) still owns line color, weight, extra leaders, and curve."
                 },
                 {
                     h: "Leaders",
