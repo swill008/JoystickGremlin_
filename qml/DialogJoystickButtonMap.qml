@@ -1342,6 +1342,10 @@ Window {
                         z: 0
                         acceptedButtons: Qt.AllButtons
                         hoverEnabled: true
+                        enabled: {
+                            var e = _buttonMap._ed()
+                            return !(e && e.dragKind && e.dragKind.length)
+                        }
                         onPressed: (m) => { m.accepted = true }
                         onClicked: (m) => { m.accepted = true }
                         onDoubleClicked: (m) => { m.accepted = true }
@@ -1636,6 +1640,10 @@ Window {
             cursorShape: Qt.SizeAllCursor
             acceptedButtons: Qt.LeftButton
             preventStealing: true
+            enabled: {
+                var e = _buttonMap._ed()
+                return !(e && e.dragKind && e.dragKind.length)
+            }
             onPressed: (m) => _chipPop.startMove(m.x, m.y, this)
             onPositionChanged: (m) => {
                 if (pressed)
