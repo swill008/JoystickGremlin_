@@ -50,6 +50,13 @@ Window {
     property string liveImage: ""
     property bool fittedOldPage: false
     property bool fittedThisEdit: false
+    property string packKind: ""
+    property string packDevice: ""
+    property string packPhoto: ""
+    property int packPlates: 0
+    property bool packFallback: false
+    property string packZip: ""
+    property string packError: ""
     property real viewPctSave: 1
     property real viewPanX: 0
     property real viewPanY: 0
@@ -553,7 +560,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss. If the write or re-read fails, a red Save failed warning appears. Click OK to dismiss it — clicking outside does not close it.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nFit to photo frame — once, if the saved layout is twice as large as the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExit — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss. If the write or re-read fails, a red Save failed warning appears. Click OK to dismiss it — clicking outside does not close it.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nFit to photo frame — once, if the saved layout is twice as large as the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExport map… — Save As a zip named after this hardware. Confirm the photo, then write.\nImport map… — pick a zip, confirm the device photo, then replace that device profile.\nExit — close the window. Unsaved work still warns."
                 },
                 {
                     h: "Edit menu",
@@ -1011,6 +1018,74 @@ Window {
         MenuItem { text: "Delete selected spine"; onTriggered: { var e = _ed(); if (e) e.deleteSelection() } }
     }
 
+
+    function parsePack(text) {
+        try {
+            return JSON.parse(text)
+        } catch (e) {
+            return { ok: false, error: "Bad response" }
+        }
+    }
+
+    function openExport() {
+        packError = ""
+        if (editing) {
+            var before = saveOk
+            saveEdit()
+            _savedPop.close()
+            if (!saveOk)
+                return
+        }
+        var hint = _hw.defaultExportUrl(targetName)
+        _exportDialog.selectedFile = hint
+        _exportDialog.open()
+    }
+
+    function openImport() {
+        packError = ""
+        _importDialog.open()
+    }
+
+    function showPackPeek(kind, zipUrl) {
+        packKind = kind
+        packZip = zipUrl || ""
+        var raw = kind === "import" ? _hw.peekZip(zipUrl) : _hw.peekLocal(targetName)
+        var info = parsePack(raw)
+        if (!info.ok) {
+            packError = info.error || "Cannot read that map."
+            _packFail.open()
+            return
+        }
+        packDevice = info.device || targetName
+        packPhoto = info.photoUrl || ""
+        packPlates = info.plates || 0
+        packFallback = !!info.fallback
+        _packConfirm.open()
+    }
+
+    function confirmPack() {
+        _packConfirm.close()
+        var raw
+        if (packKind === "import")
+            raw = _hw.importMap(packZip)
+        else
+            raw = _hw.exportMap(targetName, packZip)
+        var info = parsePack(raw)
+        if (!info.ok) {
+            packError = info.error || "Failed."
+            _packFail.open()
+            return
+        }
+        if (packKind === "import") {
+            if (editing)
+                cancelEdit()
+            loadLive()
+        }
+        packError = packKind === "import" ? ("Imported " + (info.device || packDevice)) : "Exported map"
+        saveOk = true
+        _savedPop.open()
+    }
+
     FileDialog {
         id: _imageDialog
         title: "Choose background image"
@@ -1035,6 +1110,23 @@ Window {
             if (rel.length && e)
                 e.addOverlay(rel, _hw.imageUrl(rel))
         }
+    }
+
+    FileDialog {
+        id: _exportDialog
+        title: "Export map"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "zip"
+        nameFilters: ["Map package (*.zip)"]
+        onAccepted: showPackPeek("export", selectedFile)
+    }
+
+    FileDialog {
+        id: _importDialog
+        title: "Import map"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Map package (*.zip)"]
+        onAccepted: showPackPeek("import", selectedFile)
     }
 
     Popup {
@@ -1073,6 +1165,112 @@ Window {
         }
     }
 
+    Popup {
+        id: _packConfirm
+        modal: true
+        dim: true
+        focus: true
+        padding: 16
+        closePolicy: Popup.CloseOnEscape
+        parent: Overlay.overlay
+        x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : Math.round((_buttonMap.width - width) / 2)
+        y: Overlay.overlay ? Math.round((Overlay.overlay.height - height) / 2) : Math.round((_buttonMap.height - height) / 2)
+        background: Rectangle {
+            color: "#18181B"
+            border.color: "#3F3F46"
+            border.width: 1
+            radius: 4
+        }
+        contentItem: Column {
+            spacing: 12
+            width: 280
+            Text {
+                width: parent.width
+                text: packKind === "import" ? "Import map" : "Export map"
+                color: "#E4E4E7"
+                font.pixelSize: 14
+                horizontalAlignment: Text.AlignHCenter
+            }
+            Image {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 240
+                height: 180
+                fillMode: Image.PreserveAspectFit
+                source: packPhoto
+                cache: false
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                color: "#E4E4E7"
+                font.pixelSize: 12
+                horizontalAlignment: Text.AlignHCenter
+                text: packDevice
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                color: "#A1A1AA"
+                font.pixelSize: 11
+                horizontalAlignment: Text.AlignHCenter
+                text: {
+                    var extra = packPlates === 1 ? "1 overlay plate" : (packPlates + " overlay plates")
+                    var note = packFallback ? " Stock photo used for preview." : ""
+                    if (packKind === "import")
+                        return "Replace the hardware profile for this device.\n" + extra + "." + note
+                    return extra + "." + note
+                }
+            }
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 8
+                Button {
+                    text: "Cancel"
+                    onClicked: _packConfirm.close()
+                }
+                Button {
+                    text: packKind === "import" ? "Replace" : "Save zip"
+                    onClicked: confirmPack()
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: _packFail
+        modal: true
+        dim: true
+        focus: true
+        padding: 16
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        parent: Overlay.overlay
+        x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : Math.round((_buttonMap.width - width) / 2)
+        y: Overlay.overlay ? Math.round((Overlay.overlay.height - height) / 2) : Math.round((_buttonMap.height - height) / 2)
+        background: Rectangle {
+            color: "#450A0A"
+            border.color: "#DC2626"
+            border.width: 1
+            radius: 4
+        }
+        contentItem: Column {
+            spacing: 12
+            width: 280
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                color: "#FECACA"
+                font.pixelSize: 13
+                horizontalAlignment: Text.AlignHCenter
+                text: packError.length ? packError : "Export failed"
+            }
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "OK"
+                onClicked: _packFail.close()
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -1104,6 +1302,15 @@ Window {
                         _hw.clearImage(targetName)
                         applyImage(stockImage)
                     }
+                }
+                MenuSeparator {}
+                MenuItem {
+                    text: "Export map…"
+                    onTriggered: openExport()
+                }
+                MenuItem {
+                    text: "Import map…"
+                    onTriggered: openImport()
                 }
                 MenuSeparator {}
                 MenuItem {
