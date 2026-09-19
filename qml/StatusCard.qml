@@ -31,6 +31,9 @@ Rectangle {
     property bool focused: false
     property bool pinActive: false
     property bool hoverPeek: true
+    property int stackIndex: 0
+    property bool lifting: false
+    z: stackIndex + (lifting ? 100 : 0)
 
     signal cardFocused()
     signal openConfiguration()
@@ -169,14 +172,14 @@ Rectangle {
         onPressed: function(mouse) {
             didDrag = false
             if (mouse.button === Qt.LeftButton)
-                _card.z = 20
+                _card.lifting = true
         }
         onPositionChanged: {
             if (drag.active)
                 didDrag = true
         }
         onReleased: function(mouse) {
-            _card.z = 0
+            _card.lifting = false
             if (didDrag) {
                 _card.dropAt(_card.x + _card.width / 2, _card.y + _card.height / 2)
                 _card.x = 0
