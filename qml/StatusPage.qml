@@ -62,9 +62,12 @@ Item {
         var gy = card.mapToItem(_page, card.width / 2, card.height / 2).y
         var best = null
         var bestD = 1e12
+        var slots = []
         for (var i = 0; i < _liveCards.length; ++i) {
             var other = _liveCards[i]
-            if (!other || other.slug === slug)
+            if (!other || !other.slug || other.slug === slug)
+                continue
+            if (_page.model.splitMode !== "none" && other.direction !== card.direction)
                 continue
             var p = other.mapToItem(_page, other.width / 2, other.height / 2)
             var d = Math.sqrt((gx - p.x) * (gx - p.x) + (gy - p.y) * (gy - p.y))
@@ -72,19 +75,31 @@ Item {
                 bestD = d
                 best = other
             }
+            slots.push({ slug: other.slug, x: p.x, y: p.y })
         }
-        if (best && bestD < 88) {
+        if (best && bestD < 56) {
             model.stackSlugs(slug, best.slug)
             return
         }
         model.unstackSlug(slug)
-        var leaders = model.pileLeaders("")
-        var dest = leaders.length
-        for (var j = 0; j < leaders.length; ++j) {
-            if (leaders[j] === slug)
-                dest = j
+        slots.sort(function(a, b) {
+            if (Math.abs(a.y - b.y) < 48)
+                return a.x - b.x
+            return a.y - b.y
+        })
+        var before = ""
+        for (var j = 0; j < slots.length; ++j) {
+            var sameRow = Math.abs(gy - slots[j].y) < 80
+            if (sameRow && gx < slots[j].x) {
+                before = slots[j].slug
+                break
+            }
+            if (!sameRow && gy < slots[j].y) {
+                before = slots[j].slug
+                break
+            }
         }
-        model.moveSlug(slug, dest)
+        model.moveSlugBefore(slug, before)
     }
 
     function bindCard(card) {
