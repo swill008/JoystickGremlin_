@@ -379,16 +379,25 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str)
     def moveSlugBefore(self, slug: str, before_slug: str) -> None:
-        current = [row.slug for row in self._rows]
-        if slug not in current:
-            return
-        current.remove(slug)
-        if before_slug and before_slug in current:
-            current.insert(current.index(before_slug), slug)
+        groups = {g[0]: g for g in self._stacks()}
+        stacked = {s for g in groups.values() for s in g}
+        leaders: list[str] = []
+        for row in self._rows:
+            if row.slug in stacked and row.slug not in groups:
+                continue
+            leaders.append(row.slug)
+        if slug not in leaders:
+            leaders.append(slug)
+        leaders = [s for s in leaders if s != slug]
+        if before_slug and before_slug in leaders:
+            leaders.insert(leaders.index(before_slug), slug)
         else:
-            current.append(slug)
-        extras = [s for s in _order_slugs() if s not in current and s not in _hidden_slugs()]
-        _set_order(current + extras)
+            leaders.append(slug)
+        expanded: list[str] = []
+        for lead in leaders:
+            expanded.extend(groups.get(lead, [lead]))
+        extras = [s for s in _order_slugs() if s not in expanded and s not in _hidden_slugs()]
+        _set_order(expanded + extras)
         self._reload()
         self.panesChanged.emit()
 
