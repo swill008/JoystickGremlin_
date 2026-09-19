@@ -364,6 +364,12 @@ class HardwareProfile(QtCore.QObject):
         self.imageChanged.emit()
         return True
 
+    @QtCore.Slot(result=str)
+    def imagesFolderUrl(self) -> str:
+        path = _install_root() / "qml" / "images"
+        path.mkdir(parents=True, exist_ok=True)
+        return QtCore.QUrl.fromLocalFile(str(path)).toString()
+
     @QtCore.Slot(str, result=str)
     def imageUrl(self, stored: str) -> str:
         found = self._resolve_existing(stored)
