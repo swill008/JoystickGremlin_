@@ -151,6 +151,14 @@ Item {
             if (model)
                 model.setPileSize(card.slug, w, h)
         })
+        card.onResetSize.connect(function() {
+            if (model)
+                model.resetCardSize(card.slug)
+        })
+        card.onClearSettings.connect(function() {
+            if (model)
+                model.clearCardSettings(card.slug)
+        })
         card.Component.onDestruction.connect(function() { _page.unregisterCard(card) })
         _page.registerCard(card)
     }
