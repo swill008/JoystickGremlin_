@@ -301,13 +301,28 @@ class HardwareProfile(QtCore.QObject):
         self.imageChanged.emit()
         return f"qml/maps/{_slug(device_name)}/{dest.name}"
 
+    def _local_image(self, source_url: str) -> Path | None:
+        raw = str(source_url or "").strip().split("?")[0].split("#")[0]
+        if not raw:
+            return None
+        try:
+            if raw.startswith("file:"):
+                local = QtCore.QUrl(raw).toLocalFile()
+                src = Path(local) if local else Path()
+            else:
+                src = to_local_path(raw)
+        except Exception:
+            src = Path(raw)
+        return src if src.is_file() else None
+
+    @QtCore.Slot(str, str, result=str)
+    def keepPhoto(self, device_name: str, source_url: str) -> str:
+        return self.copyImage(source_url, device_name)
+
     @QtCore.Slot(str, str, result=str)
     def copyImage(self, source_url: str, device_name: str) -> str:
-        try:
-            src = to_local_path(str(source_url or ""))
-        except Exception:
-            return ""
-        if not src.is_file():
+        src = self._local_image(source_url)
+        if src is None:
             return ""
         ext = src.suffix.lower() or ".jpg"
         if ext not in _IMAGE_EXT:
@@ -322,7 +337,11 @@ class HardwareProfile(QtCore.QObject):
                     old.unlink()
                 except OSError:
                     pass
-        self._copy_file(src, dest)
+        try:
+            self._copy_file(src, dest)
+        except OSError:
+            dest = folder / f"photo_{src.stem}{ext}"
+            self._copy_file(src, dest)
         rel = f"qml/maps/{_slug(name)}/{dest.name}"
         path = self._file_for(name)
         doc: dict = {}
@@ -412,7 +431,7 @@ class HardwareProfile(QtCore.QObject):
         folder = self._profile_dir(device_name)
         for p in sorted(folder.glob("photo.*")):
             if p.is_file():
-                return p.as_uri()
+                return p.as_uri() + f"?t={int(p.stat().st_mtime)}"
         text = self.load(device_name)
         try:
             doc = json.loads(text) if text else {}
@@ -423,7 +442,7 @@ class HardwareProfile(QtCore.QObject):
             # Never reuse the EVO R grip shot for a different module.
             if found == _stock_photo() and _slug(device_name) != "vkb_evo_r":
                 return ""
-            return found.as_uri()
+            return found.as_uri() + f"?t={int(found.stat().st_mtime)}"
         if _slug(device_name) == "vkb_evo_r":
             stock = _stock_photo()
             return stock.as_uri() if stock.is_file() else ""
