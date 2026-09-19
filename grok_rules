@@ -69,3 +69,14 @@ Any change to rules is written here. Do not keep a second unofficial list.
     axis 4 Z slider
 25. Button Map editor: Edit on the map window. Save writes control.hardware JSON to qml/maps/<device>.json (EVO R: qml/maps/vkb_evo_r.json). That JSON is live runtime truth for chips, hotspots, spines, and image. Cancel drops the session. qml/vkb_evo_r_face_map.md is the measured JPEG inventory and hardware lock, not live layout.
 26. No hacks. Follow Qt / QML / Gremlin best practice. If a fix needs a workaround (height: 0 to hide menu rows, hover-open by hand, screenshot math, dummy objects), stop and warn before coding. Propose the supported API first. Only ship a workaround if the user accepts it after that warning.
+
+27. Rewrite design notes live in a separate repo, not in JoystickGremlin_ source:
+    https://github.com/swill008/Gremlin-Rewrite-Features
+    27.1 README.md — index of design files.
+    27.2 docs/00-overview.md — rooms, chrome reuse, layout, Linux-later.
+    27.3 docs/01-status.md — Status cards and context menu.
+    27.4 docs/02-configuration.md — wire table, listen, Auto Map 1:1, LEDs.
+    27.5 docs/03-hardware-claim.md — driver 128/8 vs claimed controls; where to trim.
+    27.6 docs/04-function-inventory.md — current GUI and action plugins.
+    Put new shell/IA decisions in that repo. Do not dump design markdown into qml/.
+    Local mirror: artifacts/Gremlin-Rewrite-Features/ (project folder).
