@@ -29,6 +29,25 @@ Item {
     signal assignHardware(var card)
     signal ignoreDevice(var card)
 
+    function placeSlug(slug, cx, cy) {
+        var best = 0
+        var bestD = 1e12
+        for (var i = 0; i < _repeater.count; ++i) {
+            var item = _repeater.itemAt(i)
+            if (!item)
+                continue
+            var dx = cx - (item.x + item.width / 2)
+            var dy = cy - (item.y + item.height / 2)
+            var d = Math.sqrt(dx * dx + dy * dy)
+            if (d < bestD) {
+                bestD = d
+                best = i
+            }
+        }
+        if (model && model.moveSlug)
+            model.moveSlug(slug, best)
+    }
+
     function pack(m) {
         return {
             slug: m.slug,
@@ -101,6 +120,7 @@ Item {
                     onOpenDeviceInformation: _page.openDeviceInformation(_page.pack(model))
                     onAssignHardware: _page.assignHardware(_page.pack(model))
                     onIgnoreDevice: _page.ignoreDevice(_page.pack(model))
+                    onDropAt: function(cx, cy) { _page.placeSlug(slug, cx, cy) }
                 }
             }
         }
