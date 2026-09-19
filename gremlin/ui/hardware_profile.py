@@ -361,7 +361,6 @@ class HardwareProfile(QtCore.QObject):
         self.pathChanged.emit()
         self.documentChanged.emit()
         self.imageChanged.emit()
-        signal.configChanged.emit()
         return rel
 
     @QtCore.Slot(str, result=bool)
@@ -431,7 +430,7 @@ class HardwareProfile(QtCore.QObject):
         folder = self._profile_dir(device_name)
         for p in sorted(folder.glob("photo.*")):
             if p.is_file():
-                return p.as_uri() + f"?t={int(p.stat().st_mtime)}"
+                return p.as_uri() + f"?t={int(p.stat().st_mtime_ns)}"
         text = self.load(device_name)
         try:
             doc = json.loads(text) if text else {}
@@ -442,7 +441,7 @@ class HardwareProfile(QtCore.QObject):
             # Never reuse the EVO R grip shot for a different module.
             if found == _stock_photo() and _slug(device_name) != "vkb_evo_r":
                 return ""
-            return found.as_uri() + f"?t={int(found.stat().st_mtime)}"
+            return found.as_uri() + f"?t={int(found.stat().st_mtime_ns)}"
         if _slug(device_name) == "vkb_evo_r":
             stock = _stock_photo()
             return stock.as_uri() if stock.is_file() else ""
