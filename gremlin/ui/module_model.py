@@ -696,24 +696,55 @@ class DriverInputModel(QtCore.QAbstractListModel):
         return name == "keyboard" or _norm_guid(self._guid) == _norm_guid(KEYBOARD_GUID)
 
     def _load_keyboard(self, claim: dict) -> None:
+        saved = {int(k) for k in (claim.get("keys") or [])}
+        friendly = claim.get("friendly") or {}
+        skip = {"noname", "eraseeof", "zoom"}
+        seen: set[int] = set()
         rows = []
-        for hid in claim.get("keys") or []:
-            scan = int(hid) & 0xFFFF
-            ext = bool(int(hid) >> 16)
-            try:
-                label = gremlin_keyboard.key_from_code(scan, ext).name
-            except Exception:
-                label = f"Key {scan}"
+
+        def add_key(key) -> None:
+            hid = (int(key.scan_code) & 0xFFFF) | ((1 if key.is_extended else 0) << 16)
+            if hid in seen:
+                return
+            seen.add(hid)
             rows.append(
                 {
                     "kind": "key",
-                    "hwId": int(hid),
-                    "label": label,
-                    "claimed": True,
-                    "friendly": claim.get("friendly", {}).get(f"key:{int(hid)}", ""),
+                    "hwId": hid,
+                    "label": key.name,
+                    "claimed": True if not saved else hid in saved,
+                    "friendly": friendly.get(f"key:{hid}", ""),
                     "lit": False,
                 }
             )
+
+        for name, key in gremlin_keyboard.g_name_to_key.items():
+            if name in skip:
+                continue
+            add_key(key)
+        for ch in list("abcdefghijklmnopqrstuvwxyz0123456789`-=[]\\;'\",./"):
+            try:
+                add_key(gremlin_keyboard.key_from_name(ch))
+            except Exception:
+                pass
+        for hid in saved:
+            if hid in seen:
+                continue
+            scan = hid & 0xFFFF
+            ext = bool(hid >> 16)
+            try:
+                add_key(gremlin_keyboard.key_from_code(scan, ext))
+            except Exception:
+                rows.append(
+                    {
+                        "kind": "key",
+                        "hwId": hid,
+                        "label": f"Key {scan}",
+                        "claimed": True,
+                        "friendly": friendly.get(f"key:{hid}", ""),
+                        "lit": False,
+                    }
+                )
         self.beginResetModel()
         self._rows = rows
         self.endResetModel()
