@@ -294,6 +294,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._last: dict[str, tuple[str, str]] = {}
         self._hw = HardwareProfile(self)
         _ensure_display_options()
+        self._photo_tick = 0
         self._reload()
         event_handler.EventListener().device_change_event.connect(self._reload)
         event_handler.EventListener().joystick_event.connect(self._on_joy)
@@ -644,7 +645,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             "buttons": row.buttons,
             "axes": row.axes,
             "hats": row.hats,
-            "photo": row.photo,
+            "photo": self._stamp_photo(row.photo),
             "isStub": row.is_stub,
             "isModule": row.is_module,
             "tab": row.tab,
@@ -713,8 +714,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot()
     def notifyClaims(self) -> None:
+        self._photo_tick += 1
         self._reload()
         self.claimsChanged.emit()
+        self.panesChanged.emit()
 
     def _on_joy(self, event: event_handler.Event) -> None:
         if event is None:
@@ -745,7 +748,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
         )
         self.lastChanged.emit()
 
+    def _stamp_photo(self, url: str) -> str:
+        if not url:
+            return ""
+        return url.split("?")[0] + f"?t={self._photo_tick}"
+
     def _reload(self) -> None:
+        self._photo_tick += 1
         hidden = _hidden_slugs()
         show_stubs = _show_stubs()
         rows: list[ModuleRow] = []
