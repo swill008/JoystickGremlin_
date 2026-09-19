@@ -294,12 +294,19 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._last: dict[str, tuple[str, str]] = {}
         self._hw = HardwareProfile(self)
         _ensure_display_options()
-        self._photo_tick = 0
+        self._reload_timer = QtCore.QTimer(self)
+        self._reload_timer.setSingleShot(True)
+        self._reload_timer.setInterval(200)
+        self._reload_timer.timeout.connect(self._reload)
+        self._refresh_timer = QtCore.QTimer(self)
+        self._refresh_timer.setSingleShot(True)
+        self._refresh_timer.setInterval(50)
+        self._refresh_timer.timeout.connect(self._refresh_inplace)
         self._reload()
-        event_handler.EventListener().device_change_event.connect(self._reload)
+        event_handler.EventListener().device_change_event.connect(self._schedule_reload)
         event_handler.EventListener().joystick_event.connect(self._on_joy)
-        signal.profileChanged.connect(self._reload)
-        signal.configChanged.connect(self._reload)
+        signal.profileChanged.connect(self._schedule_reload)
+        signal.configChanged.connect(self._schedule_refresh)
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._rows)
@@ -645,7 +652,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             "buttons": row.buttons,
             "axes": row.axes,
             "hats": row.hats,
-            "photo": self._stamp_photo(row.photo),
+            "photo": row.photo,
             "isStub": row.is_stub,
             "isModule": row.is_module,
             "tab": row.tab,
@@ -713,11 +720,52 @@ class ModuleListModel(QtCore.QAbstractListModel):
         )
 
     @QtCore.Slot()
-    def notifyClaims(self) -> None:
-        self._photo_tick += 1
-        self._reload()
+    def _schedule_reload(self) -> None:
+        self._reload_timer.start()
+
+    @QtCore.Slot()
+    def _schedule_refresh(self) -> None:
+        self._refresh_timer.start()
+
+    def _refresh_inplace(self) -> None:
+        if not self._rows:
+            self._reload()
+            return
+        roles = [
+            QtCore.Qt.ItemDataRole.UserRole + 2,
+            QtCore.Qt.ItemDataRole.UserRole + 6,
+            QtCore.Qt.ItemDataRole.UserRole + 8,
+            QtCore.Qt.ItemDataRole.UserRole + 9,
+            QtCore.Qt.ItemDataRole.UserRole + 10,
+            QtCore.Qt.ItemDataRole.UserRole + 11,
+            QtCore.Qt.ItemDataRole.UserRole + 12,
+            QtCore.Qt.ItemDataRole.UserRole + 13,
+        ]
+        for idx, row in enumerate(self._rows):
+            name = row.raw_name or row.name
+            row.photo = self._hw.profilePhotoUrl(name)
+            saved = module_exists(name)
+            row.is_module = saved
+            row.is_stub = not saved
+            if saved:
+                doc = _load_module_doc(name)
+                claim = _claim_from_doc(doc)
+                row.buttons = len(claim["buttons"])
+                row.axes = len(claim["axes"])
+                row.hats = len(claim["hats"])
+                if doc.get("device"):
+                    row.name = str(doc.get("device"))
+                if row.direction == "dest":
+                    row.status = "Virtual"
+                elif row.status == "Stub":
+                    row.status = "Connected"
+            ix = self.index(idx, 0)
+            self.dataChanged.emit(ix, ix, roles)
         self.claimsChanged.emit()
-        self.panesChanged.emit()
+
+    @QtCore.Slot()
+    def notifyClaims(self) -> None:
+        self._refresh_inplace()
 
     def _on_joy(self, event: event_handler.Event) -> None:
         if event is None:
@@ -748,13 +796,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         )
         self.lastChanged.emit()
 
-    def _stamp_photo(self, url: str) -> str:
-        if not url:
-            return ""
-        return url.split("?")[0] + f"?t={self._photo_tick}"
-
     def _reload(self) -> None:
-        self._photo_tick += 1
         hidden = _hidden_slugs()
         show_stubs = _show_stubs()
         rows: list[ModuleRow] = []
@@ -873,7 +915,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
             rank = {slug: index for index, slug in enumerate(order)}
             rows.sort(key=lambda row: rank.get(row.slug, 1000 + len(rank)))
         visible = [row.slug for row in rows]
-        if visible and visible != order:
+        trimmed = [slug for slug in order if slug in set(visible)]
+        if visible and visible != trimmed:
             _set_order(visible)
 
         self.beginResetModel()
