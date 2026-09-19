@@ -142,7 +142,6 @@ Window {
                 text: "Overwrite used inputs"
 
                 Component.onCompleted: checked = tools.lastOverwriteUsedInputs()
-                onToggled: () => { overwriteNonEmpty = checked }
             }
 
             Switch {
@@ -150,7 +149,6 @@ Window {
 
                 text: "Repeat vJoy devices"
 
-                onToggled: () => { repeatVJoy = checked }
             }
         }
 
