@@ -118,24 +118,46 @@ Window {
                     anchors.fill: parent
                     clip: true
                     model: _driver
-                    delegate: RowLayout {
+                    currentIndex: -1
+                    highlightMoveDuration: 80
+                    Connections {
+                        target: _driver
+                        function onRowActivated(row) {
+                            _list.currentIndex = row
+                            _list.positionViewAtIndex(row, ListView.Contain)
+                        }
+                    }
+                    delegate: Rectangle {
                         width: ListView.view.width
-                        spacing: 8
+                        height: 34
+                        color: model.lit ? "#14532D" : (index === _list.currentIndex ? "#27272A" : "transparent")
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 4
+                            anchors.rightMargin: 8
+                            spacing: 8
 
                         CheckBox {
                             checked: model.claimed
-                            onToggled: _driver.setClaimed(index, checked)
+                            onClicked: {
+                                if (checked)
+                                    _driver.setClaimed(index, true)
+                                else
+                                    _driver.setClaimed(index, false)
+                            }
                         }
                         Label {
                             text: model.label
                             Layout.preferredWidth: 120
-                            color: Style.foreground
+                            color: model.lit ? "#BBF7D0" : Style.foreground
                         }
                         TextField {
                             Layout.fillWidth: true
                             text: model.friendly
                             placeholderText: "Friendly name"
                             onEditingFinished: _driver.setFriendly(index, text)
+                        }
                         }
                     }
                     ScrollBar.vertical: ScrollBar {}
