@@ -53,6 +53,7 @@ Rectangle {
     signal resetSize()
     signal clearSettings()
     signal unstackCard()
+    signal unstackAllCards()
 
     implicitHeight: _body.implicitHeight + 20
     radius: 4
@@ -360,6 +361,12 @@ Rectangle {
             height: visible ? implicitHeight : 0
             text: "Unstack"
             onTriggered: _card.unstackCard()
+        }
+        MenuItem {
+            visible: stacked
+            height: visible ? implicitHeight : 0
+            text: "Unstack all"
+            onTriggered: _card.unstackAllCards()
         }
         MenuSeparator {}
         MenuItem { text: "Reset size"; onTriggered: _card.resetSize() }
