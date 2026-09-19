@@ -10,6 +10,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import "helpers.js" as Helpers
 
 Window {
     id: _win
@@ -189,20 +190,12 @@ Window {
             Button {
                 text: "Import devices…"
                 focusPolicy: Qt.NoFocus
-                onClicked: {
-                    var c = Qt.createComponent("DialogImportDevices.qml")
-                    if (c.status === Component.Ready)
-                        c.createObject(null, {}).show()
-                }
+                onClicked: Helpers.createComponent("DialogImportDevices.qml")
             }
             Button {
                 text: "Export devices…"
                 focusPolicy: Qt.NoFocus
-                onClicked: {
-                    var c = Qt.createComponent("DialogExportDevices.qml")
-                    if (c.status === Component.Ready)
-                        c.createObject(null, {"deviceName": deviceName}).show()
-                }
+                onClicked: Helpers.createComponent("DialogExportDevices.qml", {"deviceName": deviceName})
             }
             Item { Layout.fillWidth: true }
             Button {
