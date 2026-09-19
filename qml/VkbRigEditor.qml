@@ -93,6 +93,13 @@ Item {
     property int spineHoldIndex: -1
     property real spineHoldX: 0
     property real spineHoldY: 0
+    property real photoScale: 1
+    property real photoOffX: 0
+    property real photoOffY: 0
+    property real photoRot: 0
+    property bool movePhoto: false
+    property real photoDragX0: 0
+    property real photoDragY0: 0
     signal selectedChanged()
     signal chipMenuRequested(real x, real y)
     signal overlayImportRequested()
@@ -224,9 +231,15 @@ Item {
             }
         } else if (dragKind === "hot") {
             var hp = snapPos(mx, my, altOff)
-            var p = toPhoto(hp.x, hp.y)
-            n.nx = Math.max(0, Math.min(1, p.x))
-            n.ny = Math.max(0, Math.min(1, p.y))
+            n.hotFx = xToFx(hp.x)
+            n.hotFy = yToFy(hp.y)
+        } else if (dragKind === "photo") {
+            var sPhoto = spaceRect()
+            var dw = Math.max(1, sPhoto.w)
+            var dh = Math.max(1, sPhoto.h)
+            photoOffX = Math.max(-1, Math.min(1, dragOffX + (mx - photoDragX0) / dw))
+            photoOffY = Math.max(-1, Math.min(1, dragOffY + (my - photoDragY0) / dh))
+            return
         } else if (dragKind === "chip") {
             var cp = snapPos(mx - dragOffX, my - dragOffY, altOff)
             var fx = xToFx(cp.x)
@@ -852,15 +865,78 @@ Item {
         return items
     }
 
-    function viewCenterPhoto() {
-        if (!face || !face.toPhoto)
-            return Qt.point(0.5, 0.5)
-        var z = face.zoom || 1
-        if (z < 0.01)
-            z = 1
-        var wx = ((face.width || width) * 0.5 - (face.panX || 0)) / z
-        var wy = ((face.height || height) * 0.5 - (face.panY || 0)) / z
-        return toPhoto(wx, wy)
+    function viewCenterPage() {
+        return Qt.point(xToFx(width * 0.5), yToFy(height * 0.5))
+    }
+
+    function clampPhotoScale(v) {
+        var n = Number(v)
+        if (!(n === n) || n <= 0)
+            n = 1
+        return Math.max(0.25, Math.min(4, n))
+    }
+
+    function clampPhotoOff(v) {
+        var n = Number(v)
+        if (!(n === n))
+            n = 0
+        return Math.max(-1, Math.min(1, n))
+    }
+
+    function applyPhotoPose(pose) {
+        pose = pose || {}
+        photoScale = clampPhotoScale(pose.scale)
+        photoOffX = clampPhotoOff(pose.offX)
+        photoOffY = clampPhotoOff(pose.offY)
+        var r = Number(pose.rot)
+        if (!(r === r))
+            r = 0
+        photoRot = r
+        if (_pagePhoto)
+            repaint()
+    }
+
+    function resetPhotoPose() {
+        photoScale = 1
+        photoOffX = 0
+        photoOffY = 0
+        photoRot = 0
+        movePhoto = false
+        repaint()
+    }
+
+    function fitPhotoWell() {
+        photoScale = 1
+        repaint()
+    }
+
+    function photoBag() {
+        return {
+            scale: photoScale,
+            offX: photoOffX,
+            offY: photoOffY,
+            rot: photoRot
+        }
+    }
+
+    function hotFxOf(n) {
+        if (!n)
+            return 0.5
+        if (n.hotFx !== undefined && n.hotFx === n.hotFx)
+            return n.hotFx
+        if (n.chipFx !== undefined && n.chipFx === n.chipFx)
+            return n.chipFx
+        return 0.5
+    }
+
+    function hotFyOf(n) {
+        if (!n)
+            return 0.5
+        if (n.hotFy !== undefined && n.hotFy === n.hotFy)
+            return n.hotFy
+        if (n.chipFy !== undefined && n.chipFy === n.chipFy)
+            return n.chipFy
+        return 0.5
     }
 
     function addChiplet(kind, hwId, wx, wy) {
@@ -874,11 +950,18 @@ Item {
             bump()
             return
         }
-        var p
-        if (wx !== undefined && wy !== undefined && wx !== null && wy !== null)
-            p = toPhoto(wx, wy)
-        else
-            p = viewCenterPhoto()
+        var fx
+        var fy
+        if (wx !== undefined && wy !== undefined && wx !== null && wy !== null) {
+            fx = xToFx(wx)
+            fy = yToFy(wy)
+        } else {
+            var c = viewCenterPage()
+            fx = c.x
+            fy = c.y
+        }
+        fx = Math.max(0.04, Math.min(0.92, fx))
+        fy = Math.max(0.04, Math.min(0.94, fy))
         var st = _styleOf({})
         var n = {
             id: _uid(kind === "btn" ? "b" : kind.charAt(0)),
@@ -887,11 +970,11 @@ Item {
             prefix: kind === "axis" ? "A" : (kind === "hat" ? "H" : ""),
             label: "",
             friendly: defaultFriendly(kind, hwId),
-            nx: Math.max(0.02, Math.min(0.98, p.x)),
-            ny: Math.max(0.02, Math.min(0.98, p.y)),
-            chipFx: Math.max(0.04, Math.min(0.92, p.x)),
-            chipFy: Math.max(0.04, Math.min(0.94, p.y)),
-            pin: p.x < 0.5 ? "right" : "left",
+            hotFx: fx,
+            hotFy: fy,
+            chipFx: fx,
+            chipFy: fy,
+            pin: fx < 0.5 ? "right" : "left",
             spines: [],
             curve: st.curve,
             color: st.color,
@@ -966,31 +1049,17 @@ Item {
     }
 
     function pagePhotoRect() {
-        var s = spaceRect()
-        if (!_pagePhoto || _pagePhoto.paintedWidth < 8)
-            return s
-        var pw = _pagePhoto.paintedWidth
-        var ph = _pagePhoto.paintedHeight
-        return {
-            x: s.x + (s.w - pw) * 0.5,
-            y: s.y + (s.h - ph) * 0.5,
-            w: pw,
-            h: ph
-        }
+        return innerPageRect()
     }
 
     function hotPt(n) {
         if (!n)
             return Qt.point(0, 0)
-        var p = pagePhotoRect()
-        return Qt.point(p.x + (n.nx || 0) * p.w, p.y + (n.ny || 0) * p.h)
+        return Qt.point(fxToX(hotFxOf(n)), fyToY(hotFyOf(n)))
     }
 
     function toPhoto(mx, my) {
-        var p = pagePhotoRect()
-        if (p.w < 1 || p.h < 1)
-            return Qt.point(0, 0)
-        return Qt.point((mx - p.x) / p.w, (my - p.y) / p.h)
+        return Qt.point(xToFx(mx), yToFy(my))
     }
 
     function fromEnd(n) {
@@ -3131,7 +3200,7 @@ Item {
             var bb = chipBounds(nn)
             ax(bb.x); ax(bb.x + bb.w); ax(bb.x + bb.w * 0.5)
             ay(bb.y); ay(bb.y + bb.h); ay(bb.y + bb.h * 0.5)
-            if (nn.nx !== undefined) {
+            if (!isDraw(nn)) {
                 var hp = hotPt(nn)
                 ax(hp.x)
                 ay(hp.y)
@@ -3430,10 +3499,8 @@ Item {
         } else {
             n.chipFx = Math.max(0.01, Math.min(0.92, (n.chipFx || 0) + dx))
             n.chipFy = Math.max(0.01, Math.min(0.92, (n.chipFy || 0) + dy))
-            if (n.nx !== undefined)
-                n.nx = Math.max(0, Math.min(1, n.nx + dx))
-            if (n.ny !== undefined)
-                n.ny = Math.max(0, Math.min(1, n.ny + dy))
+            n.hotFx = Math.max(0, Math.min(1, hotFxOf(n) + dx))
+            n.hotFy = Math.max(0, Math.min(1, hotFyOf(n) + dy))
         }
         var ls = n.leaders || []
         var li
@@ -4171,6 +4238,7 @@ Item {
         selectedLeader = 0
         selectedSeg = -1
         setSelection([])
+        movePhoto = false
         if (_ctx)
             _ctx.close()
         if (_tableCtx)
@@ -4625,14 +4693,14 @@ Item {
         var st = _styleOf(first)
         var fx = 0
         var fy = 0
-        var nx = 0
-        var ny = 0
+        var hx = 0
+        var hy = 0
         for (i = 0; i < chipIds.length; i++) {
             n = nodeAt(chipIds[i])
             fx += (n.chipFx || 0)
             fy += (n.chipFy || 0)
-            nx += (n.nx || 0)
-            ny += (n.ny || 0)
+            hx += hotFxOf(n)
+            hy += hotFyOf(n)
         }
         var c = chipIds.length
         var ox0 = fx / c
@@ -4652,7 +4720,7 @@ Item {
             })
         var g = {
             id: _uid("g"), kind: kind, members: members,
-            nx: nx / c, ny: ny / c, chipFx: ox0, chipFy: oy0,
+            hotFx: hx / c, hotFy: hy / c, chipFx: ox0, chipFy: oy0,
             pin: st.pin, spines: [], curve: st.curve, alignH: "left",
             color: st.color, border: st.border, textColor: st.textColor,
             highlight: st.highlight, hlColor: st.hlColor, hlBorder: st.hlBorder,
@@ -4716,7 +4784,7 @@ Item {
                 id: _uid("b"), kind: leafKind, hwId: mem[i].hwId, prefix: prefix,
                 label: "",
                 friendly: carryFriendly(mem[i].friendly, defaultFriendly(leafKind, mem[i].hwId)),
-                nx: n.nx, ny: n.ny,
+                hotFx: hotFxOf(n), hotFy: hotFyOf(n),
                 chipFx: xToFx(px),
                 chipFy: yToFy(py),
                 pin: st.pin, spines: [], curve: st.curve,
@@ -5606,22 +5674,50 @@ Item {
         }
     }
 
-    Image {
-        id: _pagePhoto
+    Item {
+        id: _photoWell
         z: 0
         x: _ed.innerPageRect().x
         y: _ed.innerPageRect().y
         width: _ed.innerPageRect().w
         height: _ed.innerPageRect().h
-        fillMode: Image.PreserveAspectFit
-        asynchronous: true
-        cache: true
-        source: (_ed.face && _ed.face.photoOverride && _ed.face.photoOverride.length)
-                ? _ed.face.photoOverride
-                : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
-        onStatusChanged: {
-            if (status === Image.Ready && _lines)
-                _lines.requestPaint()
+        clip: false
+
+        Item {
+            id: _photoXform
+            anchors.fill: parent
+            transform: [
+                Translate {
+                    x: _ed.photoOffX * _ed.spaceRect().w
+                    y: _ed.photoOffY * _ed.spaceRect().h
+                },
+                Rotation {
+                    origin.x: _photoXform.width * 0.5
+                    origin.y: _photoXform.height * 0.5
+                    angle: _ed.photoRot
+                },
+                Scale {
+                    origin.x: _photoXform.width * 0.5
+                    origin.y: _photoXform.height * 0.5
+                    xScale: _ed.photoScale
+                    yScale: _ed.photoScale
+                }
+            ]
+
+            Image {
+                id: _pagePhoto
+                anchors.fill: parent
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+                cache: true
+                source: (_ed.face && _ed.face.photoOverride && _ed.face.photoOverride.length)
+                        ? _ed.face.photoOverride
+                        : Qt.resolvedUrl("images/vkb_gladiator_rig.jpg")
+                onStatusChanged: {
+                    if (status === Image.Ready && _lines)
+                        _lines.requestPaint()
+                }
+            }
         }
     }
 
@@ -5847,6 +5943,14 @@ Item {
             forceActiveFocus()
             _ed.altHeld = !!(m.modifiers & Qt.AltModifier)
             _ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
+            if (_ed.interactive && _ed.movePhoto && m.button === Qt.LeftButton) {
+                _ed.dragKind = "photo"
+                _ed.dragOffX = _ed.photoOffX
+                _ed.dragOffY = _ed.photoOffY
+                _ed.photoDragX0 = m.x
+                _ed.photoDragY0 = m.y
+                return
+            }
             var hit = _ed.hitTest(m.x, m.y)
             var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
             if (m.button === Qt.RightButton) {
