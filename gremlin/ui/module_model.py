@@ -35,6 +35,7 @@ _CFG_HIDDEN = "hidden-slugs"
 _CFG_ORDER = "card-order"
 _CFG_SHOW_STUBS = "show-stubs"
 _CFG_SPLIT = "split-mode"
+_CFG_SPLIT_RATIO = "split-ratio"
 _CFG_STACKS = "card-stacks"
 
 
@@ -81,6 +82,17 @@ def _ensure_display_options() -> None:
             PropertyType.String,
             "none",
             "Status split: none, vertical, or horizontal.",
+            {},
+            True,
+        )
+    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO):
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_SPLIT_RATIO,
+            PropertyType.Float,
+            0.5,
+            "Status splitter position (0.2–0.8).",
             {},
             True,
         )
@@ -420,6 +432,21 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if name == self.splitMode:
             return
         config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT, name)
+        self.panesChanged.emit()
+
+    @QtCore.Property(float, notify=panesChanged)
+    def splitRatio(self) -> float:
+        _ensure_display_options()
+        try:
+            raw = float(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO) or 0.5)
+        except (TypeError, ValueError):
+            raw = 0.5
+        return min(0.8, max(0.2, raw))
+
+    @QtCore.Slot(float)
+    def setSplitRatio(self, ratio: float) -> None:
+        value = min(0.8, max(0.2, float(ratio)))
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO, value)
         self.panesChanged.emit()
 
     @QtCore.Slot(str, result=list)
