@@ -29,6 +29,21 @@ Item {
     signal assignHardware(var card)
     signal ignoreDevice(var card)
 
+    function pack(m) {
+        return {
+            slug: m.slug,
+            name: m.name,
+            rawName: m.rawName,
+            guid: m.guid,
+            direction: m.direction,
+            status: m.status,
+            bus: m.bus,
+            tab: m.tab,
+            isStub: m.isStub,
+            isModule: m.isModule
+        }
+    }
+
     Flickable {
         id: _flick
         anchors.fill: parent
@@ -76,16 +91,16 @@ Item {
                     }
 
                     onCardFocused: _page.focusSlug(slug)
-                    onOpenConfiguration: _page.openConfiguration(model)
-                    onConfigureModule: _page.configureModule(model)
-                    onPinControlDisplay: _page.pinControlDisplay(model)
-                    onAutoMap: _page.autoMap(model)
-                    onOpenDeviceViewer: _page.openDeviceViewer(model)
-                    onOpenPairing: _page.openPairing(model)
-                    onOpenCalibration: _page.openCalibration(model)
-                    onOpenDeviceInformation: _page.openDeviceInformation(model)
-                    onAssignHardware: _page.assignHardware(model)
-                    onIgnoreDevice: _page.ignoreDevice(model)
+                    onOpenConfiguration: _page.openConfiguration(_page.pack(model))
+                    onConfigureModule: _page.configureModule(_page.pack(model))
+                    onPinControlDisplay: _page.pinControlDisplay(_page.pack(model))
+                    onAutoMap: _page.autoMap(_page.pack(model))
+                    onOpenDeviceViewer: _page.openDeviceViewer(_page.pack(model))
+                    onOpenPairing: _page.openPairing(_page.pack(model))
+                    onOpenCalibration: _page.openCalibration(_page.pack(model))
+                    onOpenDeviceInformation: _page.openDeviceInformation(_page.pack(model))
+                    onAssignHardware: _page.assignHardware(_page.pack(model))
+                    onIgnoreDevice: _page.ignoreDevice(_page.pack(model))
                 }
             }
         }
