@@ -21,6 +21,10 @@ Window {
 
     title: "Swap Devices"
 
+    Shortcut { sequence: "Esc"; onActivated: {} }
+    Shortcut { sequence: "Return"; onActivated: {} }
+    Shortcut { sequence: "Enter"; onActivated: {} }
+
     DeviceListModel {
         id: _physicalDevices
 
