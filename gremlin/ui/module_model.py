@@ -31,6 +31,7 @@ LOGICAL_GUID = "F0AF472F-8E17-493B-A1EB-7333EE8543F2"
 _CFG_SECTION = "display"
 _CFG_GROUP = "status"
 _CFG_HIDDEN = "hidden-slugs"
+_CFG_ORDER = "card-order"
 _CFG_SHOW_STUBS = "show-stubs"
 
 
@@ -58,6 +59,17 @@ def _ensure_display_options() -> None:
             {},
             True,
         )
+    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_ORDER):
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_ORDER,
+            PropertyType.String,
+            "",
+            "Status card order (comma separated slugs).",
+            {},
+            True,
+        )
 
 
 def _hidden_slugs() -> set[str]:
@@ -76,6 +88,19 @@ def _set_hidden(slugs: set[str]) -> None:
 def _norm_guid(value) -> str:
     text = str(value or "").upper()
     return text.replace("{", "").replace("}", "").replace("-", "")
+
+
+def _order_slugs() -> list[str]:
+    _ensure_display_options()
+    raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_ORDER) or "")
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+
+def _set_order(slugs: list[str]) -> None:
+    _ensure_display_options()
+    config.Configuration().set(
+        _CFG_SECTION, _CFG_GROUP, _CFG_ORDER, ",".join(slugs)
+    )
 
 
 def _show_stubs() -> bool:
@@ -322,6 +347,22 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def hiddenList(self) -> list[str]:
         return sorted(_hidden_slugs())
 
+    @QtCore.Slot(str, int)
+    def moveSlug(self, slug: str, to_index: int) -> None:
+        current = [row.slug for row in self._rows]
+        if slug not in current:
+            return
+        current.remove(slug)
+        dest = max(0, min(int(to_index), len(current)))
+        current.insert(dest, slug)
+        extras = [s for s in _order_slugs() if s not in current and s not in _hidden_slugs()]
+        _set_order(current + extras)
+        self._reload()
+
+    @QtCore.Slot(result=int)
+    def visibleCount(self) -> int:
+        return len(self._rows)
+
     def _row_map(self, row: ModuleRow) -> dict:
         last_f, last_h = self._last.get(row.slug, (row.last_friendly, row.last_hardware))
         return {
@@ -522,6 +563,14 @@ class ModuleListModel(QtCore.QAbstractListModel):
             if src is None:
                 src = next((r for r in rows if r.direction == "source"), rows[0])
             self._focus = src.slug
+
+        order = _order_slugs()
+        if order:
+            rank = {slug: index for index, slug in enumerate(order)}
+            rows.sort(key=lambda row: rank.get(row.slug, 1000 + len(rank)))
+        visible = [row.slug for row in rows]
+        if visible and visible != order:
+            _set_order(visible)
 
         self.beginResetModel()
         self._rows = rows
