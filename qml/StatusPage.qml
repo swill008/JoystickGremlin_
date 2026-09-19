@@ -159,6 +159,10 @@ Item {
             if (model)
                 model.clearCardSettings(card.slug)
         })
+        card.onUnstackCard.connect(function() {
+            if (model)
+                model.unstackSlug(card.slug)
+        })
         card.Component.onDestruction.connect(function() { _page.unregisterCard(card) })
         _page.registerCard(card)
     }
@@ -365,6 +369,7 @@ Item {
                                     x: index * 14
                                     y: index * 14
                                     stackIndex: index
+                                    stacked: _pile.members.length > 1
                                     width: _pile.cardW
                                     height: _pile.cardH > 0 ? _pile.cardH : implicitHeight
                                     Component.onCompleted: {
