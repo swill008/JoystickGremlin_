@@ -22,7 +22,7 @@ Window {
     color: Style.background
     Universal.theme: Style.theme
 
-    title: "Joystick Button Map — VKBsim Gladiator EVO R"
+    title: "Joystick Button Map — " + targetName
 
     onClosing: (e) => {
         if (_allowClose || !editing)
@@ -34,8 +34,10 @@ Window {
         _leaveDlg.open()
     }
 
-    readonly property string targetName: "VKBsim Gladiator EVO R"
-    readonly property string stockImage: "qml/images/vkb_gladiator_rig.jpg"
+    property string targetName: "VKBsim Gladiator EVO R"
+    property string stockImage: /evo l|ot l/i.test(targetName)
+                                ? "qml/images/vkb_gladiator_evo_l.jpg"
+                                : "qml/images/vkb_gladiator_rig.jpg"
     property int _nameTick: 0
     property bool editing: false
     onEditingChanged: {
@@ -195,15 +197,14 @@ Window {
         }
         var a = raw.toLowerCase()
         var b = shown.toLowerCase()
-        if (a.indexOf("evo l") !== -1 || b.indexOf("evo l") !== -1) {
-            return false
-        }
-        if (a.indexOf("ot l") !== -1 || b.indexOf("ot l") !== -1) {
-            return false
+        function isLeft(s) {
+            return s.indexOf("gladiator") !== -1 && (s.indexOf("evo l") !== -1 || s.indexOf("ot l") !== -1)
         }
         function isRight(s) {
             return s.indexOf("gladiator") !== -1 && (s.indexOf("evo r") !== -1 || s.indexOf("ot r") !== -1)
         }
+        if (isLeft(targetName.toLowerCase()))
+            return isLeft(a) || isLeft(b)
         return isRight(a) || isRight(b)
     }
 
@@ -1573,6 +1574,23 @@ Window {
                 MenuItem { text: "Save"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
                 MenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
                 MenuSeparator {}
+                MenuItem {
+                    text: "Open EVO R map"
+                    enabled: !editing
+                    onTriggered: {
+                        targetName = "VKBsim Gladiator EVO R"
+                        loadLive()
+                    }
+                }
+                MenuItem {
+                    text: "Open EVO L map"
+                    enabled: !editing
+                    onTriggered: {
+                        targetName = "VKBsim Gladiator EVO L"
+                        loadLive()
+                    }
+                }
+                MenuSeparator {}
                 MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
                 MenuItem {
                     text: "Fit to photo frame"
@@ -1915,7 +1933,7 @@ Window {
                 JGText {
                     anchors.centerIn: parent
                     visible: !_hasTarget.hit
-                    text: "Connect VKBsim Gladiator EVO R"
+                    text: "Connect " + targetName
                     opacity: 0.65
                 }
 
