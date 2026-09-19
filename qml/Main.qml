@@ -135,23 +135,15 @@ ApplicationWindow {
     }
 
     function openExportDevices() {
-        var comp = Qt.createComponent("DialogExportDevices.qml")
-        if (comp.status !== Component.Ready)
-            return
-        var win = comp.createObject(null, {
+        Helpers.createComponent("DialogExportDevices.qml", {
             "deviceName": (_statusLastCard && _statusLastCard.name) ? _statusLastCard.name : (_moduleModel.focusedCardMap().name || "")
         })
-        if (win)
-            win.show()
     }
 
     function openHiddenDevices() {
-        var comp = Qt.createComponent("DialogHiddenDevices.qml")
-        if (comp.status !== Component.Ready)
-            return
-        var win = comp.createObject(null, {"moduleModel": _moduleModel})
-        if (win)
-            win.show()
+        Helpers.createComponent("DialogHiddenDevices.qml", {
+            "moduleModel": _moduleModel
+        })
     }
 
     function pairingForCard(card) {
