@@ -54,8 +54,9 @@ def _ensure_display_options() -> None:
                 props or {},
                 True,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            import logging
+            logging.getLogger("system").warning("status option %s: %s", name, exc)
 
     _reg(_CFG_HIDDEN, PropertyType.String, "", "Ignored Status card slugs (comma separated).")
     _reg(
@@ -81,6 +82,15 @@ def _ensure_display_options() -> None:
     _reg(_CFG_STACKS, PropertyType.String, "", "Status card stacks (slug+slug|slug).")
 
 
+def _write_status(name: str, value) -> None:
+    _ensure_display_options()
+    try:
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, name, value)
+    except Exception as exc:
+        import logging
+        logging.getLogger("system").warning("status save %s: %s", name, exc)
+
+
 def _hidden_slugs() -> set[str]:
     _ensure_display_options()
     raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_HIDDEN) or "")
@@ -89,9 +99,7 @@ def _hidden_slugs() -> set[str]:
 
 def _set_hidden(slugs: set[str]) -> None:
     _ensure_display_options()
-    config.Configuration().set(
-        _CFG_SECTION, _CFG_GROUP, _CFG_HIDDEN, ",".join(sorted(slugs))
-    )
+    _write_status(_CFG_HIDDEN, ",".join(sorted(slugs)))
 
 
 def _norm_guid(value) -> str:
@@ -107,9 +115,7 @@ def _order_slugs() -> list[str]:
 
 def _set_order(slugs: list[str]) -> None:
     _ensure_display_options()
-    config.Configuration().set(
-        _CFG_SECTION, _CFG_GROUP, _CFG_ORDER, ",".join(slugs)
-    )
+    _write_status(_CFG_ORDER, ",".join(slugs))
 
 
 def _show_stubs() -> bool:
@@ -404,7 +410,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def _set_stacks(self, groups: list[list[str]]) -> None:
         _ensure_display_options()
         packed = "|".join("+".join(g) for g in groups if len(g) > 1)
-        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_STACKS, packed)
+        _write_status(_CFG_STACKS, packed)
 
     @QtCore.Property(str, notify=panesChanged)
     def splitMode(self) -> str:
@@ -426,7 +432,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return
         try:
             _ensure_display_options()
-            config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT, name)
+            _write_status(_CFG_SPLIT, name)
         except Exception:
             return
         self.panesChanged.emit()
@@ -447,7 +453,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         value = min(0.8, max(0.2, float(ratio)))
         try:
             _ensure_display_options()
-            config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO, value)
+            _write_status(_CFG_SPLIT_RATIO, value)
         except Exception:
             return
         self.panesChanged.emit()
