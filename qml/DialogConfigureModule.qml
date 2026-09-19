@@ -32,7 +32,7 @@ Window {
 
     Component.onCompleted: {
         _driver.loadDevice(deviceGuid, deviceName)
-        photoUrl = _hw.profilePhotoUrl(deviceName)
+        _win.photoUrl = _hw.profilePhotoUrl(deviceName)
     }
 
     FileDialog {
@@ -48,7 +48,7 @@ Window {
             var url = rel.length ? _hw.imageUrl(rel) : ""
             if (!url.length)
                 url = _hw.profilePhotoUrl(deviceName)
-            photoUrl = url.length ? (url + "?t=" + Date.now()) : ""
+            _win.photoUrl = url.length ? (url + "?t=" + Date.now()) : ""
         }
     }
 
