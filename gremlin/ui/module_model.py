@@ -317,7 +317,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def hiddenList(self) -> list[str]:
         return sorted(_hidden_slugs())
 
-    @QtCore.Slot(str, result=bool)
+    @QtCore.Slot(str, str, int, result=bool)
     def isClaimedInput(self, device_name: str, kind: str, hw_id: int) -> bool:
         doc = _load_module_doc(device_name)
         if not doc:
