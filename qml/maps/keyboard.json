@@ -1,0 +1,19 @@
+{
+  "kind": "control.hardware",
+  "device": "Keyboard",
+  "image": "qml/maps/keyboard/photo.jpg",
+  "direction": "source",
+  "boundName": "Keyboard",
+  "boundGuidLocal": "6F1D2B61-D5A0-11CF-BFC7-444553540000",
+  "claim": {
+    "buttons": [],
+    "axes": [],
+    "hats": [],
+    "friendly": {}
+  },
+  "space": "world",
+  "pageW": 32000,
+  "pageH": 18000,
+  "photoWell": 0.75,
+  "nodes": []
+}

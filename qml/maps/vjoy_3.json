@@ -1,0 +1,19 @@
+{
+  "kind": "control.hardware",
+  "device": "vJoy 3",
+  "image": "qml/maps/vjoy_3/photo.jpg",
+  "direction": "dest",
+  "boundName": "vJoy 3",
+  "boundGuidLocal": "044A6AF0-A897-11F1-800B-444553540000",
+  "claim": {
+    "buttons": [],
+    "axes": [],
+    "hats": [],
+    "friendly": {}
+  },
+  "space": "world",
+  "pageW": 32000,
+  "pageH": 18000,
+  "photoWell": 0.75,
+  "nodes": []
+}
