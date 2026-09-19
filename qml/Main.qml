@@ -150,6 +150,7 @@ ApplicationWindow {
     function closeWorkRoom() {
         if (!uiState)
             return
+        configTitleName = ""
         uiState.setCurrentRoom("status")
         uiState.setCurrentTab("physical")
         if (_scriptButton)
@@ -889,7 +890,7 @@ ApplicationWindow {
 
         RowLayout {
             Layout.fillWidth: true
-            visible: uiState && uiState.currentRoom === "configuration"
+            visible: uiState && uiState.currentRoom === "configuration" && !configTitleName.length
             height: visible ? implicitHeight : 0
 
             DeviceList {
