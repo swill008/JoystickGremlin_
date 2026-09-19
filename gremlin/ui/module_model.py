@@ -93,7 +93,7 @@ def _ensure_display_options() -> None:
             PropertyType.Float,
             0.5,
             "Status splitter position (0.2–0.8).",
-            {},
+            {"min": 0.2, "max": 0.8},
             True,
         )
     if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_STACKS):
