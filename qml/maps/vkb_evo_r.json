@@ -8,6 +8,12 @@
   "image": "qml/maps/vkb_evo_r/photo.jpg",
   "imageWidth": 1348,
   "imageHeight": 1380,
+  "photo": {
+    "scale": 1.0,
+    "offX": 0.0,
+    "offY": 0.0,
+    "rot": 0
+  },
   "ui": {
     "chipPopW": 280,
     "chipPopH": 480,
