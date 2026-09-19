@@ -939,6 +939,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
         if self._is_keyboard():
             self._load_keyboard(claim)
             return
+        if self._is_osc():
+            self._load_osc(claim)
+            return
         if info is None and (
             "xbox" in (device_name or "").lower()
             or _norm_guid(guid) == _norm_guid(XBOX_GUID)
@@ -988,6 +991,42 @@ class DriverInputModel(QtCore.QAbstractListModel):
     def _is_keyboard(self) -> bool:
         name = (self._device_name or "").strip().lower()
         return name == "keyboard" or _norm_guid(self._guid) == _norm_guid(KEYBOARD_GUID)
+
+    def _is_osc(self) -> bool:
+        name = (self._device_name or "").strip().lower()
+        return name == "osc" or _norm_guid(self._guid) == _norm_guid(OSC_GUID)
+
+    def _load_osc(self, claim: dict) -> None:
+        from gremlin.osc import OscDevice
+        from gremlin.types import InputType
+
+        osc = OscDevice()
+        claimed_btn = {int(x) for x in (claim.get("buttons") or [])}
+        claimed_axis = {int(x) for x in (claim.get("axes") or [])}
+        friendly = claim.get("friendly") or {}
+        rows: list[dict] = []
+        for label in osc.labels_of_type():
+            item = osc.find_address(label)
+            if item is None:
+                continue
+            if item.type == InputType.JoystickAxis:
+                kind, claimed = "axis", item.id in claimed_axis
+            else:
+                kind, claimed = "button", item.id in claimed_btn
+            rows.append(
+                {
+                    "kind": kind,
+                    "hwId": int(item.id),
+                    "label": item.label,
+                    "claimed": claimed if (claimed_btn or claimed_axis) else True,
+                    "friendly": friendly.get(f"{kind}:{int(item.id)}", ""),
+                    "lit": False,
+                }
+            )
+        self.beginResetModel()
+        self._rows = rows
+        self.endResetModel()
+        self.changed.emit()
 
     def _load_keyboard(self, claim: dict) -> None:
         saved = {int(k) for k in (claim.get("keys") or [])}
