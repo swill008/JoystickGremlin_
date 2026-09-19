@@ -432,22 +432,25 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.bus = "DirectInput"
             row.vid = f"{dev.vendor_id:04X}"
             row.pid = f"{dev.product_id:04X}"
-            row.photo = self._hw.profilePhotoUrl(name) if saved else ""
+            row.photo = self._hw.profilePhotoUrl(name)
             if saved:
                 doc = _load_module_doc(name)
                 claim = _claim_from_doc(doc)
                 row.is_stub = False
                 row.is_module = True
                 row.status = "Connected"
-                row.buttons = len(claim["buttons"])
-                row.axes = len(claim["axes"])
-                row.hats = len(claim["hats"])
+                row.buttons = len(claim["buttons"]) or int(getattr(dev, "button_count", 0) or 0)
+                row.axes = len(claim["axes"]) or int(getattr(dev, "axis_count", 0) or 0)
+                row.hats = len(claim["hats"]) or int(getattr(dev, "hat_count", 0) or 0)
                 if doc.get("device"):
                     row.name = str(doc.get("device"))
             else:
                 row.is_stub = True
                 row.is_module = False
                 row.status = "Stub"
+                row.buttons = int(getattr(dev, "button_count", 0) or 0)
+                row.axes = int(getattr(dev, "axis_count", 0) or 0)
+                row.hats = int(getattr(dev, "hat_count", 0) or 0)
             rows.append(row)
 
         def extra(slug: str, name: str, guid: str, tab: str, bus: str, direction: str) -> None:
@@ -467,7 +470,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.is_module = saved
             row.is_stub = not saved
             row.status = "Virtual" if direction == "dest" else ("Connected" if saved else "Stub")
-            row.photo = self._hw.profilePhotoUrl(name) if saved else ""
+            row.photo = self._hw.profilePhotoUrl(name)
             if saved:
                 claim = _claim_from_doc(_load_module_doc(name))
                 row.buttons = len(claim["buttons"])
@@ -494,11 +497,14 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.status = "Virtual"
             row.is_stub = not module_exists(name)
             row.is_module = not row.is_stub
+            row.photo = self._hw.profilePhotoUrl(name)
+            if not row.photo:
+                row.photo = self._hw.profilePhotoUrl("vJoy")
             if row.is_module:
                 claim = _claim_from_doc(_load_module_doc(name))
-                row.buttons = len(claim["buttons"])
-                row.axes = len(claim["axes"])
-                row.hats = len(claim["hats"])
+                row.buttons = len(claim["buttons"]) or int(vdev.button_count)
+                row.axes = len(claim["axes"]) or int(vdev.axis_count)
+                row.hats = len(claim["hats"]) or int(vdev.hat_count)
             else:
                 row.buttons = vdev.button_count
                 row.axes = vdev.axis_count
