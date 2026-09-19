@@ -1310,6 +1310,47 @@ Window {
         onAccepted: showPackPeek("import", selectedFile)
     }
 
+    function exportViewTo(url, format) {
+        var path = String(url || "")
+        if (path.indexOf("file:") === 0)
+            path = path.replace("file:///", "").replace("file://", "")
+        _buttonMap.grabToImage(function(result) {
+            if (!result)
+                return
+            if (format === "pdf") {
+                var png = path.replace(/\.pdf$/i, "") + ".png"
+                result.saveToFile(png)
+            } else {
+                result.saveToFile(path)
+            }
+        })
+    }
+
+    FileDialog {
+        id: _exportPngDialog
+        title: "Export PNG"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "png"
+        nameFilters: ["PNG image (*.png)"]
+        onAccepted: exportViewTo(selectedFile, "png")
+    }
+    FileDialog {
+        id: _exportJpgDialog
+        title: "Export JPG"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "jpg"
+        nameFilters: ["JPEG image (*.jpg *.jpeg)"]
+        onAccepted: exportViewTo(selectedFile, "jpg")
+    }
+    FileDialog {
+        id: _exportPdfDialog
+        title: "Export PDF"
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "pdf"
+        nameFilters: ["PDF (*.pdf)"]
+        onAccepted: exportViewTo(selectedFile, "pdf")
+    }
+
     Popup {
         id: _savedPop
         modal: true
@@ -1553,6 +1594,18 @@ Window {
                 MenuItem {
                     text: "Export map…"
                     onTriggered: openExport()
+                }
+                MenuItem {
+                    text: "Export PDF…"
+                    onTriggered: _exportPdfDialog.open()
+                }
+                MenuItem {
+                    text: "Export PNG…"
+                    onTriggered: _exportPngDialog.open()
+                }
+                MenuItem {
+                    text: "Export JPG…"
+                    onTriggered: _exportJpgDialog.open()
                 }
                 MenuItem {
                     text: "Import map…"
