@@ -15,6 +15,8 @@ Item {
     id: _root
 
     property Device device
+    property var moduleModel: null
+    property string claimDeviceName: ""
     readonly property bool editorLocked: backend && backend.gremlinActive
     enabled: !editorLocked
     opacity: editorLocked ? 0.55 : 1.0
@@ -104,7 +106,17 @@ Item {
 
         delegate: InputButton {
             width: _inputList.width - 20
-            height: 50
+            visible: {
+                if (!moduleModel || !claimDeviceName.length || !device)
+                    return true
+                if (!moduleModel.isClaimedInput)
+                    return true
+                // Empty claim (stub) shows nothing claimed — hide leftovers.
+                return moduleModel.isClaimedInput(
+                    claimDeviceName, device.kindAt(model.index), device.hwIdAt(model.index)
+                )
+            }
+            height: visible ? 50 : 0
             enabled: !editorLocked
 
             liveState: editorLocked ? null : _liveState
