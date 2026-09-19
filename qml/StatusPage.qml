@@ -203,9 +203,12 @@ Item {
             orientation: (_page.model && _page.model.splitMode === "horizontal") ? Qt.Vertical : Qt.Horizontal
             handle: Rectangle { implicitWidth: 8; implicitHeight: 8; color: "#52525B" }
 
+            property bool applying: false
+
             function applyRatio() {
                 if (!_page.model || width < 8 || height < 8)
                     return
+                applying = true
                 var r = _page.model.splitRatio
                 if (!(r > 0))
                     r = 0.5
@@ -213,18 +216,32 @@ Item {
                     _inputPane.SplitView.preferredWidth = Math.round(width * r)
                 else
                     _inputPane.SplitView.preferredHeight = Math.round(height * r)
+                applying = false
             }
 
             function saveRatio() {
-                if (!_page.model || width < 8 || height < 8)
+                if (applying || !_page.model || width < 8 || height < 8)
                     return
                 var r = orientation === Qt.Horizontal ? (_inputPane.width / width) : (_inputPane.height / height)
+                if (!(r > 0))
+                    return
                 _page.model.setSplitRatio(r)
+            }
+
+            Timer {
+                id: _ratioSave
+                interval: 150
+                onTriggered: _splitView.saveRatio()
             }
 
             onWidthChanged: applyRatio()
             onHeightChanged: applyRatio()
-            onVisibleChanged: if (visible) Qt.callLater(applyRatio)
+            onVisibleChanged: {
+                if (visible)
+                    Qt.callLater(applyRatio)
+                else
+                    saveRatio()
+            }
             onResizingChanged: if (!resizing) saveRatio()
 
             StatusPane {
@@ -233,6 +250,8 @@ Item {
                 SplitView.minimumHeight: 120
                 title: "Input modules"
                 direction: "source"
+                onWidthChanged: if (_splitView.visible && !_splitView.applying) _ratioSave.restart()
+                onHeightChanged: if (_splitView.visible && !_splitView.applying) _ratioSave.restart()
             }
             StatusPane {
                 SplitView.minimumWidth: 180
