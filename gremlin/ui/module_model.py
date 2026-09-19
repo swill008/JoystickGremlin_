@@ -41,72 +41,44 @@ _CFG_STACKS = "card-stacks"
 
 def _ensure_display_options() -> None:
     cfg = config.Configuration()
-    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_HIDDEN):
-        cfg.register(
-            _CFG_SECTION,
-            _CFG_GROUP,
-            _CFG_HIDDEN,
-            PropertyType.String,
-            "",
-            "Ignored Status card slugs (comma separated).",
-            {},
-            True,
-        )
-    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_SHOW_STUBS):
-        cfg.register(
-            _CFG_SECTION,
-            _CFG_GROUP,
-            _CFG_SHOW_STUBS,
-            PropertyType.Bool,
-            True,
-            "Show stub cards for detected hardware with no saved module.",
-            {},
-            True,
-        )
-    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_ORDER):
-        cfg.register(
-            _CFG_SECTION,
-            _CFG_GROUP,
-            _CFG_ORDER,
-            PropertyType.String,
-            "",
-            "Status card order (comma separated slugs).",
-            {},
-            True,
-        )
-    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT):
-        cfg.register(
-            _CFG_SECTION,
-            _CFG_GROUP,
-            _CFG_SPLIT,
-            PropertyType.String,
-            "none",
-            "Status split: none, vertical, or horizontal.",
-            {},
-            True,
-        )
-    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO):
-        cfg.register(
-            _CFG_SECTION,
-            _CFG_GROUP,
-            _CFG_SPLIT_RATIO,
-            PropertyType.Float,
-            0.5,
-            "Status splitter position (0.2–0.8).",
-            {"min": 0.2, "max": 0.8},
-            True,
-        )
-    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_STACKS):
-        cfg.register(
-            _CFG_SECTION,
-            _CFG_GROUP,
-            _CFG_STACKS,
-            PropertyType.String,
-            "",
-            "Status card stacks (slug+slug|slug).",
-            {},
-            True,
-        )
+
+    def _reg(name, dtype, initial, desc, props=None) -> None:
+        try:
+            cfg.register(
+                _CFG_SECTION,
+                _CFG_GROUP,
+                name,
+                dtype,
+                initial,
+                desc,
+                props or {},
+                True,
+            )
+        except Exception:
+            pass
+
+    _reg(_CFG_HIDDEN, PropertyType.String, "", "Ignored Status card slugs (comma separated).")
+    _reg(
+        _CFG_SHOW_STUBS,
+        PropertyType.Bool,
+        True,
+        "Show stub cards for detected hardware with no saved module.",
+    )
+    _reg(_CFG_ORDER, PropertyType.String, "", "Status card order (comma separated slugs).")
+    _reg(
+        _CFG_SPLIT,
+        PropertyType.String,
+        "none",
+        "Status split: none, vertical, or horizontal.",
+    )
+    _reg(
+        _CFG_SPLIT_RATIO,
+        PropertyType.Float,
+        0.5,
+        "Status splitter position (0.2–0.8).",
+        {"min": 0.2, "max": 0.8},
+    )
+    _reg(_CFG_STACKS, PropertyType.String, "", "Status card stacks (slug+slug|slug).")
 
 
 def _hidden_slugs() -> set[str]:
@@ -435,8 +407,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Property(str, notify=panesChanged)
     def splitMode(self) -> str:
-        _ensure_display_options()
-        raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT) or "none").lower()
+        try:
+            _ensure_display_options()
+            raw = str(
+                config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT) or "none"
+            ).lower()
+        except Exception:
+            return "none"
         return raw if raw in ("none", "vertical", "horizontal") else "none"
 
     @QtCore.Slot(str)
@@ -446,22 +423,32 @@ class ModuleListModel(QtCore.QAbstractListModel):
             name = "none"
         if name == self.splitMode:
             return
-        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT, name)
+        try:
+            _ensure_display_options()
+            config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT, name)
+        except Exception:
+            return
         self.panesChanged.emit()
 
     @QtCore.Property(float, notify=panesChanged)
     def splitRatio(self) -> float:
-        _ensure_display_options()
         try:
-            raw = float(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO) or 0.5)
-        except (TypeError, ValueError):
-            raw = 0.5
+            _ensure_display_options()
+            raw = float(
+                config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO) or 0.5
+            )
+        except Exception:
+            return 0.5
         return min(0.8, max(0.2, raw))
 
     @QtCore.Slot(float)
     def setSplitRatio(self, ratio: float) -> None:
         value = min(0.8, max(0.2, float(ratio)))
-        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO, value)
+        try:
+            _ensure_display_options()
+            config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT_RATIO, value)
+        except Exception:
+            return
         self.panesChanged.emit()
 
     @QtCore.Slot(str, result=list)
