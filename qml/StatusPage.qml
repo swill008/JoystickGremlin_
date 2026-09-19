@@ -102,6 +102,7 @@ Item {
         var heavy = card.width * card.height * 0.45
         if (best && bestArea >= heavy && bestC < Math.min(card.width, card.height) * 0.35) {
             model.stackSlugs(slug, best.slug)
+            model.setPileSize(best.slug, Math.round(best.width), Math.round(best.height))
             return
         }
         model.unstackSlug(slug)
@@ -146,6 +147,10 @@ Item {
         card.onAssignHardware.connect(function() { _page.assignHardware(_page.pack(card)) })
         card.onIgnoreDevice.connect(function() { _page.ignoreDevice(_page.pack(card)) })
         card.onDropAt.connect(function() { _page.handleDrop(card.slug, card) })
+        card.onSizeChanged.connect(function(w, h) {
+            if (model)
+                model.setPileSize(card.slug, w, h)
+        })
         card.Component.onDestruction.connect(function() { _page.unregisterCard(card) })
         _page.registerCard(card)
     }
@@ -328,9 +333,18 @@ Item {
                             id: _pile
                             property var members: _page.model ? _page.model.pileMembers(modelData) : [modelData]
                             property int cardW: {
+                                _page.pileRev
+                                var saved = _page.model ? _page.model.cardWidth(modelData) : 0
+                                if (saved >= 220)
+                                    return saved
                                 var avail = _flow.width
                                 var cols = Math.max(1, Math.floor((avail + 16) / 332))
                                 return Math.min(420, Math.max(260, Math.floor((avail - (cols - 1) * 16) / cols)))
+                            }
+                            property int cardH: {
+                                _page.pileRev
+                                var saved = _page.model ? _page.model.cardHeight(modelData) : 0
+                                return saved >= 140 ? saved : 0
                             }
 
                             width: Math.max(cardW, childrenRect.width)
@@ -344,6 +358,7 @@ Item {
                                     y: index * 14
                                     stackIndex: index
                                     width: _pile.cardW
+                                    height: _pile.cardH > 0 ? _pile.cardH : implicitHeight
                                     Component.onCompleted: {
                                         _page.fillCard(_card, modelData)
                                         _page.bindCard(_card)
