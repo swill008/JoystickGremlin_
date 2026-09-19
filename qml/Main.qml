@@ -78,41 +78,40 @@ ApplicationWindow {
     }
 
     function openConfigurationForFocus() {
-        var slug = _moduleModel.focusedSlug
-        if (!slug)
-            return
-        var fake = {
-            slug: slug,
-            name: String(_statusPage ? "" : ""),
-            guid: "",
-            tab: "physical"
-        }
-        // Resolve from the Status page model roles via a small helper object
-        // filled when a card is clicked. Fall back to first physical device.
-        if (_statusLastCard && _statusLastCard.slug)
-            openConfigurationForCard(_statusLastCard)
-        else
+        var card = _statusLastCard
+        if (!card || !card.slug)
+            card = _moduleModel.focusedCardMap()
+        if (card && card.slug)
+            openConfigurationForCard(card)
+        else if (uiState)
             uiState.setCurrentRoom("configuration")
     }
 
     property var _statusLastCard: null
 
     function pinFocusedControlDisplay() {
-        if (_statusLastCard)
-            pinSlug = (pinSlug === _statusLastCard.slug) ? "" : _statusLastCard.slug
+        var card = _statusLastCard && _statusLastCard.slug ? _statusLastCard : _moduleModel.focusedCardMap()
+        if (!card || !card.slug)
+            return
+        pinSlug = (pinSlug === card.slug) ? "" : card.slug
     }
 
     function openConfigureModule(direction) {
-        var card = _statusLastCard
+        var card = _statusLastCard && _statusLastCard.slug ? _statusLastCard : _moduleModel.focusedCardMap()
+        var want = direction
+        if (!want && card && card.direction === "dest")
+            want = "dest"
+        if (!want)
+            want = "source"
         var comp = Qt.createComponent("DialogConfigureModule.qml")
         if (comp.status !== Component.Ready) {
             console.log(comp.errorString())
             return
         }
         var win = comp.createObject(null, {
-            "direction": direction || (card && card.direction === "dest" ? "dest" : "source"),
-            "deviceName": card ? card.name : "",
-            "deviceGuid": card ? card.guid : ""
+            "direction": want,
+            "deviceName": card ? (card.name || "") : "",
+            "deviceGuid": card ? (card.guid || "") : ""
         })
         if (win)
             win.show()
@@ -123,7 +122,7 @@ ApplicationWindow {
         if (comp.status !== Component.Ready)
             return
         var win = comp.createObject(null, {
-            "deviceName": _statusLastCard ? _statusLastCard.name : ""
+            "deviceName": (_statusLastCard && _statusLastCard.name) ? _statusLastCard.name : (_moduleModel.focusedCardMap().name || "")
         })
         if (win)
             win.show()
