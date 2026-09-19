@@ -617,6 +617,11 @@ class DriverInputModel(QtCore.QAbstractListModel):
         doc.setdefault("pageH", 18000)
         doc.setdefault("photoWell", 0.75)
         doc.setdefault("nodes", [])
+        folder = _maps_dir() / _slug(name)
+        if folder.is_dir():
+            photos = sorted(p for p in folder.glob("photo.*") if p.is_file())
+            if photos:
+                doc["image"] = f"qml/maps/{_slug(name)}/{photos[-1].name}"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
         signal.configChanged.emit()
