@@ -199,9 +199,45 @@ def _this_process_tree() -> set[int]:
     return tree
 
 
+def _process_image_name(pid: int) -> str:
+    """Returns the executable basename for a PID, or an empty string."""
+    if pid <= 0:
+        return ""
+    kernel32 = ctypes.windll.kernel32
+    process_query_limited = 0x1000
+    handle = kernel32.OpenProcess(process_query_limited, False, pid)
+    if not handle:
+        handle = kernel32.OpenProcess(0x0400, False, pid)
+    if not handle:
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(32768)
+        size = ctypes.c_ulong(len(buf))
+        query = getattr(kernel32, "QueryFullProcessImageNameW", None)
+        if query and query(handle, 0, buf, ctypes.byref(size)):
+            return os.path.basename(buf.value).lower()
+    except Exception:
+        pass
+    finally:
+        kernel32.CloseHandle(handle)
+    return ""
+
+
+def _is_gremlin_process(pid: int, python_pids: set[int] | None = None) -> bool:
+    """True if the PID is a Gremlin exe or a Python interpreter running it."""
+    name = _process_image_name(pid)
+    if name == "joystick_gremlin.exe":
+        return True
+    if name in ("python.exe", "pythonw.exe"):
+        known = python_pids if python_pids is not None else _command_line_process_ids()
+        return pid in known
+    return False
+
+
 def _gremlin_window_titles() -> list[str]:
     titles: list[str] = []
     protected = _this_process_tree()
+    python_pids = _command_line_process_ids()
     try:
         user32 = ctypes.windll.user32
 
@@ -217,7 +253,8 @@ def _gremlin_window_titles() -> list[str]:
                 return True
             pid = ctypes.c_ulong()
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-            if int(pid.value) in protected:
+            value = int(pid.value)
+            if value in protected or not _is_gremlin_process(value, python_pids):
                 return True
             titles.append(title)
             return True
@@ -231,6 +268,7 @@ def _gremlin_window_titles() -> list[str]:
 def _window_process_ids() -> set[int]:
     pids: set[int] = set()
     protected = _this_process_tree()
+    python_pids = _command_line_process_ids()
     try:
         user32 = ctypes.windll.user32
 
@@ -244,7 +282,7 @@ def _window_process_ids() -> set[int]:
             pid = ctypes.c_ulong()
             user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
             value = int(pid.value)
-            if value and value not in protected:
+            if value and value not in protected and _is_gremlin_process(value, python_pids):
                 pids.add(value)
             return True
 
