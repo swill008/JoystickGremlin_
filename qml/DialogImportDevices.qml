@@ -16,6 +16,10 @@ Window {
     width: 560
     height: 420
     title: "Import devices"
+
+    Shortcut { sequence: "Esc"; onActivated: {} }
+    Shortcut { sequence: "Return"; onActivated: {} }
+    Shortcut { sequence: "Enter"; onActivated: {} }
     color: Style.background
     Universal.theme: Style.theme
 
@@ -85,11 +89,11 @@ Window {
         Item { Layout.fillHeight: true }
 
         RowLayout {
-            Button { text: "Choose zip…"; onClicked: _pick.open() }
+            Button { text: "Choose zip…"; focusPolicy: Qt.NoFocus; onClicked: _pick.open() }
             Item { Layout.fillWidth: true }
-            Button { text: "Cancel"; onClicked: _win.close() }
+            Button { text: "Cancel"; focusPolicy: Qt.NoFocus; onClicked: _win.close() }
             Button {
-                text: "Import"
+                text: "Import"; focusPolicy: Qt.NoFocus
                 enabled: zipUrl.length > 0 && packDevice.length > 0
                 onClicked: {
                     var raw = _hw.importMap(zipUrl)
