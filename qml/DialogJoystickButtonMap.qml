@@ -1272,6 +1272,7 @@ Window {
         title: "Choose background image"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
+        currentFolder: _hw.imagesFolderUrl()
         onAccepted: {
             var rel = _hw.copyImage(selectedFile, targetName)
             if (rel.length) {
@@ -1286,6 +1287,7 @@ Window {
         title: "Import overlay image"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
+        currentFolder: _hw.imagesFolderUrl()
         onAccepted: {
             var rel = _hw.copyOverlay(selectedFile, targetName)
             var e = _ed()
