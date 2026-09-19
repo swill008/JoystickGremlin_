@@ -552,6 +552,8 @@ def register_config_options() -> None:
     ):
         if cfg.exists("global", "osc", name):
             cfg.set(osc_sec, osc_grp, name, cfg.value("global", "osc", name))
+    # Status layout must be registered before purge_unused() or split/stacks vanish.
+    gremlin.ui.module_model._ensure_display_options()
 
 
 def configure_loggers() -> None:
