@@ -18,6 +18,7 @@ from gremlin import (
 )
 from gremlin.signal import signal
 from gremlin.types import InputType, PropertyType
+from gremlin import keyboard as gremlin_keyboard
 from gremlin.ui.hardware_profile import HardwareProfile, _maps_dir, _slug
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -150,6 +151,7 @@ def _claim_from_doc(doc: dict) -> dict:
         "buttons": sorted(set(buttons)),
         "axes": sorted(set(axes)),
         "hats": sorted(set(hats)),
+        "keys": [int(k) for k in (claim.get("keys") or [])],
         "friendly": friendly,
     }
 
@@ -605,6 +607,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
             listener.joystick_event.connect(
                 self._on_joy, QtCore.Qt.ConnectionType.QueuedConnection
             )
+            listener.keyboard_event.connect(
+                self._on_key, QtCore.Qt.ConnectionType.QueuedConnection
+            )
         except Exception:
             pass
 
@@ -637,6 +642,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 info = dill.DILL.get_device_information_by_guid(dill.GUID.from_str(guid))
             except Exception:
                 info = None
+        if self._is_keyboard():
+            self._load_keyboard(claim)
+            return
         if info is None and (
             "xbox" in (device_name or "").lower()
             or _norm_guid(guid) == _norm_guid(XBOX_GUID)
@@ -682,6 +690,71 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._rows = rows
         self.endResetModel()
         self.changed.emit()
+
+    def _is_keyboard(self) -> bool:
+        name = (self._device_name or "").strip().lower()
+        return name == "keyboard" or _norm_guid(self._guid) == _norm_guid(KEYBOARD_GUID)
+
+    def _load_keyboard(self, claim: dict) -> None:
+        rows = []
+        for hid in claim.get("keys") or []:
+            scan = int(hid) & 0xFFFF
+            ext = bool(int(hid) >> 16)
+            try:
+                label = gremlin_keyboard.key_from_code(scan, ext).name
+            except Exception:
+                label = f"Key {scan}"
+            rows.append(
+                {
+                    "kind": "key",
+                    "hwId": int(hid),
+                    "label": label,
+                    "claimed": True,
+                    "friendly": claim.get("friendly", {}).get(f"key:{int(hid)}", ""),
+                    "lit": False,
+                }
+            )
+        self.beginResetModel()
+        self._rows = rows
+        self.endResetModel()
+        self.changed.emit()
+
+    def _on_key(self, event: event_handler.Event) -> None:
+        if event is None or not self._is_keyboard():
+            return
+        if event.is_pressed is False:
+            return
+        ident = event.identifier
+        try:
+            scan, ext = ident[0], ident[1]
+        except Exception:
+            return
+        hid = (int(scan) & 0xFFFF) | ((1 if ext else 0) << 16)
+        try:
+            label = gremlin_keyboard.key_from_code(int(scan), bool(ext)).name
+        except Exception:
+            label = f"Key {scan}"
+        found = None
+        for i, row in enumerate(self._rows):
+            if row["kind"] == "key" and int(row["hwId"]) == hid:
+                found = i
+                break
+        if found is None:
+            self.beginInsertRows(QtCore.QModelIndex(), len(self._rows), len(self._rows))
+            self._rows.append(
+                {
+                    "kind": "key",
+                    "hwId": hid,
+                    "label": label,
+                    "claimed": True,
+                    "friendly": "",
+                    "lit": False,
+                }
+            )
+            self.endInsertRows()
+            found = len(self._rows) - 1
+            self.changed.emit()
+        self.markPressed("key", hid)
 
     def _load_xbox_dest(self, claim: dict) -> None:
         labels = [
@@ -820,6 +893,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         buttons = [int(r["hwId"]) for r in self._rows if r["kind"] == "button" and r["claimed"]]
         axes = [int(r["hwId"]) for r in self._rows if r["kind"] == "axis" and r["claimed"]]
         hats = [int(r["hwId"]) for r in self._rows if r["kind"] == "hat" and r["claimed"]]
+        keys = [int(r["hwId"]) for r in self._rows if r["kind"] == "key" and r["claimed"]]
         friendly = {}
         for r in self._rows:
             if r["claimed"] and r.get("friendly"):
@@ -835,6 +909,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             "buttons": buttons,
             "axes": axes,
             "hats": hats,
+            "keys": keys,
             "friendly": friendly,
         }
         doc.setdefault("space", "world")
