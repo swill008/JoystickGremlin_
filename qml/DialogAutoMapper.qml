@@ -11,6 +11,7 @@ import Gremlin.Device
 import Gremlin.Profile
 import Gremlin.Tools
 import Gremlin.Style
+import Gremlin.Config
 
 Window {
     minimumWidth: 900
@@ -51,7 +52,7 @@ Window {
 
                 RowLayout {
                     Label {
-                        text: "Physical Devices"
+                        text: "Input module"
                     }
 
                     LayoutHorizontalSpacer {
@@ -86,7 +87,7 @@ Window {
 
                 RowLayout {
                     Label {
-                        text: "vJoy Devices"
+                        text: "Output module"
                     }
 
                     LayoutHorizontalSpacer {
@@ -134,8 +135,9 @@ Window {
             Switch {
                 id: _overwriteNonEmpty
 
-                text: "Overwrite non-empty physical inputs"
+                text: "Overwrite used inputs"
 
+                Component.onCompleted: checked = tools.lastOverwriteUsedInputs()
                 onToggled: () => { overwriteNonEmpty = checked }
             }
 
