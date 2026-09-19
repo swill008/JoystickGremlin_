@@ -23,6 +23,10 @@ Window {
 
     title: "Device Viewer"
 
+    Shortcut { sequence: "Esc"; onActivated: {} }
+    Shortcut { sequence: "Return"; onActivated: {} }
+    Shortcut { sequence: "Enter"; onActivated: {} }
+
     property string hardwareTip: ""
 
     DeviceNames { id: _names }
