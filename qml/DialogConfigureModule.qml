@@ -49,6 +49,7 @@ Window {
         title: "Import image"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
+        currentFolder: _hw.imagesFolderUrl()
         onAccepted: {
             var src = selectedFile && selectedFile.toString ? selectedFile.toString() : selectedFile
             if (!src || !String(src).length)
