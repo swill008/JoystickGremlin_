@@ -13,22 +13,26 @@ ColumnLayout {
     id: _root
 
     property string deviceGuid: ""
+    property string deviceName: ""
     property string title: ""
     property string pairLabel: ""
+    property bool destEmpty: false
     property int axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
     property bool pairActive: backend && backend.gremlinActive
 
     spacing: 4
 
-    MappedAxisModel {
+    ModulePairAxisModel {
         id: _axes
         guid: deviceGuid
+        deviceName: _root.deviceName
     }
 
-    MappedButtonModel {
+    ModulePairButtonModel {
         id: _buttons
         guid: deviceGuid
+        deviceName: _root.deviceName
     }
 
     PairLiveThrottle {
@@ -37,27 +41,23 @@ ColumnLayout {
     }
 
     function hwAxis(id) {
-        if (!_live) {
+        if (!_live)
             return 0
-        }
         return axisStamp >= 0 ? _live.axisValue(id) : 0
     }
     function vjAxis(g, id) {
-        if (!_live) {
+        if (!_live)
             return 0
-        }
         return axisStamp >= 0 ? _live.vjoyAxisValue(g, id) : 0
     }
     function hwButton(id) {
-        if (!_live) {
+        if (!_live)
             return 0
-        }
         return buttonStamp >= 0 ? _live.buttonValue(id) : 0
     }
     function vjButton(g, id) {
-        if (!_live) {
+        if (!_live)
             return 0
-        }
         return buttonStamp >= 0 ? _live.vjoyButtonValue(g, id) : 0
     }
 
@@ -114,6 +114,15 @@ ColumnLayout {
                 }
             }
 
+            JGText {
+                visible: destEmpty
+                text: "Output module has no claimed controls. Configure output module to fill the right half."
+                color: "#A1A1AA"
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                font.pointSize: 10
+            }
+
             Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: _temporal.checked ? 200 : 0
@@ -139,6 +148,13 @@ ColumnLayout {
                 font.pointSize: 10
             }
 
+            JGText {
+                visible: _axes.count === 0
+                text: destEmpty ? "No dest-claimed axes." : "No claimed axes wired to this dest."
+                opacity: 0.45
+                font.pointSize: 10
+            }
+
             Repeater {
                 model: _axes
 
@@ -148,6 +164,7 @@ ColumnLayout {
                     required property string vjoyLabel
                     required property string vjoyGuid
                     required property int vjoyInput
+                    required property bool destClaimed
                     Layout.fillWidth: true
                     spacing: 8
 
@@ -173,8 +190,8 @@ ColumnLayout {
                     }
 
                     Label {
-                        text: vjoyLabel
-                        color: Style.accent
+                        text: destClaimed ? vjoyLabel : "—"
+                        color: destClaimed ? Style.accent : "#71717A"
                         Layout.preferredWidth: 88
                         font.pointSize: 9
                     }
@@ -186,6 +203,7 @@ ColumnLayout {
                         color: Style.lowColor
 
                         Rectangle {
+                            visible: destClaimed
                             height: parent.height
                             radius: 2
                             width: parent.width * Math.min(1.0, Math.max(0.0, (vjAxis(vjoyGuid, vjoyInput) + 1.0) * 0.5))
@@ -201,8 +219,16 @@ ColumnLayout {
                 font.pointSize: 10
             }
 
+            JGText {
+                visible: _buttons.count === 0
+                text: destEmpty ? "No dest-claimed buttons." : "No claimed buttons wired to this dest."
+                opacity: 0.45
+                font.pointSize: 10
+            }
+
             Rectangle {
                 Layout.fillWidth: true
+                visible: _buttons.count > 0
                 implicitHeight: _btnFlow.implicitHeight + 16
                 color: "transparent"
                 border.color: Style.medColor
@@ -225,9 +251,10 @@ ColumnLayout {
                             required property string vjoyLabel
                             required property string vjoyGuid
                             required property int vjoyInput
+                            required property bool destClaimed
 
                             property bool hwOn: hwButton(identifier) > 0.5
-                            property bool vjOn: vjButton(vjoyGuid, vjoyInput) > 0.5
+                            property bool vjOn: destClaimed && vjButton(vjoyGuid, vjoyInput) > 0.5
 
                             width: 40
                             height: 18
@@ -255,7 +282,7 @@ ColumnLayout {
                                     HoverHandler { id: _hwHover }
                                     ToolTip.visible: _hwHover.hovered
                                     ToolTip.delay: 200
-                                    ToolTip.text: "Hardware " + label
+                                    ToolTip.text: "Input " + label
                                 }
 
                                 Rectangle {
@@ -271,15 +298,15 @@ ColumnLayout {
 
                                     Label {
                                         anchors.centerIn: parent
-                                        text: String(vjoyInput)
-                                        color: vjOn ? "#0b1220" : Style.foreground
+                                        text: destClaimed ? String(vjoyInput) : "—"
+                                        color: vjOn ? "#0b1220" : (destClaimed ? Style.foreground : "#71717A")
                                         font.pointSize: 8
                                     }
 
                                     HoverHandler { id: _vjHover }
                                     ToolTip.visible: _vjHover.hovered
                                     ToolTip.delay: 200
-                                    ToolTip.text: vjoyLabel
+                                    ToolTip.text: destClaimed ? vjoyLabel : "Dest not claimed"
                                 }
                             }
                         }
