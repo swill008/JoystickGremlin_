@@ -398,6 +398,21 @@ class ModuleListModel(QtCore.QAbstractListModel):
         _set_order(current + extras)
         self._reload()
 
+    @QtCore.Slot(str, str)
+    def moveSlugBefore(self, slug: str, before_slug: str) -> None:
+        current = [row.slug for row in self._rows]
+        if slug not in current:
+            return
+        current.remove(slug)
+        if before_slug and before_slug in current:
+            current.insert(current.index(before_slug), slug)
+        else:
+            current.append(slug)
+        extras = [s for s in _order_slugs() if s not in current and s not in _hidden_slugs()]
+        _set_order(current + extras)
+        self._reload()
+        self.panesChanged.emit()
+
     @QtCore.Slot(result=int)
     def visibleCount(self) -> int:
         return len(self._rows)
