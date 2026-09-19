@@ -19,12 +19,24 @@ Window {
     Universal.theme: Style.theme
 
     property var moduleModel: null
+    property var hiddenRows: []
+
+    function refreshHidden() {
+        hiddenRows = moduleModel ? moduleModel.hiddenList() : []
+    }
+
+    Component.onCompleted: refreshHidden()
+
+    Connections {
+        target: moduleModel
+        function onHiddenChanged() { _win.refreshHidden() }
+    }
 
     ListView {
         id: _list
         anchors.fill: parent
         anchors.margins: 12
-        model: moduleModel ? moduleModel.hiddenList() : []
+        model: hiddenRows
         delegate: RowLayout {
             width: ListView.view.width
             Label { text: modelData; Layout.fillWidth: true; color: Style.foreground }
@@ -33,7 +45,7 @@ Window {
                 onClicked: {
                     if (moduleModel)
                         moduleModel.unignoreSlug(modelData)
-                    _list.model = moduleModel.hiddenList()
+                    _win.refreshHidden()
                 }
             }
         }
