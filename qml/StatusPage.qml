@@ -171,6 +171,14 @@ Item {
         _page.registerCard(card)
     }
 
+    function refreshCards() {
+        for (var i = 0; i < _liveCards.length; ++i) {
+            var card = _liveCards[i]
+            if (card && card.slug)
+                fillCard(card, card.slug)
+        }
+    }
+
     function fillCard(card, slug) {
         if (!model)
             return
@@ -185,7 +193,13 @@ Item {
         card.buttons = info.buttons || 0
         card.axes = info.axes || 0
         card.hats = info.hats || 0
-        card.photo = info.photo || ""
+        var nextPhoto = info.photo || ""
+        if (card.photo === nextPhoto) {
+            card.photo = ""
+            Qt.callLater(function() { card.photo = nextPhoto })
+        } else {
+            card.photo = nextPhoto
+        }
         card.isStub = !!info.isStub
         card.isModule = !!info.isModule
         card.tab = info.tab || "physical"
@@ -393,10 +407,16 @@ Item {
         target: model
         function onPanesChanged() {
             _page.pileRev++
+            Qt.callLater(_page.refreshCards)
             if (_splitView.visible)
                 Qt.callLater(_splitView.applyRatio)
         }
-        function onModelReset() {}
+        function onClaimsChanged() {
+            Qt.callLater(_page.refreshCards)
+        }
+        function onModelReset() {
+            Qt.callLater(_page.refreshCards)
+        }
     }
 
     Label {
