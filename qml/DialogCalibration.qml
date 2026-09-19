@@ -22,6 +22,10 @@ Window {
 
     title: "Calibration"
 
+    Shortcut { sequence: "Esc"; onActivated: {} }
+    Shortcut { sequence: "Return"; onActivated: {} }
+    Shortcut { sequence: "Enter"; onActivated: {} }
+
 
     Connections {
         target: _calibrationDialog
