@@ -32,6 +32,7 @@ Rectangle {
     property bool pinActive: false
     property bool hoverPeek: true
     property int stackIndex: 0
+    property bool stacked: false
     property bool lifting: false
     property bool resizing: false
     z: stackIndex + (lifting || resizing ? 100 : 0)
@@ -51,6 +52,7 @@ Rectangle {
     signal sizeChanged(int w, int h)
     signal resetSize()
     signal clearSettings()
+    signal unstackCard()
 
     implicitHeight: _body.implicitHeight + 20
     radius: 4
@@ -352,6 +354,12 @@ Rectangle {
             height: visible ? implicitHeight : 0
             text: "Assign hardware…"
             onTriggered: _card.assignHardware()
+        }
+        MenuItem {
+            visible: stacked
+            height: visible ? implicitHeight : 0
+            text: "Unstack"
+            onTriggered: _card.unstackCard()
         }
         MenuSeparator {}
         MenuItem { text: "Reset size"; onTriggered: _card.resetSize() }
