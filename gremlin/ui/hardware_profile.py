@@ -73,6 +73,10 @@ def _stock_photo() -> Path:
     return _install_root() / "qml" / "images" / "vkb_gladiator_rig.jpg"
 
 
+def _stock_photo_l() -> Path:
+    return _install_root() / "qml" / "images" / "vkb_gladiator_evo_l.jpg"
+
+
 def _safe_name(name: str, fallback: str = "image.jpg") -> str:
     raw = Path(name or "").name
     if not raw:
@@ -417,6 +421,12 @@ class HardwareProfile(QtCore.QObject):
         if _slug(device_name) == "vkb_evo_r":
             stock = _stock_photo()
             return stock.as_uri() if stock.is_file() else ""
+        if _slug(device_name) == "vkb_evo_l":
+            stock = _stock_photo_l()
+            if stock.is_file():
+                return stock.as_uri()
+            packed = _maps_dir() / "vkb_evo_l" / "photo.jpg"
+            return packed.as_uri() if packed.is_file() else ""
         return ""
 
     def _plate_count(self, payload: dict) -> int:
