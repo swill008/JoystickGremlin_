@@ -426,6 +426,12 @@ ApplicationWindow {
                 onTriggered: () => { Helpers.toggleComponent("DialogDeviceViewer.qml") }
             }
             MenuSeparator {}
+            Menu {
+                title: qsTr("Status split")
+                MenuItem { text: qsTr("None"); onTriggered: _moduleModel.setSplitMode("none") }
+                MenuItem { text: qsTr("Vertical — input | output"); onTriggered: _moduleModel.setSplitMode("vertical") }
+                MenuItem { text: qsTr("Horizontal — input / output"); onTriggered: _moduleModel.setSplitMode("horizontal") }
+            }
             MenuItem {
                 text: qsTr("Hidden devices…")
                 onTriggered: () => { openHiddenDevices() }
