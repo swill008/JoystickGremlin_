@@ -147,10 +147,14 @@ ApplicationWindow {
     }
 
     function closeWorkRoom() {
-        if (uiState) {
-            uiState.setCurrentRoom("status")
-            uiState.setCurrentTab("physical")
-        }
+        if (!uiState)
+            return
+        uiState.setCurrentRoom("status")
+        uiState.setCurrentTab("physical")
+        if (_scriptButton)
+            _scriptButton.checked = false
+        if (_profileSettingsButton)
+            _profileSettingsButton.checked = false
     }
 
     function requestNewProfile() {
@@ -792,7 +796,7 @@ ApplicationWindow {
             id: _statusPage
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: _columnLayout.onStatus
+            visible: !uiState || uiState.currentRoom === "status"
             model: _moduleModel
             pinSlug: _root.pinSlug
             onFocusSlug: function(slug) {
@@ -874,6 +878,12 @@ ApplicationWindow {
                 Layout.rightMargin: 12
                 onClicked: closeWorkRoom()
             }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            visible: uiState && uiState.currentRoom === "configuration"
+            height: visible ? implicitHeight : 0
 
             DeviceList {
                 id: _deviceList
@@ -914,6 +924,7 @@ ApplicationWindow {
 
                     onClicked: () => {
                         if (uiState) {
+                            uiState.setCurrentRoom("scripts")
                             uiState.setCurrentTab("scripts")
                         }
                     }
@@ -935,6 +946,7 @@ ApplicationWindow {
 
                     onClicked: () => {
                         if (uiState) {
+                            uiState.setCurrentRoom("settings")
                             uiState.setCurrentTab("settings")
                         }
                     }
