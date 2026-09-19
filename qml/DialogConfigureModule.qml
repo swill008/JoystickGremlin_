@@ -41,9 +41,14 @@ Window {
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
         onAccepted: {
-            var rel = _hw.copyImage(currentFile, deviceName)
-            if (rel.length)
-                photoUrl = _hw.profilePhotoUrl(deviceName)
+            var src = selectedFile && selectedFile.toString ? selectedFile.toString() : selectedFile
+            if (!src || !String(src).length)
+                src = currentFile
+            var rel = _hw.copyImage(src, deviceName)
+            var url = rel.length ? _hw.imageUrl(rel) : ""
+            if (!url.length)
+                url = _hw.profilePhotoUrl(deviceName)
+            photoUrl = url.length ? (url + "?t=" + Date.now()) : ""
         }
     }
 
@@ -85,6 +90,17 @@ Window {
                         Layout.fillHeight: true
                         source: photoUrl
                         fillMode: Image.PreserveAspectFit
+                        visible: photoUrl && photoUrl.length
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        visible: !(photoUrl && photoUrl.length)
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        wrapMode: Text.WordWrap
+                        color: "#A1A1AA"
+                        text: "No photo for this module.\nImport image…"
                     }
                     Button {
                         text: "Import image…"
