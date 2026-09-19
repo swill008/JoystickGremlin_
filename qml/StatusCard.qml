@@ -95,7 +95,7 @@ Rectangle {
                     source: photo
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
-                    cache: false
+                    cache: true
                     visible: photo && photo.length
                     onStatusChanged: _photoWell.Layout.preferredHeightChanged()
                     onImplicitWidthChanged: _photoWell.Layout.preferredHeightChanged()
