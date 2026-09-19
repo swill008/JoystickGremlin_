@@ -163,6 +163,10 @@ Item {
             if (model)
                 model.unstackSlug(card.slug)
         })
+        card.onUnstackAllCards.connect(function() {
+            if (model)
+                model.unstackAll(card.slug)
+        })
         card.Component.onDestruction.connect(function() { _page.unregisterCard(card) })
         _page.registerCard(card)
     }
