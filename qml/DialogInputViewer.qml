@@ -27,22 +27,11 @@ Window {
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
 
-    readonly property string oscGuid: "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
-
-    ViewerDeviceModel { id: _devices }
-
-    function pairTitle(guid, name) {
-        var key = String(guid || "").toLowerCase().replace(/[{}]/g, "")
-        if (key === oscGuid) {
-            return "OSC"
-        }
-        return name && name.length ? name : guid
-    }
+    ModulePairDeviceModel { id: _devices }
 
     Component.onCompleted: () => {
-        if (_devices) {
+        if (_devices)
             _devices.reload()
-        }
     }
 
     ScrollView {
@@ -60,21 +49,32 @@ Window {
             width: Math.max(_dynamicScroll.availableWidth, 760)
             spacing: 8
 
+            JGText {
+                visible: _devices.count === 0
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                opacity: 0.65
+                text: "No input module with a vJoy dest. Save an input module and wire it in Configuration."
+            }
+
             Repeater {
                 model: _devices
                 delegate: Loader {
                     required property string guid
                     required property string name
                     required property string pairLabel
-                    required property bool mapped
+                    required property string deviceName
+                    required property bool destEmpty
 
                     Layout.fillWidth: true
                     Layout.preferredHeight: item ? item.implicitHeight : 0
-                    sourceComponent: mapped ? _pairComp : _unmappedComp
+                    sourceComponent: _pairComp
 
                     property string _guid: guid
-                    property string _name: _inputViewer.pairTitle(guid, name)
+                    property string _name: name
                     property string _pair: pairLabel
+                    property string _deviceName: deviceName
+                    property bool _destEmpty: destEmpty
                 }
             }
         }
@@ -84,17 +84,10 @@ Window {
         id: _pairComp
         InputViewerCard {
             deviceGuid: parent._guid
+            deviceName: parent._deviceName
             title: parent._name
             pairLabel: parent._pair
-            width: parent.width
-        }
-    }
-
-    Component {
-        id: _unmappedComp
-        UnmappedCard {
-            deviceGuid: parent._guid
-            title: parent._name
+            destEmpty: parent._destEmpty
             width: parent.width
         }
     }
