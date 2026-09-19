@@ -3,8 +3,15 @@
 
 from __future__ import annotations
 
+from PySide6 import QtCore
+
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
+from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
+import gremlin.ui.type_aliases as ta
+
+QML_IMPORT_NAME = "Gremlin.Config"
+QML_IMPORT_MAJOR_VERSION = 1
 
 SECTION_DISPLAY = "display"
 SECTION_CONTROL = "control-display"
@@ -80,3 +87,18 @@ def ensure_shell_options() -> None:
 
 
 ensure_shell_options()
+
+
+@ta.QmlElement
+class StatusResetModel(QtCore.QObject, BaseMetaConfigOptionWidget):
+    def _qml_path(self) -> str:
+        return "file:///" + QtCore.QFile("qml:OptionStatusCards.qml").fileName()
+
+
+MetaConfigOption().register(
+    SECTION_DISPLAY,
+    "status",
+    "reset-card-sizes",
+    "Restore every Status card to its default size. Stacks, order, and hidden cards stay as they are. Right-click a card for Reset size or Clear all settings (size and stack).",
+    StatusResetModel,
+)
