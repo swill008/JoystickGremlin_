@@ -33,7 +33,8 @@ Rectangle {
     property bool hoverPeek: true
     property int stackIndex: 0
     property bool lifting: false
-    z: stackIndex + (lifting ? 100 : 0)
+    property bool resizing: false
+    z: stackIndex + (lifting || resizing ? 100 : 0)
 
     signal cardFocused()
     signal openConfiguration()
@@ -47,11 +48,11 @@ Rectangle {
     signal assignHardware()
     signal ignoreDevice()
     signal dropAt(real cx, real cy)
+    signal sizeChanged(int w, int h)
 
-    width: Math.min(420, Math.max(260, parent ? parent.width : 320))
     implicitHeight: _body.implicitHeight + 20
-    height: implicitHeight
     radius: 4
+    clip: true
     color: "#18181B"
     border.width: focused ? 2 : 1
     border.color: focused ? "#A1A1AA" : "#3F3F46"
@@ -65,6 +66,8 @@ Rectangle {
         Item {
             id: _photoWell
             Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumHeight: 72
             Layout.preferredHeight: {
                 if (_photo.status === Image.Ready && _photo.implicitWidth > 0) {
                     var ratio = _photo.implicitHeight / _photo.implicitWidth
@@ -165,9 +168,10 @@ Rectangle {
         id: _grab
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        drag.target: _card
+        drag.target: _card.resizing ? null : _card
         drag.threshold: 10
         property bool didDrag: false
+        enabled: !_card.resizing
 
         onPressed: function(mouse) {
             didDrag = false
@@ -228,6 +232,88 @@ Rectangle {
         ToolTip.visible: _hideHover.hovered
         ToolTip.text: "Hide device"
         ToolTip.delay: 400
+    }
+
+
+    function _clampW(w) { return Math.max(220, Math.min(720, w)) }
+    function _clampH(h) { return Math.max(140, Math.min(520, h)) }
+
+    MouseArea {
+        id: _east
+        z: 20
+        width: 10
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.bottomMargin: 16
+        cursorShape: Qt.SizeHorCursor
+        onPressed: function() { _card.resizing = true; _card.lifting = false }
+        onPositionChanged: function(mouse) {
+            if (pressed)
+                _card.width = _card._clampW(_card.width + mouse.x - width / 2)
+        }
+        onReleased: function() {
+            _card.resizing = false
+            _card.sizeChanged(Math.round(_card.width), Math.round(_card.height))
+        }
+    }
+    MouseArea {
+        id: _south
+        z: 20
+        height: 10
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: 16
+        cursorShape: Qt.SizeVerCursor
+        onPressed: function() { _card.resizing = true; _card.lifting = false }
+        onPositionChanged: function(mouse) {
+            if (pressed)
+                _card.height = _card._clampH(_card.height + mouse.y - height / 2)
+        }
+        onReleased: function() {
+            _card.resizing = false
+            _card.sizeChanged(Math.round(_card.width), Math.round(_card.height))
+        }
+    }
+    MouseArea {
+        id: _corner
+        z: 21
+        width: 18
+        height: 18
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        cursorShape: Qt.SizeFDiagCursor
+        onPressed: function() { _card.resizing = true; _card.lifting = false }
+        onPositionChanged: function(mouse) {
+            if (pressed) {
+                _card.width = _card._clampW(_card.width + mouse.x - width / 2)
+                _card.height = _card._clampH(_card.height + mouse.y - height / 2)
+            }
+        }
+        onReleased: function() {
+            _card.resizing = false
+            _card.sizeChanged(Math.round(_card.width), Math.round(_card.height))
+        }
+        Rectangle {
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: 3
+            width: 10
+            height: 10
+            color: "#00000000"
+            Canvas {
+                anchors.fill: parent
+                onPaint: {
+                    var c = getContext("2d")
+                    c.clearRect(0, 0, width, height)
+                    c.strokeStyle = "#A1A1AA"
+                    c.lineWidth = 1.5
+                    c.beginPath(); c.moveTo(2, 10); c.lineTo(10, 2); c.stroke()
+                    c.beginPath(); c.moveTo(6, 10); c.lineTo(10, 6); c.stroke()
+                }
+            }
+        }
     }
 
     Menu {
