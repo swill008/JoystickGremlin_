@@ -13,6 +13,7 @@ import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import (
     auto_mapper,
+    config,
     shared_state,
     signal,
     swap_devices,
@@ -60,7 +61,19 @@ class Tools(QtCore.QObject):
         )
         signal.signal.profileChanged.emit()
         signal.signal.reloadCurrentInputItem.emit()
+        cfg = config.Configuration()
+        if cfg.exists("automap", "mapper", "remember-overwrite") and cfg.value(
+            "automap", "mapper", "remember-overwrite"
+        ):
+            cfg.set("automap", "mapper", "overwrite-used-inputs", bool(overwrite))
         return feedback_string
+
+    @QtCore.Slot(result=bool)
+    def lastOverwriteUsedInputs(self) -> bool:
+        cfg = config.Configuration()
+        if cfg.exists("automap", "mapper", "overwrite-used-inputs"):
+            return bool(cfg.value("automap", "mapper", "overwrite-used-inputs"))
+        return False
 
     @QtCore.Slot(str, str, result=str)
     def swapDevices(self, source_uuid_str: str, target_uuid_str: str) -> str:
