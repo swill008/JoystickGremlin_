@@ -111,7 +111,8 @@ ApplicationWindow {
         var win = comp.createObject(null, {
             "direction": want,
             "deviceName": card ? (card.name || "") : "",
-            "deviceGuid": card ? (card.guid || "") : ""
+            "deviceGuid": card ? (card.guid || "") : "",
+            "moduleModel": _moduleModel
         })
         if (win)
             win.show()
