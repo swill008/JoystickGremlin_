@@ -27,6 +27,13 @@ Window {
     title: direction === "dest" ? "Configure output module" : "Configure input module"
     color: Style.background
     Universal.theme: Style.theme
+    flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint | Qt.WindowSystemMenuHint
+    modality: Qt.NonModal
+
+    // Stick HID often synthesizes Esc/Return. Do not let those click Cancel/Save.
+    Shortcut { sequence: "Esc"; onActivated: {} }
+    Shortcut { sequence: "Return"; onActivated: {} }
+    Shortcut { sequence: "Enter"; onActivated: {} }
 
     HardwareProfile { id: _hw }
     DriverInputModel { id: _driver }
@@ -181,6 +188,7 @@ Window {
             Layout.fillWidth: true
             Button {
                 text: "Import devices…"
+                focusPolicy: Qt.NoFocus
                 onClicked: {
                     var c = Qt.createComponent("DialogImportDevices.qml")
                     if (c.status === Component.Ready)
@@ -189,6 +197,7 @@ Window {
             }
             Button {
                 text: "Export devices…"
+                focusPolicy: Qt.NoFocus
                 onClicked: {
                     var c = Qt.createComponent("DialogExportDevices.qml")
                     if (c.status === Component.Ready)
@@ -198,10 +207,12 @@ Window {
             Item { Layout.fillWidth: true }
             Button {
                 text: "Cancel"
+                focusPolicy: Qt.NoFocus
                 onClicked: _win.close()
             }
             Button {
                 text: "Save module"
+                focusPolicy: Qt.NoFocus
                 onClicked: {
                     if (_driver.saveClaim(deviceName, direction)) {
                         if (moduleModel && moduleModel.notifyClaims)
