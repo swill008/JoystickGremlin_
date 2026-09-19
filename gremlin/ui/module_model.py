@@ -1028,35 +1028,39 @@ class DriverInputModel(QtCore.QAbstractListModel):
             if _norm_guid(dev.device_guid) != ev:
                 continue
             if _slug(dev.name) == want or dev.name == self._device_name:
+                self._guid = str(dev.device_guid)
                 return True
         return False
 
     def _on_joy(self, event: event_handler.Event) -> None:
-        if event is None or not self._rows:
-            return
-        if not self._same_device(event):
-            return
-        et = getattr(event, "event_type", None)
-        kind = "button"
-        if et == InputType.JoystickAxis:
-            kind = "axis"
-            try:
-                if abs(float(event.value)) < 0.2 and abs(float(getattr(event, "raw_value", 0) or 0)) < 0.2:
-                    return
-            except Exception:
-                pass
-        elif et == InputType.JoystickHat:
-            kind = "hat"
-            if getattr(event, "value", None) in (0, (0, 0), "center", None):
-                return
-        elif et == InputType.JoystickButton:
-            if event.is_pressed is False:
-                return
         try:
-            hid = int(event.identifier)
+            if event is None or not self._rows:
+                return
+            if not self._same_device(event):
+                return
+            et = getattr(event, "event_type", None)
+            kind = "button"
+            if et == InputType.JoystickAxis:
+                kind = "axis"
+                try:
+                    if abs(float(event.value)) < 0.35:
+                        return
+                except Exception:
+                    return
+            elif et == InputType.JoystickHat:
+                kind = "hat"
+                if getattr(event, "value", None) in (0, (0, 0), "center", None):
+                    return
+            elif et == InputType.JoystickButton:
+                if event.is_pressed is False:
+                    return
+            try:
+                hid = int(event.identifier)
+            except Exception:
+                return
+            self.markPressed(kind, hid)
         except Exception:
             return
-        self.markPressed(kind, hid)
 
     @QtCore.Slot(int, bool)
     def setClaimed(self, index: int, claimed: bool) -> None:
@@ -1089,7 +1093,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
             if row["kind"] == kind and int(row["hwId"]) == int(hw_id):
                 if not row["claimed"]:
                     self.setClaimed(i, True)
-                if self._lit_index >= 0 and self._lit_index != i:
+                if self._lit_index == i:
+                    return
+                if self._lit_index >= 0:
                     self._set_lit(self._lit_index, False)
                 self._lit_index = i
                 self._set_lit(i, True)
