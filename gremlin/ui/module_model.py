@@ -73,6 +73,11 @@ def _set_hidden(slugs: set[str]) -> None:
     )
 
 
+def _norm_guid(value) -> str:
+    text = str(value or "").upper()
+    return text.replace("{", "").replace("}", "").replace("-", "")
+
+
 def _show_stubs() -> bool:
     _ensure_display_options()
     return bool(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SHOW_STUBS))
@@ -317,12 +322,56 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def hiddenList(self) -> list[str]:
         return sorted(_hidden_slugs())
 
+    def _row_map(self, row: ModuleRow) -> dict:
+        last_f, last_h = self._last.get(row.slug, (row.last_friendly, row.last_hardware))
+        return {
+            "slug": row.slug,
+            "name": row.name,
+            "rawName": row.raw_name,
+            "guid": row.guid,
+            "direction": row.direction,
+            "status": row.status,
+            "bus": row.bus,
+            "buttons": row.buttons,
+            "axes": row.axes,
+            "hats": row.hats,
+            "photo": row.photo,
+            "isStub": row.is_stub,
+            "isModule": row.is_module,
+            "tab": row.tab,
+            "target": row.target,
+            "vid": row.vid,
+            "pid": row.pid,
+            "lastLine": last_f,
+            "lastHardware": last_h,
+            "focused": row.slug == self._focus,
+        }
+
+    @QtCore.Slot(str, result="QVariantMap")
+    def cardMap(self, slug: str) -> dict:
+        for row in self._rows:
+            if row.slug == slug:
+                return self._row_map(row)
+        return {}
+
+    @QtCore.Slot(result="QVariantMap")
+    def focusedCardMap(self) -> dict:
+        if self._focus:
+            found = self.cardMap(self._focus)
+            if found:
+                return found
+        if self._rows:
+            return self._row_map(self._rows[0])
+        return {}
+
     @QtCore.Slot(str, str, int, result=bool)
     def isClaimedInput(self, device_name: str, kind: str, hw_id: int) -> bool:
         doc = _load_module_doc(device_name)
         if not doc:
-            return False
+            return True
         claim = _claim_from_doc(doc)
+        if not claim["buttons"] and not claim["axes"] and not claim["hats"]:
+            return True
         if kind == "button":
             return int(hw_id) in claim["buttons"]
         if kind == "axis":
@@ -334,8 +383,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def _on_joy(self, event: event_handler.Event) -> None:
         if event is None:
             return
-        guid = str(event.device_guid).upper()
-        row = next((r for r in self._rows if r.guid.upper() == guid), None)
+        guid = _norm_guid(event.device_guid)
+        row = next((r for r in self._rows if _norm_guid(r.guid) == guid), None)
         if row is None:
             return
         kind = "button"
@@ -493,6 +542,10 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._guid = ""
         self._device_name = ""
         self._rows: list[dict] = []
+        try:
+            event_handler.EventListener().joystick_event.connect(self._on_joy)
+        except Exception:
+            pass
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._rows)
@@ -517,10 +570,18 @@ class DriverInputModel(QtCore.QAbstractListModel):
             "hats": [],
             "friendly": {},
         }
-        try:
-            info = dill.DILL.get_device_information_by_guid(dill.GUID.from_str(guid))
-        except Exception:
-            info = None
+        info = None
+        if guid:
+            try:
+                info = dill.DILL.get_device_information_by_guid(dill.GUID.from_str(guid))
+            except Exception:
+                info = None
+        if info is None and (
+            "xbox" in (device_name or "").lower()
+            or _norm_guid(guid) == _norm_guid(XBOX_GUID)
+        ):
+            self._load_xbox_dest(claim)
+            return
         if info is not None:
             for i in range(info.axis_count):
                 hid = info.axis_map[i].axis_index
@@ -557,6 +618,61 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._rows = rows
         self.endResetModel()
         self.changed.emit()
+
+    def _load_xbox_dest(self, claim: dict) -> None:
+        labels = [
+            ("button", 1, "A"),
+            ("button", 2, "B"),
+            ("button", 3, "X"),
+            ("button", 4, "Y"),
+            ("button", 5, "LB"),
+            ("button", 6, "RB"),
+            ("button", 7, "Back"),
+            ("button", 8, "Start"),
+            ("button", 9, "LS"),
+            ("button", 10, "RS"),
+            ("axis", 1, "Left stick X"),
+            ("axis", 2, "Left stick Y"),
+            ("axis", 3, "Right stick X"),
+            ("axis", 4, "Right stick Y"),
+            ("axis", 5, "LT"),
+            ("axis", 6, "RT"),
+            ("hat", 1, "D-pad"),
+        ]
+        rows = []
+        buckets = {"button": "buttons", "axis": "axes", "hat": "hats"}
+        for kind, hid, label in labels:
+            key = f"{kind}:{hid}"
+            rows.append(
+                {
+                    "kind": kind,
+                    "hwId": hid,
+                    "label": label,
+                    "claimed": hid in claim.get(buckets[kind], []),
+                    "friendly": claim.get("friendly", {}).get(key, ""),
+                }
+            )
+        self.beginResetModel()
+        self._rows = rows
+        self.endResetModel()
+        self.changed.emit()
+
+    def _on_joy(self, event: event_handler.Event) -> None:
+        if event is None or not self._guid:
+            return
+        if _norm_guid(event.device_guid) != _norm_guid(self._guid):
+            return
+        kind = "button"
+        et = getattr(event, "event_type", None)
+        if et == InputType.JoystickAxis:
+            kind = "axis"
+        elif et == InputType.JoystickHat:
+            kind = "hat"
+        try:
+            hid = int(event.identifier)
+        except Exception:
+            return
+        self.markPressed(kind, hid)
 
     @QtCore.Slot(int, bool)
     def setClaimed(self, index: int, claimed: bool) -> None:
