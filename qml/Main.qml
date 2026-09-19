@@ -39,6 +39,121 @@ ApplicationWindow {
     Universal.theme: Style.theme
     color: Style.background
 
+    property string pinSlug: ""
+    property string configTitleName: ""
+
+    ModuleListModel {
+        id: _moduleModel
+    }
+
+    function focusedCard() {
+        var slug = _moduleModel.focusedSlug
+        for (var i = 0; i < _moduleModel.rowCount(); ++i) {
+            var ix = _moduleModel.index(i, 0)
+            if (_moduleModel.data(ix, 0x0101) === slug)
+                return ix
+        }
+        return null
+    }
+
+    function moduleField(rolePlus, slug) {
+        // roles start at UserRole+1 = 0x0101
+        for (var i = 0; i < _moduleModel.rowCount(); ++i) {
+            var ix = _moduleModel.index(i, 0)
+            if (String(_moduleModel.data(ix, 257)) === String(slug)) {
+                return _moduleModel.data(ix, 256 + rolePlus)
+            }
+        }
+        return ""
+    }
+
+    function openConfigurationForCard(card) {
+        if (!uiState || !card)
+            return
+        _moduleModel.setFocus(card.slug)
+        configTitleName = card.name
+        uiState.setCurrentDevice(card.guid)
+        uiState.setCurrentTab(card.tab || "physical")
+        uiState.setCurrentRoom("configuration")
+    }
+
+    function openConfigurationForFocus() {
+        var slug = _moduleModel.focusedSlug
+        if (!slug)
+            return
+        var fake = {
+            slug: slug,
+            name: String(_statusPage ? "" : ""),
+            guid: "",
+            tab: "physical"
+        }
+        // Resolve from the Status page model roles via a small helper object
+        // filled when a card is clicked. Fall back to first physical device.
+        if (_statusLastCard && _statusLastCard.slug)
+            openConfigurationForCard(_statusLastCard)
+        else
+            uiState.setCurrentRoom("configuration")
+    }
+
+    property var _statusLastCard: null
+
+    function pinFocusedControlDisplay() {
+        if (_statusLastCard)
+            pinSlug = (pinSlug === _statusLastCard.slug) ? "" : _statusLastCard.slug
+    }
+
+    function openConfigureModule(direction) {
+        var card = _statusLastCard
+        var comp = Qt.createComponent("DialogConfigureModule.qml")
+        if (comp.status !== Component.Ready) {
+            console.log(comp.errorString())
+            return
+        }
+        var win = comp.createObject(null, {
+            "direction": direction || (card && card.direction === "dest" ? "dest" : "source"),
+            "deviceName": card ? card.name : "",
+            "deviceGuid": card ? card.guid : ""
+        })
+        if (win)
+            win.show()
+    }
+
+    function openExportDevices() {
+        var comp = Qt.createComponent("DialogExportDevices.qml")
+        if (comp.status !== Component.Ready)
+            return
+        var win = comp.createObject(null, {
+            "deviceName": _statusLastCard ? _statusLastCard.name : ""
+        })
+        if (win)
+            win.show()
+    }
+
+    function openHiddenDevices() {
+        var comp = Qt.createComponent("DialogHiddenDevices.qml")
+        if (comp.status !== Component.Ready)
+            return
+        var win = comp.createObject(null, {"moduleModel": _moduleModel})
+        if (win)
+            win.show()
+    }
+
+    function pairingForCard(card) {
+        if (!card)
+            return
+        if (card.bus === "XInput" || card.tab === "xbox" || card.slug === "xbox")
+            Helpers.toggleComponent("DialogXboxViewer.qml")
+        else
+            Helpers.toggleComponent("DialogInputViewer.qml")
+    }
+
+    function closeWorkRoom() {
+        if (uiState) {
+            uiState.setCurrentRoom("status")
+            uiState.setCurrentTab("physical")
+        }
+    }
+
     function requestNewProfile() {
         _newProfileDialog.open()
     }
@@ -284,6 +399,51 @@ ApplicationWindow {
         }
 
         Menu {
+            title: qsTr("View")
+
+            MenuItem {
+                text: qsTr("Configuration")
+                onTriggered: () => { openConfigurationForFocus() }
+            }
+            MenuItem {
+                text: qsTr("Control Display")
+                onTriggered: () => { pinFocusedControlDisplay() }
+            }
+            MenuSeparator {}
+            MenuItem {
+                text: qsTr("Button Map")
+                onTriggered: () => { Helpers.toggleComponent("DialogJoystickButtonMap.qml") }
+            }
+            MenuItem {
+                text: qsTr("Device Viewer")
+                onTriggered: () => { Helpers.toggleComponent("DialogDeviceViewer.qml") }
+            }
+            MenuSeparator {}
+            MenuItem {
+                text: qsTr("Hidden devices…")
+                onTriggered: () => { openHiddenDevices() }
+            }
+            MenuItem {
+                text: qsTr("Scripts")
+                onTriggered: () => {
+                    if (uiState) {
+                        uiState.setCurrentRoom("scripts")
+                        uiState.setCurrentTab("scripts")
+                    }
+                }
+            }
+            MenuItem {
+                text: qsTr("Profile Settings")
+                onTriggered: () => {
+                    if (uiState) {
+                        uiState.setCurrentRoom("settings")
+                        uiState.setCurrentTab("settings")
+                    }
+                }
+            }
+        }
+
+        Menu {
             title: qsTr("Tools")
 
             MenuItem {
@@ -341,6 +501,22 @@ ApplicationWindow {
                     Helpers.createComponent("DialogSwapDevices.qml")
                 }
             }
+            MenuItem {
+                text: qsTr("Configure input module")
+                onTriggered: () => { openConfigureModule("source") }
+            }
+            MenuItem {
+                text: qsTr("Configure output module")
+                onTriggered: () => { openConfigureModule("dest") }
+            }
+            MenuItem {
+                text: qsTr("Import devices…")
+                onTriggered: () => { Helpers.createComponent("DialogImportDevices.qml") }
+            }
+            MenuItem {
+                text: qsTr("Export devices…")
+                onTriggered: () => { openExportDevices() }
+            }
             MenuSeparator {}
             MenuItem {
                 text: qsTr("Options")
@@ -389,7 +565,7 @@ ApplicationWindow {
             JGToolButton {
                 text: "\uF448"
                 color: backend && backend.gremlinActive ? Style.accent : Style.foreground
-                tooltip: qsTr("Toggle Gremlin")
+                tooltip: qsTr("Activate")
 
                 onClicked: () => {
                     if (backend) {
@@ -447,19 +623,12 @@ ApplicationWindow {
                 }
             }
 
-            JGToolButton {
-                text: "\uF3F8"
-                tooltip: qsTr("Device tabs")
-
-                onClicked: () => { _vjoyStatusPopup.open() }
-            }
-
             LayoutHorizontalSpacer {}
 
             Label {
                 Layout.rightMargin: 10
 
-                text: "Configuring mode"
+                text: uiState && uiState.currentRoom === "configuration" ? "Configuring mode" : "Mode"
             }
 
             TooltipComboBox {
@@ -506,6 +675,7 @@ ApplicationWindow {
                 Layout.preferredWidth: 200
                 padding: 5
 
+                color: backend && backend.gremlinActive ? Style.foreground : "#A1A1AA"
                 text: "<B>Status: </B>" +
                     Helpers.selectText(
                         backend && backend.gremlinActive, "Active", "Not Running"
@@ -612,9 +782,82 @@ ApplicationWindow {
         anchors.fill: parent
 
         property InputConfiguration inputConfigurationWidget
+        property bool onStatus: !uiState || uiState.currentRoom === "status"
+        property bool onConfig: uiState && uiState.currentRoom === "configuration"
+
+        StatusPage {
+            id: _statusPage
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: _columnLayout.onStatus
+            model: _moduleModel
+            pinSlug: _root.pinSlug
+            onFocusSlug: function(slug) {
+                _moduleModel.setFocus(slug)
+            }
+            onOpenConfiguration: function(card) {
+                _statusLastCard = card
+                openConfigurationForCard(card)
+            }
+            onConfigureModule: function(card) {
+                _statusLastCard = card
+                openConfigureModule(card.direction === "dest" ? "dest" : "source")
+            }
+            onPinControlDisplay: function(card) {
+                _statusLastCard = card
+                pinSlug = (pinSlug === card.slug) ? "" : card.slug
+            }
+            onAutoMap: function(card) {
+                _statusLastCard = card
+                Helpers.createComponent("DialogAutoMapper.qml")
+            }
+            onOpenDeviceViewer: function(card) {
+                _statusLastCard = card
+                Helpers.toggleComponent("DialogDeviceViewer.qml")
+            }
+            onOpenPairing: function(card) {
+                _statusLastCard = card
+                pairingForCard(card)
+            }
+            onOpenCalibration: function(card) {
+                _statusLastCard = card
+                Helpers.createComponent("DialogCalibration.qml")
+            }
+            onOpenDeviceInformation: function(card) {
+                _statusLastCard = card
+                Helpers.createComponent("DialogDeviceInformation.qml")
+            }
+            onAssignHardware: function(card) {
+                _statusLastCard = card
+                Helpers.createComponent("DialogSwapDevices.qml")
+            }
+            onIgnoreDevice: function(card) {
+                _moduleModel.ignoreSlug(card.slug)
+            }
+        }
 
         RowLayout {
             Layout.fillWidth: true
+            visible: uiState && uiState.currentRoom === "configuration"
+            Label {
+                text: "Configuration — " + (configTitleName.length ? configTitleName : "device")
+                font.pixelSize: 16
+                font.bold: true
+                Layout.fillWidth: true
+                Layout.leftMargin: 12
+                Layout.topMargin: 8
+            }
+            Button {
+                text: "Close"
+                Layout.rightMargin: 12
+                onClicked: closeWorkRoom()
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            visible: uiState && (uiState.currentRoom === "scripts" || uiState.currentRoom === "settings")
+            height: visible ? implicitHeight : 0
 
             DeviceList {
                 id: _deviceList
@@ -695,6 +938,7 @@ ApplicationWindow {
 
             Layout.fillHeight: true
             Layout.fillWidth: true
+            visible: uiState && uiState.currentRoom === "configuration"
 
             clip: true
             orientation: Qt.Horizontal
@@ -706,6 +950,8 @@ ApplicationWindow {
                 SplitView.minimumWidth: 400
 
                 device: _deviceModel
+                moduleModel: _moduleModel
+                claimDeviceName: configTitleName
             }
 
             LogicalDevice {
@@ -776,7 +1022,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.verticalStretchFactor: 10
 
-            visible: uiState && uiState.currentTab === "scripts"
+            visible: uiState && uiState.currentRoom === "scripts"
 
             scriptListModel: backend ? backend.scriptListModel : null
         }
@@ -788,7 +1034,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.verticalStretchFactor: 10
 
-            visible: uiState && uiState.currentTab === "settings"
+            visible: uiState && uiState.currentRoom === "settings"
 
             settingsModel: ProfileSettingsModel {}
         }
