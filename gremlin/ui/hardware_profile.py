@@ -22,6 +22,27 @@ QML_IMPORT_MAJOR_VERSION = 1
 _IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
 
 
+def _photo_pose(raw) -> dict:
+    src = raw if isinstance(raw, dict) else {}
+
+    def _num(key: str, default: float) -> float:
+        try:
+            val = float(src.get(key, default))
+        except (TypeError, ValueError):
+            val = default
+        return val
+
+    scale = _num("scale", 1.0)
+    if scale <= 0:
+        scale = 1.0
+    return {
+        "scale": max(0.25, min(4.0, scale)),
+        "offX": max(-1.0, min(1.0, _num("offX", 0.0))),
+        "offY": max(-1.0, min(1.0, _num("offY", 0.0))),
+        "rot": _num("rot", 0.0),
+    }
+
+
 def _install_root() -> Path:
     return Path(os.path.normcase(os.path.dirname(os.path.abspath(sys.argv[0]))))
 
@@ -220,6 +241,7 @@ class HardwareProfile(QtCore.QObject):
         payload["pageH"] = 18000
         payload["photoWell"] = 0.75
         payload.pop("worldRev", None)
+        payload["photo"] = _photo_pose(payload.get("photo"))
         payload = self._pack_assets(name, payload)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -538,6 +560,7 @@ class HardwareProfile(QtCore.QObject):
                 payload["pageH"] = 18000
                 payload["photoWell"] = 0.75
                 payload.pop("worldRev", None)
+                payload["photo"] = _photo_pose(payload.get("photo"))
                 out = self._file_for(device)
                 out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
                 self._path = str(out)
