@@ -162,6 +162,17 @@ Window {
                     }
                     ScrollBar.vertical: ScrollBar {}
                 }
+                Label {
+                    anchors.centerIn: parent
+                    visible: _list.count === 0
+                    color: "#A1A1AA"
+                    wrapMode: Text.WordWrap
+                    width: parent.width - 24
+                    horizontalAlignment: Text.AlignHCenter
+                    text: deviceName.toLowerCase() === "keyboard"
+                          ? "Press a key to add it."
+                          : "No controls reported. For a stick, check DILL sees the device."
+                }
             }
         }
 
