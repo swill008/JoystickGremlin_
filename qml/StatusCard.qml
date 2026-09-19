@@ -49,6 +49,8 @@ Rectangle {
     signal ignoreDevice()
     signal dropAt(real cx, real cy)
     signal sizeChanged(int w, int h)
+    signal resetSize()
+    signal clearSettings()
 
     implicitHeight: _body.implicitHeight + 20
     radius: 4
@@ -351,6 +353,9 @@ Rectangle {
             text: "Assign hardware…"
             onTriggered: _card.assignHardware()
         }
+        MenuSeparator {}
+        MenuItem { text: "Reset size"; onTriggered: _card.resetSize() }
+        MenuItem { text: "Clear all settings"; onTriggered: _card.clearSettings() }
         MenuSeparator {}
         MenuItem { text: "Ignore device"; onTriggered: _card.ignoreDevice() }
     }
