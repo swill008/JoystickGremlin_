@@ -14,6 +14,7 @@ from pathlib import Path
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
+from gremlin.signal import signal
 from gremlin.ui.util import to_local_path
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -298,17 +299,47 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=str)
     def copyImage(self, source_url: str, device_name: str) -> str:
-        src = to_local_path(source_url)
+        try:
+            src = to_local_path(str(source_url or ""))
+        except Exception:
+            return ""
         if not src.is_file():
             return ""
         ext = src.suffix.lower() or ".jpg"
         if ext not in _IMAGE_EXT:
             ext = ".jpg"
+        name = device_name or self._device_name
         self._into_library(src)
-        dest = self._profile_dir(device_name) / f"photo{ext}"
+        folder = self._profile_dir(name)
+        dest = folder / f"photo{ext}"
+        for old in folder.glob("photo.*"):
+            if old.resolve() != dest.resolve():
+                try:
+                    old.unlink()
+                except OSError:
+                    pass
         self._copy_file(src, dest)
+        rel = f"qml/maps/{_slug(name)}/{dest.name}"
+        path = self._file_for(name)
+        doc: dict = {}
+        if path.is_file():
+            try:
+                loaded = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    doc = loaded
+            except (OSError, json.JSONDecodeError):
+                doc = {}
+        doc["kind"] = "control.hardware"
+        doc["device"] = name
+        doc["image"] = rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        self._path = str(path)
+        self.pathChanged.emit()
+        self.documentChanged.emit()
         self.imageChanged.emit()
-        return f"qml/maps/{_slug(device_name)}/{dest.name}"
+        signal.configChanged.emit()
+        return rel
 
     @QtCore.Slot(str, result=bool)
     def clearImage(self, device_name: str) -> bool:
@@ -378,10 +409,15 @@ class HardwareProfile(QtCore.QObject):
         except json.JSONDecodeError:
             doc = {}
         found = self._resolve_existing(str(doc.get("image") or ""))
-        if found:
+        if found and found.is_file():
+            # Never reuse the EVO R grip shot for a different module.
+            if found == _stock_photo() and _slug(device_name) != "vkb_evo_r":
+                return ""
             return found.as_uri()
-        stock = _stock_photo()
-        return stock.as_uri() if stock.is_file() else ""
+        if _slug(device_name) == "vkb_evo_r":
+            stock = _stock_photo()
+            return stock.as_uri() if stock.is_file() else ""
+        return ""
 
     def _plate_count(self, payload: dict) -> int:
         n = 0
