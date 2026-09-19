@@ -41,6 +41,7 @@ ApplicationWindow {
 
     property string pinSlug: ""
     property string configTitleName: ""
+    property var configureWin: null
 
     ModuleListModel {
         id: _moduleModel
@@ -103,19 +104,34 @@ ApplicationWindow {
             want = "dest"
         if (!want)
             want = "source"
+        if (configureWin) {
+            configureWin.direction = want
+            configureWin.deviceName = card ? (card.name || "") : ""
+            configureWin.deviceGuid = card ? (card.guid || "") : ""
+            configureWin.moduleModel = _moduleModel
+            configureWin.raise()
+            configureWin.requestActivate()
+            return
+        }
         var comp = Qt.createComponent("DialogConfigureModule.qml")
         if (comp.status !== Component.Ready) {
             console.log(comp.errorString())
             return
         }
-        var win = comp.createObject(null, {
+        configureWin = comp.createObject(_root, {
             "direction": want,
             "deviceName": card ? (card.name || "") : "",
             "deviceGuid": card ? (card.guid || "") : "",
             "moduleModel": _moduleModel
         })
-        if (win)
-            win.show()
+        if (!configureWin)
+            return
+        configureWin.closing.connect(function() {
+            Qt.callLater(function() { _root.configureWin = null })
+        })
+        configureWin.show()
+        configureWin.raise()
+        configureWin.requestActivate()
     }
 
     function openExportDevices() {
