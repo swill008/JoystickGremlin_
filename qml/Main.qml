@@ -401,6 +401,10 @@ ApplicationWindow {
             title: qsTr("View")
 
             MenuItem {
+                text: qsTr("Status")
+                onTriggered: () => { closeWorkRoom() }
+            }
+            MenuItem {
                 text: qsTr("Configuration")
                 onTriggered: () => { openConfigurationForFocus() }
             }
@@ -857,6 +861,19 @@ ApplicationWindow {
             Layout.fillWidth: true
             visible: uiState && (uiState.currentRoom === "scripts" || uiState.currentRoom === "settings")
             height: visible ? implicitHeight : 0
+
+            Label {
+                text: uiState && uiState.currentRoom === "scripts" ? "Scripts" : "Profile Settings"
+                font.pixelSize: 16
+                font.bold: true
+                Layout.leftMargin: 12
+            }
+            Item { Layout.fillWidth: true }
+            Button {
+                text: "Status"
+                Layout.rightMargin: 12
+                onClicked: closeWorkRoom()
+            }
 
             DeviceList {
                 id: _deviceList
