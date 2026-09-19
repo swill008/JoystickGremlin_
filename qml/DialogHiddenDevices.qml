@@ -15,6 +15,10 @@ Window {
     width: 420
     height: 360
     title: "Hidden devices"
+
+    Shortcut { sequence: "Esc"; onActivated: {} }
+    Shortcut { sequence: "Return"; onActivated: {} }
+    Shortcut { sequence: "Enter"; onActivated: {} }
     color: Style.background
     Universal.theme: Style.theme
 
