@@ -3,25 +3,41 @@
 
 var _openWindows = {}
 
-function createComponent(componentSpec)
+function _applyProps(window, properties)
+{
+    if (!window || !properties)
+        return
+    for (var k in properties) {
+        if (properties.hasOwnProperty(k))
+            window[k] = properties[k]
+    }
+}
+
+function createComponent(componentSpec, properties)
 {
     let existing = _openWindows[componentSpec]
     if (existing) {
+        _applyProps(existing, properties)
         existing.show()
         existing.raise()
         existing.requestActivate()
-        return
+        return existing
     }
 
     let component = Qt.createComponent(componentSpec);
     if(component.status == Component.Error) {
         console.log(component.errorString())
+        return null
     }
     else if((component.status == Component.Ready))
     {
-        // Parent null + transientParent null: independent top-level window.
-        // Stays up when the main Joystick Gremlin window is minimized.
-        let window = component.createObject(null, {"x": 100, "y": 300});
+        // Keep a JS reference so axis-event churn cannot GC the window.
+        // Parent null + transientParent null: stays up if the main window is minimized.
+        var init = {"x": 100, "y": 300}
+        _applyProps(init, properties)
+        let window = component.createObject(null, init);
+        if (!window)
+            return null
         window.transientParent = null
         window.closing.connect(function() {
             if (_openWindows[componentSpec] === window) {
@@ -30,7 +46,9 @@ function createComponent(componentSpec)
         })
         _openWindows[componentSpec] = window
         window.show();
+        return window
     }
+    return null
 }
 
 function toggleComponent(componentSpec)
