@@ -37,6 +37,7 @@ _CFG_SHOW_STUBS = "show-stubs"
 _CFG_SPLIT = "split-mode"
 _CFG_SPLIT_RATIO = "split-ratio"
 _CFG_STACKS = "card-stacks"
+_CFG_SIZES = "card-sizes"
 
 
 def _ensure_display_options() -> None:
@@ -80,6 +81,7 @@ def _ensure_display_options() -> None:
         {"min": 0.2, "max": 0.8},
     )
     _reg(_CFG_STACKS, PropertyType.String, "", "Status card stacks (slug+slug|slug).")
+    _reg(_CFG_SIZES, PropertyType.String, "", "Status card sizes (slug=WxH).")
 
 
 def _write_status(name: str, value) -> None:
@@ -116,6 +118,37 @@ def _order_slugs() -> list[str]:
 def _set_order(slugs: list[str]) -> None:
     _ensure_display_options()
     _write_status(_CFG_ORDER, ",".join(slugs))
+
+
+def _sizes() -> dict[str, tuple[int, int]]:
+    _ensure_display_options()
+    raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SIZES) or "")
+    out: dict[str, tuple[int, int]] = {}
+    for part in raw.split(","):
+        part = part.strip()
+        if "=" not in part or "x" not in part:
+            continue
+        slug, dim = part.split("=", 1)
+        try:
+            w_s, h_s = dim.lower().split("x", 1)
+            w, h = int(w_s), int(h_s)
+        except ValueError:
+            continue
+        if slug.strip() and w > 0 and h > 0:
+            out[slug.strip()] = (w, h)
+    return out
+
+
+def _set_sizes(sizes: dict[str, tuple[int, int]]) -> None:
+    packed = ",".join(f"{slug}={w}x{h}" for slug, (w, h) in sizes.items())
+    _write_status(_CFG_SIZES, packed)
+
+
+def _clamp_size(w: int, h: int) -> tuple[int, int]:
+    return (
+        max(220, min(720, int(w))),
+        max(140, min(520, int(h))),
+    )
 
 
 def _show_stubs() -> bool:
@@ -487,6 +520,23 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 return group
         return [leader] if leader else []
 
+    @QtCore.Slot(str, result=int)
+    def cardWidth(self, slug: str) -> int:
+        return int(_sizes().get(slug, (0, 0))[0])
+
+    @QtCore.Slot(str, result=int)
+    def cardHeight(self, slug: str) -> int:
+        return int(_sizes().get(slug, (0, 0))[1])
+
+    @QtCore.Slot(str, int, int)
+    def setPileSize(self, slug: str, width: int, height: int) -> None:
+        w, h = _clamp_size(width, height)
+        sizes = _sizes()
+        for member in self.pileMembers(slug):
+            sizes[member] = (w, h)
+        _set_sizes(sizes)
+        self.panesChanged.emit()
+
     @QtCore.Slot(str, str)
     def stackSlugs(self, src: str, dst: str) -> None:
         if not src or not dst or src == dst:
@@ -503,6 +553,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
             merged.append(src)
         groups.append(merged)
         self._set_stacks(groups)
+        sizes = _sizes()
+        shared = sizes.get(dst) or sizes.get(src)
+        if shared:
+            for member in merged:
+                sizes[member] = shared
+            _set_sizes(sizes)
         self._reload()
         self.panesChanged.emit()
 
