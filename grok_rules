@@ -72,11 +72,16 @@ Any change to rules is written here. Do not keep a second unofficial list.
 
 27. Rewrite design notes live in a separate repo, not in JoystickGremlin_ source:
     https://github.com/swill008/Gremlin-Rewrite-Features
+    27.0 DESIGN.md — recall sheet. Read first.
     27.1 README.md — index of design files.
     27.2 docs/00-overview.md — rooms, chrome reuse, layout, Linux-later.
     27.3 docs/01-status.md — Status cards and context menu.
     27.4 docs/02-configuration.md — wire table, listen, Auto Map 1:1, LEDs.
     27.5 docs/03-hardware-claim.md — driver 128/8 vs claimed controls; where to trim.
     27.6 docs/04-function-inventory.md — current GUI and action plugins.
+    27.7 docs/05-engine-wrappers-linux.md — stay on R15, wrappers, Linux later.
+    27.8 docs/06-visual-and-layout.md — Photoshop-2016 kit, 720p–5K, locked frames.
+    27.9 docs/07-decisions-log.md — accepted / rejected.
+    27.10 docs/08-map-and-print.md — Button Map window and later PDF.
     Put new shell/IA decisions in that repo. Do not dump design markdown into qml/.
     Local mirror: artifacts/Gremlin-Rewrite-Features/ (project folder).
