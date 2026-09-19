@@ -43,6 +43,7 @@ Rectangle {
     signal openDeviceInformation()
     signal assignHardware()
     signal ignoreDevice()
+    signal dropAt(real cx, real cy)
 
     width: Math.min(420, Math.max(260, parent ? parent.width : 320))
     implicitHeight: _body.implicitHeight + 20
@@ -158,16 +159,72 @@ Rectangle {
     }
 
     MouseArea {
+        id: _grab
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onClicked: function(mouse) {
-            if (mouse.button === Qt.RightButton) {
-                _menu.popup()
-            } else {
-                _card.cardFocused()
+        drag.target: _card
+        drag.threshold: 10
+        property bool didDrag: false
+
+        onPressed: function(mouse) {
+            didDrag = false
+            if (mouse.button === Qt.LeftButton)
+                _card.z = 20
+        }
+        onPositionChanged: {
+            if (drag.active)
+                didDrag = true
+        }
+        onReleased: function(mouse) {
+            _card.z = 0
+            if (didDrag) {
+                _card.dropAt(_card.x + _card.width / 2, _card.y + _card.height / 2)
+                _card.x = 0
+                _card.y = 0
             }
         }
-        onDoubleClicked: _card.openConfiguration()
+        onClicked: function(mouse) {
+            if (didDrag)
+                return
+            if (mouse.button === Qt.RightButton)
+                _menu.popup()
+            else
+                _card.cardFocused()
+        }
+        onDoubleClicked: {
+            if (!didDrag)
+                _card.openConfiguration()
+        }
+    }
+
+    Rectangle {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 6
+        width: 20
+        height: 20
+        radius: 2
+        z: 6
+        color: _hideHover.hovered ? "#3F3F46" : "#00000000"
+        border.color: "#3F3F46"
+        border.width: 1
+
+        Label {
+            anchors.centerIn: parent
+            text: "×"
+            color: "#A1A1AA"
+            font.pixelSize: 12
+        }
+        HoverHandler { id: _hideHover }
+        MouseArea {
+            anchors.fill: parent
+            z: 7
+            cursorShape: Qt.PointingHandCursor
+            onClicked: _card.ignoreDevice()
+        }
+        ToolTip.visible: _hideHover.hovered
+        ToolTip.text: "Hide device"
+        ToolTip.delay: 400
     }
 
     Menu {
