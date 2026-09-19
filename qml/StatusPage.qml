@@ -68,28 +68,39 @@ Item {
     function handleDrop(slug, card) {
         if (!model || !slug || !card)
             return
-        var gx = card.mapToItem(_page, card.width / 2, card.height / 2).x
-        var gy = card.mapToItem(_page, card.width / 2, card.height / 2).y
+        var mid = card.mapToItem(_page, card.width / 2, card.height / 2)
+        var gx = mid.x
+        var gy = mid.y
         var best = null
         var bestArea = 0
+        var bestC = 1e12
+        var dir = (_page.model && _page.model.splitMode !== "none") ? card.direction : ""
+        var leaders = {}
+        var leaderList = model.pileLeaders(dir)
+        for (var li = 0; li < leaderList.length; ++li)
+            leaders[leaderList[li]] = true
         var slots = []
         for (var i = 0; i < _liveCards.length; ++i) {
             var other = _liveCards[i]
             if (!other || !other.slug || other.slug === slug)
                 continue
-            if (_page.model.splitMode !== "none" && other.direction !== card.direction)
+            if (dir && other.direction !== card.direction)
                 continue
             var p = other.mapToItem(_page, other.width / 2, other.height / 2)
-            slots.push({ slug: other.slug, x: p.x, y: p.y })
+            var origin = other.mapToItem(_page, 0, 0)
+            if (leaders[other.slug])
+                slots.push({ slug: other.slug, x: p.x, y: p.y, left: origin.x, top: origin.y, w: other.width, h: other.height })
             var area = overlapArea(card, other)
+            var cdist = Math.sqrt((gx - p.x) * (gx - p.x) + (gy - p.y) * (gy - p.y))
             if (area > bestArea) {
                 bestArea = area
                 best = other
+                bestC = cdist
             }
         }
-        // Either direction: ~25% of this card overlapping another is a stack.
-        var need = Math.max(80 * 80, card.width * card.height * 0.25)
-        if (best && bestArea >= need) {
+        // Stack only when dropped onto the face (centers close + heavy overlap).
+        var heavy = card.width * card.height * 0.45
+        if (best && bestArea >= heavy && bestC < Math.min(card.width, card.height) * 0.35) {
             model.stackSlugs(slug, best.slug)
             return
         }
@@ -101,12 +112,14 @@ Item {
         })
         var before = ""
         for (var j = 0; j < slots.length; ++j) {
-            var sameRow = Math.abs(gy - slots[j].y) < 80
+            if (slots[j].slug === slug)
+                continue
+            var sameRow = Math.abs(gy - slots[j].y) < Math.max(80, slots[j].h * 0.6)
             if (sameRow && gx < slots[j].x) {
                 before = slots[j].slug
                 break
             }
-            if (!sameRow && gy < slots[j].y) {
+            if (!sameRow && gy < slots[j].top) {
                 before = slots[j].slug
                 break
             }
