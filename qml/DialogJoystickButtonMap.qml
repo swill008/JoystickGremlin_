@@ -60,6 +60,13 @@ Window {
     property real viewPctSave: 1
     property real viewPanX: 0
     property real viewPanY: 0
+    property real photoScale: 1
+    property real photoOffX: 0
+    property real photoOffY: 0
+    property real photoRot: 0
+    property bool movePhoto: false
+    property var livePhoto
+    property var workPhoto
     property string selectedId: ""
     property var selectedNode: null
     property bool _allowClose: false
@@ -358,6 +365,8 @@ Window {
         if (doc.ui)
             applyUi(doc.ui)
         applyImage(liveImage)
+        livePhoto = photoFromDoc(doc.photo)
+        applyPhoto(livePhoto)
         var well = Number(doc.photoWell || 0)
         if (well < 0.74) {
             remapPhotoWellList(liveNodes)
@@ -367,6 +376,7 @@ Window {
         }
         applyGridToEditor()
         applyViewToFace()
+        applyPhotoToEditor()
         return true
     }
 
@@ -387,6 +397,8 @@ Window {
         }
         workNodes = src
         hydrateOverlays(workNodes)
+        workPhoto = photoFromDoc(livePhoto)
+        applyPhoto(workPhoto)
         applyImage(liveImage.length ? liveImage : stockImage)
         editing = true
         fittedThisEdit = false
@@ -419,6 +431,7 @@ Window {
             image: image,
             imageWidth: 1348,
             imageHeight: 1380,
+            photo: photoBag(),
             ui: uiBag(),
             nodes: nodes
         }
@@ -436,6 +449,7 @@ Window {
         }
         liveNodes = JSON.parse(JSON.stringify(nodes))
         liveImage = image
+        livePhoto = photoBag()
         applyImage(liveImage)
         hydrateOverlays(liveNodes)
         saveOk = true
@@ -455,7 +469,7 @@ Window {
         var image = storedImage.length ? storedImage : stockImage
         var live = liveImage.length ? liveImage : stockImage
         try {
-            return JSON.stringify({ image: image, nodes: editorNodesNow() }) !== JSON.stringify({ image: live, nodes: liveNodes })
+            return JSON.stringify({ image: image, photo: photoBag(), nodes: editorNodesNow() }) !== JSON.stringify({ image: live, photo: livePhoto || photoFromDoc(null), nodes: liveNodes })
         } catch (e) {
             return true
         }
@@ -467,6 +481,9 @@ Window {
         selectedId = ""
         selectedNode = null
         applyImage(liveImage)
+        applyPhoto(livePhoto)
+        movePhoto = false
+        applyPhotoToEditor()
     }
 
     function cancelEdit() {
@@ -625,7 +642,7 @@ Window {
                 },
                 {
                     h: "World page",
-                    b: "Layout lives on a 32000 × 18000 world page (16:9). The rig photo uses the center 75% of the page. Reset view / 100% frames that photo. Zoom out to the full page to map the remaining grid.\nThe photo is a layer in the center of the page, not the ruler. Hardware hotspots (nx/ny) still mark the current JPEG.\nchipFx / fx are fractions of the 32000 page. Save Mapping writes nodes, page 32000×18000, and ui into this one profile. Grid / snap writes only ui — it does not change page size or chip positions.\nFit to photo frame — once per edit if chips look twice as big as the photo after the page change. Look, then Save. It does not run by itself."
+                    b: "Layout lives on a 32000 × 18000 world page (16:9). The rig photo is a poster in the center 75% well. Nothing is measured on the JPEG.\nChips, hots, leaders, tables, and plates use page fractions only. A new hot starts on its chip; drag the ring onto the control.\nView is the camera (wheel / Reset view). Photo size / Move photo parks the poster under the overlay. File → Save writes nodes, page, photo pose, and ui. Grid / snap writes only ui."
                 },
                 {
                     h: "File",
@@ -637,7 +654,7 @@ Window {
                 },
                 {
                     h: "View, zoom, pan",
-                    b: "Scroll wheel zooms about the pointer, 50%–400%. 100% is the photo frame. 50% is the full 32000 page. 400% is 4× the photo frame. The point under the cursor stays put. Middle-button drag pans. Before Edit Mapping, left-drag also pans. View → Reset view returns 100% (photo frame) and centered. Zoom and pan are stored in the profile ui and restored on open.\nA resize or photo reload keeps a valid zoom. It only recenters when zoom or pan is broken (NaN or out of range).\nView → Grid → Show grid — the full world page. Step is world counts (default 200). Size 4–400; 400 suits the 32000 page. Paint caps about 80 lines per axis so a fine step cannot stall the PC.\nSnap to grid — drag onto world-grid points.\nSnap to entities — snap to other chips, hots, frames.\nPage guides — while you drag a chip, table, text, or group, a green dashed line appears near the page center or an edge. Release snaps center-to-center or edge-to-edge. Packed table + chips move together.\nAlt while dragging skips grid, entity, and page-guide snap."
+                    b: "View is the camera. Scroll wheel zooms about the pointer, 50%–400%. View 100% frames the photo well. View 50% is the full 32000 page. Middle-button drag pans. Before Edit Mapping, left-drag also pans. View → Reset view returns View 100% and centered. Camera zoom and pan are stored in ui.\nPhoto size is the poster, not the camera. Photo → Adjust photo… has live sliders for size, offset, and rotate. Photo → Move photo lets you drag the picture. Photo → Fit well sets size to 1. Photo → Reset photo centers it and clears rotate. Pose is stored in the profile photo block and comes back on load.\nView → Grid → Show grid — the full world page. Step is world counts (200 suits 32000). Snap to grid / entities as before. Alt skips snap."
                 },
                 {
                     h: "Reservoir",
@@ -901,6 +918,99 @@ Window {
         viewPanY = f.panY || 0
     }
 
+    function photoFromDoc(p) {
+        p = p || {}
+        var s = Number(p.scale)
+        if (!(s === s) || s <= 0)
+            s = 1
+        var ox = Number(p.offX)
+        var oy = Number(p.offY)
+        var r = Number(p.rot)
+        if (!(ox === ox)) ox = 0
+        if (!(oy === oy)) oy = 0
+        if (!(r === r)) r = 0
+        return {
+            scale: Math.max(0.25, Math.min(4, s)),
+            offX: Math.max(-1, Math.min(1, ox)),
+            offY: Math.max(-1, Math.min(1, oy)),
+            rot: r
+        }
+    }
+
+    function photoBag() {
+        var e = _ed()
+        if (e && e.photoBag)
+            return e.photoBag()
+        return photoFromDoc({
+            scale: photoScale,
+            offX: photoOffX,
+            offY: photoOffY,
+            rot: photoRot
+        })
+    }
+
+    function applyPhoto(p) {
+        p = photoFromDoc(p)
+        photoScale = p.scale
+        photoOffX = p.offX
+        photoOffY = p.offY
+        photoRot = p.rot
+        applyPhotoToEditor()
+    }
+
+    function applyPhotoToEditor() {
+        var e = _ed()
+        if (!e)
+            return
+        if (e.applyPhotoPose)
+            e.applyPhotoPose({
+                scale: photoScale,
+                offX: photoOffX,
+                offY: photoOffY,
+                rot: photoRot
+            })
+        else {
+            e.photoScale = photoScale
+            e.photoOffX = photoOffX
+            e.photoOffY = photoOffY
+            e.photoRot = photoRot
+        }
+        e.movePhoto = movePhoto && editing
+        if (e.repaint)
+            e.repaint()
+    }
+
+    function setPhotoScale(v) {
+        photoScale = photoFromDoc({ scale: v }).scale
+        applyPhotoToEditor()
+    }
+
+    function setPhotoOff(x, y) {
+        var p = photoFromDoc({ offX: x, offY: y })
+        photoOffX = p.offX
+        photoOffY = p.offY
+        applyPhotoToEditor()
+    }
+
+    function setPhotoRot(v) {
+        var r = Number(v)
+        if (!(r === r))
+            r = 0
+        photoRot = r
+        applyPhotoToEditor()
+    }
+
+    function resetPhoto() {
+        applyPhoto({ scale: 1, offX: 0, offY: 0, rot: 0 })
+        movePhoto = false
+        applyPhotoToEditor()
+    }
+
+    function fitPhotoWell() {
+        photoScale = 1
+        applyPhotoToEditor()
+    }
+
     function applyViewToFace() {
         var f = _cardLoader.item
         if (!f || !f.zoomFit)
@@ -962,6 +1072,7 @@ Window {
         if (e.repaint)
             e.repaint()
         applyViewToFace()
+        applyPhotoToEditor()
     }
 
 
@@ -1164,6 +1275,7 @@ Window {
             var rel = _hw.copyImage(selectedFile, targetName)
             if (rel.length) {
                 applyImage(rel)
+                resetPhoto()
             }
         }
     }
@@ -1340,6 +1452,70 @@ Window {
         }
     }
 
+    Popup {
+        id: _photoAdj
+        modal: false
+        focus: true
+        x: Math.round((_buttonMap.width - width) / 2)
+        y: 52
+        width: 360
+        implicitHeight: 430
+        padding: 12
+        background: Rectangle {
+            color: "#18181B"
+            border.color: "#3F3F46"
+            radius: 4
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 8
+            Label { text: "Photo"; color: "#E4E4E7"; font.pixelSize: 13 }
+            Label { text: "Size  " + Math.round(photoScale * 100) + "%"; color: "#A1A1AA"; font.pixelSize: 11 }
+            Slider {
+                Layout.fillWidth: true
+                from: 0.25
+                to: 4
+                stepSize: 0.01
+                value: photoScale
+                onMoved: _buttonMap.setPhotoScale(value)
+            }
+            Label { text: "Offset X  " + photoOffX.toFixed(3); color: "#A1A1AA"; font.pixelSize: 11 }
+            Slider {
+                Layout.fillWidth: true
+                from: -0.5
+                to: 0.5
+                stepSize: 0.001
+                value: photoOffX
+                onMoved: _buttonMap.setPhotoOff(value, photoOffY)
+            }
+            Label { text: "Offset Y  " + photoOffY.toFixed(3); color: "#A1A1AA"; font.pixelSize: 11 }
+            Slider {
+                Layout.fillWidth: true
+                from: -0.5
+                to: 0.5
+                stepSize: 0.001
+                value: photoOffY
+                onMoved: _buttonMap.setPhotoOff(photoOffX, value)
+            }
+            Label { text: "Rotate  " + Math.round(photoRot) + "°"; color: "#A1A1AA"; font.pixelSize: 11 }
+            Slider {
+                Layout.fillWidth: true
+                from: -180
+                to: 180
+                stepSize: 1
+                value: photoRot
+                onMoved: _buttonMap.setPhotoRot(value)
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button { text: "Fit well"; onClicked: _buttonMap.fitPhotoWell() }
+                Button { text: "Reset photo"; onClicked: _buttonMap.resetPhoto() }
+                Item { Layout.fillWidth: true }
+                Button { text: "Close"; onClicked: _photoAdj.close() }
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -1370,6 +1546,7 @@ Window {
                     onTriggered: {
                         _hw.clearImage(targetName)
                         applyImage(stockImage)
+                        resetPhoto()
                     }
                 }
                 MenuSeparator {}
@@ -1419,7 +1596,7 @@ Window {
             Menu {
                 title: "View"
                 MenuItem {
-                    text: "Reset view"
+                    text: "Reset view (View 100%)"
                     onTriggered: {
                         var f = _cardLoader.item
                         if (f && f.resetView)
@@ -1516,6 +1693,38 @@ Window {
                 }
             }
             Menu {
+                title: "Photo"
+                MenuItem {
+                    text: "Move photo"
+                    checkable: true
+                    enabled: editing
+                    checked: {
+                        var e = _ed()
+                        return e ? e.movePhoto : _buttonMap.movePhoto
+                    }
+                    onTriggered: {
+                        _buttonMap.movePhoto = checked
+                        _buttonMap.applyPhotoToEditor()
+                    }
+                }
+                MenuItem {
+                    text: "Adjust photo…"
+                    enabled: editing
+                    onTriggered: _photoAdj.open()
+                }
+                MenuSeparator {}
+                MenuItem {
+                    text: "Fit well"
+                    enabled: editing
+                    onTriggered: _buttonMap.fitPhotoWell()
+                }
+                MenuItem {
+                    text: "Reset photo"
+                    enabled: editing
+                    onTriggered: _buttonMap.resetPhoto()
+                }
+            }
+            Menu {
                 title: "Help"
                 MenuItem {
                     text: "Editor help"
@@ -1530,9 +1739,19 @@ Window {
                 anchors.fill: parent
                 spacing: 8
                 Label {
-                    visible: editing
-                    text: _cardLoader.item ? (Math.round(_cardLoader.item.viewPct * 100) + "%") : "100%"
+                    visible: true
+                    text: {
+                        var f = _cardLoader.item
+                        var pct = f ? Math.round(f.viewPct * 100) : 100
+                        return "View " + pct + "%"
+                    }
                     color: "#E4E4E7"
+                    font.pixelSize: 12
+                }
+                Label {
+                    visible: editing
+                    text: "Photo size " + Math.round(photoScale * 100) + "%"
+                    color: "#A1A1AA"
                     font.pixelSize: 12
                 }
                 Label {
@@ -1542,6 +1761,12 @@ Window {
                         return editing && e && e.drawTool && e.drawTool.length
                     }
                     text: "Drawing — drag empty. Shift locks aspect. Esc cancels."
+                    color: "#FBBF24"
+                    font.pixelSize: 12
+                }
+                Label {
+                    visible: editing && movePhoto
+                    text: "Move photo — drag to park. Esc leaves the tool."
                     color: "#FBBF24"
                     font.pixelSize: 12
                 }
