@@ -298,7 +298,7 @@ Item {
                                     id: _card
                                     x: index * 14
                                     y: index * 14
-                                    z: index
+                                    stackIndex: index
                                     width: _pile.cardW
                                     Component.onCompleted: {
                                         _page.fillCard(_card, modelData)
@@ -317,7 +317,6 @@ Item {
         target: model
         function onPanesChanged() {
             _page.pileRev++
-            _split.currentIndex = model.splitMode === "vertical" ? 1 : (model.splitMode === "horizontal" ? 2 : 0)
             if (_splitView.visible)
                 Qt.callLater(_splitView.applyRatio)
         }
