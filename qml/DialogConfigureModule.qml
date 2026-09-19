@@ -51,14 +51,18 @@ Window {
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
         currentFolder: _hw.imagesFolderUrl()
         onAccepted: {
-            var src = selectedFile && selectedFile.toString ? selectedFile.toString() : selectedFile
-            if (!src || !String(src).length)
-                src = currentFile
+            var src = ""
+            if (selectedFile)
+                src = selectedFile.toString ? selectedFile.toString() : ("" + selectedFile)
+            if ((!src || !src.length) && selectedFiles && selectedFiles.length)
+                src = selectedFiles[0].toString ? selectedFiles[0].toString() : ("" + selectedFiles[0])
+            if (!src || !src.length)
+                src = currentFile && currentFile.toString ? currentFile.toString() : currentFile
             var rel = _hw.copyImage(src, deviceName)
             var url = rel.length ? _hw.imageUrl(rel) : ""
             if (!url.length)
                 url = _hw.profilePhotoUrl(deviceName)
-            _win.photoUrl = url.length ? (url + "?t=" + Date.now()) : ""
+            _win.photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
         }
     }
 
@@ -208,6 +212,8 @@ Window {
                 text: "Save module"
                 focusPolicy: Qt.NoFocus
                 onClicked: {
+                    if (_win.photoUrl && _win.photoUrl.length)
+                        _hw.keepPhoto(deviceName, _win.photoUrl)
                     if (_driver.saveClaim(deviceName, direction)) {
                         if (moduleModel && moduleModel.notifyClaims)
                             moduleModel.notifyClaims()
