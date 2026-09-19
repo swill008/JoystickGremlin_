@@ -171,23 +171,47 @@ Item {
         SplitView {
             id: _splitView
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: visible
+            visible: _page.model && _page.model.splitMode !== "none"
             orientation: (_page.model && _page.model.splitMode === "horizontal") ? Qt.Vertical : Qt.Horizontal
-            handle: Rectangle { implicitWidth: 6; implicitHeight: 6; color: "#3F3F46" }
+            handle: Rectangle { implicitWidth: 8; implicitHeight: 8; color: "#52525B" }
+
+            function applyRatio() {
+                if (!_page.model || width < 8 || height < 8)
+                    return
+                var r = _page.model.splitRatio
+                if (!(r > 0))
+                    r = 0.5
+                if (orientation === Qt.Horizontal)
+                    _inputPane.SplitView.preferredWidth = Math.round(width * r)
+                else
+                    _inputPane.SplitView.preferredHeight = Math.round(height * r)
+            }
+
+            function saveRatio() {
+                if (!_page.model || width < 8 || height < 8)
+                    return
+                var r = orientation === Qt.Horizontal ? (_inputPane.width / width) : (_inputPane.height / height)
+                _page.model.setSplitRatio(r)
+            }
+
+            onWidthChanged: applyRatio()
+            onHeightChanged: applyRatio()
+            onVisibleChanged: if (visible) Qt.callLater(applyRatio)
+            onResizingChanged: if (!resizing) saveRatio()
 
             StatusPane {
-                SplitView.preferredWidth: _splitView.width * 0.55
-                SplitView.preferredHeight: _splitView.height * 0.55
-                SplitView.fillWidth: true
-                SplitView.fillHeight: true
-                visible: !_page.model || _page.model.splitMode !== "none"
+                id: _inputPane
+                SplitView.minimumWidth: 180
+                SplitView.minimumHeight: 120
                 title: "Input modules"
                 direction: "source"
             }
             StatusPane {
+                SplitView.minimumWidth: 180
+                SplitView.minimumHeight: 120
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                visible: !_page.model || _page.model.splitMode !== "none"
                 title: "Output modules"
                 direction: "dest"
             }
@@ -195,7 +219,7 @@ Item {
 
         StatusPane {
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: visible
             visible: !_page.model || _page.model.splitMode === "none"
             title: ""
             direction: ""
@@ -279,6 +303,8 @@ Item {
         function onPanesChanged() {
             _page.pileRev++
             _split.currentIndex = model.splitMode === "vertical" ? 1 : (model.splitMode === "horizontal" ? 2 : 0)
+            if (_splitView.visible)
+                Qt.callLater(_splitView.applyRatio)
         }
         function onModelReset() {}
     }
