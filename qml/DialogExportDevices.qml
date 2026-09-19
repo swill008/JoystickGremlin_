@@ -16,6 +16,10 @@ Window {
     width: 560
     height: 400
     title: "Export devices"
+
+    Shortcut { sequence: "Esc"; onActivated: {} }
+    Shortcut { sequence: "Return"; onActivated: {} }
+    Shortcut { sequence: "Enter"; onActivated: {} }
     color: Style.background
     Universal.theme: Style.theme
 
@@ -73,9 +77,9 @@ Window {
 
         RowLayout {
             Item { Layout.fillWidth: true }
-            Button { text: "Cancel"; onClicked: _win.close() }
+            Button { text: "Cancel"; focusPolicy: Qt.NoFocus; onClicked: _win.close() }
             Button {
-                text: "Export…"
+                text: "Export…"; focusPolicy: Qt.NoFocus
                 enabled: deviceName.length > 0
                 onClicked: {
                     var hint = _hw.defaultExportUrl(deviceName)
