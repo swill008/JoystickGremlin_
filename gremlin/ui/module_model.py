@@ -588,17 +588,23 @@ class DriverInputModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"label"),
         QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(b"claimed"),
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"friendly"),
+        QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"lit"),
     }
 
     changed = QtCore.Signal()
+    rowActivated = QtCore.Signal(int)
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._guid = ""
         self._device_name = ""
         self._rows: list[dict] = []
+        self._lit_index = -1
         try:
-            event_handler.EventListener().joystick_event.connect(self._on_joy)
+            listener = event_handler.EventListener()
+            listener.joystick_event.connect(
+                self._on_joy, QtCore.Qt.ConnectionType.QueuedConnection
+            )
         except Exception:
             pass
 
@@ -647,6 +653,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                         "label": f"Axis {hid}",
                         "claimed": hid in claim["axes"],
                         "friendly": claim["friendly"].get(f"axis:{hid}", ""),
+                        "lit": False,
                     }
                 )
             for hid in range(1, info.button_count + 1):
@@ -657,6 +664,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                         "label": f"Button {hid}",
                         "claimed": hid in claim["buttons"],
                         "friendly": claim["friendly"].get(f"button:{hid}", ""),
+                        "lit": False,
                     }
                 )
             for hid in range(1, info.hat_count + 1):
@@ -667,6 +675,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                         "label": f"Hat {hid}",
                         "claimed": hid in claim["hats"],
                         "friendly": claim["friendly"].get(f"hat:{hid}", ""),
+                        "lit": False,
                     }
                 )
         self.beginResetModel()
@@ -705,6 +714,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                     "label": label,
                     "claimed": hid in claim.get(buckets[kind], []),
                     "friendly": claim.get("friendly", {}).get(key, ""),
+                    "lit": False,
                 }
             )
         self.beginResetModel()
@@ -712,17 +722,47 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self.endResetModel()
         self.changed.emit()
 
+    def _same_device(self, event: event_handler.Event) -> bool:
+        if event is None:
+            return False
+        if _norm_guid(event.device_guid) == _norm_guid(self._guid):
+            return True
+        if not self._device_name:
+            return False
+        try:
+            devices = list(device_initialization.joystick_devices())
+        except Exception:
+            devices = []
+        want = _slug(self._device_name)
+        ev = _norm_guid(event.device_guid)
+        for dev in devices:
+            if _norm_guid(dev.device_guid) != ev:
+                continue
+            if _slug(dev.name) == want or dev.name == self._device_name:
+                return True
+        return False
+
     def _on_joy(self, event: event_handler.Event) -> None:
-        if event is None or not self._guid:
+        if event is None or not self._rows:
             return
-        if _norm_guid(event.device_guid) != _norm_guid(self._guid):
+        if not self._same_device(event):
             return
-        kind = "button"
         et = getattr(event, "event_type", None)
+        kind = "button"
         if et == InputType.JoystickAxis:
             kind = "axis"
+            try:
+                if abs(float(event.value)) < 0.2 and abs(float(getattr(event, "raw_value", 0) or 0)) < 0.2:
+                    return
+            except Exception:
+                pass
         elif et == InputType.JoystickHat:
             kind = "hat"
+            if getattr(event, "value", None) in (0, (0, 0), "center", None):
+                return
+        elif et == InputType.JoystickButton:
+            if event.is_pressed is False:
+                return
         try:
             hid = int(event.identifier)
         except Exception:
@@ -745,12 +785,26 @@ class DriverInputModel(QtCore.QAbstractListModel):
         ix = self.index(index, 0)
         self.dataChanged.emit(ix, ix, [QtCore.Qt.ItemDataRole.UserRole + 5])
 
+    def _set_lit(self, index: int, lit: bool) -> None:
+        if not (0 <= index < len(self._rows)):
+            return
+        if bool(self._rows[index].get("lit")) == bool(lit):
+            return
+        self._rows[index]["lit"] = bool(lit)
+        ix = self.index(index, 0)
+        self.dataChanged.emit(ix, ix, [QtCore.Qt.ItemDataRole.UserRole + 6])
+
     @QtCore.Slot(str, int)
     def markPressed(self, kind: str, hw_id: int) -> None:
         for i, row in enumerate(self._rows):
             if row["kind"] == kind and int(row["hwId"]) == int(hw_id):
                 if not row["claimed"]:
                     self.setClaimed(i, True)
+                if self._lit_index >= 0 and self._lit_index != i:
+                    self._set_lit(self._lit_index, False)
+                self._lit_index = i
+                self._set_lit(i, True)
+                self.rowActivated.emit(i)
                 return
 
     @QtCore.Slot(str, str, result=bool)
