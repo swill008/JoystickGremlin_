@@ -405,6 +405,23 @@ class Device(QtCore.QAbstractListModel):
             case _:
                 return ""
 
+    @QtCore.Slot(int, result=str)
+    def kindAt(self, index: int) -> str:
+        if self._device is None or index < 0:
+            return ""
+        kind = self._convert_index(index)[0]
+        if kind == InputType.JoystickAxis:
+            return "axis"
+        if kind == InputType.JoystickHat:
+            return "hat"
+        return "button"
+
+    @QtCore.Slot(int, result=int)
+    def hwIdAt(self, index: int) -> int:
+        if self._device is None or index < 0:
+            return 0
+        return int(self._convert_index(index)[1])
+
     @QtCore.Slot(int, result=InputIdentifier)
     def inputIdentifier(self, index: int) -> InputIdentifier:
         """Returns the InputIdentifier for input with the specified index.
