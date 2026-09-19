@@ -17,7 +17,18 @@ Item {
     property Device device
     property var moduleModel: null
     property string claimDeviceName: ""
+    property int claimRev: 0
     readonly property bool editorLocked: backend && backend.gremlinActive
+    readonly property int claimedCount: {
+        claimRev
+        return (moduleModel && claimDeviceName.length && moduleModel.claimedCount)
+            ? moduleModel.claimedCount(claimDeviceName) : -1
+    }
+
+    Connections {
+        target: moduleModel
+        function onClaimsChanged() { _root.claimRev++ }
+    }
     enabled: !editorLocked
     opacity: editorLocked ? 0.55 : 1.0
 
@@ -107,11 +118,11 @@ Item {
         delegate: InputButton {
             width: _inputList.width - 20
             visible: {
+                _root.claimRev
                 if (!moduleModel || !claimDeviceName.length || !device)
                     return true
                 if (!moduleModel.isClaimedInput)
                     return true
-                // Empty claim (stub) shows nothing claimed — hide leftovers.
                 return moduleModel.isClaimedInput(
                     claimDeviceName, device.kindAt(model.index), device.hwIdAt(model.index)
                 )
@@ -155,5 +166,15 @@ Item {
 
         Component.onCompleted: syncSelection()
         onCurrentIndexChanged: syncSelection()
+    }
+
+    Label {
+        anchors.centerIn: parent
+        width: parent.width - 32
+        visible: claimedCount === 0
+        wrapMode: Text.WordWrap
+        horizontalAlignment: Text.AlignHCenter
+        color: "#A1A1AA"
+        text: "No claimed inputs on this module.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
     }
 }
