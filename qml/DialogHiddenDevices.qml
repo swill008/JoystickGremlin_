@@ -27,9 +27,9 @@ Window {
         model: moduleModel ? moduleModel.hiddenList() : []
         delegate: RowLayout {
             width: ListView.view.width
-            Label { text: modelData; Layout.fillWidth: true }
+            Label { text: modelData; Layout.fillWidth: true; color: Style.foreground }
             Button {
-                text: "Unignore"
+                text: "Show"
                 onClicked: {
                     if (moduleModel)
                         moduleModel.unignoreSlug(modelData)
