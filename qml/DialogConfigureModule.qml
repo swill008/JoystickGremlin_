@@ -18,6 +18,7 @@ Window {
     property string deviceName: ""
     property string deviceGuid: ""
     property string photoUrl: ""
+    property var moduleModel: null
 
     width: 980
     height: 640
@@ -202,8 +203,11 @@ Window {
             Button {
                 text: "Save module"
                 onClicked: {
-                    if (_driver.saveClaim(deviceName, direction))
+                    if (_driver.saveClaim(deviceName, direction)) {
+                        if (moduleModel && moduleModel.notifyClaims)
+                            moduleModel.notifyClaims()
                         _win.close()
+                    }
                 }
             }
         }
