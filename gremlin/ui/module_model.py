@@ -246,6 +246,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     focusChanged = QtCore.Signal()
     hiddenChanged = QtCore.Signal()
     panesChanged = QtCore.Signal()
+    claimsChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -565,19 +566,46 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, int, result=bool)
     def isClaimedInput(self, device_name: str, kind: str, hw_id: int) -> bool:
+        # Configuration left list is module claim only — never dump raw DILL.
         doc = _load_module_doc(device_name)
         if not doc:
-            return True
+            return False
         claim = _claim_from_doc(doc)
-        if not claim["buttons"] and not claim["axes"] and not claim["hats"]:
-            return True
+        if (
+            not claim["buttons"]
+            and not claim["axes"]
+            and not claim["hats"]
+            and not claim["keys"]
+        ):
+            return False
+        hid = int(hw_id)
         if kind == "button":
-            return int(hw_id) in claim["buttons"]
+            return hid in claim["buttons"]
         if kind == "axis":
-            return int(hw_id) in claim["axes"]
+            return hid in claim["axes"]
         if kind == "hat":
-            return int(hw_id) in claim["hats"]
+            return hid in claim["hats"]
+        if kind == "key":
+            return hid in claim["keys"]
         return False
+
+    @QtCore.Slot(str, result=int)
+    def claimedCount(self, device_name: str) -> int:
+        doc = _load_module_doc(device_name)
+        if not doc:
+            return 0
+        claim = _claim_from_doc(doc)
+        return (
+            len(claim["buttons"])
+            + len(claim["axes"])
+            + len(claim["hats"])
+            + len(claim["keys"])
+        )
+
+    @QtCore.Slot()
+    def notifyClaims(self) -> None:
+        self._reload()
+        self.claimsChanged.emit()
 
     def _on_joy(self, event: event_handler.Event) -> None:
         if event is None:
