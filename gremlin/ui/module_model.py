@@ -537,6 +537,30 @@ class ModuleListModel(QtCore.QAbstractListModel):
         _set_sizes(sizes)
         self.panesChanged.emit()
 
+    @QtCore.Slot(str)
+    def resetCardSize(self, slug: str) -> None:
+        sizes = _sizes()
+        for member in self.pileMembers(slug):
+            sizes.pop(member, None)
+        _set_sizes(sizes)
+        signal.configChanged.emit()
+        self.panesChanged.emit()
+
+    @QtCore.Slot(str)
+    def clearCardSettings(self, slug: str) -> None:
+        sizes = _sizes()
+        sizes.pop(slug, None)
+        _set_sizes(sizes)
+        self.unstackSlug(slug)
+        signal.configChanged.emit()
+        self.panesChanged.emit()
+
+    @QtCore.Slot()
+    def resetAllCardSizes(self) -> None:
+        _set_sizes({})
+        signal.configChanged.emit()
+        self.panesChanged.emit()
+
     @QtCore.Slot(str, str)
     def stackSlugs(self, src: str, dst: str) -> None:
         if not src or not dst or src == dst:
