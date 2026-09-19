@@ -55,13 +55,23 @@ Item {
         _liveCards = _liveCards.filter(function(item) { return item !== card })
     }
 
+    function overlapArea(a, b) {
+        var ap = a.mapToItem(_page, 0, 0)
+        var bp = b.mapToItem(_page, 0, 0)
+        var ox = Math.min(ap.x + a.width, bp.x + b.width) - Math.max(ap.x, bp.x)
+        var oy = Math.min(ap.y + a.height, bp.y + b.height) - Math.max(ap.y, bp.y)
+        if (ox <= 0 || oy <= 0)
+            return 0
+        return ox * oy
+    }
+
     function handleDrop(slug, card) {
         if (!model || !slug || !card)
             return
         var gx = card.mapToItem(_page, card.width / 2, card.height / 2).x
         var gy = card.mapToItem(_page, card.width / 2, card.height / 2).y
         var best = null
-        var bestD = 1e12
+        var bestArea = 0
         var slots = []
         for (var i = 0; i < _liveCards.length; ++i) {
             var other = _liveCards[i]
@@ -70,14 +80,16 @@ Item {
             if (_page.model.splitMode !== "none" && other.direction !== card.direction)
                 continue
             var p = other.mapToItem(_page, other.width / 2, other.height / 2)
-            var d = Math.sqrt((gx - p.x) * (gx - p.x) + (gy - p.y) * (gy - p.y))
-            if (d < bestD) {
-                bestD = d
+            slots.push({ slug: other.slug, x: p.x, y: p.y })
+            var area = overlapArea(card, other)
+            if (area > bestArea) {
+                bestArea = area
                 best = other
             }
-            slots.push({ slug: other.slug, x: p.x, y: p.y })
         }
-        if (best && bestD < 56) {
+        // Either direction: ~25% of this card overlapping another is a stack.
+        var need = Math.max(80 * 80, card.width * card.height * 0.25)
+        if (best && bestArea >= need) {
             model.stackSlugs(slug, best.slug)
             return
         }
