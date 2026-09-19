@@ -604,6 +604,20 @@ class ModuleListModel(QtCore.QAbstractListModel):
             self.panesChanged.emit()
 
     @QtCore.Slot(str)
+    def unstackAll(self, slug: str) -> None:
+        groups = []
+        changed = False
+        for group in self._stacks():
+            if slug in group:
+                changed = True
+                continue
+            groups.append(group)
+        if changed:
+            self._set_stacks(groups)
+            self._reload()
+            self.panesChanged.emit()
+
+    @QtCore.Slot(str)
     def raiseSlug(self, slug: str) -> None:
         groups = []
         changed = False
