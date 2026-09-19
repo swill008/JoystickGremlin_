@@ -88,7 +88,13 @@ class UIState(QtCore.QObject):
 
     @QtCore.Slot(str)
     def setCurrentDevice(self, device_name: str) -> None:
-        device_uuid = uuid.UUID(device_name)
+        raw = str(device_name or "").replace("{", "").replace("}", "").strip()
+        if not raw:
+            return
+        try:
+            device_uuid = uuid.UUID(raw)
+        except ValueError:
+            return
         if device_uuid != self._current_device:
             self._current_device = device_uuid
             self.deviceChanged.emit()
