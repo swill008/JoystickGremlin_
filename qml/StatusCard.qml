@@ -45,13 +45,15 @@ Rectangle {
     signal ignoreDevice()
 
     width: Math.min(420, Math.max(260, parent ? parent.width : 320))
-    implicitHeight: 236
+    implicitHeight: _body.implicitHeight + 20
+    height: implicitHeight
     radius: 4
     color: "#18181B"
     border.width: focused ? 2 : 1
     border.color: focused ? "#A1A1AA" : "#3F3F46"
 
     ColumnLayout {
+        id: _body
         anchors.fill: parent
         anchors.margins: 10
         spacing: 6
@@ -59,7 +61,13 @@ Rectangle {
         Item {
             id: _photoWell
             Layout.fillWidth: true
-            Layout.preferredHeight: 96
+            Layout.preferredHeight: {
+                if (_photo.status === Image.Ready && _photo.implicitWidth > 0) {
+                    var ratio = _photo.implicitHeight / _photo.implicitWidth
+                    return Math.round(Math.min(280, Math.max(96, width * ratio)))
+                }
+                return 120
+            }
 
             Rectangle {
                 anchors.fill: parent
@@ -69,12 +77,15 @@ Rectangle {
                 radius: 2
 
                 Image {
+                    id: _photo
                     anchors.fill: parent
                     anchors.margins: 2
                     source: photo
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     visible: photo && photo.length
+                    onStatusChanged: _photoWell.Layout.preferredHeightChanged()
+                    onImplicitWidthChanged: _photoWell.Layout.preferredHeightChanged()
                 }
 
                 Label {
