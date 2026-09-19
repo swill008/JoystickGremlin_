@@ -139,7 +139,8 @@ Rectangle {
             elide: Text.ElideRight
             Layout.fillWidth: true
 
-            ToolTip.visible: hovered && lastHardware.length
+            HoverHandler { id: _lastHover }
+            ToolTip.visible: _lastHover.hovered && lastHardware.length > 0
             ToolTip.text: lastHardware
             ToolTip.delay: 400
         }
