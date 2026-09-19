@@ -34,6 +34,8 @@ _CFG_GROUP = "status"
 _CFG_HIDDEN = "hidden-slugs"
 _CFG_ORDER = "card-order"
 _CFG_SHOW_STUBS = "show-stubs"
+_CFG_SPLIT = "split-mode"
+_CFG_STACKS = "card-stacks"
 
 
 def _ensure_display_options() -> None:
@@ -68,6 +70,28 @@ def _ensure_display_options() -> None:
             PropertyType.String,
             "",
             "Status card order (comma separated slugs).",
+            {},
+            True,
+        )
+    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT):
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_SPLIT,
+            PropertyType.String,
+            "none",
+            "Status split: none, vertical, or horizontal.",
+            {},
+            True,
+        )
+    if not cfg.exists(_CFG_SECTION, _CFG_GROUP, _CFG_STACKS):
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_STACKS,
+            PropertyType.String,
+            "",
+            "Status card stacks (slug+slug|slug).",
             {},
             True,
         )
@@ -237,6 +261,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     lastChanged = QtCore.Signal()
     focusChanged = QtCore.Signal()
     hiddenChanged = QtCore.Signal()
+    panesChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -364,6 +389,108 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(result=int)
     def visibleCount(self) -> int:
         return len(self._rows)
+
+    def _stacks(self) -> list[list[str]]:
+        _ensure_display_options()
+        raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_STACKS) or "")
+        groups: list[list[str]] = []
+        visible = {row.slug for row in self._rows}
+        for part in raw.split("|"):
+            group = [s.strip() for s in part.split("+") if s.strip() and s.strip() in visible]
+            if len(group) > 1:
+                groups.append(group)
+        return groups
+
+    def _set_stacks(self, groups: list[list[str]]) -> None:
+        _ensure_display_options()
+        packed = "|".join("+".join(g) for g in groups if len(g) > 1)
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_STACKS, packed)
+
+    @QtCore.Property(str, notify=panesChanged)
+    def splitMode(self) -> str:
+        _ensure_display_options()
+        raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT) or "none").lower()
+        return raw if raw in ("none", "vertical", "horizontal") else "none"
+
+    @QtCore.Slot(str)
+    def setSplitMode(self, mode: str) -> None:
+        name = (mode or "none").lower()
+        if name not in ("none", "vertical", "horizontal"):
+            name = "none"
+        if name == self.splitMode:
+            return
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT, name)
+        self.panesChanged.emit()
+
+    @QtCore.Slot(str, result=list)
+    def pileLeaders(self, direction: str) -> list:
+        groups = {g[0]: g for g in self._stacks()}
+        stacked = {s for g in groups.values() for s in g}
+        leaders: list[str] = []
+        for row in self._rows:
+            if direction and row.direction != direction:
+                continue
+            if row.slug in stacked and row.slug not in groups:
+                continue
+            leaders.append(row.slug)
+        return leaders
+
+    @QtCore.Slot(str, result=list)
+    def pileMembers(self, leader: str) -> list:
+        for group in self._stacks():
+            if leader in group:
+                return group
+        return [leader] if leader else []
+
+    @QtCore.Slot(str, str)
+    def stackSlugs(self, src: str, dst: str) -> None:
+        if not src or not dst or src == dst:
+            return
+        dirs = {row.slug: row.direction for row in self._rows}
+        if dirs.get(src) and dirs.get(dst) and dirs[src] != dirs[dst]:
+            return
+        groups = self._stacks()
+        src_group = next((g for g in groups if src in g), [src])
+        dst_group = next((g for g in groups if dst in g), [dst])
+        groups = [g for g in groups if src not in g and dst not in g]
+        merged = [s for s in dst_group if s != src] + [s for s in src_group if s not in dst_group]
+        if src not in merged:
+            merged.append(src)
+        groups.append(merged)
+        self._set_stacks(groups)
+        self._reload()
+        self.panesChanged.emit()
+
+    @QtCore.Slot(str)
+    def unstackSlug(self, slug: str) -> None:
+        groups = []
+        changed = False
+        for group in self._stacks():
+            if slug in group:
+                rest = [s for s in group if s != slug]
+                if len(rest) > 1:
+                    groups.append(rest)
+                changed = True
+            else:
+                groups.append(group)
+        if changed:
+            self._set_stacks(groups)
+            self._reload()
+            self.panesChanged.emit()
+
+    @QtCore.Slot(str)
+    def raiseSlug(self, slug: str) -> None:
+        groups = []
+        changed = False
+        for group in self._stacks():
+            if slug in group and group[-1] != slug:
+                group = [s for s in group if s != slug] + [slug]
+                changed = True
+            groups.append(group)
+        if changed:
+            self._set_stacks(groups)
+            self._reload()
+            self.panesChanged.emit()
 
     def _row_map(self, row: ModuleRow) -> dict:
         last_f, last_h = self._last.get(row.slug, (row.last_friendly, row.last_hardware))
@@ -578,6 +705,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._rows = rows
         self.endResetModel()
         self.focusChanged.emit()
+        self.panesChanged.emit()
 
 
 @ta.QmlElement
