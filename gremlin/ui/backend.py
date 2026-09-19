@@ -53,6 +53,7 @@ class UIState(QtCore.QObject):
     inputChanged = QtCore.Signal()
     modeChanged = QtCore.Signal()
     tabChanged = QtCore.Signal()
+    roomChanged = QtCore.Signal()
     themeRevisionChanged = QtCore.Signal()
     selectIndex = QtCore.Signal(int)
 
@@ -62,11 +63,14 @@ class UIState(QtCore.QObject):
         self._current_input = {}
         self._current_mode = "Default"
         self._current_tab = "physical"
+        self._current_room = "status"
         self._theme_revision = 0
         event_handler.EventListener().device_change_event.connect(self._device_change)
         signal.profileChanged.connect(self._device_change)
 
     def _device_change(self) -> None:
+        if self._current_room == "status":
+            return
         if self._current_tab != "physical":
             return
         devices = device_initialization.physical_devices()
@@ -112,6 +116,13 @@ class UIState(QtCore.QObject):
             self._current_tab = tab
             self.tabChanged.emit()
 
+    @QtCore.Slot(str)
+    def setCurrentRoom(self, room: str) -> None:
+        name = room or "status"
+        if name != self._current_room:
+            self._current_room = name
+            self.roomChanged.emit()
+
     @QtCore.Slot()
     def bumpThemeRevision(self) -> None:
         self._theme_revision += 1
@@ -136,6 +147,10 @@ class UIState(QtCore.QObject):
     @QtCore.Property(str, notify=tabChanged)
     def currentTab(self) -> str:
         return self._current_tab
+
+    @QtCore.Property(str, notify=roomChanged)
+    def currentRoom(self) -> str:
+        return self._current_room
 
     @QtCore.Property(int, notify=themeRevisionChanged)
     def themeRevision(self) -> int:
@@ -204,6 +219,8 @@ class Backend(QtCore.QObject):
             return
         from gremlin.ui.highlight_option import highlight_follows_any_device
 
+        if self.ui_state.currentRoom == "status":
+            return
         follow = highlight_follows_any_device()
         current_input = self.ui_state.currentInput
         same_device = (
