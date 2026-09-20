@@ -291,7 +291,6 @@ Item {
         card.lastHardware = info.lastHardware || ""
         card.focused = !!info.focused
         card.pinActive = _page.pinSlug === card.slug
-        card.dropStacking = _page.dragStackSlug === (info.slug || slug)
     }
 
     ColumnLayout {
@@ -583,13 +582,6 @@ Item {
             Qt.callLater(_page.refreshCards)
         }
         function onLastChanged() {
-            Qt.callLater(_page.refreshCards)
-        }
-    }
-
-    Connections {
-        target: _page
-        function onDragStackSlugChanged() {
             Qt.callLater(_page.refreshCards)
         }
     }
