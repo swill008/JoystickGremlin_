@@ -387,13 +387,47 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(int, result=int)
     def rowForDeviceIndex(self, device_index: int) -> int:
+        want = int(device_index)
+        fallback = -1
         for i, row in enumerate(self._rows):
-            if int(row["deviceIndex"]) == int(device_index) and row["rowKind"] in (
-                "group",
-                "unmapped",
-            ):
+            if int(row["deviceIndex"]) != want:
+                continue
+            if row["rowKind"] in ("group", "unmapped"):
                 return i
-        return -1
+            if fallback < 0:
+                fallback = i
+        return fallback
+
+    @QtCore.Slot(int, result=bool)
+    def addSequence(self, device_index: int) -> bool:
+        """ADD on a catalog row: new action sequence for that control."""
+        want = int(device_index)
+        if want < 0:
+            return False
+        profile = shared_state.current_profile
+        dev = getattr(self._claimed, "_device", None)
+        if profile is None or dev is None:
+            return False
+        mode = str(getattr(self._claimed, "_mode", None) or "Default")
+        n = self._claimed.rowCount()
+        for i in range(n):
+            if self._claimed.deviceIndexAt(i) != want:
+                continue
+            kind = self._claimed.kindAt(i)
+            hw = self._claimed.hwIdAt(i)
+            item = profile.get_input_item(
+                dev.device_guid.uuid,
+                _kind_to_type(kind),
+                int(hw),
+                mode,
+                create_if_missing=True,
+            )
+            if item is None:
+                return False
+            item.add_item_binding()
+            signal.inputItemChanged.emit(want)
+            return True
+        return False
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     deviceName = QtCore.Property(
