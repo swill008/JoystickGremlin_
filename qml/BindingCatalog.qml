@@ -370,9 +370,11 @@ Item {
     }
 
     function closeEditor() {
+        var hid = _root.editingHid
         _root.editingHid = -1
         _root.editingSeq = -1
-        reloadKeepScroll()
+        if (hid >= 0)
+            _catalog.refreshHid(hid)
     }
 
     function rowX(total, align, left, right, pct) {
@@ -459,9 +461,7 @@ Item {
         target: signal
         function onSetInputIndex(index) { showHid(index, true) }
         function onInputItemChanged(itemIndex) {
-            if (_root.editingHid >= 0)
-                return
-            _catalog.reload()
+            // Catalog model refreshHid owns this. Do not reset the list.
         }
     }
 
@@ -570,9 +570,6 @@ Item {
                 function addActionOnRow(hid, actionName) {
                     _root.selectHid(hid)
                     var seq = _catalog.addAction(hid, actionName)
-                    _root.editingHid = -1
-                    _root.editingSeq = -1
-                    _root.reloadKeepScroll()
                     _root.editingHid = hid
                     _root.editingSeq = seq
                 }
@@ -585,7 +582,6 @@ Item {
                         _root.editingHid = -1
                         _root.editingSeq = -1
                     }
-                    _root.reloadKeepScroll()
                 }
                 function openChildMenu(hid, seq) {
                     _childMenu.hid = hid
