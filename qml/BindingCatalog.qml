@@ -366,16 +366,8 @@ Item {
             return
         selectHid(hid)
         var want = (seq === undefined || seq === null) ? -1 : seq
-        if (_root.editingHid === hid && _root.editingSeq === want) {
-            _root.editingSeq = -1
-            Qt.callLater(function() {
-                _root.editingHid = hid
-                _root.editingSeq = want
-                if (_list.forceLayout)
-                    _list.forceLayout()
-            })
+        if (_root.editingHid === hid && _root.editingSeq === want)
             return
-        }
         _root.editingHid = hid
         _root.editingSeq = want
         Qt.callLater(function() {
@@ -694,6 +686,14 @@ Item {
                                 }
                                 if (rowKind === "leaf")
                                     lv.openRow(deviceIndex, seqIndex)
+                            }
+                            onDoubleClicked: function(mouse) {
+                                if (mouse.button !== Qt.LeftButton)
+                                    return
+                                if (rowKind !== "leaf")
+                                    return
+                                if (deviceIndex === lv.editingHid && seqIndex === lv.editingSeq)
+                                    lv.okRow()
                             }
                         }
 
