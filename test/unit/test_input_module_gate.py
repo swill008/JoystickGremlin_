@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-from gremlin.input_module_gate import claim_allows, norm_guid, should_forward
+from gremlin.input_module_gate import claim_allows, dest_last_change, norm_guid, should_forward, status_last_from_hid
 
 
 class _T:
@@ -84,3 +84,19 @@ def test_unknown_device_dropped() -> None:
         dest_guids=set(),
         passthrough=set(),
     )
+
+
+def test_status_last_hid_only_on_input_cards() -> None:
+    assert status_last_from_hid("source") is True
+    assert status_last_from_hid("dest") is False
+    assert status_last_from_hid("output") is False
+
+
+def test_dest_last_prefers_button_press_then_axis() -> None:
+    prev = {("axis", 1): 0.0, ("button", 2): 0.0}
+    curr = {("axis", 1): 0.5, ("button", 2): 1.0}
+    assert dest_last_change(prev, curr) == ("button", 2)
+    curr2 = {("axis", 1): 0.5, ("button", 2): 0.0}
+    assert dest_last_change(prev, curr2) == ("axis", 1)
+    assert dest_last_change(prev, prev) is None
+    assert dest_last_change({}, curr) is None
