@@ -248,3 +248,20 @@ def test_selection_does_not_force_scroll() -> None:
     assert "positionViewAtIndex" not in add
     assert "reloadKeepScroll" in add
 
+
+def test_child_context_menu_add_delete() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    assert "id: _childMenu" in text
+    assert 'title: "Add"' in text
+    assert 'text: "Delete"' in text
+    assert "function deleteRow" in text
+    assert "function openChildMenu" in text
+    assert "_catalog.removeSequence(hid, seq)" in text
+    assert "acceptedButtons: Qt.LeftButton | Qt.RightButton" in text
+    assert "Qt.RightButton" in text
+    assert "openChildMenu(deviceIndex, seqIndex)" in text
+    bc = Path(__file__).resolve().parents[2] / "gremlin/ui/binding_catalog.py"
+    src = bc.read_text(encoding="utf-8")
+    assert "def removeSequence" in src
+    assert "def addAction" in src
+
