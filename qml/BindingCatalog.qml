@@ -39,7 +39,7 @@ Item {
                 _catalog.setMode(uiState.currentMode)
         }
         function onDeviceChanged() {
-            if (!uiState || editorLocked)
+            if (!uiState)
                 return
             showHid(uiState.currentInputIndex)
         }
@@ -63,7 +63,7 @@ Item {
     }
 
     function showHid(hid) {
-        if (editorLocked || hid < 0)
+        if (hid < 0)
             return
         let row = _catalog.rowForDeviceIndex(hid)
         if (row < 0)
@@ -148,7 +148,8 @@ Item {
                 property int liveStamp: _liveState.stamp
                 property string inputKind: (liveStamp >= 0 && deviceIndex >= 0) ? _liveState.kindAt(deviceIndex) : ""
                 property real liveValue: (liveStamp >= 0 && deviceIndex >= 0) ? _liveState.valueAt(deviceIndex) : 0
-                readonly property bool ledOn: runtimeActive && (inputKind === "button" || inputKind === "hat") && liveValue > 0.5
+                readonly property bool showLive: true
+                readonly property bool ledOn: showLive && (inputKind === "button" || inputKind === "hat") && liveValue > 0.5
                 readonly property bool axisRow: kind === "axis"
 
                 Rectangle {
@@ -176,16 +177,29 @@ Item {
                         height: 5
                         color: "#3F3F46"
                         Rectangle {
-                            width: Math.max(0, Math.min(parent.width, parent.width * ((liveValue + 1.0) * 0.5)))
+                            width: {
+                                liveStamp
+                                return Math.max(0, Math.min(parent.width, parent.width * ((liveValue + 1.0) * 0.5)))
+                            }
                             height: parent.height
                             color: "#22C55E"
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.rightMargin: 64
+                        enabled: deviceIndex >= 0
+                        onClicked: {
+                            _list.currentIndex = index
+                            _list.syncSelection()
                         }
                     }
 
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 10
-                        anchors.rightMargin: 10
+                        anchors.rightMargin: 8
                         spacing: 8
 
                         Rectangle {
@@ -212,14 +226,17 @@ Item {
                             Layout.fillWidth: true
                             wrapMode: Text.NoWrap
                         }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        enabled: !editorLocked && deviceIndex >= 0
-                        onClicked: {
-                            _list.currentIndex = index
-                            _list.syncSelection()
+                        Button {
+                            visible: (rowKind === "group" || rowKind === "unmapped") && !editorLocked
+                            text: "ADD"
+                            implicitWidth: 56
+                            implicitHeight: 28
+                            z: 2
+                            onClicked: {
+                                _list.currentIndex = index
+                                _list.syncSelection()
+                                _catalog.addSequence(deviceIndex)
+                            }
                         }
                     }
                 }
