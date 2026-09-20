@@ -43,6 +43,7 @@ ApplicationWindow {
     property string configTitleName: ""
     property string configDirection: ""
     property bool outputViewPanel: false
+    property bool catalogPanel: false
 
     function refreshDestBound() {
         if (_destBound)
@@ -175,6 +176,7 @@ ApplicationWindow {
         configTitleName = ""
         configDirection = ""
         outputViewPanel = false
+        catalogPanel = false
         uiState.setCurrentRoom("status")
         uiState.setCurrentTab("physical")
         if (_scriptButton)
@@ -914,6 +916,11 @@ ApplicationWindow {
             }
             Button {
                 visible: configDirection !== "dest"
+                text: catalogPanel ? "Hide Display Options" : "Edit Display Options"
+                onClicked: catalogPanel = !catalogPanel
+            }
+            Button {
+                visible: configDirection !== "dest"
                 text: "Close"
                 Layout.rightMargin: 12
                 onClicked: closeWorkRoom()
@@ -1058,6 +1065,8 @@ ApplicationWindow {
                 moduleModel: _moduleModel
                 claimDeviceName: configTitleName
                 isOutput: _root.configDirection === "dest"
+                showPanel: _root.catalogPanel
+                onClosePanel: _root.catalogPanel = false
             }
 
             LogicalDevice {
