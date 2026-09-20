@@ -35,7 +35,9 @@ Rectangle {
     property bool stacked: false
     property bool lifting: false
     property bool resizing: false
+    property bool dropStacking: false
     z: stackIndex + (lifting || resizing ? 100 : 0)
+    opacity: lifting ? 0.92 : 1
 
     signal cardFocused()
     signal openConfiguration()
@@ -49,6 +51,9 @@ Rectangle {
     signal assignHardware()
     signal ignoreDevice()
     signal dropAt(real cx, real cy)
+    signal dragStarted()
+    signal dragMoved()
+    signal dragEnded()
     signal sizeChanged(int w, int h)
     signal resetSize()
     signal clearSettings()
@@ -59,8 +64,8 @@ Rectangle {
     radius: 4
     clip: true
     color: "#18181B"
-    border.width: focused ? 2 : 1
-    border.color: focused ? "#A1A1AA" : "#3F3F46"
+    border.width: focused || lifting || dropStacking ? 2 : 1
+    border.color: dropStacking ? "#22C55E" : (focused || lifting ? "#E4E4E7" : "#3F3F46")
 
     function restHome() {
         x = stackIndex * 14
@@ -191,15 +196,21 @@ Rectangle {
                 _card.lifting = true
         }
         onPositionChanged: {
-            if (drag.active)
+            if (!drag.active)
+                return
+            if (!didDrag) {
                 didDrag = true
+                _card.dragStarted()
+            }
+            _card.dragMoved()
         }
         onReleased: function(mouse) {
             _card.lifting = false
             if (didDrag) {
+                _card.dragEnded()
                 _card.dropAt(_card.x + _card.width / 2, _card.y + _card.height / 2)
-                _card.restHome()
             }
+            _card.restHome()
         }
         onClicked: function(mouse) {
             if (didDrag)
