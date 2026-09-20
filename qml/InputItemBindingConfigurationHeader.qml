@@ -100,6 +100,7 @@ Item {
             }
 
             IconButton {
+                visible: !_root.compactMode
                 text: bsi.icons.remove
                 font.pixelSize: 24
 
