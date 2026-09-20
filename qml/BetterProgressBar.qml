@@ -21,6 +21,7 @@ ProgressBar {
     padding: 2
 
     property int barSize: 20
+    property color fillColor: Style.accent
     property int orientation: BetterProgressBar.Orientation.Horizontal
 
     // Private indicator property
@@ -44,7 +45,7 @@ ProgressBar {
             height: __isHorizontal ? parent.height : control.visualPosition * parent.height
             width: __isHorizontal ? control.visualPosition * parent.width : parent.width
             radius: 2
-            color: Style.accent
+            color: control.fillColor
         }
     }
 }
