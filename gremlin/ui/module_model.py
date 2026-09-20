@@ -266,6 +266,7 @@ _DEFAULT_VIEW = {
     "padAY": 2,
     "padBX": 4,
     "padBY": 5,
+    "showPads": True,
     "showHats": True,
     "meterStyle": "vertical",
     "meterWidth": 22,
