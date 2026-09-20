@@ -156,13 +156,17 @@ Item {
         spacing: 16
 
         ColumnLayout {
-            Layout.preferredWidth: 240
+            Layout.preferredWidth: 228
+            Layout.maximumWidth: 228
+            Layout.fillWidth: false
             Layout.fillHeight: true
+            Layout.alignment: Qt.AlignTop
             spacing: 12
 
             CrossPad {
-                Layout.fillWidth: true
+                Layout.preferredWidth: 220
                 Layout.preferredHeight: 220
+                Layout.fillWidth: false
                 label: "X / Y"
                 xVal: {
                     var row = findAxis(1)
@@ -174,8 +178,9 @@ Item {
                 }
             }
             CrossPad {
-                Layout.fillWidth: true
+                Layout.preferredWidth: 220
                 Layout.preferredHeight: 220
+                Layout.fillWidth: false
                 visible: findAxis(4) !== null || findAxis(5) !== null
                 label: "Rx / Ry"
                 xVal: {
@@ -193,7 +198,6 @@ Item {
                     required property int idx
                     required property int hw
                     required property string name
-                    required property int index
                     Layout.preferredWidth: 160
                     Layout.preferredHeight: 160
                     Layout.alignment: Qt.AlignHCenter
@@ -204,25 +208,26 @@ Item {
             Item { Layout.fillHeight: true }
         }
 
-        RowLayout {
-            Layout.preferredWidth: Math.max(280, axisModel.count * 56)
+        Row {
+            Layout.fillWidth: false
             Layout.fillHeight: true
+            Layout.alignment: Qt.AlignTop
             spacing: 10
 
             Repeater {
                 model: axisModel
-                delegate: ColumnLayout {
+                delegate: Column {
                     required property int idx
                     required property int hw
                     required property string name
-                    required property int index
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: 48
+                    width: 48
+                    height: parent.height
                     spacing: 6
 
                     BetterProgressBar {
-                        Layout.fillHeight: true
-                        Layout.alignment: Qt.AlignHCenter
+                        width: 22
+                        height: parent.height - 44
+                        anchors.horizontalCenter: parent.horizontalCenter
                         orientation: BetterProgressBar.Orientation.Vertical
                         barSize: 22
                         from: -1
@@ -230,13 +235,15 @@ Item {
                         value: liveVal(idx)
                     }
                     Label {
-                        Layout.alignment: Qt.AlignHCenter
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
                         text: axisShort(hw, name)
                         color: "#E4E4E7"
                         font.pixelSize: 12
                     }
                     Label {
-                        Layout.alignment: Qt.AlignHCenter
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
                         text: (liveVal(idx) >= 0 ? "+" : "") + liveVal(idx).toFixed(2)
                         color: "#A1A1AA"
                         font.pixelSize: 10
@@ -245,33 +252,39 @@ Item {
             }
         }
 
-        GridView {
-            id: _buttons
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.minimumWidth: 280
             clip: true
-            cellWidth: 64
-            cellHeight: 48
-            model: buttonModel
-            boundsBehavior: Flickable.StopAtBounds
 
-            delegate: Rectangle {
-                required property int idx
-                required property int hw
-                required property string name
-                required property int index
-                width: _buttons.cellWidth - 6
-                height: _buttons.cellHeight - 6
-                color: (liveVal(idx) > 0.5 && _root.showLive) ? Qt.rgba(0.133, 0.773, 0.369, 0.45) : Style.background
-                border.color: (liveVal(idx) > 0.5 && _root.showLive) ? "#22C55E" : Style.lowColor
-                border.width: 1
-                radius: 3
+            GridView {
+                id: _buttons
+                anchors.fill: parent
+                clip: true
+                cellWidth: 64
+                cellHeight: 48
+                model: buttonModel
+                boundsBehavior: Flickable.StopAtBounds
+                flow: GridView.FlowLeftToRight
 
-                Label {
-                    anchors.centerIn: parent
-                    text: name && name.length ? name : ("" + hw)
-                    color: (liveVal(idx) > 0.5 && _root.showLive) ? "#F4F4F5" : "#A1A1AA"
-                    font.pixelSize: 13
+                delegate: Rectangle {
+                    required property int idx
+                    required property int hw
+                    required property string name
+                    width: _buttons.cellWidth - 6
+                    height: _buttons.cellHeight - 6
+                    color: (liveVal(idx) > 0.5 && _root.showLive) ? Qt.rgba(0.133, 0.773, 0.369, 0.45) : Style.background
+                    border.color: (liveVal(idx) > 0.5 && _root.showLive) ? "#22C55E" : Style.lowColor
+                    border.width: 1
+                    radius: 3
+
+                    Label {
+                        anchors.centerIn: parent
+                        text: name && name.length ? name : ("" + hw)
+                        color: (liveVal(idx) > 0.5 && _root.showLive) ? "#F4F4F5" : "#A1A1AA"
+                        font.pixelSize: 13
+                    }
                 }
             }
         }
