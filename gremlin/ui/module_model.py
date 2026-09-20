@@ -886,6 +886,15 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 return self._row_map(row)
         return {}
 
+    @QtCore.Slot(str, result=str)
+    def boundLine(self, device_name: str) -> str:
+        name = str(device_name or "")
+        for row in self._rows:
+            if str(getattr(row, "name", "") or "") == name:
+                target = str(getattr(row, "target", "") or "")
+                return "Bound to: [" + (target if target else "Not bound") + "]"
+        return "Bound to: [Not bound]"
+
     @QtCore.Slot(result="QVariantMap")
     def focusedCardMap(self) -> dict:
         if self._focus:
