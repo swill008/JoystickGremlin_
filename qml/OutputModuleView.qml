@@ -327,7 +327,12 @@ Item {
                     Layout.preferredHeight: 160
                     Layout.alignment: Qt.AlignHCenter
                     text: name.length ? name : ("Hat " + hw)
-                    currentValue: liveVal(idx) > 0.5 ? Qt.point(0, 1) : Qt.point(0, 0)
+                    currentValue: {
+                        liveStamp
+                        if (!_root.showLive)
+                            return Qt.point(0, 0)
+                        return Qt.point(_live.hatXAt(idx), _live.hatYAt(idx))
+                    }
                 }
             }
             Item { Layout.fillHeight: true }
