@@ -34,6 +34,8 @@ class DeviceLiveState(QtCore.QObject):
         self._device_uuid = None
         self._guid = ""
         self._locked = False
+        self._live_while_active = False
+        self._vjoy_id = 0
         self._kinds: list[str] = []
         self._values: list[float] = []
         self._axis_rows: dict[int, int] = {}
@@ -43,13 +45,29 @@ class DeviceLiveState(QtCore.QObject):
         self._timer.setInterval(33)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._flush_axes)
+        self._poll = QtCore.QTimer(self)
+        self._poll.setInterval(33)
+        self._poll.timeout.connect(self._poll_output)
         event_handler.EventListener().joystick_event.connect(self._on_event)
 
     def _get_guid(self) -> str:
         return self._guid
 
     def _get_locked(self) -> bool:
+        if self._live_while_active:
+            return False
         return self._locked or shared_state.runtime_active()
+
+    def _get_live_while_active(self) -> bool:
+        return self._live_while_active
+
+    def _set_live_while_active(self, value: bool) -> None:
+        flag = bool(value)
+        if flag == self._live_while_active:
+            return
+        self._live_while_active = flag
+        self.lockedChanged.emit()
+        self._sync_poll()
 
     def _set_locked(self, value: bool) -> None:
         flag = bool(value)
@@ -62,9 +80,11 @@ class DeviceLiveState(QtCore.QObject):
         self._device = None
         self._device_uuid = None
         self._guid = ""
+        self._vjoy_id = 0
         self._kinds = []
         self._values = []
         self._axis_rows = {}
+        self._sync_poll()
         self.guidChanged.emit()
         self._bump()
 
@@ -109,8 +129,71 @@ class DeviceLiveState(QtCore.QObject):
         for _ in range(self._device.hat_count):
             self._kinds.append("hat")
             self._values.append(0.0)
+        self._resolve_vjoy()
         self.guidChanged.emit()
         self._bump()
+        self._sync_poll()
+
+    def _resolve_vjoy(self) -> None:
+        self._vjoy_id = 0
+        if not self._guid:
+            return
+        try:
+            from gremlin import device_initialization
+            for vdev in device_initialization.vjoy_devices():
+                if _norm_guid(vdev.device_guid) == self._guid:
+                    self._vjoy_id = int(vdev.vjoy_id)
+                    return
+        except Exception:
+            self._vjoy_id = 0
+
+    def _sync_poll(self) -> None:
+        if self._live_while_active and self._vjoy_id and self._device is not None:
+            if not self._poll.isActive():
+                self._poll.start()
+            self._poll_output()
+        else:
+            self._poll.stop()
+
+    def _poll_output(self) -> None:
+        if not self._live_while_active or not self._vjoy_id or self._device is None:
+            return
+        try:
+            from vjoy.vjoy import HatDirection, VJoyProxy
+            dev = VJoyProxy()[self._vjoy_id]
+            if not dev.is_owned():
+                return
+        except Exception:
+            return
+        changed = False
+        axis_count = int(self._device.axis_count)
+        button_count = int(self._device.button_count)
+        for i, kind in enumerate(self._kinds):
+            value = None
+            try:
+                if kind == "axis":
+                    try:
+                        axis_id = int(self._device.axis_map[i].axis_index)
+                        value = float(dev.axis(axis_id=axis_id).value)
+                    except Exception:
+                        value = float(dev.axis(linear_index=i + 1).value)
+                elif kind == "button":
+                    btn_id = i - axis_count + 1
+                    value = 1.0 if dev.button(btn_id).is_pressed else 0.0
+                elif kind == "hat":
+                    hat_id = i - axis_count - button_count + 1
+                    direction = dev.hat(hat_id).direction
+                    center = getattr(HatDirection, "Center", (0, 0))
+                    value = 0.0 if direction == center else 1.0
+            except Exception:
+                continue
+            if value is None:
+                continue
+            if abs(self._values[i] - value) > 0.002:
+                self._values[i] = value
+                changed = True
+        if changed:
+            self._bump()
 
     def _get_stamp(self) -> int:
         return self._stamp
@@ -204,6 +287,12 @@ class DeviceLiveState(QtCore.QObject):
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     locked = QtCore.Property(bool, fget=_get_locked, fset=_set_locked, notify=lockedChanged)
+    liveWhileActive = QtCore.Property(
+        bool,
+        fget=_get_live_while_active,
+        fset=_set_live_while_active,
+        notify=lockedChanged,
+    )
     stamp = QtCore.Property(int, fget=_get_stamp, notify=stampChanged)
 
 
