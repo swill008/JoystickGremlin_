@@ -3,21 +3,21 @@ name: CI Tests
 on:
   workflow_dispatch:
   push:
-    branches: [ "**" ]
+    branches: [ develop, main ]
   pull_request_target:
-    branches: [ "**" ]
+    branches: [ develop, main ]
 
 jobs:
   test:
     runs-on: windows-latest
     if: |
       github.event_name == 'push' ||
-      (github.event_name == 'pull_request_target' &&
-       (github.event.pull_request.user.login == github.repository_owner ||
-        github.event.pull_request.author_association == 'OWNER' ||
-        github.event.pull_request.author_association == 'MEMBER' ||
-        github.event.pull_request.author_association == 'COLLABORATOR' ||
-        contains(github.event.pull_request.labels.*.name, 'gh-actions-manager')))
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.user.login == github.repository_owner ||
+       github.event.pull_request.author_association == 'OWNER' ||
+       github.event.pull_request.author_association == 'MEMBER' ||
+       github.event.pull_request.author_association == 'COLLABORATOR' ||
+       contains(github.event.pull_request.labels.*.name, 'gh-actions-manager'))
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
