@@ -15,7 +15,7 @@ Item {
     focus: true
     Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) {
-            clearSelection()
+            deselectAll()
             event.accepted = true
         }
     }
@@ -114,6 +114,31 @@ Item {
                 return card
         }
         return null
+    }
+
+    function cardUnder(px, py) {
+        for (var i = 0; i < _liveCards.length; ++i) {
+            var card = _liveCards[i]
+            if (!card || !cardOnPage(card))
+                continue
+            var o = card.mapToItem(_page, 0, 0)
+            if (px >= o.x && py >= o.y && px <= o.x + card.width && py <= o.y + card.height)
+                return card
+        }
+        return null
+    }
+
+    function deselectAll() {
+        var hadSel = selectedSlugs.length > 0
+        if (hadSel) {
+            selectedSlugs = []
+            selectRev++
+        }
+        if (model)
+            model.setFocus("")
+        _page.focusSlug("")
+        refreshCards()
+        forceActiveFocus()
     }
 
     function _selectHas(slug) {
@@ -555,6 +580,24 @@ Item {
         property string title: ""
         property string direction: ""
         property int dragLocks: 0
+        MouseArea {
+            anchors.fill: parent
+            z: 1000
+            acceptedButtons: Qt.LeftButton
+            hoverEnabled: false
+            propagateComposedEvents: true
+            onPressed: function(mouse) {
+                var p = mapToItem(_page, mouse.x, mouse.y)
+                mouse.accepted = false
+                if (_page.dragSlug.length)
+                    return
+                if (_page.cardUnder(p.x, p.y))
+                    return
+                if (mouse.modifiers & Qt.ShiftModifier)
+                    return
+                _page.deselectAll()
+            }
+        }
         property bool paneActive: {
             var mode = _page.model ? _page.model.splitMode : "none"
             if (!_pane.direction.length)
@@ -755,6 +798,9 @@ Item {
             Qt.callLater(_page.refreshCards)
         }
         function onLastChanged() {
+            Qt.callLater(_page.refreshCards)
+        }
+        function onFocusChanged() {
             Qt.callLater(_page.refreshCards)
         }
     }
