@@ -260,6 +260,41 @@ def _load_module_doc(device_name: str) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+_DEFAULT_CATALOG = {
+    "listPadding": 8,
+    "rowSpacing": 4,
+    "parentHeight": 50,
+    "childHeight": 36,
+    "childAlign": "left",
+    "childLeft": 24,
+    "childRight": 24,
+    "childWidthPct": 50,
+    "parentFont": 13,
+    "childFont": 12,
+    "summaryFont": 12,
+    "parentBold": True,
+    "showChildren": True,
+    "showLiveBars": True,
+    "showLeds": True,
+    "showSummary": True,
+    "rowRadius": 3,
+    "nameColW": 180,
+    "childNameColW": 160,
+    "rowInnerPad": 10,
+    "editorIndent": 12,
+    "colorParent": "#111113",
+    "colorChild": "#111113",
+    "colorSelected": "#27272A",
+    "colorText": "#E4E4E7",
+    "colorMuted": "#A1A1AA",
+    "colorLive": "#22C55E",
+    "colorBorder": "#3F3F46",
+    "colorSelectBorder": "#E4E4E7",
+    "colorEditor": "#0F2744",
+    "colorEditorBorder": "#3B82F6",
+}
+
+
 _DEFAULT_VIEW = {
     "layout": "pads_meters_grid",
     "padAX": 1,
@@ -541,6 +576,46 @@ class ModuleListModel(QtCore.QAbstractListModel):
             view.update(raw)
         view.update(incoming)
         doc["view"] = view
+        doc.setdefault("kind", "control.hardware")
+        doc.setdefault("device", name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        self.viewChanged.emit()
+        return True
+
+    @QtCore.Slot(str, result=str)
+    def catalogConfigJson(self, device_name: str) -> str:
+        doc = _load_module_doc(device_name) if device_name else {}
+        catalog = dict(_DEFAULT_CATALOG)
+        raw = (doc or {}).get("catalog")
+        if isinstance(raw, dict):
+            catalog.update(raw)
+        return json.dumps(catalog)
+
+    @QtCore.Slot(str, str, result=bool)
+    def saveCatalogConfig(self, device_name: str, json_text: str) -> bool:
+        name = str(device_name or "").strip()
+        if not name:
+            return False
+        try:
+            incoming = json.loads(json_text or "{}")
+        except json.JSONDecodeError:
+            return False
+        if not isinstance(incoming, dict):
+            return False
+        path = _maps_dir() / f"{_slug(name)}.json"
+        doc: dict = {}
+        if path.is_file():
+            try:
+                doc = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                doc = {}
+        catalog = dict(_DEFAULT_CATALOG)
+        raw = doc.get("catalog")
+        if isinstance(raw, dict):
+            catalog.update(raw)
+        catalog.update(incoming)
+        doc["catalog"] = catalog
         doc.setdefault("kind", "control.hardware")
         doc.setdefault("device", name)
         path.parent.mkdir(parents=True, exist_ok=True)
