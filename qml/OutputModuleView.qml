@@ -81,7 +81,7 @@ Item {
     ListModel { id: axisModel }
     ListModel { id: buttonModel }
     ListModel { id: hatModel }
-    property var axisPick: [{ "hw": 0, "label": "Off" }]
+    property var axisPick
 
     function axisShort(hw, name) {
         var map = { 1: "X", 2: "Y", 3: "Z", 4: "Rx", 5: "Ry", 6: "Rz", 7: "S1", 8: "S2" }
@@ -499,16 +499,16 @@ Item {
                                 Layout.fillWidth: true
                                 model: {
                                     var labels = []
-                                    for (var i = 0; i < axisPick.length; ++i)
+                                    for (var i = 0; i < (axisPick || []).length; ++i)
                                         labels.push(axisPick[i].label)
                                     return labels
                                 }
                                 currentIndex: {
-                                    for (var i = 0; i < axisPick.length; ++i)
+                                    for (var i = 0; i < (axisPick || []).length; ++i)
                                         if (axisPick[i].hw === padAX) return i
                                     return 0
                                 }
-                                onActivated: padAX = axisPick[currentIndex].hw
+                                onActivated: if (axisPick && axisPick[currentIndex]) padAX = axisPick[currentIndex].hw
                             }
                         }
                         RowLayout {
@@ -517,16 +517,16 @@ Item {
                                 Layout.fillWidth: true
                                 model: {
                                     var labels = []
-                                    for (var i = 0; i < axisPick.length; ++i)
+                                    for (var i = 0; i < (axisPick || []).length; ++i)
                                         labels.push(axisPick[i].label)
                                     return labels
                                 }
                                 currentIndex: {
-                                    for (var i = 0; i < axisPick.length; ++i)
+                                    for (var i = 0; i < (axisPick || []).length; ++i)
                                         if (axisPick[i].hw === padAY) return i
                                     return 0
                                 }
-                                onActivated: padAY = axisPick[currentIndex].hw
+                                onActivated: if (axisPick && axisPick[currentIndex]) padAY = axisPick[currentIndex].hw
                             }
                         }
                         Label { text: "Rx / Ry pad"; color: "#E4E4E7"; font.pixelSize: 11 }
@@ -536,16 +536,16 @@ Item {
                                 Layout.fillWidth: true
                                 model: {
                                     var labels = []
-                                    for (var i = 0; i < axisPick.length; ++i)
+                                    for (var i = 0; i < (axisPick || []).length; ++i)
                                         labels.push(axisPick[i].label)
                                     return labels
                                 }
                                 currentIndex: {
-                                    for (var i = 0; i < axisPick.length; ++i)
+                                    for (var i = 0; i < (axisPick || []).length; ++i)
                                         if (axisPick[i].hw === padBX) return i
                                     return 0
                                 }
-                                onActivated: padBX = axisPick[currentIndex].hw
+                                onActivated: if (axisPick && axisPick[currentIndex]) padBX = axisPick[currentIndex].hw
                             }
                         }
                         RowLayout {
@@ -554,16 +554,16 @@ Item {
                                 Layout.fillWidth: true
                                 model: {
                                     var labels = []
-                                    for (var i = 0; i < axisPick.length; ++i)
+                                    for (var i = 0; i < (axisPick || []).length; ++i)
                                         labels.push(axisPick[i].label)
                                     return labels
                                 }
                                 currentIndex: {
-                                    for (var i = 0; i < axisPick.length; ++i)
+                                    for (var i = 0; i < (axisPick || []).length; ++i)
                                         if (axisPick[i].hw === padBY) return i
                                     return 0
                                 }
-                                onActivated: padBY = axisPick[currentIndex].hw
+                                onActivated: if (axisPick && axisPick[currentIndex]) padBY = axisPick[currentIndex].hw
                             }
                         }
                         CheckBox { text: "Show hats"; checked: showHats; onToggled: showHats = checked }
