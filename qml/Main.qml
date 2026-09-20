@@ -644,7 +644,7 @@ ApplicationWindow {
             Label {
                 Layout.rightMargin: 10
 
-                text: uiState && uiState.currentRoom === "configuration" ? "Configuring mode" : "Mode"
+                text: uiState && uiState.currentRoom === "configuration" && configDirection !== "dest" ? "Configuring mode" : "Mode"
             }
 
             TooltipComboBox {
