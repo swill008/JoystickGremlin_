@@ -17,20 +17,35 @@ Item {
     property Device device
     property var moduleModel: null
     property string claimDeviceName: ""
-    property int claimRev: 0
     readonly property bool editorLocked: backend && backend.gremlinActive
-    readonly property int claimedCount: {
-        claimRev
-        return (moduleModel && claimDeviceName.length && moduleModel.claimedCount)
-            ? moduleModel.claimedCount(claimDeviceName) : -1
+    readonly property int claimedCount: _claimed.count
+
+    enabled: !editorLocked
+    opacity: editorLocked ? 0.55 : 1.0
+
+    ModuleClaimedInputModel {
+        id: _claimed
+        guid: device ? device.guid : ""
+        deviceName: _root.claimDeviceName
     }
 
     Connections {
         target: moduleModel
-        function onClaimsChanged() { _root.claimRev++ }
+        function onClaimsChanged() { _claimed.reload() }
     }
-    enabled: !editorLocked
-    opacity: editorLocked ? 0.55 : 1.0
+
+    Connections {
+        target: uiState
+        function onModeChanged() {
+            if (uiState)
+                _claimed.setMode(uiState.currentMode)
+        }
+    }
+
+    Component.onCompleted: {
+        if (uiState)
+            _claimed.setMode(uiState.currentMode)
+    }
 
     DeviceLiveState {
         id: _liveState
@@ -68,12 +83,13 @@ Item {
             if (!uiState || editorLocked) {
                 return
             }
-            let tmp = uiState.currentInputIndex
-            if (tmp < 0) {
+            let hid = uiState.currentInputIndex
+            if (hid < 0) {
                 return
             }
-            if (_inputList.currentIndex !== tmp) {
-                _inputList.currentIndex = tmp
+            let row = _claimed.rowForDeviceIndex(hid)
+            if (row >= 0 && _inputList.currentIndex !== row) {
+                _inputList.currentIndex = row
             }
         }
     }
@@ -85,7 +101,10 @@ Item {
             if (editorLocked || index < 0) {
                 return
             }
-            _inputList.currentIndex = index
+            let row = _claimed.rowForDeviceIndex(index)
+            if (row >= 0) {
+                _inputList.currentIndex = row
+            }
         }
     }
 
@@ -113,23 +132,14 @@ Item {
         }
         highlightResizeDuration: highlightMoveDuration
 
-        model: device
+        model: _claimed
 
         delegate: InputButton {
             width: _inputList.width - 20
-            visible: {
-                _root.claimRev
-                if (!moduleModel || !claimDeviceName.length || !device)
-                    return true
-                if (!moduleModel.isClaimedInput)
-                    return true
-                return moduleModel.isClaimedInput(
-                    claimDeviceName, device.kindAt(model.index), device.hwIdAt(model.index)
-                )
-            }
-            height: visible ? 50 : 0
+            height: 50
             enabled: !editorLocked
 
+            liveIndex: model.deviceIndex
             liveState: editorLocked ? null : _liveState
             selected: model.index === _inputList.currentIndex
             onClicked: () => {
@@ -141,8 +151,8 @@ Item {
                 if (editorLocked) {
                     return
                 }
-                _renameDialog.rowIndex = model.index
-                let current = _actionNames.getOnModel(device, model.index)
+                _renameDialog.rowIndex = model.deviceIndex
+                let current = _actionNames.getOnModel(device, model.deviceIndex)
                 _renameDialog.text = current.length ? current : ""
                 _renameDialog.visible = true
             }
@@ -157,11 +167,15 @@ Item {
             if (!uiState || !device || currentIndex < 0 || editorLocked) {
                 return
             }
-            var ident = device.inputIdentifier(currentIndex)
+            var hid = _claimed.deviceIndexAt(currentIndex)
+            if (hid < 0) {
+                return
+            }
+            var ident = device.inputIdentifier(hid)
             if (!ident) {
                 return
             }
-            uiState.setCurrentInput(ident, currentIndex)
+            uiState.setCurrentInput(ident, hid)
         }
 
         Component.onCompleted: syncSelection()
@@ -175,6 +189,6 @@ Item {
         wrapMode: Text.WordWrap
         horizontalAlignment: Text.AlignHCenter
         color: "#A1A1AA"
-        text: "No claimed inputs on this module.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
+        text: "This window only shows what the input module passes.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
     }
 }
