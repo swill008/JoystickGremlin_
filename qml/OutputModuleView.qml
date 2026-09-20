@@ -18,6 +18,7 @@ Item {
     property string guid: ""
     property string deviceName: ""
     property bool showPanel: false
+    signal closePanel()
     readonly property bool runtimeActive: !!(backend && backend.gremlinActive)
     readonly property bool showLive: runtimeActive && !!( _live.driven)
     property int liveStamp: _live.stamp
@@ -493,7 +494,7 @@ Item {
                     Button {
                         text: "×"
                         implicitWidth: 28
-                        onClicked: _root.showPanel = false
+                        onClicked: _root.closePanel()
                     }
                 }
 
