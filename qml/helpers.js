@@ -81,6 +81,26 @@ function safeText(text, backup)
     return !text ? backup : text
 }
 
+function fileDialogUrl(dialog)
+{
+    if (!dialog)
+        return ""
+    var src = ""
+    try {
+        if (dialog.selectedFile)
+            src = dialog.selectedFile.toString ? dialog.selectedFile.toString() : ("" + dialog.selectedFile)
+    } catch (e) {}
+    if ((!src || !src.length) && dialog.selectedFiles && dialog.selectedFiles.length) {
+        var first = dialog.selectedFiles[0]
+        src = first && first.toString ? first.toString() : ("" + first)
+    }
+    if (!src || !src.length) {
+        var cur = dialog.currentFile
+        src = cur && cur.toString ? cur.toString() : (cur || "")
+    }
+    return src || ""
+}
+
 function hintIcon(type) {
     switch(type) {
         case 1:
