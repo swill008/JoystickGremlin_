@@ -618,8 +618,9 @@ Item {
                                 if (saved >= 220)
                                     return saved
                                 var avail = _flow.width
-                                var cols = Math.max(1, Math.floor((avail + 16) / 332))
-                                return Math.min(420, Math.max(260, Math.floor((avail - (cols - 1) * 16) / cols)))
+                                if (avail < 40)
+                                    return 280
+                                return Math.min(280, avail)
                             }
                             property int cardH: {
                                 _page.pileRev
@@ -627,13 +628,23 @@ Item {
                                 return saved >= 140 ? saved : 0
                             }
                             property int ghostPad: showGhost ? _page.ghostW + 16 : 0
+                            property int bodyH: {
+                                if (cardH >= 140)
+                                    return cardH
+                                var c = _memberCards.count > 0 ? _memberCards.itemAt(0) : null
+                                if (c && c.implicitHeight > 0)
+                                    return Math.round(c.implicitHeight)
+                                return 240
+                            }
 
                             width: isDragHome ? 0 : (cardW + extra + ghostPad)
                             height: {
                                 if (isDragHome)
                                     return Math.max(1, _page.ghostH)
-                                var h = cardH >= 140 ? cardH + extra : Math.max(120, childrenRect.height)
-                                return Math.max(h, showGhost ? _page.ghostH : 0)
+                                var h = bodyH + extra
+                                if (showGhost)
+                                    h = Math.max(h, _page.ghostH)
+                                return h
                             }
                             z: dragging || isDragHome ? 10000 : 0
                             clip: false
@@ -654,11 +665,12 @@ Item {
                                 visible: _pile.showGhost
                                 x: 0
                                 y: 0
-                                width: _page.ghostW
-                                height: _page.ghostH
+                                width: visible ? _page.ghostW : 0
+                                height: visible ? _page.ghostH : 0
                             }
 
                             Repeater {
+                                id: _memberCards
                                 model: _pile.members
                                 delegate: StatusCard {
                                     id: _card
@@ -688,7 +700,7 @@ Item {
                     SlotGhost {
                         visible: _pane.paneActive && _page.dragSlug.length && !_page.dragStackSlug.length && _page.insertBefore === "" && (!_pane.direction.length || _page.dragDir === _pane.direction)
                         width: visible ? _page.ghostW : 0
-                        height: _page.ghostH
+                        height: visible ? _page.ghostH : 0
                     }
                 }
             }
