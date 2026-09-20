@@ -51,6 +51,7 @@ class DeviceLiveState(QtCore.QObject):
     guidChanged = QtCore.Signal()
     stampChanged = QtCore.Signal()
     lockedChanged = QtCore.Signal()
+    drivenChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -61,6 +62,7 @@ class DeviceLiveState(QtCore.QObject):
         self._live_while_active = False
         self._vjoy_id = 0
         self._device_name = ""
+        self._driven = False
         self._kinds: list[str] = []
         self._values: list[float] = []
         self._axis_rows: dict[int, int] = {}
@@ -85,6 +87,16 @@ class DeviceLiveState(QtCore.QObject):
 
     def _get_live_while_active(self) -> bool:
         return self._live_while_active
+
+    def _get_driven(self) -> bool:
+        return self._driven
+
+    def _set_driven(self, value: bool) -> None:
+        flag = bool(value)
+        if flag == self._driven:
+            return
+        self._driven = flag
+        self.drivenChanged.emit()
 
     def _set_live_while_active(self, value: bool) -> None:
         flag = bool(value)
@@ -176,21 +188,16 @@ class DeviceLiveState(QtCore.QObject):
         if vid:
             self._vjoy_id = vid
             return
+        try:
+            from gremlin.ui.output_modules import _resolve_vjoy_id
+            self._vjoy_id = int(_resolve_vjoy_id(self._device_name, self._guid) or 0)
+        except Exception:
+            self._vjoy_id = 0
+        if self._vjoy_id:
+            return
         hit = _VJOY_NAME_RE.search(self._device_name or "")
         if hit:
             self._vjoy_id = int(hit.group(1))
-            return
-        target = _extract_uuid(self._guid)
-        if not target:
-            return
-        try:
-            from gremlin import device_initialization
-            for vdev in device_initialization.vjoy_devices():
-                if _extract_uuid(vdev.device_guid) == target:
-                    self._vjoy_id = int(vdev.vjoy_id)
-                    return
-        except Exception:
-            self._vjoy_id = 0
 
     def _sync_poll(self) -> None:
         if self._live_while_active and self._vjoy_id:
@@ -210,7 +217,9 @@ class DeviceLiveState(QtCore.QObject):
         except Exception:
             return
         if dev is None:
+            self._set_driven(False)
             return
+        self._set_driven(True)
         changed = False
         axis_count = int(self._device.axis_count) if self._device is not None else 0
         button_count = int(self._device.button_count) if self._device is not None else 0
@@ -280,6 +289,8 @@ class DeviceLiveState(QtCore.QObject):
         return value
 
     def _on_event(self, event: event_handler.Event) -> None:
+        if self._live_while_active:
+            return
         if self._get_locked():
             return
         if self._device is None or self._device_uuid is None:
@@ -345,6 +356,7 @@ class DeviceLiveState(QtCore.QObject):
         fset=_set_device_name,
         notify=guidChanged,
     )
+    driven = QtCore.Property(bool, fget=_get_driven, notify=drivenChanged)
     stamp = QtCore.Property(int, fget=_get_stamp, notify=stampChanged)
 
 
