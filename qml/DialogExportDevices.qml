@@ -10,11 +10,12 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import "helpers.js" as Helpers
 
 Window {
     id: _win
     width: 560
-    height: 400
+    height: 320
     title: "Export devices"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
@@ -24,14 +25,15 @@ Window {
     Universal.theme: Style.theme
 
     property string deviceName: ""
-    property bool sliceImage: true
-    property bool sliceWiring: false
-    property bool sliceMacros: false
-    property bool sliceModes: false
-    property bool sliceOutput: false
-    property string statusText: "Device is exported as a name line. No GUID is written into the zip."
+    property string statusText: deviceName.length
+        ? "Packs the module map and photos. GUID stays on this PC."
+        : "Select a Status card first, then Export."
 
     HardwareProfile { id: _hw }
+
+    function _chosenFile() {
+        return Helpers.fileDialogUrl(_save)
+    }
 
     FileDialog {
         id: _save
@@ -40,7 +42,12 @@ Window {
         defaultSuffix: "zip"
         nameFilters: ["Device packs (*.zip)"]
         onAccepted: {
-            var raw = _hw.exportMap(deviceName, currentFile)
+            var dest = _chosenFile()
+            if (!dest || !dest.length) {
+                statusText = "Cannot write that path."
+                return
+            }
+            var raw = _hw.exportMap(deviceName, dest)
             try {
                 var info = JSON.parse(raw)
                 statusText = info.ok ? ("Wrote " + info.path) : (info.error || "Export failed")
@@ -58,13 +65,10 @@ Window {
         spacing: 8
 
         Label { text: "Device"; font.bold: true }
-        Label { text: deviceName.length ? deviceName : "—" }
-
-        CheckBox { text: "Image"; checked: sliceImage; onToggled: sliceImage = checked }
-        CheckBox { text: "Wiring"; checked: sliceWiring; onToggled: sliceWiring = checked }
-        CheckBox { text: "Macros"; checked: sliceMacros; onToggled: sliceMacros = checked }
-        CheckBox { text: "Modes"; checked: sliceModes; onToggled: sliceModes = checked }
-        CheckBox { text: "Output"; checked: sliceOutput; onToggled: sliceOutput = checked }
+        Label {
+            text: deviceName.length ? deviceName : "—"
+            color: deviceName.length ? Style.foreground : "#F87171"
+        }
 
         Label {
             text: statusText
@@ -83,8 +87,10 @@ Window {
                 enabled: deviceName.length > 0
                 onClicked: {
                     var hint = _hw.defaultExportUrl(deviceName)
-                    if (hint && hint.length)
-                        _save.currentFile = hint
+                    if (hint && hint.length) {
+                        try { _save.selectedFile = hint } catch (e) {}
+                        try { _save.currentFile = hint } catch (e) {}
+                    }
                     _save.open()
                 }
             }
