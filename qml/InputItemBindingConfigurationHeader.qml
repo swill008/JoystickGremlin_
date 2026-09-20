@@ -14,6 +14,7 @@ Item {
 
     property InputItemBindingModel inputBinding
     property InputItemModel inputItemModel
+    property bool compactMode: false
     property MouseArea dragHandleArea: _dragArea
 
     implicitHeight: _layout.implicitHeight
@@ -33,6 +34,7 @@ Item {
             IconButton {
                 id: _handle
 
+                visible: !_root.compactMode
                 font.pixelSize: 24
                 horizontalPadding: -5
                 text: bsi.icons.verticalDrag
@@ -51,6 +53,7 @@ Item {
             JGTextField {
                 id: _description
 
+                visible: !_root.compactMode
                 Layout.fillWidth: true
 
                 placeholderText: "Description"
@@ -69,6 +72,7 @@ Item {
             }
 
             ActionSelector {
+                visible: !_root.compactMode
                 Layout.alignment: Qt.AlignRight
 
                 actionNode: _root.inputBinding.rootAction
