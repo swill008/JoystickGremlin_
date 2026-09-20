@@ -41,6 +41,7 @@ ApplicationWindow {
 
     property string pinSlug: ""
     property string configTitleName: ""
+    property string configDirection: ""
     property var configureWin: null
 
     ModuleListModel {
@@ -73,6 +74,7 @@ ApplicationWindow {
             return
         _moduleModel.setFocus(card.slug)
         configTitleName = card.name
+        configDirection = card.direction || "source"
         uiState.setCurrentDevice(card.guid)
         uiState.setCurrentTab(card.tab || "physical")
         uiState.setCurrentRoom("configuration")
@@ -159,6 +161,7 @@ ApplicationWindow {
         if (!uiState)
             return
         configTitleName = ""
+        configDirection = ""
         uiState.setCurrentRoom("status")
         uiState.setCurrentTab("physical")
         if (_scriptButton)
@@ -996,6 +999,7 @@ ApplicationWindow {
                 device: _deviceModel
                 moduleModel: _moduleModel
                 claimDeviceName: configTitleName
+                isOutput: _root.configDirection === "dest"
             }
 
             LogicalDevice {
@@ -1041,6 +1045,7 @@ ApplicationWindow {
 
             InputConfiguration {
                 id: _inputConfigurationPanel
+                isOutput: _root.configDirection === "dest"
 
                 visible: uiState && !["scripts", "settings", "xbox"].includes(uiState.currentTab)
 
