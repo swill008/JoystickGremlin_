@@ -16,9 +16,10 @@ Button {
     property string nameKey: ""
     property string defaultName: name
     property var liveState: null
+    property int liveIndex: index
     property int liveStamp: liveState && liveState.stamp !== undefined ? liveState.stamp : 0
-    property string inputKind: liveStamp >= 0 && liveState && index !== undefined ? liveState.kindAt(index) : ""
-    property real liveValue: liveStamp >= 0 && liveState && index !== undefined ? liveState.valueAt(index) : 0
+    property string inputKind: liveStamp >= 0 && liveState && liveIndex !== undefined ? liveState.kindAt(liveIndex) : ""
+    property real liveValue: liveStamp >= 0 && liveState && liveIndex !== undefined ? liveState.valueAt(liveIndex) : 0
 
     readonly property bool _buttonActive: inputKind === "button" && liveValue > 0.5
     readonly property bool _hatActive: inputKind === "hat" && liveValue > 0.5
@@ -43,7 +44,7 @@ Button {
         target: signal
 
         function onInputItemChanged(itemIndex) {
-            if (itemIndex === index) {
+            if (itemIndex === liveIndex) {
                 delayedUpdate.start()
             }
         }
