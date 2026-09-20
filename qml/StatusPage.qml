@@ -319,6 +319,7 @@ Item {
         id: _pane
         property string title: ""
         property string direction: ""
+        property int dragLocks: 0
 
         ColumnLayout {
             anchors.fill: parent
@@ -340,6 +341,7 @@ Item {
                 contentWidth: width
                 contentHeight: _flow.implicitHeight
                 boundsBehavior: Flickable.StopAtBounds
+                interactive: _pane.dragLocks === 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 Flow {
@@ -357,6 +359,10 @@ Item {
                         delegate: Item {
                             id: _pile
                             property var members: _page.model ? _page.model.pileMembers(modelData) : [modelData]
+                            property int extra: Math.max(0, members.length - 1) * 14
+                            property bool dragging: false
+                            property int restW: 0
+                            property int restH: 0
                             property int cardW: {
                                 _page.pileRev
                                 var saved = _page.model ? _page.model.cardWidth(modelData) : 0
@@ -372,8 +378,31 @@ Item {
                                 return saved >= 140 ? saved : 0
                             }
 
-                            width: Math.max(cardW, childrenRect.width)
-                            height: Math.max(120, childrenRect.height)
+                            // Keep the Flow slot fixed while a card is dragged so
+                            // neighbors do not get shoved out of drop range.
+                            width: dragging && restW > 0 ? restW : (cardW + extra)
+                            height: {
+                                if (dragging && restH > 0)
+                                    return restH
+                                var h = cardH >= 140 ? cardH + extra : Math.max(120, childrenRect.height)
+                                return h
+                            }
+                            z: dragging ? 10000 : 0
+                            clip: false
+
+                            function freezeSlot() {
+                                restW = width
+                                restH = height
+                                dragging = true
+                                _pane.dragLocks += 1
+                            }
+
+                            function thawSlot() {
+                                if (!dragging)
+                                    return
+                                dragging = false
+                                _pane.dragLocks = Math.max(0, _pane.dragLocks - 1)
+                            }
 
                             Repeater {
                                 model: _pile.members
@@ -385,6 +414,12 @@ Item {
                                     stacked: _pile.members.length > 1
                                     width: _pile.cardW
                                     height: _pile.cardH > 0 ? _pile.cardH : implicitHeight
+                                    onLiftingChanged: {
+                                        if (lifting)
+                                            _pile.freezeSlot()
+                                        else
+                                            _pile.thawSlot()
+                                    }
                                     Component.onCompleted: {
                                         _page.fillCard(_card, modelData)
                                         _page.bindCard(_card)
