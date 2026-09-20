@@ -855,13 +855,23 @@ ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             visible: uiState && uiState.currentRoom === "configuration"
-            Label {
-                text: "Configuration — " + (configTitleName.length ? configTitleName : "device")
-                font.pixelSize: 16
-                font.bold: true
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: 12
                 Layout.topMargin: 8
+                spacing: 2
+                Label {
+                    text: (configDirection === "dest" ? "Output Module — " : "Configuration — ")
+                          + (configTitleName.length ? configTitleName : "device")
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+                Label {
+                    visible: configDirection === "dest"
+                    text: "View only — driven by input module mappings."
+                    color: "#A1A1AA"
+                    font.pixelSize: 12
+                }
             }
             Button {
                 text: "Close"
@@ -970,12 +980,26 @@ ApplicationWindow {
             }
         }
 
+        OutputModuleView {
+            id: _outputModuleView
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            visible: uiState && uiState.currentRoom === "configuration"
+                     && _root.configDirection === "dest"
+                     && uiState.currentTab !== "xbox"
+            guid: uiState ? uiState.currentDevice : ""
+            deviceName: configTitleName
+            moduleModel: _moduleModel
+        }
+
         SplitView {
             id: _splitView
 
             Layout.fillHeight: true
             Layout.fillWidth: true
             visible: uiState && uiState.currentRoom === "configuration"
+                     && !(_root.configDirection === "dest" && uiState.currentTab !== "xbox")
 
             clip: true
             orientation: Qt.Horizontal
