@@ -402,6 +402,15 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._reload()
         self.hiddenChanged.emit()
 
+    @QtCore.Slot()
+    def unignoreAll(self) -> None:
+        hidden = _hidden_slugs()
+        if not hidden:
+            return
+        _set_hidden(set())
+        self._reload()
+        self.hiddenChanged.emit()
+
     @QtCore.Slot(result=list)
     def hiddenList(self) -> list[str]:
         return sorted(_hidden_slugs())
