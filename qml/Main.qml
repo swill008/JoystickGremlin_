@@ -43,6 +43,11 @@ ApplicationWindow {
     property string configTitleName: ""
     property string configDirection: ""
     property bool outputViewPanel: false
+
+    function refreshDestBound() {
+        if (_destBound)
+            _destBound.text = _moduleModel.boundLine(configTitleName)
+    }
     property var configureWin: null
 
     ModuleListModel {
@@ -75,6 +80,7 @@ ApplicationWindow {
             return
         _moduleModel.setFocus(card.slug)
         configTitleName = card.name
+        refreshDestBound()
         configDirection = card.direction || "source"
         uiState.setCurrentDevice(card.guid)
         uiState.setCurrentTab(card.tab || "physical")
@@ -809,6 +815,11 @@ ApplicationWindow {
         property bool onStatus: !uiState || uiState.currentRoom === "status"
         property bool onConfig: uiState && uiState.currentRoom === "configuration"
 
+        Connections {
+            target: _moduleModel
+            function onClaimsChanged() { refreshDestBound() }
+        }
+
         StatusPage {
             id: _statusPage
             Layout.fillWidth: true
@@ -873,10 +884,18 @@ ApplicationWindow {
                 Layout.topMargin: 8
                 spacing: 2
                 Label {
+                    id: _configTitle
                     text: (configDirection === "dest" ? "Output Module View — " : "Configuration — ")
                           + (configTitleName.length ? configTitleName : "device")
                     font.pixelSize: 16
                     font.bold: true
+                }
+                Label {
+                    id: _destBound
+                    visible: configDirection === "dest"
+                    text: "Bound to: [Not bound]"
+                    color: "#A1A1AA"
+                    font.pixelSize: 12
                 }
                 Label {
                     visible: configDirection === "dest"
