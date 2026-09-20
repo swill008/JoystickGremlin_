@@ -8,6 +8,7 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import common, shared_state
+from gremlin.plugin_manager import PluginManager
 from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui.module_inputs import ModuleClaimedInputModel, _kind_to_type
@@ -142,15 +143,21 @@ def collect_leaves(action) -> list[tuple[str, str, str]]:
     return [(tag, label, dest)]
 
 
-def leaves_for_item(item) -> list[tuple[str, str, str]]:
-    out: list[tuple[str, str, str]] = []
+def leaves_for_item(item) -> list[tuple[int, str, str, str]]:
+    """Return (seq_index, tag, type label, dest) for each leaf under the item."""
+    out: list[tuple[int, str, str, str]] = []
     if item is None:
         return out
-    for seq in getattr(item, "action_sequences", None) or []:
+    for si, seq in enumerate(getattr(item, "action_sequences", None) or []):
         root = getattr(seq, "root_action", None)
         if root is None:
             continue
-        out.extend(collect_leaves(root))
+        leaves = collect_leaves(root)
+        if not leaves:
+            out.append((si, "", "New action", "Pick destination"))
+            continue
+        for tag, lab, dest in leaves:
+            out.append((si, tag, lab, dest))
     return out
 
 
@@ -169,6 +176,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 8: QtCore.QByteArray(b"deviceIndex"),
         QtCore.Qt.ItemDataRole.UserRole + 9: QtCore.QByteArray(b"bindingCount"),
         QtCore.Qt.ItemDataRole.UserRole + 10: QtCore.QByteArray(b"indent"),
+        QtCore.Qt.ItemDataRole.UserRole + 11: QtCore.QByteArray(b"seqIndex"),
     }
 
     guidChanged = QtCore.Signal()
@@ -266,10 +274,10 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 {"kind": kind, "hwId": hw, "deviceIndex": didx, "name": name}
             )
             leaves = leaves_for_item(item)
-            for tag, _lab, dest in leaves:
+            for _si, tag, _lab, dest in leaves:
                 if dest and dest not in dests:
                     dests.append(dest)
-            shown = [x for x in leaves if self._leaf_ok(x[0], x[2])]
+            shown = [x for x in leaves if self._leaf_ok(x[1], x[3])]
             if self._type_filter == "unmapped":
                 if leaves:
                     continue
@@ -285,6 +293,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                         "deviceIndex": didx,
                         "bindingCount": 0,
                         "indent": 0,
+                        "seqIndex": -1,
                     }
                 )
                 continue
@@ -306,12 +315,13 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                             "deviceIndex": didx,
                             "bindingCount": 0,
                             "indent": 0,
+                        "seqIndex": -1,
                         }
                     )
                 continue
             if not shown:
                 continue
-            summary = ", ".join(dest for _t, _l, dest in shown)
+            summary = ", ".join(dest for _si, _t, _l, dest in shown)
             self._rows.append(
                 {
                     "rowKind": "group",
@@ -327,10 +337,11 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                     "deviceIndex": didx,
                     "bindingCount": len(shown),
                     "indent": 0,
+                        "seqIndex": -1,
                 }
             )
             mapped += 1
-            for tag, lab, dest in shown:
+            for si, tag, lab, dest in shown:
                 self._rows.append(
                     {
                         "rowKind": "leaf",
@@ -343,6 +354,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                         "deviceIndex": didx,
                         "bindingCount": 1,
                         "indent": 1,
+                        "seqIndex": int(si),
                     }
                 )
         if unmapped:
@@ -358,6 +370,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                     "deviceIndex": -1,
                     "bindingCount": len(unmapped),
                     "indent": 0,
+                        "seqIndex": -1,
                 }
             )
             self._rows.extend(unmapped)
@@ -430,6 +443,85 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             signal.reloadCurrentInputItem.emit()
             return True
         return False
+
+    def _item_for_hid(self, device_index: int):
+        want = int(device_index)
+        if want < 0:
+            return None
+        profile = shared_state.current_profile
+        dev = getattr(self._claimed, "_device", None)
+        if profile is None or dev is None:
+            return None
+        mode = str(getattr(self._claimed, "_mode", None) or "Default")
+        n = self._claimed.rowCount()
+        for i in range(n):
+            if self._claimed.deviceIndexAt(i) != want:
+                continue
+            kind = self._claimed.kindAt(i)
+            hw = self._claimed.hwIdAt(i)
+            return profile.get_input_item(
+                dev.device_guid.uuid,
+                _kind_to_type(kind),
+                int(hw),
+                mode,
+                create_if_missing=True,
+            )
+        return None
+
+    @QtCore.Slot(int, result="QStringList")
+    def actionNames(self, device_index: int) -> list[str]:
+        """Action types that can be added to this control (no Root)."""
+        item = self._item_for_hid(device_index)
+        itype = getattr(item, "input_type", None) if item is not None else None
+        if itype is None:
+            itype = InputType.JoystickButton
+        try:
+            plugins = PluginManager().type_action_map.get(itype, [])
+        except Exception:
+            plugins = []
+        names = [entry.name for entry in plugins if getattr(entry, "tag", "") != "root"]
+        lead = [
+            "Map to vJoy",
+            "Map to keyboard",
+            "Map to mouse",
+            "Map to Xbox",
+            "Macro",
+            "Change Mode",
+        ]
+        head = [n for n in lead if n in names]
+        tail = [n for n in names if n not in head]
+        return head + tail
+
+    @QtCore.Slot(int, str, result=int)
+    def addAction(self, device_index: int, action_name: str) -> int:
+        """ADD + pick type: new sequence with that action under the button."""
+        item = self._item_for_hid(device_index)
+        if item is None:
+            return -1
+        binding = item.add_item_binding()
+        name = str(action_name or "").strip()
+        seq = len(item.action_sequences) - 1
+        if name and binding is not None and binding.root_action is not None:
+            try:
+                action = PluginManager().create_instance(name, item.input_type)
+            except Exception:
+                action = None
+            if action is not None:
+                binding.root_action.insert_action(action, "children")
+        signal.inputItemChanged.emit(int(device_index))
+        return seq
+
+    @QtCore.Slot(int, int, result=bool)
+    def removeSequence(self, device_index: int, seq_index: int) -> bool:
+        item = self._item_for_hid(device_index)
+        if item is None:
+            return False
+        seqs = getattr(item, "action_sequences", None) or []
+        if not (0 <= int(seq_index) < len(seqs)):
+            return False
+        item.remove_item_binding(seqs[int(seq_index)])
+        signal.inputItemChanged.emit(int(device_index))
+        return True
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     deviceName = QtCore.Property(
