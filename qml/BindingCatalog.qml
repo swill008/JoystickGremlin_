@@ -9,6 +9,7 @@ import QtQuick.Layouts
 
 import Gremlin.Config
 import Gremlin.Device
+import Gremlin.Profile
 import Gremlin.Style
 
 Item {
@@ -18,6 +19,7 @@ Item {
     property var moduleModel: null
     property string claimDeviceName: ""
     property bool isOutput: false
+    property int editingHid: -1
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
     readonly property bool runtimeActive: !!(backend && backend.gremlinActive)
 
@@ -62,6 +64,15 @@ Item {
         id: _highlightSpeed
     }
 
+    function selectHid(hid) {
+        if (!uiState || !device || hid < 0)
+            return
+        var ident = device.inputIdentifier(hid)
+        if (!ident)
+            return
+        uiState.setCurrentInput(ident, hid)
+    }
+
     function showHid(hid) {
         if (hid < 0)
             return
@@ -75,10 +86,27 @@ Item {
         })
     }
 
+    function openEditor(hid) {
+        if (hid < 0 || editorLocked)
+            return
+        selectHid(hid)
+        _root.editingHid = hid
+        showHid(hid)
+    }
+
+    function closeEditor() {
+        _root.editingHid = -1
+        _catalog.reload()
+    }
+
     Connections {
         target: signal
         function onSetInputIndex(index) { showHid(index) }
-        function onInputItemChanged(itemIndex) { _catalog.reload() }
+        function onInputItemChanged(itemIndex) {
+            if (_root.editingHid >= 0)
+                return
+            _catalog.reload()
+        }
     }
 
     ColumnLayout {
@@ -141,10 +169,13 @@ Item {
                 required property int bindingCount
                 required property int indent
                 width: ListView.view.width - 12
-                height: rowKind === "leaf" ? 36 : 50
-
                 readonly property bool isGroup: rowKind === "group" || rowKind === "unmapped"
-                readonly property bool selected: index === _list.currentIndex
+                readonly property bool expanded: isGroup && deviceIndex === _root.editingHid && deviceIndex >= 0
+                readonly property bool hideLeaf: rowKind === "leaf" && deviceIndex === _root.editingHid
+                height: hideLeaf ? 0 : (50 + (expanded ? _editor.height + 8 : 0))
+                visible: !hideLeaf
+
+                readonly property bool selected: index === _list.currentIndex || expanded
                 property int liveStamp: _liveState.stamp
                 property string inputKind: (liveStamp >= 0 && deviceIndex >= 0) ? _liveState.kindAt(deviceIndex) : ""
                 property real liveValue: (liveStamp >= 0 && deviceIndex >= 0) ? _liveState.valueAt(deviceIndex) : 0
@@ -153,8 +184,10 @@ Item {
                 readonly property bool axisRow: kind === "axis"
 
                 Rectangle {
-                    anchors.fill: parent
-                    anchors.leftMargin: indent * 22
+                    id: _header
+                    x: indent * 22
+                    width: parent.width - indent * 22
+                    height: 50
                     radius: 3
                     border.width: selected ? 2 : 1
                     border.color: selected ? "#E4E4E7" : "#3F3F46"
@@ -188,11 +221,13 @@ Item {
 
                     MouseArea {
                         anchors.fill: parent
-                        anchors.rightMargin: 64
+                        anchors.rightMargin: expanded ? 120 : 64
                         enabled: deviceIndex >= 0
                         onClicked: {
                             _list.currentIndex = index
                             _list.syncSelection()
+                            if (rowKind === "leaf")
+                                _root.openEditor(deviceIndex)
                         }
                     }
 
@@ -234,10 +269,36 @@ Item {
                             z: 2
                             onClicked: {
                                 _list.currentIndex = index
-                                _list.syncSelection()
+                                _root.selectHid(deviceIndex)
                                 _catalog.addSequence(deviceIndex)
+                                _root.editingHid = deviceIndex
+                                _root.showHid(deviceIndex)
                             }
                         }
+                        Button {
+                            visible: expanded && !editorLocked
+                            text: "OK"
+                            implicitWidth: 56
+                            implicitHeight: 28
+                            z: 2
+                            onClicked: _root.closeEditor()
+                        }
+                    }
+                }
+
+                Loader {
+                    id: _editor
+                    active: expanded
+                    visible: expanded
+                    x: 12
+                    y: 54
+                    width: parent.width - 12
+                    height: visible && item ? Math.max(80, item.implicitHeight) : 0
+                    onLoaded: if (item) item.width = width
+                    onWidthChanged: if (item) item.width = width
+                    sourceComponent: InputConfiguration {
+                        inlineMode: true
+                        isOutput: _root.isOutput
                     }
                 }
             }
@@ -248,10 +309,7 @@ Item {
                 var hid = _catalog.deviceIndexAt(currentIndex)
                 if (hid < 0)
                     return
-                var ident = device.inputIdentifier(hid)
-                if (!ident)
-                    return
-                uiState.setCurrentInput(ident, hid)
+                _root.selectHid(hid)
             }
 
             onCurrentIndexChanged: syncSelection()
