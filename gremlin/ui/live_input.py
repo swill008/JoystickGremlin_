@@ -89,7 +89,9 @@ class DeviceLiveState(QtCore.QObject):
         return self._live_while_active
 
     def _get_driven(self) -> bool:
-        return self._driven
+        if not self._live_while_active:
+            return True
+        return bool(self._driven)
 
     def _set_driven(self, value: bool) -> None:
         flag = bool(value)
@@ -97,6 +99,7 @@ class DeviceLiveState(QtCore.QObject):
             return
         self._driven = flag
         self.drivenChanged.emit()
+        self._bump()
 
     def _set_live_while_active(self, value: bool) -> None:
         flag = bool(value)
@@ -183,11 +186,9 @@ class DeviceLiveState(QtCore.QObject):
         self._sync_poll()
 
     def _resolve_vjoy(self) -> None:
+        # Fresh DILL DeviceSummary.vjoy_id is not the feeder id. Resolve like
+        # output_modules: name "vJoy N" and bound GUID.
         self._vjoy_id = 0
-        vid = int(getattr(self._device, "vjoy_id", 0) or 0) if self._device is not None else 0
-        if vid:
-            self._vjoy_id = vid
-            return
         try:
             from gremlin.ui.output_modules import _resolve_vjoy_id
             self._vjoy_id = int(_resolve_vjoy_id(self._device_name, self._guid) or 0)
@@ -198,6 +199,18 @@ class DeviceLiveState(QtCore.QObject):
         hit = _VJOY_NAME_RE.search(self._device_name or "")
         if hit:
             self._vjoy_id = int(hit.group(1))
+            return
+        target = _extract_uuid(self._guid)
+        if not target:
+            return
+        try:
+            from gremlin import device_initialization
+            for vdev in device_initialization.vjoy_devices():
+                if _extract_uuid(vdev.device_guid) == target:
+                    self._vjoy_id = int(vdev.vjoy_id)
+                    return
+        except Exception:
+            self._vjoy_id = 0
 
     def _sync_poll(self) -> None:
         if self._live_while_active and self._vjoy_id:
@@ -207,19 +220,40 @@ class DeviceLiveState(QtCore.QObject):
         else:
             self._poll.stop()
 
+    def _feeder_device(self):
+        try:
+            from vjoy.vjoy import VJoyProxy
+            devices = VJoyProxy.vjoy_devices or {}
+            if self._vjoy_id in devices:
+                return devices[self._vjoy_id]
+            want = int(self._vjoy_id)
+            for key, dev in devices.items():
+                try:
+                    if int(key) == want:
+                        return dev
+                except Exception:
+                    pass
+                if int(getattr(dev, "vjoy_id", 0) or 0) == want:
+                    return dev
+        except Exception:
+            return None
+        return None
+
     def _poll_output(self) -> None:
-        """Read the acquired vJoy feeder (output module), never HID and never AcquireVJD."""
-        if not self._live_while_active or not self._vjoy_id or not self._values:
+        """Dest live: feeder if Gremlin acquired this module; HID while Active."""
+        if not self._live_while_active:
+            return
+        active = bool(shared_state.runtime_active())
+        self._set_driven(active)
+        if not active or not self._vjoy_id or not self._values:
             return
         try:
-            from vjoy.vjoy import HatDirection, VJoyProxy
-            dev = VJoyProxy.vjoy_devices.get(self._vjoy_id)
+            from vjoy.vjoy import HatDirection
+            dev = self._feeder_device()
         except Exception:
             return
         if dev is None:
-            self._set_driven(False)
             return
-        self._set_driven(True)
         changed = False
         axis_count = int(self._device.axis_count) if self._device is not None else 0
         button_count = int(self._device.button_count) if self._device is not None else 0
@@ -289,9 +323,9 @@ class DeviceLiveState(QtCore.QObject):
         return value
 
     def _on_event(self, event: event_handler.Event) -> None:
-        if self._live_while_active:
+        if self._live_while_active and not shared_state.runtime_active():
             return
-        if self._get_locked():
+        if not self._live_while_active and self._get_locked():
             return
         if self._device is None or self._device_uuid is None:
             return
