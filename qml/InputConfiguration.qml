@@ -20,7 +20,26 @@ Item {
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
     enabled: true
     opacity: editorLocked ? 0.55 : 1.0
-    implicitHeight: inlineMode ? Math.max(80, _content.implicitHeight) : 200
+    implicitHeight: inlineMode ? Math.max(80, _content.implicitHeight) + 16 : 200
+
+    Rectangle {
+        visible: inlineMode
+        anchors.fill: parent
+        color: "#0F2744"
+        border.color: "#3B82F6"
+        border.width: 1
+        radius: 3
+    }
+
+    Rectangle {
+        visible: inlineMode
+        width: 3
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.margins: 1
+        color: "#3B82F6"
+    }
 
     Component.onCompleted: {
         if (!backend || !uiState)
@@ -71,7 +90,9 @@ Item {
         id: _content
 
         anchors.fill: inlineMode ? undefined : parent
-        width: parent.width
+        x: inlineMode ? 10 : 0
+        y: inlineMode ? 8 : 0
+        width: parent.width - (inlineMode ? 16 : 0)
         spacing: 8
 
         Repeater {
