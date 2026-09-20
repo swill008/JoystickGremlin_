@@ -33,6 +33,7 @@ Item {
     property real dragOriginX: 0
     property real dragOriginY: 0
     property real stackTravel: 120
+    property real insertTravel: 48
     property real floatX: 0
     property real floatY: 0
     property real grabOffX: 0
@@ -82,10 +83,25 @@ Item {
         return ""
     }
 
+    function cardOnPage(card) {
+        if (!card || !card.slug)
+            return false
+        if (card.width < 32 || card.height < 32)
+            return false
+        var p = card
+        while (p) {
+            if (p.visible === false)
+                return false
+            p = p.parent
+        }
+        return true
+    }
+
     function cardBySlug(slug) {
         for (var i = 0; i < _liveCards.length; ++i) {
-            if (_liveCards[i] && _liveCards[i].slug === slug)
-                return _liveCards[i]
+            var card = _liveCards[i]
+            if (card && card.slug === slug && cardOnPage(card))
+                return card
         }
         return null
     }
@@ -136,7 +152,7 @@ Item {
             var sameRow = Math.abs(gy - s.y) < Math.max(120, s.h * 0.75)
             if (!sameRow)
                 continue
-            if (gx < s.mid) {
+            if (gx <= s.mid) {
                 before = s.slug
                 break
             }
@@ -145,9 +161,8 @@ Item {
     }
 
     function pickStackAt(slug, gx, gy) {
-        var out = ""
         if (!model || !slug)
-            return out
+            return ""
         var dir = dragDir
         var homePile = {}
         var members = model.pileMembers(slug)
@@ -162,7 +177,7 @@ Item {
         var fy = gy - fh / 2
         for (var i = 0; i < _liveCards.length; ++i) {
             var other = _liveCards[i]
-            if (!other || !other.slug || other.slug === slug)
+            if (!cardOnPage(other) || other.slug === slug)
                 continue
             if (dir && other.direction !== dragDir && dragDir.length)
                 continue
@@ -224,7 +239,6 @@ Item {
         dragOriginX = mid.x
         dragOriginY = mid.y
         stackTravel = Math.max(110, Math.min(card.width, card.height) * 0.5)
-        dragSlug = card.slug
         dragDir = paneDir(card)
         dragName = card.cardName || ""
         dragPhoto = card.photo || ""
@@ -239,8 +253,12 @@ Item {
         stackCandidate = ""
         pendingStackW = 0
         pendingStackH = 0
+        // Measure the row first. Setting dragSlug collapses the home
+        // slot; a snapshot after that would subtract the width twice
+        // and the hole would jump to the far right.
         snapshotSlots(card.slug, dragDir, card)
         insertBefore = nextLeader(card.slug, dragDir)
+        dragSlug = card.slug
         _stackDwell.stop()
     }
 
@@ -257,8 +275,13 @@ Item {
         floatY = p.y - grabOffY
         var gx = floatX + ghostW / 2
         var gy = floatY + ghostH / 2
+        var dx = gx - dragOriginX
+        var dy = gy - dragOriginY
+        var traveled = Math.sqrt(dx * dx + dy * dy)
         noteStackHover(pickStackAt(dragSlug, gx, gy))
         if (dragStackSlug.length)
+            return
+        if (traveled < insertTravel)
             return
         var before = pickInsertFromSnap(gx, gy)
         if (insertBefore !== before)
@@ -535,6 +558,12 @@ Item {
         property string title: ""
         property string direction: ""
         property int dragLocks: 0
+        property bool paneActive: {
+            var mode = _page.model ? _page.model.splitMode : "none"
+            if (!_pane.direction.length)
+                return mode === "none"
+            return mode !== "none"
+        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -568,6 +597,8 @@ Item {
                         id: _piles
                         model: {
                             _page.pileRev
+                            if (!_pane.paneActive)
+                                return []
                             return _page.model ? _page.model.pileLeaders(_pane.direction) : []
                         }
 
@@ -658,7 +689,7 @@ Item {
                     }
 
                     SlotGhost {
-                        visible: _page.dragSlug.length && !_page.dragStackSlug.length && _page.insertBefore === "" && (!_pane.direction.length || _page.dragDir === _pane.direction)
+                        visible: _pane.paneActive && _page.dragSlug.length && !_page.dragStackSlug.length && _page.insertBefore === "" && (!_pane.direction.length || _page.dragDir === _pane.direction)
                         width: visible ? _page.ghostW : 0
                         height: _page.ghostH
                     }
