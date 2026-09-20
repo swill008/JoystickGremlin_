@@ -861,7 +861,7 @@ ApplicationWindow {
                 Layout.topMargin: 8
                 spacing: 2
                 Label {
-                    text: (configDirection === "dest" ? "Output Module — " : "Configuration — ")
+                    text: (configDirection === "dest" ? "Output Module View — " : "Configuration — ")
                           + (configTitleName.length ? configTitleName : "device")
                     font.pixelSize: 16
                     font.bold: true
