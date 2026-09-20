@@ -1,0 +1,86 @@
+# -*- coding: utf-8; -*-
+# SPDX-License-Identifier: GPL-3.0-only
+
+from gremlin.input_module_gate import claim_allows, norm_guid, should_forward
+
+
+class _T:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+JoystickAxis = _T("JoystickAxis")
+JoystickButton = _T("JoystickButton")
+
+EVO = "11111111-1111-1111-1111-111111111111"
+VJOY3 = "044a6af0-a897-11f1-800b-444553540000"
+OSC = "a7c3e91b-4d2f-4e18-9b06-2f8c1d5a6e70"
+
+CLAIM = {"axes": [1, 2, 3], "buttons": [1, 8], "hats": []}
+
+
+def test_norm_guid_forms() -> None:
+    assert norm_guid(EVO) == norm_guid("{" + EVO + "}")
+    assert "-" not in norm_guid(EVO)
+
+
+def test_claimed_axis_passes() -> None:
+    assert claim_allows(CLAIM, "axis", 1) is True
+    assert claim_allows(CLAIM, "axis", 6) is False
+    assert claim_allows(CLAIM, "button", 8) is True
+    assert claim_allows(None, "axis", 1) is False
+
+
+def test_source_claimed_enters_wire() -> None:
+    assert should_forward(
+        EVO,
+        JoystickAxis,
+        1,
+        claims={norm_guid(EVO): CLAIM},
+        dest_guids={norm_guid(VJOY3)},
+        passthrough={norm_guid(OSC)},
+    )
+
+
+def test_unclaimed_button_does_not_enter_wire() -> None:
+    assert not should_forward(
+        EVO,
+        JoystickButton,
+        99,
+        claims={norm_guid(EVO): CLAIM},
+        dest_guids=set(),
+        passthrough=set(),
+    )
+
+
+def test_dest_vjoy_hid_never_enters_wire() -> None:
+    assert not should_forward(
+        VJOY3,
+        JoystickAxis,
+        1,
+        claims={norm_guid(VJOY3): CLAIM},
+        dest_guids={norm_guid(VJOY3)},
+        passthrough=set(),
+    )
+
+
+def test_osc_passthrough() -> None:
+    assert should_forward(
+        OSC,
+        JoystickButton,
+        1,
+        claims={},
+        dest_guids=set(),
+        passthrough={norm_guid(OSC)},
+    )
+
+
+def test_unknown_device_dropped() -> None:
+    assert not should_forward(
+        "00000000-0000-0000-0000-000000000000",
+        JoystickButton,
+        1,
+        claims={norm_guid(EVO): CLAIM},
+        dest_guids=set(),
+        passthrough=set(),
+    )
