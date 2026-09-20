@@ -628,20 +628,18 @@ Item {
                                 return saved >= 140 ? saved : 0
                             }
                             property int ghostPad: showGhost ? _page.ghostW + 16 : 0
-                            property int bodyH: {
-                                if (cardH >= 140)
-                                    return cardH
-                                var c = _memberCards.count > 0 ? _memberCards.itemAt(0) : null
-                                if (c && c.implicitHeight > 0)
-                                    return Math.round(c.implicitHeight)
-                                return 240
-                            }
 
                             width: isDragHome ? 0 : (cardW + extra + ghostPad)
                             height: {
                                 if (isDragHome)
                                     return Math.max(1, _page.ghostH)
-                                var h = bodyH + extra
+                                var h
+                                if (cardH >= 140) {
+                                    h = cardH + extra
+                                } else {
+                                    var c = _memberCards.itemAt(0)
+                                    h = ((c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : 260) + extra
+                                }
                                 if (showGhost)
                                     h = Math.max(h, _page.ghostH)
                                 return h
@@ -680,6 +678,7 @@ Item {
                                     stacked: _pile.members.length > 1
                                     width: _pile.cardW
                                     height: _pile.cardH > 0 ? _pile.cardH : implicitHeight
+                                    stretchPhoto: _pile.cardH >= 140
                                     dropStacking: false
                                     opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1
                                     onLiftingChanged: {
