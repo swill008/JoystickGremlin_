@@ -67,8 +67,8 @@ Rectangle {
     radius: 4
     clip: true
     color: selected ? "#1F2A37" : "#18181B"
-    border.width: focused || lifting || selected || dropStacking ? 2 : 1
-    border.color: dropStacking ? "#22C55E" : (focused || lifting || selected ? "#E4E4E7" : "#3F3F46")
+    border.width: focused || selected || dropStacking ? 2 : 1
+    border.color: dropStacking ? "#22C55E" : (focused || selected ? "#E4E4E7" : "#3F3F46")
 
     ColumnLayout {
         id: _body
