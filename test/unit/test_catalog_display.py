@@ -244,9 +244,10 @@ def test_selection_does_not_force_scroll() -> None:
     assert "reloadKeepScroll()" in text
     open_ed = text[text.find("function openEditor") : text.find("function closeEditor")]
     assert "positionViewAtIndex" not in open_ed
-    add = text[text.find("function addActionOnRow") : text.find("function okRow")]
+    add = text[text.find("function addActionOnRow") : text.find("function deleteRow")]
     assert "positionViewAtIndex" not in add
-    assert "reloadKeepScroll" in add
+    assert "reloadKeepScroll" not in add
+    assert "_catalog.addAction" in add
 
 
 def test_child_context_menu_add_delete() -> None:
@@ -264,4 +265,21 @@ def test_child_context_menu_add_delete() -> None:
     src = bc.read_text(encoding="utf-8")
     assert "def removeSequence" in src
     assert "def addAction" in src
+
+
+def test_add_does_not_reset_catalog_model() -> None:
+    bc = Path(__file__).resolve().parents[2] / "gremlin/ui/binding_catalog.py"
+    src = bc.read_text(encoding="utf-8")
+    assert "signal.inputItemChanged.connect(self.refreshHid)" in src
+    assert "signal.inputItemChanged.connect(self.reload)" not in src
+    assert "def refreshHid" in src
+    assert "beginInsertRows" in src
+    assert "beginRemoveRows" in src
+    assert "def _same_structure" in src
+    qml = _QML.read_text(encoding="utf-8")
+    changed = qml[qml.find("function onInputItemChanged") : qml.find("function onInputItemChanged") + 280]
+    assert "_catalog.reload()" not in changed
+    close = qml[qml.find("function closeEditor") : qml.find("function rowX")]
+    assert "refreshHid" in close
+    assert "reloadKeepScroll" not in close
 
