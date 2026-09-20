@@ -154,6 +154,21 @@ Item {
                 return 150
             }
             model: _catalog
+            property int editingHid: _root.editingHid
+            property bool catalogLocked: _root.editorLocked
+            property bool catalogIsOutput: _root.isOutput
+            property var live: _liveState
+            property var catalogModel: _catalog
+
+            function addOnRow(hid, rowIndex) {
+                currentIndex = rowIndex
+                _root.selectHid(hid)
+                _catalog.addSequence(hid)
+                _root.editingHid = hid
+                _root.showHid(hid)
+            }
+            function okRow() { _root.closeEditor() }
+            function openRow(hid) { _root.openEditor(hid) }
 
             delegate: Item {
                 id: _row
@@ -168,17 +183,18 @@ Item {
                 required property int deviceIndex
                 required property int bindingCount
                 required property int indent
-                width: ListView.view.width - 12
+                property var lv: ListView.view
+                width: lv.width - 12
                 readonly property bool isGroup: rowKind === "group" || rowKind === "unmapped"
-                readonly property bool expanded: isGroup && deviceIndex === _root.editingHid && deviceIndex >= 0
-                readonly property bool hideLeaf: rowKind === "leaf" && deviceIndex === _root.editingHid
+                readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
+                readonly property bool hideLeaf: rowKind === "leaf" && deviceIndex === lv.editingHid
                 height: hideLeaf ? 0 : (50 + (expanded ? _editor.height + 8 : 0))
                 visible: !hideLeaf
 
-                readonly property bool selected: index === _list.currentIndex || expanded
-                property int liveStamp: _liveState.stamp
-                property string inputKind: (liveStamp >= 0 && deviceIndex >= 0) ? _liveState.kindAt(deviceIndex) : ""
-                property real liveValue: (liveStamp >= 0 && deviceIndex >= 0) ? _liveState.valueAt(deviceIndex) : 0
+                readonly property bool selected: index === lv.currentIndex || expanded
+                property int liveStamp: lv.live.stamp
+                property string inputKind: (liveStamp >= 0 && deviceIndex >= 0) ? lv.live.kindAt(deviceIndex) : ""
+                property real liveValue: (liveStamp >= 0 && deviceIndex >= 0) ? lv.live.valueAt(deviceIndex) : 0
                 readonly property bool showLive: true
                 readonly property bool ledOn: showLive && (inputKind === "button" || inputKind === "hat") && liveValue > 0.5
                 readonly property bool axisRow: kind === "axis"
@@ -224,10 +240,10 @@ Item {
                         anchors.rightMargin: expanded ? 120 : 64
                         enabled: deviceIndex >= 0
                         onClicked: {
-                            _list.currentIndex = index
-                            _list.syncSelection()
+                            lv.currentIndex = index
+                            lv.syncSelection()
                             if (rowKind === "leaf")
-                                _root.openEditor(deviceIndex)
+                                lv.openRow(deviceIndex)
                         }
                     }
 
@@ -262,26 +278,20 @@ Item {
                             wrapMode: Text.NoWrap
                         }
                         Button {
-                            visible: (rowKind === "group" || rowKind === "unmapped") && !editorLocked
+                            visible: (rowKind === "group" || rowKind === "unmapped") && !lv.catalogLocked
                             text: "ADD"
                             implicitWidth: 56
                             implicitHeight: 28
                             z: 2
-                            onClicked: {
-                                _list.currentIndex = index
-                                _root.selectHid(deviceIndex)
-                                _catalog.addSequence(deviceIndex)
-                                _root.editingHid = deviceIndex
-                                _root.showHid(deviceIndex)
-                            }
+                            onClicked: lv.addOnRow(deviceIndex, index)
                         }
                         Button {
-                            visible: expanded && !editorLocked
+                            visible: expanded && !lv.catalogLocked
                             text: "OK"
                             implicitWidth: 56
                             implicitHeight: 28
                             z: 2
-                            onClicked: _root.closeEditor()
+                            onClicked: lv.okRow()
                         }
                     }
                 }
@@ -298,13 +308,13 @@ Item {
                     onWidthChanged: if (item) item.width = width
                     sourceComponent: InputConfiguration {
                         inlineMode: true
-                        isOutput: _root.isOutput
+                        isOutput: lv.catalogIsOutput
                     }
                 }
             }
 
             function syncSelection() {
-                if (!uiState || !device || currentIndex < 0 || editorLocked)
+                if (!uiState || !device || currentIndex < 0 || _root.editorLocked)
                     return
                 var hid = _catalog.deviceIndexAt(currentIndex)
                 if (hid < 0)
