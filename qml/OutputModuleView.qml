@@ -442,21 +442,21 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Column {
-                            spacing: -1
+                            spacing: 0
                             Label {
-                                width: parent.width
-                                horizontalAlignment: Text.AlignHCenter
                                 text: "Button"
                                 color: on ? "#F4F4F5" : "#A1A1AA"
                                 font.pixelSize: _root.buttonSize === "small" ? 9 : 11
+                                horizontalAlignment: Text.AlignHCenter
+                                anchors.horizontalCenter: parent.horizontalCenter
                             }
                             Label {
-                                width: parent.width
-                                horizontalAlignment: Text.AlignHCenter
                                 text: "" + hw
                                 color: on ? "#F4F4F5" : "#E4E4E7"
                                 font.pixelSize: _root.buttonSize === "small" ? 12 : 14
                                 font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                anchors.horizontalCenter: parent.horizontalCenter
                             }
                         }
                     }
