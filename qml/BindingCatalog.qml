@@ -365,8 +365,23 @@ Item {
         if (hid < 0 || editorLocked)
             return
         selectHid(hid)
+        var want = (seq === undefined || seq === null) ? -1 : seq
+        if (_root.editingHid === hid && _root.editingSeq === want) {
+            _root.editingSeq = -1
+            Qt.callLater(function() {
+                _root.editingHid = hid
+                _root.editingSeq = want
+                if (_list.forceLayout)
+                    _list.forceLayout()
+            })
+            return
+        }
         _root.editingHid = hid
-        _root.editingSeq = (seq === undefined || seq === null) ? -1 : seq
+        _root.editingSeq = want
+        Qt.callLater(function() {
+            if (_list.forceLayout)
+                _list.forceLayout()
+        })
     }
 
     function closeEditor() {
@@ -570,8 +585,14 @@ Item {
                 function addActionOnRow(hid, actionName) {
                     _root.selectHid(hid)
                     var seq = _catalog.addAction(hid, actionName)
-                    _root.editingHid = hid
-                    _root.editingSeq = seq
+                    _root.editingHid = -1
+                    _root.editingSeq = -1
+                    Qt.callLater(function() {
+                        _root.editingHid = hid
+                        _root.editingSeq = seq
+                        if (_list.forceLayout)
+                            _list.forceLayout()
+                    })
                 }
                 function deleteRow(hid, seq) {
                     if (hid < 0 || seq < 0 || _root.editorLocked)
@@ -733,7 +754,7 @@ Item {
                         x: _root.leafX(_row.width)
                         y: lv.childH + lv.edGap
                         width: _root.leafW(_row.width)
-                        height: visible && item ? Math.max(80, item.implicitHeight) : 0
+                        height: expanded ? Math.max(80, item ? item.implicitHeight : 80) : 0
                         onLoaded: if (item) item.width = width
                         onWidthChanged: if (item) item.width = width
                         sourceComponent: InputConfiguration {
