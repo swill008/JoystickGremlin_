@@ -495,7 +495,7 @@ class ColorInformation(metaclass=SingletonMetaclass):
         return self._is_dark_theme
 
 
-def to_local_path(path_or_url: str) -> Path:
+def to_local_path(path_or_url) -> Path:
     """Returns a Path irrespective of the input path formatting.
 
     Args:
@@ -504,6 +504,15 @@ def to_local_path(path_or_url: str) -> Path:
     Returns:
         Path object representing the local file path
     """
-    if path_or_url.startswith("file://"):
-        return Path(QtCore.QUrl(path_or_url).toLocalFile())
-    return Path(path_or_url)
+    if path_or_url is None:
+        return Path()
+    if isinstance(path_or_url, QtCore.QUrl):
+        local = path_or_url.toLocalFile()
+        return Path(local) if local else Path()
+    text = str(path_or_url).strip()
+    if not text:
+        return Path()
+    if text.startswith("file:"):
+        local = QtCore.QUrl(text).toLocalFile()
+        return Path(local) if local else Path()
+    return Path(text)
