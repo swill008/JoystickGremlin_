@@ -286,6 +286,15 @@ _DEFAULT_CATALOG = {
     "childNameColW": 160,
     "rowInnerPad": 10,
     "editorIndent": 12,
+    "editorAlign": "left",
+    "editorRight": 0,
+    "editorWidthPct": 100,
+    "editorPad": 10,
+    "editorGap": 4,
+    "editorRadius": 3,
+    "editorBorderW": 1,
+    "editorAccentW": 3,
+    "showEditorAccent": True,
     "colorParent": "#111113",
     "colorChild": "#111113",
     "colorSelected": "#27272A",
@@ -296,6 +305,7 @@ _DEFAULT_CATALOG = {
     "colorSelectBorder": "#E4E4E7",
     "colorEditor": "#0F2744",
     "colorEditorBorder": "#3B82F6",
+    "colorEditorAccent": "#3B82F6",
 }
 
 
