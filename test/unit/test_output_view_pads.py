@@ -21,3 +21,10 @@ def test_save_toast_click_off_or_two_seconds() -> None:
     assert "interval: 2000" in text
     assert "CloseOnPressOutside" in text
     assert "_savedToast.open()" in text
+
+
+def test_button_columns_to_one_and_stacked_label() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    assert "from: 1; to: 16" in text
+    assert "Math.max(1, _root.buttonColumns)" in text
+    assert 'text: "Button"' in text
