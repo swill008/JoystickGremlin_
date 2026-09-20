@@ -30,8 +30,8 @@ _WRAPPERS = {
 
 _TYPE_LABELS = {
     "map-to-vjoy": "Map to vJoy",
-    "map-to-keyboard": "Map to keyboard",
-    "map-to-mouse": "Map to mouse",
+    "map-to-keyboard": "Map to Keyboard",
+    "map-to-mouse": "Map to Mouse",
     "map-to-xbox": "Map to Xbox",
     "map-to-logical-device": "Map to logical device",
     "macro": "Macro",
