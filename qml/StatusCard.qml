@@ -158,7 +158,7 @@ Rectangle {
 
         Label {
             visible: target.length
-            text: "→ " + target
+            text: "Bound to " + target
             color: "#A1A1AA"
             font.pixelSize: 11
             elide: Text.ElideRight
