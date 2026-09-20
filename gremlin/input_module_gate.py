@@ -64,3 +64,43 @@ def should_forward(
     except (TypeError, ValueError):
         return False
     return claim_allows(claims.get(key), event_kind(event_type), ident)
+
+
+def status_last_from_hid(direction: str) -> bool:
+    """Status last-line: input cards may use module events; dest never uses HID."""
+    return str(direction or "source").strip().lower() not in (
+        "dest",
+        "target",
+        "output",
+    )
+
+
+def dest_last_change(
+    previous: dict, current: dict, axis_eps: float = 0.04
+) -> tuple[str, int] | None:
+    """First dest feeder change worth showing on a Status card last-line."""
+    if not previous or not current:
+        return None
+    for key, val in current.items():
+        kind, _hid = key
+        if kind != "button":
+            continue
+        old = previous.get(key, 0.0)
+        try:
+            if float(val) > 0.5 and float(old) <= 0.5:
+                return key
+        except (TypeError, ValueError):
+            continue
+    for key, val in current.items():
+        kind, _hid = key
+        if kind not in ("axis", "hat"):
+            continue
+        old = previous.get(key)
+        if old is None:
+            continue
+        try:
+            if abs(float(val) - float(old)) > axis_eps:
+                return key
+        except (TypeError, ValueError):
+            continue
+    return None
