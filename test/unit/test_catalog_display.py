@@ -36,6 +36,10 @@ def test_panel_matches_omv_chrome() -> None:
     assert 'text: "TEXT"' in text
     assert 'text: "COLORS"' in text
     assert 'text: "EDITOR"' in text
+    assert 'text: "Show accent bar"' in text
+    assert 'text: "Gap below row"' in text
+    assert "function editorX(total)" in text
+    assert "function editorW(total)" in text
     assert 'text: "Show LED dots"' in text
     assert 'text: "Left inset"' in text
     assert 'text: "Right inset"' in text
@@ -163,3 +167,32 @@ def test_inline_editor_colors_are_properties() -> None:
     qml = _QML.read_text(encoding="utf-8")
     assert "editorFill: lv.cEditor" in qml
     assert "editorEdge: lv.cEditorEdge" in qml
+    assert "editorAccent: lv.cEditorAccent" in qml
+    assert "editorPad: lv.edPad" in qml
+    assert 'text: "Show accent bar"' in qml
+
+
+def test_editor_geometry_defaults_match_old_indent() -> None:
+    def row_w(total, align, left, right, width_pct):
+        if align == "center":
+            return max(120, round(total * width_pct / 100))
+        return max(120, total - left - right)
+
+    def row_x(total, align, left, right, width_pct):
+        w = row_w(total, align, left, right, width_pct)
+        if align == "center":
+            return max(0, round((total - w) / 2))
+        if align == "right":
+            return max(0, total - w - right)
+        return left
+
+    total = 1000
+    assert row_x(total, "left", 12, 0, 100) == 12
+    assert row_w(total, "left", 12, 0, 100) == 988
+    assert row_x(total, "left", 96, 256, 100) == 96
+    assert row_w(total, "left", 96, 256, 100) == 648
+    mm = _MM.read_text(encoding="utf-8")
+    assert '"editorAlign": "left"' in mm
+    assert '"editorIndent": 12' in mm
+    assert '"editorRight": 0' in mm
+    assert '"colorEditorAccent": "#3B82F6"' in mm
