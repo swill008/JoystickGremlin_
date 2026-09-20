@@ -3,6 +3,27 @@
 This file provides guidance for AI agents working on the JoystickGremlin codebase.
 
 
+
+
+## Mandatory: test before you push
+
+This sandbox cannot launch the Qt app. That is not a reason to skip tests.
+Before every Contents PUT on this repo:
+
+1. `ast.parse` every Python file you changed (must succeed).
+2. Brace-count every QML file you changed (`{` == `}`).
+3. `@ta.QmlElement` / `@QmlElement` must decorate a **class**, never a `def`.
+4. If the change is logic, add or extend a test under `test/unit/` and run it
+   (`poetry run pytest test/unit/<file>.py`). Duplicate a tiny helper in the
+   test if importing the module pulls Qt/DILL you cannot load here.
+5. When the environment has PySide6: `poetry run python -c "import <module>"`
+   for every Python module you touched. The crash `qmlRegisterType(function, ...)`
+   means a decorator landed on a helper — fix before PUT.
+6. Do not PUT until those checks pass. Report what you ran.
+
+The user still has to pull and click the GUI. Your job is to catch import
+breaks, decorator mistakes, and logic regressions before they do.
+
 ## Project Overview
 
 JoystickGremlin is a Python application (PySide6/QML) for configuring joystick devices on Windows. It uses vJoy for virtual joystick emulation and supports macros, modes, and Python scripting.
@@ -307,10 +328,14 @@ import gremlin.ui.type_aliases as ta
 
 ### Pre-commit Checks
 
-Before considering a task complete, run:
+Before considering a task complete, run what you can. **Do not skip the
+Mandatory test-before-push list above.** When poetry is available:
 
 ```powershell
+poetry run python -c "import gremlin.ui.live_input"
+poetry run pytest test/unit/ -q
 poetry run ruff check .
-poetry run pyright
-poetry run pytest
 ```
+
+Do not block a small fix on a full pyright run if ruff/pytest/import already
+passed. Never push unparsed Python or QML with unmatched braces.
