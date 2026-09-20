@@ -51,7 +51,7 @@ Item {
         color: editorAccent
     }
 
-    Component.onCompleted: {
+    function loadModel() {
         if (!backend || !uiState)
             return
         _root.inputItemModel = backend.getInputItem(
@@ -59,6 +59,9 @@ Item {
             uiState.currentInputIndex
         )
     }
+
+    Component.onCompleted: loadModel()
+    onSequenceIndexChanged: loadModel()
 
     Connections {
         target: uiState
@@ -109,14 +112,23 @@ Item {
             id: _inlineRepeater
             model: _root.inlineMode ? _root.inputItemModel : null
 
-            delegate: InputItemBinding {
+            delegate: Item {
+                id: _inlineWrap
+                required property int index
+                required property var modelData
                 Layout.fillWidth: true
                 visible: _root.sequenceIndex < 0 || index === _root.sequenceIndex
-                height: visible ? implicitHeight : 0
-                enabled: !editorLocked
-                compactMode: _root.compactMode
-                inputBinding: modelData
-                inputItemModel: _root.inputItemModel
+                implicitHeight: visible ? _inlineBind.implicitHeight : 0
+                height: implicitHeight
+
+                InputItemBinding {
+                    id: _inlineBind
+                    width: parent.width
+                    enabled: !editorLocked
+                    compactMode: _root.compactMode
+                    inputBinding: _inlineWrap.modelData
+                    inputItemModel: _root.inputItemModel
+                }
             }
         }
 
