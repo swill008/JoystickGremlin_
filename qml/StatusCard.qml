@@ -38,6 +38,7 @@ Rectangle {
     property bool dropStacking: false
     property bool selected: false
     property bool canStackSelected: false
+    property bool stretchPhoto: false
     z: stackIndex + (lifting || resizing ? 100 : 0)
 
     signal cardFocused()
@@ -78,7 +79,7 @@ Rectangle {
         Item {
             id: _photoWell
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: stretchPhoto
             Layout.minimumHeight: 72
             Layout.preferredHeight: {
                 if (_photo.status === Image.Ready && _photo.implicitWidth > 0) {
