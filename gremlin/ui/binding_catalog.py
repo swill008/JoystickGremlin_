@@ -437,6 +437,26 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         start, end = self._hid_span(hid)
         old = self._rows[start:end] if start >= 0 else []
         old_was_unmapped = bool(old) and old[0]["rowKind"] == "unmapped"
+        if (
+            start >= 0
+            and old
+            and new_rows
+            and old[0]["rowKind"] == "group"
+            and new_rows[0]["rowKind"] == "group"
+            and len(new_rows) > len(old)
+            and self._same_structure(old, new_rows[: len(old)])
+        ):
+            extra = new_rows[len(old) :]
+            at = start + len(old)
+            self.beginInsertRows(QtCore.QModelIndex(), at, at + len(extra) - 1)
+            for i, row in enumerate(extra):
+                self._rows.insert(at + i, row)
+            self.endInsertRows()
+            self._rows[start] = new_rows[0]
+            self.dataChanged.emit(self.index(start, 0), self.index(start, 0))
+            self.countChanged.emit()
+            self._refresh_dest_choices()
+            return
         if start >= 0 and self._same_structure(old, new_rows):
             for i, row in enumerate(new_rows):
                 self._rows[start + i] = row
