@@ -35,3 +35,45 @@ def test_show_meters_checkbox() -> None:
     assert 'text: "Show meters"' in text
     assert "metersOn" in text
     assert "readonly property bool showMeters" not in text
+
+
+def test_meter_uncheck_seeds_then_hides() -> None:
+    """Empty meters meant all-on, so uncheck used to no-op. Mirror QML toggleMeter."""
+
+    def meter_on(meters, hw):
+        if not meters:
+            return True
+        if len(meters) == 1 and int(meters[0]) == 0:
+            return False
+        return hw in meters
+
+    def toggle(meters, hw, on, all_hw):
+        lst = list(meters or [])
+        if lst == [0]:
+            lst = []
+        elif not lst:
+            lst = list(all_hw)
+        if on and hw not in lst:
+            lst.append(hw)
+        if not on and hw in lst:
+            lst.remove(hw)
+        return [0] if not lst else lst
+
+    all_hw = [1, 2, 3]
+    assert meter_on([], 2) is True
+    lst = toggle([], 2, False, all_hw)
+    assert lst == [1, 3]
+    assert meter_on(lst, 2) is False
+    lst = toggle(lst, 1, False, all_hw)
+    lst = toggle(lst, 3, False, all_hw)
+    assert lst == [0]
+    assert meter_on(lst, 1) is False
+
+
+def test_reset_does_not_save_and_has_width() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    chunk = text[text.find("function resetView") : text.find("function rebuild")]
+    assert "saveViewConfig" not in chunk
+    assert "Options have been reset" in chunk
+    assert "buttonWidth" in text
+    assert "Pads hidden" in text
