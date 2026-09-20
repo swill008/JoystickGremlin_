@@ -896,6 +896,9 @@ ApplicationWindow {
                     text: "Bound to: [Not bound]"
                     color: "#A1A1AA"
                     font.pixelSize: 12
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    Layout.rightMargin: 12
                 }
                 Label {
                     visible: configDirection === "dest"
