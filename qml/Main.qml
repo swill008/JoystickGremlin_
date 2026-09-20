@@ -1044,13 +1044,15 @@ ApplicationWindow {
                      && !(_root.configDirection === "dest" && uiState.currentTab !== "xbox")
 
             clip: true
-            orientation: Qt.Horizontal
+            orientation: (uiState && uiState.currentTab === "physical") ? Qt.Vertical : Qt.Horizontal
 
-            DeviceInputList {
+            BindingCatalog {
                 id: _deviceInputList
 
                 visible: uiState && uiState.currentTab === "physical"
                 SplitView.minimumWidth: 400
+                SplitView.minimumHeight: 160
+                SplitView.preferredHeight: 300
 
                 device: _deviceModel
                 moduleModel: _moduleModel
