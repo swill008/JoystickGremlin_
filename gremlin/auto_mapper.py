@@ -125,36 +125,29 @@ class AutoMapper:
             claim = source.get("claim") or {}
             if not (claim.get("buttons") or claim.get("axes") or claim.get("hats")):
                 continue
-            merged = auto_map_modules.merge_claim_into_output(dest, claim)
+            auto_map_modules.merge_claim_into_output(dest, claim)
             limits = self._vjoy_limits(int(dest["vjoyId"]))
             vjoy_id = int(dest["vjoyId"])
-            for kind, input_type, ids, max_id in (
+            jobs = (
                 (
-                    "axes",
                     types.InputType.JoystickAxis,
-                    merged.get("axes") or [],
+                    claim.get("axes") or [],
                     limits["axes"],
                 ),
                 (
-                    "buttons",
                     types.InputType.JoystickButton,
-                    merged.get("buttons") or [],
+                    claim.get("buttons") or [],
                     limits["buttons"],
                 ),
                 (
-                    "hats",
                     types.InputType.JoystickHat,
-                    merged.get("hats") or [],
+                    claim.get("hats") or [],
                     limits["hats"],
                 ),
-            ):
-                allowed = set(ids)
-                if kind == "axes":
-                    allowed &= set(max_id)
+            )
+            for input_type, ids, allowed in jobs:
                 for hid in sorted(int(x) for x in ids):
-                    if kind != "axes" and hid not in max_id:
-                        continue
-                    if kind == "axes" and hid not in allowed:
+                    if hid not in allowed:
                         continue
                     item = self._profile.get_input_item(
                         guid,
@@ -163,12 +156,13 @@ class AutoMapper:
                         options.mode,
                         create_if_missing=True,
                     )
+                    target = types.VjoyInput(vjoy_id, input_type, int(hid))
                     if options.overwrite_used_inputs:
                         item.action_sequences.clear()
+                        used.discard(target)
                     if item.action_sequences:
                         self._num_retained_bindings += 1
                         continue
-                    target = types.VjoyInput(vjoy_id, input_type, int(hid))
                     if target in used:
                         self._num_retained_bindings += 1
                         continue
@@ -205,7 +199,6 @@ class AutoMapper:
     def _prepare_profile(
         self, input_devices: list[dill.DeviceSummary], options: AutoMapperOptions
     ) -> None:
-        """Prepares the profile for an auto-map run."""
         if options.overwrite_used_inputs:
             for dev in input_devices:
                 self._profile.inputs.pop(dev.device_guid.uuid, None)
