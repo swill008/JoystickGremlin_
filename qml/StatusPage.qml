@@ -24,6 +24,7 @@ Item {
     property string dragPhoto: ""
     property string insertBefore: ""
     property string dragStackSlug: ""
+    property string stackCandidate: ""
     property int ghostW: 280
     property int ghostH: 240
     property int pendingStackW: 0
@@ -143,10 +144,10 @@ Item {
             out.stack = best.slug
             pendingStackW = Math.round(best.width)
             pendingStackH = Math.round(best.height)
-            return out
+        } else {
+            pendingStackW = 0
+            pendingStackH = 0
         }
-        pendingStackW = 0
-        pendingStackH = 0
         slots.sort(function(a, b) {
             if (Math.abs(a.y - b.y) < 48)
                 return a.x - b.x
@@ -177,6 +178,17 @@ Item {
         return ""
     }
 
+    function noteStackHover(candidate) {
+        if (candidate === stackCandidate)
+            return
+        stackCandidate = candidate
+        if (dragStackSlug !== "")
+            dragStackSlug = ""
+        _stackDwell.stop()
+        if (candidate.length)
+            _stackDwell.restart()
+    }
+
     function beginDrag(card) {
         if (!card || !card.slug)
             return
@@ -197,9 +209,11 @@ Item {
         grabOffX = 0
         grabOffY = 0
         dragStackSlug = ""
+        stackCandidate = ""
         pendingStackW = 0
         pendingStackH = 0
         insertBefore = nextLeader(card.slug, dragDir)
+        _stackDwell.stop()
     }
 
     function updateDragAt(sx, sy) {
@@ -216,15 +230,9 @@ Item {
         var gx = floatX + ghostW / 2
         var gy = floatY + ghostH / 2
         var t = pickTargetAt(dragSlug, gx, gy)
-        if (t.stack) {
-            if (dragStackSlug !== t.stack)
-                dragStackSlug = t.stack
-            if (insertBefore !== "")
-                insertBefore = ""
+        noteStackHover(t.stack)
+        if (dragStackSlug.length)
             return
-        }
-        if (dragStackSlug !== "")
-            dragStackSlug = ""
         var dx = gx - dragOriginX
         var dy = gy - dragOriginY
         if (Math.sqrt(dx * dx + dy * dy) < 16)
@@ -234,12 +242,14 @@ Item {
     }
 
     function clearDrag() {
+        _stackDwell.stop()
         dragSlug = ""
         dragDir = ""
         dragName = ""
         dragPhoto = ""
         insertBefore = ""
         dragStackSlug = ""
+        stackCandidate = ""
         pendingStackW = 0
         pendingStackH = 0
         gotGrab = false
@@ -250,11 +260,10 @@ Item {
             clearDrag()
             return
         }
-        var gx = floatX + ghostW / 2
-        var gy = floatY + ghostH / 2
-        var t = pickTargetAt(slug, gx, gy)
-        var stackTo = t.stack
-        var before = t.before
+        // Only stack if the 1.5s dwell armed it. A geometric re-pick on
+        // mouse-up would stack after a quick pass over a card.
+        var stackTo = dragStackSlug
+        var before = insertBefore
         var stackW = pendingStackW
         var stackH = pendingStackH
         clearDrag()
@@ -345,6 +354,18 @@ Item {
         card.lastHardware = info.lastHardware || ""
         card.focused = !!info.focused
         card.pinActive = _page.pinSlug === card.slug
+    }
+
+    Timer {
+        id: _stackDwell
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            if (!_page.dragSlug.length || !_page.stackCandidate.length)
+                return
+            _page.dragStackSlug = _page.stackCandidate
+            _page.insertBefore = ""
+        }
     }
 
     ColumnLayout {
