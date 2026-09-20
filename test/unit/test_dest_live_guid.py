@@ -26,18 +26,22 @@ def extract_uuid(value: object) -> str:
     return text.strip().strip("{}").lower()
 
 
-def dest_event_action(live_while_active: bool, runtime_active: bool, input_locked: bool) -> str:
-    if live_while_active and not runtime_active:
+def dest_hid_action(live_while_active: bool, input_locked: bool) -> str:
+    if live_while_active:
         return "drop"
-    if not live_while_active and input_locked:
+    if input_locked:
         return "drop"
     return "apply"
 
 
-def dest_show_live(output_screen: bool, gremlin_active: bool) -> bool:
+def dest_show_live(output_screen: bool, runtime_active: bool, driven: bool) -> bool:
     if not output_screen:
         return True
-    return bool(gremlin_active)
+    return bool(runtime_active and driven)
+
+
+def dest_driven(running: bool, feeder_present: bool) -> bool:
+    return bool(running and feeder_present)
 
 
 def test_guid_forms_match_vjoy3() -> None:
@@ -51,15 +55,24 @@ def test_vjoy_name_to_id() -> None:
     assert _VJOY_NAME_RE.search("vJoy 1").group(1) == "1"
 
 
-def test_vjoy3_active_hid_applies() -> None:
-    assert dest_event_action(True, True, True) == "apply"
+def test_dest_config_never_uses_hid() -> None:
+    assert dest_hid_action(True, False) == "drop"
+    assert dest_hid_action(True, True) == "drop"
 
 
-def test_dest_idle_hid_dropped() -> None:
-    assert dest_event_action(True, False, False) == "drop"
+def test_input_config_hid_when_not_locked() -> None:
+    assert dest_hid_action(False, False) == "apply"
+    assert dest_hid_action(False, True) == "drop"
 
 
-def test_dest_paints_when_gremlin_active() -> None:
-    assert dest_show_live(True, True) is True
-    assert dest_show_live(True, False) is False
-    assert dest_show_live(False, True) is True
+def test_dest_paints_only_when_active_and_feeder_present() -> None:
+    assert dest_show_live(True, True, True) is True
+    assert dest_show_live(True, True, False) is False
+    assert dest_show_live(True, False, True) is False
+    assert dest_show_live(False, True, False) is True
+
+
+def test_feeder_driven() -> None:
+    assert dest_driven(True, True) is True
+    assert dest_driven(True, False) is False
+    assert dest_driven(False, True) is False
