@@ -228,6 +228,24 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
             return int(self._rows[row]["deviceIndex"])
         return -1
 
+    @QtCore.Slot(int, result=str)
+    def kindAt(self, row: int) -> str:
+        if 0 <= row < len(self._rows):
+            return str(self._rows[row]["kind"])
+        return ""
+
+    @QtCore.Slot(int, result=int)
+    def hwIdAt(self, row: int) -> int:
+        if 0 <= row < len(self._rows):
+            return int(self._rows[row]["hwId"])
+        return 0
+
+    @QtCore.Slot(int, result=str)
+    def nameAt(self, row: int) -> str:
+        if 0 <= row < len(self._rows):
+            return str(self._rows[row]["name"])
+        return ""
+
     @QtCore.Slot(int, result=int)
     def rowForDeviceIndex(self, device_index: int) -> int:
         for i, row in enumerate(self._rows):
