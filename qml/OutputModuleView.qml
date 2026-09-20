@@ -45,7 +45,7 @@ Item {
     readonly property bool padBOn: padsOn && (padBX > 0 || padBY > 0)
     readonly property bool showMeters: layout !== "grid_only"
     readonly property int btnCellW: buttonSize === "small" ? 52 : (buttonSize === "large" ? 88 : 64)
-    readonly property int btnCellH: buttonSize === "small" ? 36 : (buttonSize === "large" ? 56 : 48)
+    readonly property int btnCellH: buttonSize === "small" ? 48 : (buttonSize === "large" ? 68 : 56)
 
     ModuleClaimedInputModel {
         id: _claimed
@@ -404,7 +404,7 @@ Item {
                 anchors.fill: parent
                 clip: true
                 cellWidth: {
-                    var cols = Math.max(4, _root.buttonColumns)
+                    var cols = Math.max(1, _root.buttonColumns)
                     return Math.max(40, Math.floor(width / cols))
                 }
                 cellHeight: _root.btnCellH
@@ -441,11 +441,23 @@ Item {
                             color: on ? _root.colorPress : Style.lowColor
                             anchors.verticalCenter: parent.verticalCenter
                         }
-                        Label {
-                            text: name && name.length ? name : ("" + hw)
-                            color: on ? "#F4F4F5" : "#A1A1AA"
-                            font.pixelSize: _root.buttonSize === "small" ? 11 : 13
-                            anchors.verticalCenter: parent.verticalCenter
+                        Column {
+                            spacing: -1
+                            Label {
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                text: "Button"
+                                color: on ? "#F4F4F5" : "#A1A1AA"
+                                font.pixelSize: _root.buttonSize === "small" ? 9 : 11
+                            }
+                            Label {
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                text: "" + hw
+                                color: on ? "#F4F4F5" : "#E4E4E7"
+                                font.pixelSize: _root.buttonSize === "small" ? 12 : 14
+                                font.bold: true
+                            }
                         }
                     }
                 }
@@ -628,7 +640,7 @@ Item {
                         }
                         RowLayout {
                             Label { text: "Columns"; color: "#E4E4E7" }
-                            SpinBox { from: 4; to: 16; value: buttonColumns; onValueModified: buttonColumns = value }
+                            SpinBox { from: 1; to: 16; value: buttonColumns; onValueModified: buttonColumns = value }
                         }
 
                         Label { text: "COLORS"; color: "#A1A1AA"; font.pixelSize: 10 }
