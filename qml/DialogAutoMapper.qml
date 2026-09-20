@@ -26,23 +26,20 @@ Window {
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
 
-    DeviceListModel {
-        id: _physicalDevices
-        deviceType: "physical"
+    AutoMapInputModel {
+        id: _inputModules
     }
 
-    DeviceListModel {
-        id: _virtualDevices
-        deviceType: "virtual"
+    AutoMapOutputModel {
+        id: _outputModules
     }
 
     Tools {
         id: tools
     }
 
-    // Properties to track the selected devices and user selections.
-    property var selectedPhysicalDevices: ({})
-    property var selectedVJoyDevices: ({})
+    property var selectedInputModules: ({})
+    property var selectedOutputModules: ({})
 
     ColumnLayout {
         anchors.fill: parent
@@ -69,7 +66,7 @@ Window {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
 
-                    model: _physicalDevices
+                    model: _inputModules
                     scrollbarAlwaysVisible: true
 
                     delegate: CheckBox {
@@ -79,7 +76,7 @@ Window {
                         checked: false
 
                         onCheckedChanged: () => {
-                            selectedPhysicalDevices[model.guid] = checked
+                            selectedInputModules[model.slug] = checked
                         }
                     }
                 }
@@ -104,7 +101,7 @@ Window {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
-                    model: _virtualDevices
+                    model: _outputModules
                     scrollbarAlwaysVisible: true
 
                     delegate: CheckBox {
@@ -114,7 +111,7 @@ Window {
                         checked: false
 
                         onCheckedChanged: () => {
-                            selectedVJoyDevices[model.vjoy_id] = checked
+                            selectedOutputModules[model.slug] = checked
                         }
                     }
                 }
@@ -147,8 +144,7 @@ Window {
             Switch {
                 id: _repeatDevices
 
-                text: "Repeat vJoy devices"
-
+                text: "Repeat output modules"
             }
         }
 
@@ -161,14 +157,14 @@ Window {
                 onClicked: () => {
                     _statusMessage.text = tools.createMappings(
                         _modeSelector.currentText,
-                        selectedPhysicalDevices,
-                        selectedVJoyDevices,
+                        selectedInputModules,
+                        selectedOutputModules,
                         _overwriteNonEmpty.checked,
                         _repeatDevices.checked
                     )
 
-                    selectedPhysicalDevices = ({})
-                    selectedVJoyDevices = ({})
+                    selectedInputModules = ({})
+                    selectedOutputModules = ({})
                 }
             }
 
@@ -179,7 +175,7 @@ Window {
                 Layout.leftMargin: 10
                 Layout.rightMargin: 10
 
-                text: "Select devices, options and then click the button."
+                text: "Select an input module and an output module, then create 1:1 mappings."
             }
 
             IconButton {
@@ -187,12 +183,7 @@ Window {
                 font.pixelSize: 24
 
                 ToolTip {
-                    text: "- Select mode to create bindings in.
-- Select source physical devices and target vJoy devices.
-- Click \"Create 1:1 mappings\" button.
-
-Overwrite non-empty: Replaces existing mappings in the profile.
-Repeat vJoy: Cycles through vJoy inputs, if needed to map all physical inputs."
+                    text: "- Select mode.\n- Check an input module and an output module.\n- Create 1:1 mappings copies the input module's selected buttons, axes, and hats onto the same IDs on the output module.\n\nOverwrite used inputs: replace existing wires on those selected controls.\nRepeat output modules: extra input modules wrap onto the output-module list."
 
                     visible: parent.hovered
                     delay: 500
