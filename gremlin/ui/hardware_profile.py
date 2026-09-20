@@ -484,7 +484,7 @@ class HardwareProfile(QtCore.QObject):
             src = to_local_path(zip_url)
         except Exception:
             return json.dumps({"ok": False, "error": "Cannot read that file."})
-        if not src.is_file():
+        if not src or not src.is_file():
             return json.dumps({"ok": False, "error": "File not found."})
         try:
             with zipfile.ZipFile(src, "r") as zf:
@@ -530,12 +530,16 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, str, result=str)
     def exportMap(self, device_name: str, dest_url: str) -> str:
         name = device_name or self._device_name
+        if not name:
+            return json.dumps({"ok": False, "error": "Select a Status card first."})
         path = self._file_for(name)
         if not path.is_file():
-            return json.dumps({"ok": False, "error": "Save the mapping first."})
+            return json.dumps({"ok": False, "error": "Save the module first."})
         try:
             dest = to_local_path(dest_url)
         except Exception:
+            return json.dumps({"ok": False, "error": "Cannot write that path."})
+        if not dest or not str(dest).strip() or dest.name in ("", ".zip"):
             return json.dumps({"ok": False, "error": "Cannot write that path."})
         if dest.suffix.lower() != ".zip":
             dest = dest.with_suffix(".zip")
@@ -545,12 +549,14 @@ class HardwareProfile(QtCore.QObject):
             return json.dumps({"ok": False, "error": "Profile JSON is not valid."})
         payload = self._pack_assets(name, payload)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        packed = json.loads(json.dumps(payload))
+        packed.pop("boundGuidLocal", None)
         files = []
-        photo = self._resolve_existing(str(payload.get("image") or ""))
+        photo = self._resolve_existing(str(packed.get("image") or ""))
         if photo and photo.is_file():
             files.append((photo, photo.name if photo.name.startswith("photo") else "photo" + photo.suffix.lower()))
-            payload["image"] = files[-1][1]
-        for node in payload.get("nodes") or []:
+            packed["image"] = files[-1][1]
+        for node in packed.get("nodes") or []:
             if not isinstance(node, dict) or node.get("shape") != "image":
                 continue
             ov = self._resolve_existing(str(node.get("src") or ""))
@@ -570,7 +576,7 @@ class HardwareProfile(QtCore.QObject):
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
             with zipfile.ZipFile(dest, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                zf.writestr("map.json", json.dumps(payload, indent=2) + "\n")
+                zf.writestr("map.json", json.dumps(packed, indent=2) + "\n")
                 for src, arc in files:
                     zf.write(src, arc)
         except Exception as exc:
@@ -583,7 +589,7 @@ class HardwareProfile(QtCore.QObject):
             src = to_local_path(zip_url)
         except Exception:
             return json.dumps({"ok": False, "error": "Cannot read that file."})
-        if not src.is_file():
+        if not src or not src.is_file():
             return json.dumps({"ok": False, "error": "File not found."})
         try:
             with zipfile.ZipFile(src, "r") as zf:
@@ -638,6 +644,7 @@ class HardwareProfile(QtCore.QObject):
                 self.pathChanged.emit()
                 self.documentChanged.emit()
                 self.imageChanged.emit()
+                signal.configChanged.emit()
                 return json.dumps({"ok": True, "device": device, "slug": slug})
         except zipfile.BadZipFile:
             return json.dumps({"ok": False, "error": "Not a valid zip."})
