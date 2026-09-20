@@ -704,13 +704,9 @@ Item {
                             height: {
                                 if (isDragHome)
                                     return Math.max(1, _page.ghostH)
-                                var h
-                                if (cardH >= 140) {
-                                    h = cardH + extra
-                                } else {
-                                    var c = _memberCards.itemAt(0)
-                                    h = ((c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : 260) + extra
-                                }
+                                var c = _memberCards.itemAt(0)
+                                var need = (c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : 260
+                                var h = Math.max(cardH >= 140 ? cardH : 0, need) + extra
                                 if (showGhost)
                                     h = Math.max(h, _page.ghostH)
                                 return h
@@ -748,7 +744,7 @@ Item {
                                     stackIndex: index
                                     stacked: _pile.members.length > 1
                                     width: _pile.cardW
-                                    height: _pile.cardH > 0 ? _pile.cardH : implicitHeight
+                                    height: Math.max(_pile.cardH > 0 ? _pile.cardH : 0, implicitHeight)
                                     stretchPhoto: _pile.cardH >= 140
                                     dropStacking: false
                                     opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1
