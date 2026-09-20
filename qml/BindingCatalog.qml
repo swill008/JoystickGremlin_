@@ -3,6 +3,7 @@
 // Device-Configuration-Macro Change — grouped bindings catalog.
 
 import QtQuick
+import QtQml
 import QtQuick.Controls
 import QtQuick.Controls.Universal
 import QtQuick.Layouts
@@ -21,6 +22,8 @@ Item {
     property string claimDeviceName: ""
     property bool isOutput: false
     property int editingHid: -1
+    property int editingSeq: -1
+    property int addMenuHid: -1
     property bool showPanel: false
     signal closePanel()
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
@@ -331,16 +334,18 @@ Item {
         })
     }
 
-    function openEditor(hid) {
+    function openEditor(hid, seq) {
         if (hid < 0 || editorLocked)
             return
         selectHid(hid)
         _root.editingHid = hid
+        _root.editingSeq = (seq === undefined || seq === null) ? -1 : seq
         showHid(hid)
     }
 
     function closeEditor() {
         _root.editingHid = -1
+        _root.editingSeq = -1
         _catalog.reload()
     }
 
@@ -381,6 +386,21 @@ Item {
 
     function editorW(total) {
         return rowW(total, editorAlign, editorIndent, editorRight, editorWidthPct)
+    }
+
+
+    Menu {
+        id: _addMenu
+        Instantiator {
+            model: _root.addMenuHid >= 0 ? _catalog.actionNames(_root.addMenuHid) : []
+            onObjectAdded: function(index, object) { _addMenu.insertItem(index, object) }
+            onObjectRemoved: function(index, object) { _addMenu.removeItem(object) }
+            delegate: MenuItem {
+                required property string modelData
+                text: modelData
+                onTriggered: _list.addActionOnRow(_root.addMenuHid, modelData)
+            }
+        }
     }
 
     Connections {
@@ -448,6 +468,7 @@ Item {
                 }
                 model: _catalog
                 property int editingHid: _root.editingHid
+                property int editingSeq: _root.editingSeq
                 property bool catalogLocked: _root.editorLocked
                 property bool catalogIsOutput: _root.isOutput
                 property var live: _liveState
@@ -485,15 +506,27 @@ Item {
                 property color cEditorEdge: _root.colorEditorBorder
                 property color cEditorAccent: _root.colorEditorAccent
 
-                function addOnRow(hid, rowIndex) {
+                function addOnRow(hid, rowIndex, btn) {
                     currentIndex = rowIndex
                     _root.selectHid(hid)
-                    _catalog.addSequence(hid)
+                    _root.addMenuHid = hid
+                    if (btn)
+                        _addMenu.popup(btn)
+                    else
+                        _addMenu.popup()
+                }
+                function addActionOnRow(hid, actionName) {
+                    _root.selectHid(hid)
+                    var seq = _catalog.addAction(hid, actionName)
+                    _root.editingHid = -1
+                    _root.editingSeq = -1
+                    _catalog.reload()
                     _root.editingHid = hid
+                    _root.editingSeq = seq
                     _root.showHid(hid)
                 }
                 function okRow() { _root.closeEditor() }
-                function openRow(hid) { _root.openEditor(hid) }
+                function openRow(hid, seq) { _root.openEditor(hid, seq) }
 
                 delegate: Item {
                     id: _row
@@ -508,12 +541,13 @@ Item {
                     required property int deviceIndex
                     required property int bindingCount
                     required property int indent
+                    required property int seqIndex
                     property var lv: ListView.view
                     readonly property bool isLeaf: rowKind === "leaf"
                     width: lv.width - 12
                     readonly property bool isGroup: rowKind === "group" || rowKind === "unmapped"
-                    readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
-                    readonly property bool hideLeaf: isLeaf && (deviceIndex === lv.editingHid || !lv.kidsOn)
+                    readonly property bool expanded: isLeaf && deviceIndex === lv.editingHid && seqIndex === lv.editingSeq && deviceIndex >= 0
+                    readonly property bool hideLeaf: isLeaf && !lv.kidsOn
                     height: hideLeaf ? 0 : ((isLeaf ? lv.childH : lv.parentH) + (expanded ? _editor.height + 8 : 0))
                     visible: !hideLeaf
 
@@ -568,7 +602,7 @@ Item {
                                 lv.currentIndex = index
                                 lv.syncSelection()
                                 if (rowKind === "leaf")
-                                    lv.openRow(deviceIndex)
+                                    lv.openRow(deviceIndex, seqIndex)
                             }
                         }
 
@@ -609,7 +643,7 @@ Item {
                                 implicitWidth: 56
                                 implicitHeight: 28
                                 z: 2
-                                onClicked: lv.addOnRow(deviceIndex, index)
+                                onClicked: lv.addOnRow(deviceIndex, index, this)
                             }
                             Button {
                                 visible: expanded && !lv.catalogLocked
@@ -626,14 +660,16 @@ Item {
                         id: _editor
                         active: expanded
                         visible: expanded
-                        x: _root.editorX(_row.width)
-                        y: lv.parentH + lv.edGap
-                        width: _root.editorW(_row.width)
+                        x: _root.leafX(_row.width)
+                        y: lv.childH + lv.edGap
+                        width: _root.leafW(_row.width)
                         height: visible && item ? Math.max(80, item.implicitHeight) : 0
                         onLoaded: if (item) item.width = width
                         onWidthChanged: if (item) item.width = width
                         sourceComponent: InputConfiguration {
                             inlineMode: true
+                            compactMode: true
+                            sequenceIndex: _row.seqIndex
                             isOutput: lv.catalogIsOutput
                             editorFill: lv.cEditor
                             editorEdge: lv.cEditorEdge
