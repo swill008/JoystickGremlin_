@@ -418,7 +418,7 @@ ApplicationWindow {
             title: qsTr("View")
 
             MenuItem {
-                text: qsTr("Status")
+                text: qsTr("Home")
                 onTriggered: () => { closeWorkRoom() }
             }
             MenuItem {
@@ -440,7 +440,7 @@ ApplicationWindow {
             }
             MenuSeparator {}
             Menu {
-                title: qsTr("Status split")
+                title: qsTr("Home split")
                 MenuItem { text: qsTr("None"); onTriggered: _moduleModel.setSplitMode("none") }
                 MenuItem { text: qsTr("Vertical — input | output"); onTriggered: _moduleModel.setSplitMode("vertical") }
                 MenuItem { text: qsTr("Horizontal — input / output"); onTriggered: _moduleModel.setSplitMode("horizontal") }
@@ -571,22 +571,12 @@ ApplicationWindow {
             anchors.fill: parent
 
             JGToolButton {
-                text: "\uF392"
-                tooltip: qsTr("Create new profile")
+                text: "\uF425"
+                caption: "Home"
+                color: (!uiState || uiState.currentRoom === "status") ? Style.accent : Style.foreground
+                tooltip: qsTr("Home screen")
 
-                onClicked: () => { requestNewProfile() }
-            }
-            JGToolButton {
-                text: "\uF356"
-                tooltip: qsTr("Save current profile")
-
-                onClicked: () => { saveCurrentProfile() }
-            }
-            JGToolButton {
-                text: "\uF358"
-                tooltip: qsTr("Load profile")
-
-                onClicked: () => { _loadProfileFileDialog.open() }
+                onClicked: () => { closeWorkRoom() }
             }
             JGToolButton {
                 text: "\uF448"
@@ -893,7 +883,7 @@ ApplicationWindow {
             }
             Item { Layout.fillWidth: true }
             Button {
-                text: "Status"
+                text: "Home"
                 Layout.rightMargin: 12
                 onClicked: closeWorkRoom()
             }
