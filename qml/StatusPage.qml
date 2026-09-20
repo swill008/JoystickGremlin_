@@ -12,6 +12,13 @@ import "helpers.js" as Helpers
 
 Item {
     id: _page
+    focus: true
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Escape) {
+            clearSelection()
+            event.accepted = true
+        }
+    }
 
     property var model: null
     property string pinSlug: ""
@@ -40,6 +47,8 @@ Item {
     property real grabOffX: 0
     property real grabOffY: 0
     property bool gotGrab: false
+    property var selectedSlugs: []
+    property int selectRev: 0
 
     signal focusSlug(string slug)
     signal openConfiguration(var card)
@@ -107,6 +116,58 @@ Item {
         return null
     }
 
+    function _selectHas(slug) {
+        return selectedSlugs.indexOf(slug) >= 0
+    }
+
+    function clearSelection() {
+        if (!selectedSlugs.length)
+            return
+        selectedSlugs = []
+        selectRev++
+        refreshCards()
+        forceActiveFocus()
+    }
+
+    function toggleSelect(card) {
+        if (!card || !card.slug)
+            return
+        var slug = card.slug
+        var dir = card.direction || ""
+        var list = selectedSlugs.slice()
+        if (list.length && model) {
+            var first = model.cardMap(list[0])
+            if (first && first.direction && dir && first.direction !== dir)
+                list = []
+        }
+        if (!list.length && model && model.focusedSlug && model.focusedSlug !== slug) {
+            var foc = model.cardMap(model.focusedSlug)
+            if (foc && (!dir || !foc.direction || foc.direction === dir))
+                list = [model.focusedSlug]
+        }
+        var i = list.indexOf(slug)
+        if (i >= 0)
+            list.splice(i, 1)
+        else
+            list.push(slug)
+        selectedSlugs = list
+        selectRev++
+        refreshCards()
+        forceActiveFocus()
+    }
+
+    function stackSelected(leader) {
+        if (!model || !leader)
+            return
+        var list = selectedSlugs.slice()
+        if (list.indexOf(leader) < 0 || list.length < 2)
+            return
+        model.stackSelected(leader, list.join(","))
+        selectedSlugs = []
+        selectRev++
+        refreshCards()
+    }
+
     function snapshotSlots(dragged, dir, dragCard) {
         var list = []
         if (!model)
@@ -169,10 +230,6 @@ Item {
         return before
     }
 
-    function pickStackAt(slug, gx, gy) {
-        return ""
-    }
-
     function nextLeader(slug, dir) {
         if (!model)
             return ""
@@ -189,15 +246,10 @@ Item {
         return ""
     }
 
-    function noteStackHover(candidate) {
-        stackCandidate = ""
-        dragStackSlug = ""
-        _stackDwell.stop()
-    }
-
     function beginDrag(card) {
         if (!card || !card.slug)
             return
+        clearSelection()
         var origin = card.mapToItem(_page, 0, 0)
         var mid = card.mapToItem(_page, card.width / 2, card.height / 2)
         dragOriginX = mid.x
@@ -221,7 +273,6 @@ Item {
         homeBefore = nextLeader(card.slug, dragDir)
         insertBefore = homeBefore
         dragSlug = card.slug
-        _stackDwell.stop()
     }
 
     function updateDragAt(sx, sy) {
@@ -248,7 +299,6 @@ Item {
     }
 
     function clearDrag() {
-        _stackDwell.stop()
         dragSlug = ""
         dragDir = ""
         dragName = ""
@@ -281,10 +331,13 @@ Item {
         card.hoverPeek = _page.hoverPeek
         card.pinActive = _page.pinSlug === card.slug
         card.onCardFocused.connect(function() {
+            _page.clearSelection()
             if (model)
                 model.raiseSlug(card.slug)
             _page.focusSlug(card.slug)
         })
+        card.shiftToggled.connect(function() { _page.toggleSelect(card) })
+        card.stackSelectedCards.connect(function() { _page.stackSelected(card.slug) })
         card.onOpenConfiguration.connect(function() { _page.openConfiguration(_page.pack(card)) })
         card.onConfigureModule.connect(function() { _page.configureModule(_page.pack(card)) })
         card.onPinControlDisplay.connect(function() { _page.pinControlDisplay(_page.pack(card)) })
@@ -354,13 +407,8 @@ Item {
         card.lastHardware = info.lastHardware || ""
         card.focused = !!info.focused
         card.pinActive = _page.pinSlug === card.slug
-    }
-
-    Timer {
-        id: _stackDwell
-        interval: 1500
-        repeat: false
-        onTriggered: { }
+        card.selected = _page._selectHas(card.slug)
+        card.canStackSelected = card.selected && selectedSlugs.length >= 2
     }
 
     ColumnLayout {
