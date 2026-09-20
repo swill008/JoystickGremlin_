@@ -439,6 +439,19 @@ Item {
         card.canStackSelected = card.selected && selectedSlugs.length >= 2
     }
 
+    onVisibleChanged: {
+        if (!visible)
+            return
+        clearDrag()
+        if (_inputPane)
+            _inputPane.dragLocks = 0
+        if (_outputPane)
+            _outputPane.dragLocks = 0
+        if (_allPane)
+            _allPane.dragLocks = 0
+        refreshCards()
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 12
@@ -531,6 +544,7 @@ Item {
                 onHeightChanged: if (_splitView.visible && !_splitView.applying) _ratioSave.restart()
             }
             StatusPane {
+                id: _outputPane
                 SplitView.minimumWidth: 180
                 SplitView.minimumHeight: 120
                 SplitView.fillWidth: true
@@ -541,6 +555,7 @@ Item {
         }
 
         StatusPane {
+            id: _allPane
             Layout.fillWidth: true
             Layout.fillHeight: visible
             visible: !_page.model || _page.model.splitMode === "none"
@@ -618,19 +633,24 @@ Item {
                     width: _flick.width
                     height: Math.max(_flick.height, _flow.implicitHeight)
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    preventStealing: false
                     onPressed: function(mouse) {
-                        if (_page.dragSlug.length)
+                        if (_page.dragSlug.length) {
+                            mouse.accepted = false
                             return
+                        }
                         var p = mapToItem(_page, mouse.x, mouse.y)
-                        if (_page.cardUnder(p.x, p.y))
+                        if (_page.cardUnder(p.x, p.y)) {
+                            mouse.accepted = false
                             return
+                        }
                         if (mouse.button === Qt.RightButton) {
                             _emptyMenu.popup()
                             return
                         }
-                        if (mouse.modifiers & Qt.ShiftModifier)
-                            return
-                        _page.deselectAll()
+                        if (!(mouse.modifiers & Qt.ShiftModifier))
+                            _page.deselectAll()
+                        mouse.accepted = false
                     }
                 }
 
