@@ -240,20 +240,33 @@ class DeviceLiveState(QtCore.QObject):
             return None
         return None
 
+    def _gremlin_running(self) -> bool:
+        try:
+            return bool(event_handler.EventListener().gremlin_active)
+        except Exception:
+            return False
+
     def _poll_output(self) -> None:
-        """Dest live: feeder if Gremlin acquired this module; HID while Active."""
+        """vJoy dest Configuration live: this output module's feeder only."""
         if not self._live_while_active:
             return
-        active = bool(shared_state.runtime_active())
-        self._set_driven(active)
-        if not active or not self._vjoy_id or not self._values:
+        if not self._vjoy_id:
+            self._resolve_vjoy()
+        running = self._gremlin_running()
+        if not running:
+            self._set_driven(False)
             return
         try:
             from vjoy.vjoy import HatDirection
             dev = self._feeder_device()
         except Exception:
+            self._set_driven(False)
             return
         if dev is None:
+            self._set_driven(False)
+            return
+        self._set_driven(True)
+        if not self._values:
             return
         changed = False
         axis_count = int(self._device.axis_count) if self._device is not None else 0
@@ -264,15 +277,19 @@ class DeviceLiveState(QtCore.QObject):
                 if kind == "axis":
                     try:
                         axis_id = int(self._device.axis_map[i].axis_index)
-                        value = float(dev.axis(axis_id=axis_id).value)
+                        axis_obj = dev.axis(axis_id=axis_id)
                     except Exception:
-                        value = float(dev.axis(linear_index=i + 1).value)
+                        axis_obj = dev.axis(linear_index=i + 1)
+                    value = float(getattr(axis_obj, "_value", 0.0))
                 elif kind == "button":
                     btn_id = i - axis_count + 1
-                    value = 1.0 if dev.button(btn_id).is_pressed else 0.0
+                    btn = dev.button(btn_id)
+                    value = 1.0 if bool(getattr(btn, "_is_pressed", False)) else 0.0
                 elif kind == "hat":
                     hat_id = i - axis_count - button_count + 1
-                    direction = dev.hat(hat_id).direction
+                    direction = getattr(dev.hat(hat_id), "_direction", None)
+                    if direction is None:
+                        direction = dev.hat(hat_id).direction
                     center = getattr(HatDirection, "Center", (0, 0))
                     value = 0.0 if direction == center else 1.0
             except Exception:
@@ -334,9 +351,9 @@ class DeviceLiveState(QtCore.QObject):
         return _extract_uuid(event.device_guid) == _extract_uuid(self._guid)
 
     def _on_event(self, event: event_handler.Event) -> None:
-        if self._live_while_active and not shared_state.runtime_active():
+        if self._live_while_active:
             return
-        if not self._live_while_active and self._get_locked():
+        if self._get_locked():
             return
         if self._device is None or self._device_uuid is None:
             return
