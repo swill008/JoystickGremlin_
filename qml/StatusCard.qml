@@ -43,6 +43,7 @@ Rectangle {
 
     signal cardFocused()
     signal openConfiguration()
+    signal openOutputView()
     signal configureModule()
     signal pinControlDisplay()
     signal autoMap()
@@ -274,6 +275,19 @@ Rectangle {
         ToolTip.delay: 400
     }
 
+    Button {
+        visible: _card.direction === "dest"
+        z: 32
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 16
+        anchors.rightMargin: 16
+        y: _body.y + _photoWell.y + _photoWell.height - 34
+        height: 28
+        text: "Output View"
+        onClicked: _card.openOutputView()
+    }
+
     function _clampW(w) { return Math.max(220, Math.min(720, w)) }
     function _clampH(h) { return Math.max(140, Math.min(520, h)) }
 
@@ -358,7 +372,10 @@ Rectangle {
     Menu {
         id: _menu
 
-        MenuItem { text: "Open Configuration"; onTriggered: _card.openConfiguration() }
+        MenuItem {
+            text: direction === "dest" ? "Output View" : "Open Configuration"
+            onTriggered: direction === "dest" ? _card.openOutputView() : _card.openConfiguration()
+        }
         MenuItem {
             text: direction === "dest" ? "Configure output module" : "Configure input module"
             onTriggered: _card.configureModule()
