@@ -1051,8 +1051,8 @@ ApplicationWindow {
 
                 visible: uiState && uiState.currentTab === "physical"
                 SplitView.minimumWidth: 400
-                SplitView.minimumHeight: 160
-                SplitView.preferredHeight: 300
+                SplitView.fillWidth: true
+                SplitView.fillHeight: true
 
                 device: _deviceModel
                 moduleModel: _moduleModel
@@ -1105,7 +1105,7 @@ ApplicationWindow {
                 id: _inputConfigurationPanel
                 isOutput: _root.configDirection === "dest"
 
-                visible: uiState && !["scripts", "settings", "xbox"].includes(uiState.currentTab)
+                visible: uiState && !["scripts", "settings", "xbox", "physical"].includes(uiState.currentTab)
 
                 Component.onCompleted: () => {
                     if (backend && uiState) {
