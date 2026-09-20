@@ -31,6 +31,11 @@ Item {
     property real dragOriginX: 0
     property real dragOriginY: 0
     property real stackTravel: 120
+    property real floatX: 0
+    property real floatY: 0
+    property real grabOffX: 0
+    property real grabOffY: 0
+    property bool gotGrab: false
 
     signal focusSlug(string slug)
     signal openConfiguration(var card)
@@ -69,34 +74,17 @@ Item {
         _liveCards = _liveCards.filter(function(item) { return item !== card })
     }
 
-    function overlapArea(a, b) {
-        var ap = a.mapToItem(_page, 0, 0)
-        var bp = b.mapToItem(_page, 0, 0)
-        var ox = Math.min(ap.x + a.width, bp.x + b.width) - Math.max(ap.x, bp.x)
-        var oy = Math.min(ap.y + a.height, bp.y + b.height) - Math.max(ap.y, bp.y)
-        if (ox <= 0 || oy <= 0)
-            return 0
-        return ox * oy
-    }
-
     function paneDir(card) {
         if (_page.model && _page.model.splitMode !== "none")
             return card.direction
         return ""
     }
 
-    function pickTarget(card) {
+    function pickTargetAt(slug, gx, gy) {
         var out = { stack: "", before: "" }
-        if (!model || !card || !card.slug)
+        if (!model || !slug)
             return out
-        var slug = card.slug
-        var mid = card.mapToItem(_page, card.width / 2, card.height / 2)
-        var gx = mid.x
-        var gy = mid.y
-        var best = null
-        var bestArea = 0
-        var bestC = 1e12
-        var dir = paneDir(card)
+        var dir = dragDir
         var leaders = {}
         var leaderList = model.pileLeaders(dir)
         for (var li = 0; li < leaderList.length; ++li)
@@ -106,30 +94,40 @@ Item {
         for (var mi = 0; mi < members.length; ++mi)
             homePile[members[mi]] = true
         var slots = []
+        var best = null
+        var bestArea = 0
+        var bestC = 1e12
+        var fw = ghostW
+        var fh = ghostH
+        var fx = gx - fw / 2
+        var fy = gy - fh / 2
         for (var i = 0; i < _liveCards.length; ++i) {
             var other = _liveCards[i]
             if (!other || !other.slug || other.slug === slug)
                 continue
-            if (dir && other.direction !== card.direction)
+            if (dir && other.direction !== dragDir && dragDir.length)
                 continue
             var origin = other.mapToItem(_page, 0, 0)
-            var p = other.mapToItem(_page, other.width / 2, other.height / 2)
+            var cx = origin.x + other.width / 2
+            var cy = origin.y + other.height / 2
             if (leaders[other.slug]) {
                 var left = origin.x
                 if (insertBefore === other.slug && ghostW > 0 && !dragStackSlug)
                     left += ghostW + 16
                 slots.push({
                     slug: other.slug,
-                    x: left + Math.min(other.width, card.width) / 2,
-                    y: p.y,
+                    x: left + Math.min(other.width, fw) / 2,
+                    y: cy,
                     left: left,
                     top: origin.y,
                     w: other.width,
                     h: other.height
                 })
             }
-            var area = overlapArea(card, other)
-            var cdist = Math.sqrt((gx - p.x) * (gx - p.x) + (gy - p.y) * (gy - p.y))
+            var ox = Math.min(fx + fw, origin.x + other.width) - Math.max(fx, origin.x)
+            var oy = Math.min(fy + fh, origin.y + other.height) - Math.max(fy, origin.y)
+            var area = (ox > 0 && oy > 0) ? ox * oy : 0
+            var cdist = Math.sqrt((gx - cx) * (gx - cx) + (gy - cy) * (gy - cy))
             if (area > bestArea) {
                 bestArea = area
                 best = other
@@ -139,11 +137,8 @@ Item {
         var dx = gx - dragOriginX
         var dy = gy - dragOriginY
         var traveled = Math.sqrt(dx * dx + dy * dy)
-        var heavy = card.width * card.height * 0.55
-        var close = Math.min(card.width, card.height) * 0.22
-        // Reorder is the default. Stack only after the card has left home
-        // and is sitting on another card's face — not the neighbor that
-        // slid into the collapsed slot, and not the rest of its own pile.
+        var heavy = fw * fh * 0.55
+        var close = Math.min(fw, fh) * 0.22
         if (traveled >= stackTravel && best && !homePile[best.slug] && bestArea >= heavy && bestC < close) {
             out.stack = best.slug
             pendingStackW = Math.round(best.width)
@@ -171,9 +166,21 @@ Item {
         return out
     }
 
+    function nextLeader(slug, dir) {
+        if (!model)
+            return ""
+        var list = model.pileLeaders(dir)
+        for (var i = 0; i < list.length; ++i) {
+            if (list[i] === slug)
+                return (i + 1 < list.length) ? list[i + 1] : ""
+        }
+        return ""
+    }
+
     function beginDrag(card) {
         if (!card || !card.slug)
             return
+        var origin = card.mapToItem(_page, 0, 0)
         var mid = card.mapToItem(_page, card.width / 2, card.height / 2)
         dragOriginX = mid.x
         dragOriginY = mid.y
@@ -184,28 +191,46 @@ Item {
         dragPhoto = card.photo || ""
         ghostW = Math.round(card.width)
         ghostH = Math.round(card.height)
-        insertBefore = ""
+        floatX = origin.x
+        floatY = origin.y
+        gotGrab = false
+        grabOffX = 0
+        grabOffY = 0
         dragStackSlug = ""
         pendingStackW = 0
         pendingStackH = 0
-        updateDrag(card)
+        insertBefore = nextLeader(card.slug, dragDir)
     }
 
-    function updateDrag(card) {
-        if (!dragSlug || !card)
+    function updateDragAt(sx, sy) {
+        if (!dragSlug)
             return
-        var t = pickTarget(card)
+        var p = _page.mapFromItem(null, sx, sy)
+        if (!gotGrab) {
+            grabOffX = p.x - floatX
+            grabOffY = p.y - floatY
+            gotGrab = true
+        }
+        floatX = p.x - grabOffX
+        floatY = p.y - grabOffY
+        var gx = floatX + ghostW / 2
+        var gy = floatY + ghostH / 2
+        var t = pickTargetAt(dragSlug, gx, gy)
         if (t.stack) {
             if (dragStackSlug !== t.stack)
                 dragStackSlug = t.stack
             if (insertBefore !== "")
                 insertBefore = ""
-        } else {
-            if (dragStackSlug !== "")
-                dragStackSlug = ""
-            if (insertBefore !== t.before)
-                insertBefore = t.before
+            return
         }
+        if (dragStackSlug !== "")
+            dragStackSlug = ""
+        var dx = gx - dragOriginX
+        var dy = gy - dragOriginY
+        if (Math.sqrt(dx * dx + dy * dy) < 16)
+            return
+        if (insertBefore !== t.before)
+            insertBefore = t.before
     }
 
     function clearDrag() {
@@ -217,24 +242,21 @@ Item {
         dragStackSlug = ""
         pendingStackW = 0
         pendingStackH = 0
+        gotGrab = false
     }
 
-    function handleDrop(slug, card) {
+    function handleDrop(slug) {
         if (!model || !slug) {
             clearDrag()
             return
         }
-        var stackTo = dragStackSlug
-        var before = insertBefore
+        var gx = floatX + ghostW / 2
+        var gy = floatY + ghostH / 2
+        var t = pickTargetAt(slug, gx, gy)
+        var stackTo = t.stack
+        var before = t.before
         var stackW = pendingStackW
         var stackH = pendingStackH
-        if (card) {
-            var t = pickTarget(card)
-            stackTo = t.stack
-            before = t.before
-            stackW = pendingStackW
-            stackH = pendingStackH
-        }
         clearDrag()
         if (stackTo) {
             model.stackSlugs(slug, stackTo)
@@ -265,8 +287,8 @@ Item {
         card.onAssignHardware.connect(function() { _page.assignHardware(_page.pack(card)) })
         card.onIgnoreDevice.connect(function() { _page.ignoreDevice(_page.pack(card)) })
         card.dragStarted.connect(function() { _page.beginDrag(card) })
-        card.dragMoved.connect(function() { _page.updateDrag(card) })
-        card.dropAt.connect(function() { _page.handleDrop(card.slug, card) })
+        card.dragMovedAt.connect(function(sx, sy) { _page.updateDragAt(sx, sy) })
+        card.dropAt.connect(function() { _page.handleDrop(card.slug) })
         card.onSizeChanged.connect(function(w, h) {
             if (model)
                 model.setPileSize(card.slug, w, h)
@@ -436,7 +458,6 @@ Item {
     }
 
     component SlotGhost: Rectangle {
-        id: _ghost
         radius: 4
         color: "#3318181B"
         border.width: 2
@@ -545,8 +566,6 @@ Item {
                             z: dragging || isDragHome ? 10000 : 0
                             clip: false
 
-                            Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-
                             function freezeSlot() {
                                 dragging = true
                                 _pane.dragLocks += 1
@@ -578,6 +597,7 @@ Item {
                                     width: _pile.cardW
                                     height: _pile.cardH > 0 ? _pile.cardH : implicitHeight
                                     dropStacking: _page.dragStackSlug === slug
+                                    opacity: _page.dragSlug === slug ? 0 : 1
                                     onLiftingChanged: {
                                         if (lifting)
                                             _pile.freezeSlot()
@@ -599,6 +619,44 @@ Item {
                         height: _page.ghostH
                     }
                 }
+            }
+        }
+    }
+
+    Item {
+        id: _float
+        visible: _page.dragSlug.length > 0
+        z: 100000
+        x: _page.floatX
+        y: _page.floatY
+        width: _page.ghostW
+        height: _page.ghostH
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 4
+            color: "#18181B"
+            border.width: 2
+            border.color: _page.dragStackSlug.length ? "#22C55E" : "#E4E4E7"
+
+            Image {
+                anchors.fill: parent
+                anchors.margins: 10
+                source: _page.dragPhoto
+                fillMode: Image.PreserveAspectFit
+                visible: _page.dragPhoto && _page.dragPhoto.length
+                asynchronous: true
+                cache: true
+            }
+
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 12
+                text: _page.dragName
+                color: "#E4E4E7"
+                font.pixelSize: 13
+                font.bold: true
             }
         }
     }
