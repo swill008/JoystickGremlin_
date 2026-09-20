@@ -302,9 +302,16 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._refresh_timer.setSingleShot(True)
         self._refresh_timer.setInterval(50)
         self._refresh_timer.timeout.connect(self._refresh_inplace)
+        self._dest_snap: dict[str, dict] = {}
         self._reload()
         event_handler.EventListener().device_change_event.connect(self._schedule_reload)
-        event_handler.EventListener().joystick_event.connect(self._on_joy)
+        from gremlin.input_module_runtime import InputModuleRuntime
+
+        InputModuleRuntime().event.connect(self._on_joy)
+        self._dest_timer = QtCore.QTimer(self)
+        self._dest_timer.setInterval(50)
+        self._dest_timer.timeout.connect(self._poll_dest_last)
+        self._dest_timer.start()
         signal.profileChanged.connect(self._schedule_reload)
         signal.configChanged.connect(self._schedule_refresh)
 
@@ -821,21 +828,31 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def _on_joy(self, event: event_handler.Event) -> None:
         if event is None:
             return
+        from gremlin.input_module_gate import claim_allows, event_kind, status_last_from_hid
+
         guid = _norm_guid(event.device_guid)
         row = next((r for r in self._rows if _norm_guid(r.guid) == guid), None)
         if row is None:
             return
-        kind = "button"
-        hid = int(getattr(event, "identifier", 0) or 0)
-        et = getattr(event, "event_type", None)
-        if et == InputType.JoystickAxis:
-            kind = "axis"
-        elif et == InputType.JoystickHat:
-            kind = "hat"
-        hardware = f"{kind} {hid}"
+        if not status_last_from_hid(row.direction):
+            return
+        kind = event_kind(getattr(event, "event_type", None)) or "button"
+        try:
+            hid = int(getattr(event, "identifier", 0) or 0)
+        except (TypeError, ValueError):
+            return
         doc = _load_module_doc(row.raw_name or row.name)
-        claim = _claim_from_doc(doc) if doc else {"friendly": {}}
-        friendly = claim.get("friendly", {}).get(f"{kind}:{hid}", "") or hardware.replace(
+        claim = _claim_from_doc(doc) if doc else {}
+        has_claim = bool(
+            (claim.get("axes") or claim.get("buttons") or claim.get("hats") or claim.get("keys"))
+        )
+        if has_claim and not claim_allows(claim, kind, hid):
+            return
+        self._set_last(row, kind, hid, claim)
+
+    def _set_last(self, row: ModuleRow, kind: str, hid: int, claim: dict | None) -> None:
+        hardware = f"{kind} {hid}"
+        friendly = (claim or {}).get("friendly", {}).get(f"{kind}:{hid}", "") or hardware.replace(
             "button", "Button"
         ).replace("axis", "Axis").replace("hat", "Hat")
         self._last[row.slug] = (friendly, hardware)
@@ -846,6 +863,60 @@ class ModuleListModel(QtCore.QAbstractListModel):
             [QtCore.Qt.ItemDataRole.UserRole + 18, QtCore.Qt.ItemDataRole.UserRole + 19],
         )
         self.lastChanged.emit()
+
+    def _poll_dest_last(self) -> None:
+        from gremlin.input_module_gate import dest_last_change
+
+        try:
+            from vjoy.vjoy import VJoyProxy
+
+            devices = VJoyProxy.vjoy_devices or {}
+        except Exception:
+            return
+        if not devices:
+            return
+        for row in self._rows:
+            if row.direction != "dest":
+                continue
+            digits = "".join(ch for ch in (row.name or "") if ch.isdigit())
+            if not digits:
+                continue
+            vid = int(digits)
+            dev = devices.get(vid)
+            if dev is None:
+                for key, item in devices.items():
+                    try:
+                        if int(key) == vid or int(getattr(item, "vjoy_id", 0) or 0) == vid:
+                            dev = item
+                            break
+                    except Exception:
+                        continue
+            if dev is None:
+                continue
+            snap: dict[tuple[str, int], float] = {}
+            for axis_id in range(1, 9):
+                try:
+                    axis_obj = dev.axis(axis_id=axis_id)
+                    snap[("axis", axis_id)] = float(getattr(axis_obj, "_value", 0.0))
+                except Exception:
+                    continue
+            for btn_id in range(1, 129):
+                try:
+                    btn = dev.button(btn_id)
+                    snap[("button", btn_id)] = (
+                        1.0 if bool(getattr(btn, "_is_pressed", False)) else 0.0
+                    )
+                except Exception:
+                    break
+            prev = self._dest_snap.get(row.slug)
+            self._dest_snap[row.slug] = snap
+            changed = dest_last_change(prev or {}, snap)
+            if changed is None:
+                continue
+            kind, hid = changed
+            doc = _load_module_doc(row.raw_name or row.name)
+            claim = _claim_from_doc(doc) if doc else {}
+            self._set_last(row, kind, hid, claim)
 
     def _reload(self) -> None:
         hidden = _hidden_slugs()
