@@ -213,12 +213,13 @@ class DeviceLiveState(QtCore.QObject):
             self._vjoy_id = 0
 
     def _sync_poll(self) -> None:
-        if self._live_while_active and self._vjoy_id:
+        if self._live_while_active:
             if not self._poll.isActive():
                 self._poll.start()
             self._poll_output()
         else:
             self._poll.stop()
+            self._set_driven(False)
 
     def _feeder_device(self):
         try:
@@ -322,6 +323,16 @@ class DeviceLiveState(QtCore.QObject):
             value = max(-1.0, min(1.0, value))
         return value
 
+    def _event_is_this_device(self, event: event_handler.Event) -> bool:
+        if self._device_uuid is not None:
+            raw = event.device_guid
+            if isinstance(raw, uuid.UUID) and raw == self._device_uuid:
+                return True
+            nested = getattr(raw, "uuid", None)
+            if isinstance(nested, uuid.UUID) and nested == self._device_uuid:
+                return True
+        return _extract_uuid(event.device_guid) == _extract_uuid(self._guid)
+
     def _on_event(self, event: event_handler.Event) -> None:
         if self._live_while_active and not shared_state.runtime_active():
             return
@@ -329,7 +340,7 @@ class DeviceLiveState(QtCore.QObject):
             return
         if self._device is None or self._device_uuid is None:
             return
-        if _extract_uuid(event.device_guid) != _extract_uuid(self._guid):
+        if not self._event_is_this_device(event):
             return
         if event.event_type == InputType.JoystickAxis:
             row = self._axis_row(event.identifier)
