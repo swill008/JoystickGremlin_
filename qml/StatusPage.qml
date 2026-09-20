@@ -34,7 +34,7 @@ Item {
     property real dragOriginX: 0
     property real dragOriginY: 0
     property real stackTravel: 120
-    property real insertTravel: 48
+    property real insertTravel: 24
     property real floatX: 0
     property real floatY: 0
     property real grabOffX: 0
@@ -112,13 +112,6 @@ Item {
         if (!model)
             return
         var leaders = model.pileLeaders(dir)
-        var dleft = 0
-        var dw = ghostW
-        if (dragCard) {
-            var dpos = dragCard.mapToItem(_page, 0, 0)
-            dleft = dpos.x
-            dw = dragCard.width
-        }
         var skip = dragged
         for (var k = 0; k < leaders.length; ++k) {
             var mem = model.pileMembers(leaders[k])
@@ -135,13 +128,14 @@ Item {
             if (!card)
                 continue
             var o = card.mapToItem(_page, 0, 0)
-            var left = o.x
-            if (left > dleft)
-                left -= dw + 16
+            // Keep original positions. Compacting put the next card's
+            // center on the one you picked up, so a few pixels right
+            // already counted as "past it" (~20%) while left needed a
+            // full cover (~90%).
             list.push({
                 slug: s,
-                left: left,
-                mid: left + card.width / 2,
+                left: o.x,
+                mid: o.x + card.width / 2,
                 top: o.y,
                 y: o.y + card.height / 2,
                 w: card.width,
@@ -163,7 +157,9 @@ Item {
             if (!sameRow)
                 continue
             hit = true
-            if (gx <= s.mid) {
+            // Float center vs the card's left edge: ~50% overlap from
+            // either side, same distance in both directions.
+            if (gx <= s.left) {
                 before = s.slug
                 break
             }
@@ -174,51 +170,6 @@ Item {
     }
 
     function pickStackAt(slug, gx, gy) {
-        if (!model || !slug)
-            return ""
-        var dir = dragDir
-        var homePile = {}
-        var members = model.pileMembers(slug)
-        for (var mi = 0; mi < members.length; ++mi)
-            homePile[members[mi]] = true
-        var best = null
-        var bestArea = 0
-        var bestC = 1e12
-        var fw = ghostW
-        var fh = ghostH
-        var fx = gx - fw / 2
-        var fy = gy - fh / 2
-        for (var i = 0; i < _liveCards.length; ++i) {
-            var other = _liveCards[i]
-            if (!cardOnPage(other) || other.slug === slug)
-                continue
-            if (dir && other.direction !== dragDir && dragDir.length)
-                continue
-            var origin = other.mapToItem(_page, 0, 0)
-            var cx = origin.x + other.width / 2
-            var cy = origin.y + other.height / 2
-            var ox = Math.min(fx + fw, origin.x + other.width) - Math.max(fx, origin.x)
-            var oy = Math.min(fy + fh, origin.y + other.height) - Math.max(fy, origin.y)
-            var area = (ox > 0 && oy > 0) ? ox * oy : 0
-            var cdist = Math.sqrt((gx - cx) * (gx - cx) + (gy - cy) * (gy - cy))
-            if (area > bestArea) {
-                bestArea = area
-                best = other
-                bestC = cdist
-            }
-        }
-        var dx = gx - dragOriginX
-        var dy = gy - dragOriginY
-        var traveled = Math.sqrt(dx * dx + dy * dy)
-        var heavy = fw * fh * 0.55
-        var close = Math.min(fw, fh) * 0.22
-        if (traveled >= stackTravel && best && !homePile[best.slug] && bestArea >= heavy && bestC < close) {
-            pendingStackW = Math.round(best.width)
-            pendingStackH = Math.round(best.height)
-            return best.slug
-        }
-        pendingStackW = 0
-        pendingStackH = 0
         return ""
     }
 
@@ -239,14 +190,9 @@ Item {
     }
 
     function noteStackHover(candidate) {
-        if (candidate === stackCandidate)
-            return
-        stackCandidate = candidate
-        if (dragStackSlug !== "")
-            dragStackSlug = ""
+        stackCandidate = ""
+        dragStackSlug = ""
         _stackDwell.stop()
-        if (candidate.length)
-            _stackDwell.restart()
     }
 
     function beginDrag(card) {
@@ -294,9 +240,6 @@ Item {
         var dx = gx - dragOriginX
         var dy = gy - dragOriginY
         var traveled = Math.sqrt(dx * dx + dy * dy)
-        noteStackHover(pickStackAt(dragSlug, gx, gy))
-        if (dragStackSlug.length)
-            return
         if (traveled < insertTravel)
             return
         var before = pickInsertFromSnap(gx, gy)
@@ -325,18 +268,9 @@ Item {
             clearDrag()
             return
         }
-        var stackTo = dragStackSlug
         var before = insertBefore
         var home = homeBefore
-        var stackW = pendingStackW
-        var stackH = pendingStackH
         clearDrag()
-        if (stackTo) {
-            model.stackSlugs(slug, stackTo)
-            if (stackW > 0 && stackH > 0)
-                model.setPileSize(stackTo, stackW, stackH)
-            return
-        }
         if (before === home)
             return
         model.unstackSlug(slug)
@@ -426,12 +360,7 @@ Item {
         id: _stackDwell
         interval: 1500
         repeat: false
-        onTriggered: {
-            if (!_page.dragSlug.length || !_page.stackCandidate.length)
-                return
-            _page.dragStackSlug = _page.stackCandidate
-            _page.insertBefore = ""
-        }
+        onTriggered: { }
     }
 
     ColumnLayout {
@@ -691,7 +620,7 @@ Item {
                                     stacked: _pile.members.length > 1
                                     width: _pile.cardW
                                     height: _pile.cardH > 0 ? _pile.cardH : implicitHeight
-                                    dropStacking: _page.dragStackSlug === slug
+                                    dropStacking: false
                                     opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1
                                     onLiftingChanged: {
                                         if (lifting)
@@ -732,7 +661,7 @@ Item {
             radius: 4
             color: "#18181B"
             border.width: 2
-            border.color: _page.dragStackSlug.length ? "#22C55E" : "#E4E4E7"
+            border.color: "#E4E4E7"
 
             Image {
                 anchors.fill: parent
