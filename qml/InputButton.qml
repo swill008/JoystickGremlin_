@@ -24,7 +24,9 @@ Button {
     readonly property bool _buttonActive: inputKind === "button" && liveValue > 0.5
     readonly property bool _hatActive: inputKind === "hat" && liveValue > 0.5
     readonly property bool _axisActive: inputKind === "axis"
-    readonly property bool _ledOn: _buttonActive || _hatActive
+    readonly property bool _outputScreen: !!(liveState && liveState.liveWhileActive)
+    readonly property bool _outputDriven: !_outputScreen || !!(liveState && liveState.driven)
+    readonly property bool _ledOn: _outputDriven && (_buttonActive || _hatActive)
 
     signal renameRequested()
 
@@ -132,7 +134,9 @@ Button {
             color: Style.lowColor
 
             Rectangle {
-                width: Math.max(0, Math.min(parent.width, parent.width * ((liveValue + 1.0) * 0.5)))
+                width: _outputDriven
+                       ? Math.max(0, Math.min(parent.width, parent.width * ((liveValue + 1.0) * 0.5)))
+                       : 0
                 height: parent.height
                 color: "#22C55E"
             }
