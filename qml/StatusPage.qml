@@ -28,6 +28,9 @@ Item {
     property int ghostH: 240
     property int pendingStackW: 0
     property int pendingStackH: 0
+    property real dragOriginX: 0
+    property real dragOriginY: 0
+    property real stackTravel: 120
 
     signal focusSlug(string slug)
     signal openConfiguration(var card)
@@ -98,6 +101,10 @@ Item {
         var leaderList = model.pileLeaders(dir)
         for (var li = 0; li < leaderList.length; ++li)
             leaders[leaderList[li]] = true
+        var homePile = {}
+        var members = model.pileMembers(slug)
+        for (var mi = 0; mi < members.length; ++mi)
+            homePile[members[mi]] = true
         var slots = []
         for (var i = 0; i < _liveCards.length; ++i) {
             var other = _liveCards[i]
@@ -129,8 +136,15 @@ Item {
                 bestC = cdist
             }
         }
-        var heavy = card.width * card.height * 0.45
-        if (best && bestArea >= heavy && bestC < Math.min(card.width, card.height) * 0.35) {
+        var dx = gx - dragOriginX
+        var dy = gy - dragOriginY
+        var traveled = Math.sqrt(dx * dx + dy * dy)
+        var heavy = card.width * card.height * 0.55
+        var close = Math.min(card.width, card.height) * 0.22
+        // Reorder is the default. Stack only after the card has left home
+        // and is sitting on another card's face — not the neighbor that
+        // slid into the collapsed slot, and not the rest of its own pile.
+        if (traveled >= stackTravel && best && !homePile[best.slug] && bestArea >= heavy && bestC < close) {
             out.stack = best.slug
             pendingStackW = Math.round(best.width)
             pendingStackH = Math.round(best.height)
@@ -160,6 +174,10 @@ Item {
     function beginDrag(card) {
         if (!card || !card.slug)
             return
+        var mid = card.mapToItem(_page, card.width / 2, card.height / 2)
+        dragOriginX = mid.x
+        dragOriginY = mid.y
+        stackTravel = Math.max(110, Math.min(card.width, card.height) * 0.5)
         dragSlug = card.slug
         dragDir = paneDir(card)
         dragName = card.cardName || ""
@@ -197,6 +215,8 @@ Item {
         dragPhoto = ""
         insertBefore = ""
         dragStackSlug = ""
+        pendingStackW = 0
+        pendingStackH = 0
     }
 
     function handleDrop(slug, card) {
