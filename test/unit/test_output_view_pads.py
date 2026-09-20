@@ -28,3 +28,10 @@ def test_button_columns_to_one_and_stacked_label() -> None:
     assert "from: 1; to: 16" in text
     assert "Math.max(1, _root.buttonColumns)" in text
     assert 'text: "Button"' in text
+
+
+def test_show_meters_checkbox() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    assert 'text: "Show meters"' in text
+    assert "metersOn" in text
+    assert "readonly property bool showMeters" not in text
