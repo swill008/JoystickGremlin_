@@ -65,12 +65,26 @@ Item {
     ListModel { id: axisModel }
     ListModel { id: buttonModel }
     ListModel { id: hatModel }
+    property var axisPick: [{ "hw": 0, "label": "Off" }]
 
     function axisShort(hw, name) {
         var map = { 1: "X", 2: "Y", 3: "Z", 4: "Rx", 5: "Ry", 6: "Rz", 7: "S1", 8: "S2" }
         if (map[hw])
             return map[hw]
         return name || ("A" + hw)
+    }
+
+    function axisLabel(hw, name) {
+        return axisShort(hw, name) + " — Axis " + hw
+    }
+
+    function fillAxisPick() {
+        var pick = [{ "hw": 0, "label": "Off" }]
+        for (var i = 0; i < axisModel.count; ++i) {
+            var row = axisModel.get(i)
+            pick.push({ "hw": row.hw, "label": axisLabel(row.hw, row.name) })
+        }
+        axisPick = pick
     }
 
     function liveVal(idx) {
@@ -193,6 +207,7 @@ Item {
                 else if (kind === "hat")
                     hatModel.append(rec)
             }
+            fillAxisPick()
             return
         }
         for (var j = 0; j < 128; ++j) {
@@ -207,6 +222,7 @@ Item {
             else if (k === "hat")
                 hatModel.append({ "idx": j, "hw": hw, "name": "Hat " + hw })
         }
+        fillAxisPick()
     }
 
     Component.onCompleted: { loadView(); rebuild() }
@@ -409,8 +425,8 @@ Item {
 
         Rectangle {
             visible: _root.showPanel
-            Layout.preferredWidth: 320
-            Layout.maximumWidth: 320
+            Layout.preferredWidth: 360
+            Layout.maximumWidth: 360
             Layout.fillHeight: true
             color: "#18181B"
             border.color: "#3F3F46"
@@ -441,7 +457,7 @@ Item {
                     Layout.fillHeight: true
                     clip: true
                     ColumnLayout {
-                        width: 290
+                        width: 330
                         spacing: 8
 
                         Label { text: "LAYOUT"; color: "#A1A1AA"; font.pixelSize: 10 }
@@ -455,15 +471,79 @@ Item {
                         }
 
                         Label { text: "PADS"; color: "#A1A1AA"; font.pixelSize: 10 }
-                        Label { text: "X / Y"; color: "#E4E4E7"; font.pixelSize: 11 }
+                        Label { text: "X / Y pad"; color: "#E4E4E7"; font.pixelSize: 11 }
                         RowLayout {
-                            SpinBox { from: 0; to: 8; value: padAX; onValueModified: padAX = value; Layout.fillWidth: true }
-                            SpinBox { from: 0; to: 8; value: padAY; onValueModified: padAY = value; Layout.fillWidth: true }
+                            Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: {
+                                    var labels = []
+                                    for (var i = 0; i < axisPick.length; ++i)
+                                        labels.push(axisPick[i].label)
+                                    return labels
+                                }
+                                currentIndex: {
+                                    for (var i = 0; i < axisPick.length; ++i)
+                                        if (axisPick[i].hw === padAX) return i
+                                    return 0
+                                }
+                                onActivated: padAX = axisPick[currentIndex].hw
+                            }
                         }
-                        Label { text: "Rx / Ry  (0 = hide)"; color: "#E4E4E7"; font.pixelSize: 11 }
                         RowLayout {
-                            SpinBox { from: 0; to: 8; value: padBX; onValueModified: padBX = value; Layout.fillWidth: true }
-                            SpinBox { from: 0; to: 8; value: padBY; onValueModified: padBY = value; Layout.fillWidth: true }
+                            Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: {
+                                    var labels = []
+                                    for (var i = 0; i < axisPick.length; ++i)
+                                        labels.push(axisPick[i].label)
+                                    return labels
+                                }
+                                currentIndex: {
+                                    for (var i = 0; i < axisPick.length; ++i)
+                                        if (axisPick[i].hw === padAY) return i
+                                    return 0
+                                }
+                                onActivated: padAY = axisPick[currentIndex].hw
+                            }
+                        }
+                        Label { text: "Rx / Ry pad"; color: "#E4E4E7"; font.pixelSize: 11 }
+                        RowLayout {
+                            Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: {
+                                    var labels = []
+                                    for (var i = 0; i < axisPick.length; ++i)
+                                        labels.push(axisPick[i].label)
+                                    return labels
+                                }
+                                currentIndex: {
+                                    for (var i = 0; i < axisPick.length; ++i)
+                                        if (axisPick[i].hw === padBX) return i
+                                    return 0
+                                }
+                                onActivated: padBX = axisPick[currentIndex].hw
+                            }
+                        }
+                        RowLayout {
+                            Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: {
+                                    var labels = []
+                                    for (var i = 0; i < axisPick.length; ++i)
+                                        labels.push(axisPick[i].label)
+                                    return labels
+                                }
+                                currentIndex: {
+                                    for (var i = 0; i < axisPick.length; ++i)
+                                        if (axisPick[i].hw === padBY) return i
+                                    return 0
+                                }
+                                onActivated: padBY = axisPick[currentIndex].hw
+                            }
                         }
                         CheckBox { text: "Show hats"; checked: showHats; onToggled: showHats = checked }
 
@@ -478,14 +558,28 @@ Item {
                             Label { text: "Width"; color: "#E4E4E7" }
                             SpinBox { from: 12; to: 48; value: meterWidth; onValueModified: meterWidth = value }
                         }
-                        Repeater {
-                            model: axisModel
-                            delegate: CheckBox {
-                                required property int hw
-                                required property string name
-                                text: axisShort(hw, name)
-                                checked: meterOn(hw)
-                                onToggled: toggleMeter(hw, checked)
+                        Label {
+                            text: "Checked axes appear as bars."
+                            color: "#A1A1AA"
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                        GridLayout {
+                            columns: 2
+                            Layout.fillWidth: true
+                            columnSpacing: 8
+                            rowSpacing: 0
+                            Repeater {
+                                model: axisModel
+                                delegate: CheckBox {
+                                    required property int hw
+                                    required property string name
+                                    Layout.preferredWidth: 155
+                                    text: axisLabel(hw, name)
+                                    checked: meterOn(hw)
+                                    onToggled: toggleMeter(hw, checked)
+                                }
                             }
                         }
 
