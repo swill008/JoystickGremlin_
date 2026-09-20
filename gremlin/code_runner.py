@@ -32,6 +32,7 @@ from gremlin import (
 from gremlin.base_classes import Value
 from gremlin.config import Configuration
 from gremlin.input_refresh import RefreshPhysicalInputs
+from gremlin.input_module_runtime import InputModuleRuntime
 from gremlin.osc import OscRuntime
 from gremlin.types import (
     ActionProperty,
@@ -329,8 +330,10 @@ class CodeRunner:
             self.event_handler.build_event_lookup(self._profile.modes.mode_list())
 
             evt_listener = event_handler.EventListener()
+            module_bus = InputModuleRuntime()
+            module_bus.reload()
             evt_listener.keyboard_event.connect(self.event_handler.process_event)
-            evt_listener.joystick_event.connect(self.event_handler.process_event)
+            module_bus.event.connect(self.event_handler.process_event)
             evt_listener.virtual_event.connect(self.event_handler.process_event)
             evt_listener.gremlin_active = True
 
@@ -360,7 +363,10 @@ class CodeRunner:
         if self._running:
             evt_lst = event_handler.EventListener()
             evt_lst.keyboard_event.disconnect(self.event_handler.process_event)
-            evt_lst.joystick_event.disconnect(self.event_handler.process_event)
+            try:
+                InputModuleRuntime().event.disconnect(self.event_handler.process_event)
+            except (TypeError, RuntimeError):
+                pass
             evt_lst.virtual_event.disconnect(self.event_handler.process_event)
             evt_lst.gremlin_active = False
         self._running = False
