@@ -190,6 +190,7 @@ Item {
     function saveView() {
         if (moduleModel && deviceName)
             moduleModel.saveViewConfig(deviceName, JSON.stringify(viewPayload()))
+        _savedToast.open()
     }
 
     function resetView() {
@@ -701,5 +702,34 @@ Item {
                 }
             }
         }
+    }
+
+    Popup {
+        id: _savedToast
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        dim: true
+        Overlay.modal: Rectangle { color: "#66000000" }
+        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+        padding: 18
+        background: Rectangle {
+            color: "#27272A"
+            border.color: "#52525B"
+            radius: 6
+        }
+        contentItem: Label {
+            text: "Display saved"
+            color: "#F4F4F5"
+            font.pixelSize: 14
+            horizontalAlignment: Text.AlignHCenter
+        }
+        Timer {
+            id: _savedTimer
+            interval: 2000
+            onTriggered: _savedToast.close()
+        }
+        onOpened: _savedTimer.restart()
+        onClosed: _savedTimer.stop()
     }
 }
