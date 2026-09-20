@@ -19,6 +19,7 @@ KEY_Y = "window-y"
 KEY_W = "window-width"
 KEY_H = "window-height"
 KEY_MAX = "window-maximized"
+KEY_CATALOG_PANEL = "catalog-display-options-open"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
@@ -34,6 +35,7 @@ def _ensure() -> Configuration:
         (KEY_W, PropertyType.Int, DEFAULT_W),
         (KEY_H, PropertyType.Int, DEFAULT_H),
         (KEY_MAX, PropertyType.Bool, False),
+        (KEY_CATALOG_PANEL, PropertyType.Bool, False),
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
@@ -163,3 +165,11 @@ class WindowPlacement(QtCore.QObject):
         if window is None:
             return
         save_window(window)
+
+    @QtCore.Slot(result=bool)
+    def catalogPanelOpen(self) -> bool:
+        return bool(_ensure().value(SECTION, GROUP, KEY_CATALOG_PANEL))
+
+    @QtCore.Slot(bool)
+    def setCatalogPanelOpen(self, open_: bool) -> None:
+        _ensure().set(SECTION, GROUP, KEY_CATALOG_PANEL, bool(open_))
