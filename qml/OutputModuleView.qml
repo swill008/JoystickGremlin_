@@ -736,7 +736,7 @@ Item {
             radius: 6
         }
         contentItem: Label {
-            text: "Display saved"
+            text: "Display Options Saved"
             color: "#F4F4F5"
             font.pixelSize: 14
             horizontalAlignment: Text.AlignHCenter
