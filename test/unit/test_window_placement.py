@@ -15,3 +15,16 @@ def test_restore_clamps_to_available_geometry() -> None:
     restore = text[text.find("def restore_window") : text.find("def save_window")]
     assert "Visibility.Maximized" in restore
     assert restore.find("KEY_MAX") < restore.find("setGeometry")
+
+
+def test_catalog_display_options_persist() -> None:
+    text = _SRC.read_text(encoding="utf-8")
+    assert 'KEY_CATALOG_PANEL = "catalog-display-options-open"' in text
+    assert "def catalogPanelOpen" in text
+    assert "def setCatalogPanelOpen" in text
+    main = Path(__file__).resolve().parents[2] / "qml/Main.qml"
+    qml = main.read_text(encoding="utf-8")
+    assert "catalogPanel = _windowPlacement.catalogPanelOpen()" in qml
+    assert "onCatalogPanelChanged: _windowPlacement.setCatalogPanelOpen(catalogPanel)" in qml
+    close = qml[qml.find("function closeWorkRoom") : qml.find("function requestNewProfile")]
+    assert "catalogPanel = false" not in close
