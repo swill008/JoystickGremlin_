@@ -1010,7 +1010,7 @@ ApplicationWindow {
             deviceName: configTitleName
             moduleModel: _moduleModel
             showPanel: _root.outputViewPanel
-            onShowPanelChanged: _root.outputViewPanel = showPanel
+            onClosePanel: _root.outputViewPanel = false
         }
 
         SplitView {
