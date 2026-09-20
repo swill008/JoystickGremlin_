@@ -294,3 +294,17 @@ def test_inline_repeater_exposes_index() -> None:
     src = bc.read_text(encoding="utf-8")
     assert "signal.reloadCurrentInputItem.emit()" in src
 
+
+def test_add_opens_editor_after_insert() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    add = text[text.find("function addActionOnRow") : text.find("function deleteRow")]
+    assert "Qt.callLater" in add
+    assert "_root.editingHid = -1" in add
+    open_ed = text[text.find("function openEditor") : text.find("function closeEditor")]
+    assert "Qt.callLater" in open_ed
+    assert "_list.forceLayout" in open_ed
+    bc = Path(__file__).resolve().parents[2] / "gremlin/ui/binding_catalog.py"
+    src = bc.read_text(encoding="utf-8")
+    assert "len(new_rows) > len(old)" in src
+    assert "extra = new_rows[len(old)" in src
+
