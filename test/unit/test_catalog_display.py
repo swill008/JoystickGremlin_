@@ -232,3 +232,19 @@ def test_compact_header_hides_r15_chrome() -> None:
     assert "property bool compactMode" in b
     assert "compactMode: _root.compactMode" in b
 
+
+def test_selection_does_not_force_scroll() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    assert "function reloadKeepScroll()" in text
+    assert "function rowOnScreen(row)" in text
+    assert "highlightFollowsCurrentItem: false" in text
+    assert "highlightFollowsCurrentItem: true" not in text
+    assert "showHid(index, true)" in text
+    assert "_root.showHid(hid)" not in text
+    assert "reloadKeepScroll()" in text
+    open_ed = text[text.find("function openEditor") : text.find("function closeEditor")]
+    assert "positionViewAtIndex" not in open_ed
+    add = text[text.find("function addActionOnRow") : text.find("function okRow")]
+    assert "positionViewAtIndex" not in add
+    assert "reloadKeepScroll" in add
+
