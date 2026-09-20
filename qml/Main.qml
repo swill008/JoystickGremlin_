@@ -874,6 +874,7 @@ ApplicationWindow {
                 }
             }
             Button {
+                visible: configDirection !== "dest"
                 text: "Close"
                 Layout.rightMargin: 12
                 onClicked: closeWorkRoom()
