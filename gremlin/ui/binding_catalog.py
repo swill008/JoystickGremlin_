@@ -145,8 +145,33 @@ def collect_leaves(action) -> list[tuple[str, str, str]]:
     return [(tag, label, dest)]
 
 
+def _sequence_row(si: int, root) -> tuple[int, str, str, str]:
+    """One catalog child per sequence. Wrappers stay one row, not flattened dests."""
+    leaves = collect_leaves(root)
+    if not leaves:
+        kids = _action_children(root)
+        wrap = kids[0] if kids else None
+        wtag = str(getattr(wrap, "tag", "") or "") if wrap is not None else ""
+        if wtag in _WRAPPERS:
+            lab = _TYPE_LABELS.get(wtag, getattr(wrap, "name", None) or wtag)
+            return (si, wtag, lab, "Add step")
+        return (si, "", "New action", "Pick destination")
+    if len(leaves) == 1:
+        tag, lab, dest = leaves[0]
+        return (si, tag, lab, dest)
+    kids = _action_children(root)
+    wrap = kids[0] if kids else None
+    wtag = str(getattr(wrap, "tag", "") or "") if wrap is not None else ""
+    if wtag in _WRAPPERS:
+        lab = _TYPE_LABELS.get(wtag, getattr(wrap, "name", None) or wtag)
+    else:
+        lab = " + ".join(x[1] for x in leaves[:3])
+    dest = ", ".join(x[2] for x in leaves)
+    return (si, wtag or "multi", lab, dest)
+
+
 def leaves_for_item(item) -> list[tuple[int, str, str, str]]:
-    """Return (seq_index, tag, type label, dest) for each leaf under the item."""
+    """Return one (seq_index, tag, type label, dest) row per action sequence."""
     out: list[tuple[int, str, str, str]] = []
     if item is None:
         return out
@@ -154,12 +179,7 @@ def leaves_for_item(item) -> list[tuple[int, str, str, str]]:
         root = getattr(seq, "root_action", None)
         if root is None:
             continue
-        leaves = collect_leaves(root)
-        if not leaves:
-            out.append((si, "", "New action", "Pick destination"))
-            continue
-        for tag, lab, dest in leaves:
-            out.append((si, tag, lab, dest))
+        out.append(_sequence_row(si, root))
     return out
 
 
@@ -520,6 +540,10 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                     "name": meta["name"],
                 }
             )
+            hid = int(meta["deviceIndex"])
+            xml = self._xml_of(item)
+            if xml and hid not in self._last_xml:
+                self._last_xml[hid] = xml
             built = self._build_rows(item, meta)
             for row in built:
                 if row["rowKind"] == "unmapped":
