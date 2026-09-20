@@ -432,29 +432,34 @@ Item {
             Layout.minimumWidth: 200
             clip: true
 
-            GridView {
+            Flickable {
                 id: _buttons
                 anchors.fill: parent
                 clip: true
-                cellWidth: {
-                    var cols = Math.max(1, _root.buttonColumns)
-                    var byCol = Math.floor(width / cols)
-                    var want = Math.max(40, _root.buttonWidth)
-                    if (byCol > 0)
-                        return Math.max(40, Math.min(want, byCol))
-                    return want
-                }
-                cellHeight: _root.btnCellH
-                model: buttonModel
                 boundsBehavior: Flickable.StopAtBounds
-                flow: GridView.FlowLeftToRight
+                contentWidth: Math.max(width, _btnGrid.implicitWidth)
+                contentHeight: Math.max(height, _btnGrid.implicitHeight)
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-                delegate: Rectangle {
+                GridLayout {
+                    id: _btnGrid
+                    columns: Math.max(1, _root.buttonColumns)
+                    columnSpacing: 6
+                    rowSpacing: 6
+
+                    Repeater {
+                        model: buttonModel
+                        delegate: Rectangle {
                     required property int idx
                     required property int hw
                     required property string name
-                    width: _buttons.cellWidth - 6
-                    height: _buttons.cellHeight - 6
+                    Layout.preferredWidth: Math.max(40, _root.buttonWidth)
+                    Layout.preferredHeight: _root.btnCellH
+                    Layout.minimumWidth: Math.max(40, _root.buttonWidth)
+                    Layout.maximumWidth: Math.max(40, _root.buttonWidth)
+                    Layout.minimumHeight: _root.btnCellH
+                    Layout.maximumHeight: _root.btnCellH
+                    Layout.fillWidth: false
                     property bool on: liveVal(idx) > 0.5 && _root.showLive
                     color: {
                         if (!on)
@@ -495,6 +500,8 @@ Item {
                                 horizontalAlignment: Text.AlignHCenter
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
+                        }
+                    }
                         }
                     }
                 }
