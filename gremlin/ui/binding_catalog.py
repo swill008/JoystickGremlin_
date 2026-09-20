@@ -379,9 +379,51 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 break
         return start, end
 
-    def _mapped_insert_at(self) -> int:
+    def _claimed_hids(self) -> list[int]:
+        out: list[int] = []
+        n = self._claimed.rowCount()
+        for i in range(n):
+            meta = self._meta_at_claimed(i)
+            if meta is None:
+                continue
+            out.append(int(meta["deviceIndex"]))
+        return out
+
+    def _hid_rank(self, hid: int) -> int:
+        order = self._claimed_hids()
+        try:
+            return order.index(int(hid))
+        except ValueError:
+            return len(order) + max(0, int(hid))
+
+    def _mapped_insert_at(self, hid: int | None = None) -> int:
+        """Keep mapped controls in device order. End-of-list is only Unmapped."""
+        if hid is None:
+            for i, row in enumerate(self._rows):
+                if row["rowKind"] == "unmapped-header":
+                    return i
+            return len(self._rows)
+        rank = self._hid_rank(hid)
         for i, row in enumerate(self._rows):
             if row["rowKind"] == "unmapped-header":
+                return i
+            if row["rowKind"] != "group":
+                continue
+            if self._hid_rank(int(row["deviceIndex"])) > rank:
+                return i
+        for i, row in enumerate(self._rows):
+            if row["rowKind"] == "unmapped-header":
+                return i
+        return len(self._rows)
+
+    def _unmapped_insert_at(self, hid: int) -> int:
+        header = self._ensure_unmapped_header()
+        rank = self._hid_rank(hid)
+        for i in range(header + 1, len(self._rows)):
+            row = self._rows[i]
+            if row["rowKind"] != "unmapped":
+                return i
+            if self._hid_rank(int(row["deviceIndex"])) > rank:
                 return i
         return len(self._rows)
 
@@ -506,12 +548,9 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             return
         new_is_unmapped = new_rows[0]["rowKind"] == "unmapped"
         if new_is_unmapped:
-            header = self._ensure_unmapped_header()
-            at = len(self._rows)
-            if at <= header:
-                at = header + 1
+            at = self._unmapped_insert_at(hid)
         elif old_was_unmapped or start < 0:
-            at = self._mapped_insert_at()
+            at = self._mapped_insert_at(hid)
         else:
             at = start
         last = at + len(new_rows) - 1
