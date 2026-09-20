@@ -67,11 +67,6 @@ Rectangle {
     border.width: focused || lifting || dropStacking ? 2 : 1
     border.color: dropStacking ? "#22C55E" : (focused || lifting ? "#E4E4E7" : "#3F3F46")
 
-    function restHome() {
-        x = stackIndex * 14
-        y = stackIndex * 14
-    }
-
     ColumnLayout {
         id: _body
         anchors.fill: parent
@@ -205,12 +200,17 @@ Rectangle {
             _card.dragMoved()
         }
         onReleased: function(mouse) {
+            var dragged = didDrag
+            var cx = _card.x + _card.width / 2
+            var cy = _card.y + _card.height / 2
             _card.lifting = false
-            if (didDrag) {
-                _card.dragEnded()
-                _card.dropAt(_card.x + _card.width / 2, _card.y + _card.height / 2)
-            }
-            _card.restHome()
+            if (!dragged)
+                return
+            // Commit after this handler returns. moveSlugBefore rebuilds the
+            // Repeater and would destroy this card mid-release.
+            Qt.callLater(function() {
+                _card.dropAt(cx, cy)
+            })
         }
         onClicked: function(mouse) {
             if (didDrag)
