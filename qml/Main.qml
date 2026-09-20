@@ -587,8 +587,9 @@ ApplicationWindow {
             }
             JGToolButton {
                 text: "\uF448"
+                caption: "Toggle"
                 color: backend && backend.gremlinActive ? Style.accent : Style.foreground
-                tooltip: qsTr("Activate")
+                tooltip: qsTr("Toggle Active")
 
                 onClicked: () => {
                     if (backend) {
