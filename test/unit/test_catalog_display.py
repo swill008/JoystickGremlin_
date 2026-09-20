@@ -216,7 +216,8 @@ def test_editor_attaches_to_leaf_not_parent() -> None:
     assert 'QtCore.QByteArray(b"seqIndex")' in src
     assert "def addAction" in src
     assert "def actionNames" in src
-    assert 'out.append((si, "", "New action", "Pick destination"))' in src
+    assert '"New action"' in src and '"Pick destination"' in src
+    assert "def _sequence_row" in src
 
 
 def test_compact_header_hides_r15_chrome() -> None:
@@ -339,4 +340,18 @@ def test_catalog_undo_redo_and_compact_close_x() -> None:
     assert "def _apply_xml" in src
     assert "canUndo" in src
     assert "canRedo" in src
+
+
+def test_compact_add_action_and_one_row_per_sequence() -> None:
+    header = Path(__file__).resolve().parents[2] / "qml/InputItemBindingConfigurationHeader.qml"
+    text = header.read_text(encoding="utf-8")
+    sel = text[text.find("ActionSelector") : text.find("ActionSelector") + 280]
+    assert "visible: !_root.compactMode" not in sel
+    node = Path(__file__).resolve().parents[2] / "qml/ActionNode.qml"
+    nt = node.read_text(encoding="utf-8")
+    assert "visible: !_root.compactMode" in nt[nt.find("id: _removeButton") : nt.find("id: _removeButton") + 160]
+    bc = Path(__file__).resolve().parents[2] / "gremlin/ui/binding_catalog.py"
+    src = bc.read_text(encoding="utf-8")
+    assert "def _sequence_row" in src
+    assert "Add step" in src
 
