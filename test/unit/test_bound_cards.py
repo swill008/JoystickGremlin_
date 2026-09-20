@@ -60,3 +60,11 @@ def test_status_card_always_shows_bound_to() -> None:
     assert 'Bound to: [' in text
     assert "Not bound" in text
     assert "visible: target.length" not in text
+
+
+def test_bound_line_format_in_qml_and_model() -> None:
+    main = Path("qml/Main.qml").read_text(encoding="utf-8")
+    model = Path("gremlin/ui/module_model.py").read_text(encoding="utf-8")
+    assert "Bound to: [Not bound]" in main
+    assert "def boundLine" in model
+    assert "refreshDestBound" in main
