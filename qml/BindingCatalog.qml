@@ -429,6 +429,32 @@ Item {
         }
     }
 
+    Menu {
+        id: _childMenu
+        property int hid: -1
+        property int seq: -1
+
+        Menu {
+            id: _childAddMenu
+            title: "Add"
+            Instantiator {
+                model: _childMenu.hid >= 0 ? _catalog.actionNames(_childMenu.hid) : []
+                onObjectAdded: function(index, object) { _childAddMenu.insertItem(index, object) }
+                onObjectRemoved: function(index, object) { _childAddMenu.removeItem(object) }
+                delegate: MenuItem {
+                    required property string modelData
+                    text: modelData
+                    onTriggered: _list.addActionOnRow(_childMenu.hid, modelData)
+                }
+            }
+        }
+        MenuItem {
+            text: "Delete"
+            enabled: _childMenu.seq >= 0 && !_root.editorLocked
+            onTriggered: _list.deleteRow(_childMenu.hid, _childMenu.seq)
+        }
+    }
+
     Connections {
         target: signal
         function onSetInputIndex(index) { showHid(index, true) }
@@ -550,6 +576,23 @@ Item {
                     _root.editingHid = hid
                     _root.editingSeq = seq
                 }
+                function deleteRow(hid, seq) {
+                    if (hid < 0 || seq < 0 || _root.editorLocked)
+                        return
+                    var wasEdit = _root.editingHid === hid && _root.editingSeq === seq
+                    _catalog.removeSequence(hid, seq)
+                    if (wasEdit) {
+                        _root.editingHid = -1
+                        _root.editingSeq = -1
+                    }
+                    _root.reloadKeepScroll()
+                }
+                function openChildMenu(hid, seq) {
+                    _childMenu.hid = hid
+                    _childMenu.seq = seq
+                    _root.addMenuHid = hid
+                    _childMenu.popup()
+                }
                 function okRow() { _root.closeEditor() }
                 function openRow(hid, seq) { _root.openEditor(hid, seq) }
 
@@ -623,9 +666,15 @@ Item {
                             anchors.fill: parent
                             anchors.rightMargin: expanded ? 120 : 64
                             enabled: deviceIndex >= 0
-                            onClicked: {
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onClicked: function(mouse) {
                                 lv.currentIndex = index
                                 lv.syncSelection()
+                                if (mouse.button === Qt.RightButton) {
+                                    if (rowKind === "leaf" && !lv.catalogLocked)
+                                        lv.openChildMenu(deviceIndex, seqIndex)
+                                    return
+                                }
                                 if (rowKind === "leaf")
                                     lv.openRow(deviceIndex, seqIndex)
                             }
