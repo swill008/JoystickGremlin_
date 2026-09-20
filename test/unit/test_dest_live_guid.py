@@ -132,3 +132,4 @@ def test_output_module_view_binds_hat_xy() -> None:
     assert "hatXAt" in text
     assert "hatYAt" in text
     assert "liveVal(idx) > 0.5 ? Qt.point(0, 1)" not in text
+    assert "property var axisPick:" not in text
