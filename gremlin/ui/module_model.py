@@ -275,6 +275,7 @@ _DEFAULT_VIEW = {
     "buttonStyle": "tile",
     "buttonSize": "medium",
     "buttonColumns": 12,
+    "buttonWidth": 64,
     "colorLive": "#22C55E",
     "colorMeter": "#3B82F6",
     "colorPress": "#22C55E",
