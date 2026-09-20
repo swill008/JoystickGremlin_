@@ -51,6 +51,15 @@ Item {
     property int childNameColW: 160
     property int rowInnerPad: 10
     property int editorIndent: 12
+    property string editorAlign: "left"
+    property int editorRight: 0
+    property int editorWidthPct: 100
+    property int editorPad: 10
+    property int editorGap: 4
+    property int editorRadius: 3
+    property int editorBorderW: 1
+    property int editorAccentW: 3
+    property bool showEditorAccent: true
     property string colorParent: "#111113"
     property string colorChild: "#111113"
     property string colorSelected: "#27272A"
@@ -61,6 +70,7 @@ Item {
     property string colorSelectBorder: "#E4E4E7"
     property string colorEditor: "#0F2744"
     property string colorEditorBorder: "#3B82F6"
+    property string colorEditorAccent: "#3B82F6"
     property string _colorTarget: "parent"
     property string toastText: "Display Options Saved"
 
@@ -123,6 +133,7 @@ Item {
             else if (_colorTarget === "selectBorder") colorSelectBorder = c
             else if (_colorTarget === "editor") colorEditor = c
             else if (_colorTarget === "editorBorder") colorEditorBorder = c
+            else if (_colorTarget === "editorAccent") colorEditorAccent = c
             else colorParent = c
         }
     }
@@ -154,6 +165,15 @@ Item {
             childNameColW: childNameColW,
             rowInnerPad: rowInnerPad,
             editorIndent: editorIndent,
+            editorAlign: editorAlign,
+            editorRight: editorRight,
+            editorWidthPct: editorWidthPct,
+            editorPad: editorPad,
+            editorGap: editorGap,
+            editorRadius: editorRadius,
+            editorBorderW: editorBorderW,
+            editorAccentW: editorAccentW,
+            showEditorAccent: showEditorAccent,
             colorParent: colorParent,
             colorChild: colorChild,
             colorSelected: colorSelected,
@@ -163,7 +183,8 @@ Item {
             colorBorder: colorBorder,
             colorSelectBorder: colorSelectBorder,
             colorEditor: colorEditor,
-            colorEditorBorder: colorEditorBorder
+            colorEditorBorder: colorEditorBorder,
+            colorEditorAccent: colorEditorAccent
         }
     }
 
@@ -193,6 +214,15 @@ Item {
         childNameColW = 160
         rowInnerPad = 10
         editorIndent = 12
+        editorAlign = "left"
+        editorRight = 0
+        editorWidthPct = 100
+        editorPad = 10
+        editorGap = 4
+        editorRadius = 3
+        editorBorderW = 1
+        editorAccentW = 3
+        showEditorAccent = true
         colorParent = "#111113"
         colorChild = "#111113"
         colorSelected = "#27272A"
@@ -203,6 +233,7 @@ Item {
         colorSelectBorder = "#E4E4E7"
         colorEditor = "#0F2744"
         colorEditorBorder = "#3B82F6"
+        colorEditorAccent = "#3B82F6"
     }
 
     function numVal(v, d) {
@@ -243,6 +274,15 @@ Item {
         childNameColW = numVal(v.childNameColW, 160)
         rowInnerPad = numVal(v.rowInnerPad, 10)
         editorIndent = numVal(v.editorIndent, 12)
+        editorAlign = v.editorAlign || "left"
+        editorRight = numVal(v.editorRight, 0)
+        editorWidthPct = numVal(v.editorWidthPct, 100)
+        editorPad = numVal(v.editorPad, 10)
+        editorGap = numVal(v.editorGap, 4)
+        editorRadius = numVal(v.editorRadius, 3)
+        editorBorderW = numVal(v.editorBorderW, 1)
+        editorAccentW = numVal(v.editorAccentW, 3)
+        showEditorAccent = v.showEditorAccent !== false
         colorParent = v.colorParent || "#111113"
         colorChild = v.colorChild || "#111113"
         colorSelected = v.colorSelected || "#27272A"
@@ -253,6 +293,7 @@ Item {
         colorSelectBorder = v.colorSelectBorder || "#E4E4E7"
         colorEditor = v.colorEditor || "#0F2744"
         colorEditorBorder = v.colorEditorBorder || "#3B82F6"
+        colorEditorAccent = v.colorEditorAccent || v.colorEditorBorder || "#3B82F6"
     }
 
     function saveCatalog() {
@@ -332,6 +373,14 @@ Item {
 
     function parentW(total) {
         return rowW(total, parentAlign, parentLeft, parentRight, parentWidthPct)
+    }
+
+    function editorX(total) {
+        return rowX(total, editorAlign, editorIndent, editorRight, editorWidthPct)
+    }
+
+    function editorW(total) {
+        return rowW(total, editorAlign, editorIndent, editorRight, editorWidthPct)
     }
 
     Connections {
@@ -418,6 +467,12 @@ Item {
                 property int childNameW: _root.childNameColW
                 property int innerPad: _root.rowInnerPad
                 property int edIndent: _root.editorIndent
+                property int edPad: _root.editorPad
+                property int edGap: _root.editorGap
+                property int edRad: _root.editorRadius
+                property int edBorderW: _root.editorBorderW
+                property int edAccentW: _root.editorAccentW
+                property bool edAccentOn: _root.showEditorAccent
                 property color cParent: _root.colorParent
                 property color cChild: _root.colorChild
                 property color cSel: _root.colorSelected
@@ -428,6 +483,7 @@ Item {
                 property color cSelBorder: _root.colorSelectBorder
                 property color cEditor: _root.colorEditor
                 property color cEditorEdge: _root.colorEditorBorder
+                property color cEditorAccent: _root.colorEditorAccent
 
                 function addOnRow(hid, rowIndex) {
                     currentIndex = rowIndex
@@ -570,9 +626,9 @@ Item {
                         id: _editor
                         active: expanded
                         visible: expanded
-                        x: lv.edIndent
-                        y: lv.parentH + 4
-                        width: parent.width - lv.edIndent
+                        x: _root.editorX(_row.width)
+                        y: lv.parentH + lv.edGap
+                        width: _root.editorW(_row.width)
                         height: visible && item ? Math.max(80, item.implicitHeight) : 0
                         onLoaded: if (item) item.width = width
                         onWidthChanged: if (item) item.width = width
@@ -581,6 +637,12 @@ Item {
                             isOutput: lv.catalogIsOutput
                             editorFill: lv.cEditor
                             editorEdge: lv.cEditorEdge
+                            editorAccent: lv.cEditorAccent
+                            editorRadius: lv.edRad
+                            editorBorderW: lv.edBorderW
+                            editorAccentW: lv.edAccentW
+                            showAccent: lv.edAccentOn
+                            editorPad: lv.edPad
                         }
                     }
                 }
@@ -835,15 +897,82 @@ Item {
                                 }
                             }
                             RowLayout {
-                                Label { text: "Editor indent"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 80; value: editorIndent; onValueModified: editorIndent = value }
+                                Label { text: "Align"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+                                ComboBox {
+                                    Layout.fillWidth: true
+                                    model: ["left", "center", "right"]
+                                    currentIndex: editorAlign === "center" ? 1 : (editorAlign === "right" ? 2 : 0)
+                                    onActivated: editorAlign = currentText
+                                }
                             }
-                            Label {
-                                text: "Editor fill and edge colors are in COLORS."
-                                color: "#A1A1AA"
-                                font.pixelSize: 11
-                                wrapMode: Text.WordWrap
+                            RowLayout {
+                                visible: editorAlign !== "center"
+                                Label { text: "Left inset"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 800; stepSize: 8; value: editorIndent; onValueModified: editorIndent = value }
+                            }
+                            RowLayout {
+                                visible: editorAlign !== "center"
+                                Label { text: "Right inset"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 800; stepSize: 8; value: editorRight; onValueModified: editorRight = value }
+                            }
+                            RowLayout {
+                                visible: editorAlign === "center"
+                                Label { text: "Width %"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 20; to: 100; value: editorWidthPct; onValueModified: editorWidthPct = value }
+                            }
+                            RowLayout {
+                                Label { text: "Inner pad"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 32; value: editorPad; onValueModified: editorPad = value }
+                            }
+                            RowLayout {
+                                Label { text: "Gap below row"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 24; value: editorGap; onValueModified: editorGap = value }
+                            }
+                            RowLayout {
+                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 16; value: editorRadius; onValueModified: editorRadius = value }
+                            }
+                            RowLayout {
+                                Label { text: "Border width"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 8; value: editorBorderW; onValueModified: editorBorderW = value }
+                            }
+                            RowLayout {
+                                Label { text: "Accent width"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 12; value: editorAccentW; onValueModified: editorAccentW = value }
+                            }
+                            CheckBox { text: "Show accent bar"; checked: showEditorAccent; onToggled: showEditorAccent = checked }
+                            RowLayout {
                                 Layout.fillWidth: true
+                                Label { text: "Fill"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Button {
+                                    Layout.fillWidth: true
+                                    text: "Choose…"
+                                    onClicked: { _colorTarget = "editor"; _colorDlg.selectedColor = colorEditor; _colorDlg.open() }
+                                    background: Rectangle { color: colorEditor; border.color: "#3F3F46"; border.width: 1; radius: 3 }
+                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Edge"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Button {
+                                    Layout.fillWidth: true
+                                    text: "Choose…"
+                                    onClicked: { _colorTarget = "editorBorder"; _colorDlg.selectedColor = colorEditorBorder; _colorDlg.open() }
+                                    background: Rectangle { color: colorEditorBorder; border.color: "#3F3F46"; border.width: 1; radius: 3 }
+                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Accent"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+                                Button {
+                                    Layout.fillWidth: true
+                                    text: "Choose…"
+                                    onClicked: { _colorTarget = "editorAccent"; _colorDlg.selectedColor = colorEditorAccent; _colorDlg.open() }
+                                    background: Rectangle { color: colorEditorAccent; border.color: "#3F3F46"; border.width: 1; radius: 3 }
+                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                }
                             }
                         }
 
