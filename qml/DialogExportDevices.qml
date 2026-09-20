@@ -27,7 +27,7 @@ Window {
     property string deviceName: ""
     property string statusText: deviceName.length
         ? "Packs the module map and photos. GUID stays on this PC."
-        : "Select a Status card first, then Export."
+        : "Select a Home screen card first, then Export."
 
     HardwareProfile { id: _hw }
 
