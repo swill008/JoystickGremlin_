@@ -42,6 +42,7 @@ ApplicationWindow {
     property string pinSlug: ""
     property string configTitleName: ""
     property string configDirection: ""
+    property bool outputViewPanel: false
     property var configureWin: null
 
     ModuleListModel {
@@ -78,6 +79,11 @@ ApplicationWindow {
         uiState.setCurrentDevice(card.guid)
         uiState.setCurrentTab(card.tab || "physical")
         uiState.setCurrentRoom("configuration")
+    }
+
+    function openOutputViewForCard(card) {
+        outputViewPanel = true
+        openConfigurationForCard(card)
     }
 
     function openConfigurationForFocus() {
@@ -162,6 +168,7 @@ ApplicationWindow {
             return
         configTitleName = ""
         configDirection = ""
+        outputViewPanel = false
         uiState.setCurrentRoom("status")
         uiState.setCurrentTab("physical")
         if (_scriptButton)
@@ -815,6 +822,10 @@ ApplicationWindow {
                 _statusLastCard = card
                 openConfigurationForCard(card)
             }
+            onOpenOutputView: function(card) {
+                _statusLastCard = card
+                openOutputViewForCard(card)
+            }
             onConfigureModule: function(card) {
                 _statusLastCard = card
                 openConfigureModule(card.direction === "dest" ? "dest" : "source")
@@ -872,6 +883,11 @@ ApplicationWindow {
                     color: "#A1A1AA"
                     font.pixelSize: 12
                 }
+            }
+            Button {
+                visible: configDirection === "dest"
+                text: outputViewPanel ? "Hide display" : "Display"
+                onClicked: outputViewPanel = !outputViewPanel
             }
             Button {
                 visible: configDirection !== "dest"
@@ -992,6 +1008,8 @@ ApplicationWindow {
             guid: uiState ? uiState.currentDevice : ""
             deviceName: configTitleName
             moduleModel: _moduleModel
+            showPanel: _root.outputViewPanel
+            onShowPanelChanged: _root.outputViewPanel = showPanel
         }
 
         SplitView {
