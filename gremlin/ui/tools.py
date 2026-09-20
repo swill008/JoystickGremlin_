@@ -9,7 +9,6 @@ import uuid
 
 from PySide6 import QtCore
 
-import dill
 import gremlin.ui.type_aliases as ta
 from gremlin import (
     auto_mapper,
@@ -32,35 +31,20 @@ class Tools(QtCore.QObject):
     def createMappings(
         self,
         mode: str,
-        physical_devices: dict[str, bool],
-        vjoy_devices: dict[int, bool],
+        source_modules: dict[str, bool],
+        dest_modules: dict[str, bool],
         overwrite: bool,
         repeat: bool,
     ) -> str:
-        """
-        Create mappings between physical and vJoy devices.
-
-        Args:
-            physical_devices: Dictionary of which physical devices are selected
-            vjoy_devices: Dictionary indicating selection of vJoy devices
-            overwrite: Whether to overwrite existing mappings
-            repeat: Whether to repeat vJoy mappings
-
-        Returns:
-            A string report for the user summarizing new mappings.
-        """
         mapper = auto_mapper.AutoMapper(shared_state.current_profile)
-        feedback_string = mapper.generate_mappings(
-            [
-                dill.GUID.from_str(guid)
-                for (guid, chosen) in physical_devices.items()
-                if chosen
-            ],
-            [int(vjoy_id) for (vjoy_id, chosen) in vjoy_devices.items() if chosen],
+        feedback_string = mapper.generate_module_mappings(
+            [slug for (slug, chosen) in source_modules.items() if chosen],
+            [slug for (slug, chosen) in dest_modules.items() if chosen],
             auto_mapper.AutoMapperOptions(mode, repeat, overwrite),
         )
         signal.signal.profileChanged.emit()
         signal.signal.reloadCurrentInputItem.emit()
+        signal.signal.configChanged.emit()
         cfg = config.Configuration()
         if cfg.exists("automap", "mapper", "remember-overwrite") and cfg.value(
             "automap", "mapper", "remember-overwrite"
@@ -77,16 +61,6 @@ class Tools(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=str)
     def swapDevices(self, source_uuid_str: str, target_uuid_str: str) -> str:
-        """
-        Swaps the specified two devices in the profile.
-
-        Args:
-            source_device_uuid: The UUID of the source (from profile) device.
-            target_device_uuid: The UUID of the target (connected) device.
-
-        Returns:
-            The number of action and input swaps performed.
-        """
         try:
             source_uuid = uuid.UUID(source_uuid_str)
             target_uuid = uuid.UUID(target_uuid_str)
