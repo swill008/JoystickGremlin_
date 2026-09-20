@@ -30,6 +30,10 @@ Item {
     property int rowSpacing: 4
     property int parentHeight: 50
     property int childHeight: 36
+    property string parentAlign: "left"
+    property int parentLeft: 0
+    property int parentRight: 0
+    property int parentWidthPct: 100
     property string childAlign: "left"
     property int childLeft: 24
     property int childRight: 24
@@ -129,6 +133,10 @@ Item {
             rowSpacing: rowSpacing,
             parentHeight: parentHeight,
             childHeight: childHeight,
+            parentAlign: parentAlign,
+            parentLeft: parentLeft,
+            parentRight: parentRight,
+            parentWidthPct: parentWidthPct,
             childAlign: childAlign,
             childLeft: childLeft,
             childRight: childRight,
@@ -164,6 +172,10 @@ Item {
         rowSpacing = 4
         parentHeight = 50
         childHeight = 36
+        parentAlign = "left"
+        parentLeft = 0
+        parentRight = 0
+        parentWidthPct = 100
         childAlign = "left"
         childLeft = 24
         childRight = 24
@@ -210,6 +222,10 @@ Item {
         rowSpacing = numVal(v.rowSpacing, 4)
         parentHeight = numVal(v.parentHeight, 50)
         childHeight = numVal(v.childHeight, 36)
+        parentAlign = v.parentAlign || "left"
+        parentLeft = numVal(v.parentLeft, 0)
+        parentRight = numVal(v.parentRight, 0)
+        parentWidthPct = numVal(v.parentWidthPct, 100)
         childAlign = v.childAlign || "left"
         childLeft = numVal(v.childLeft, 24)
         childRight = numVal(v.childRight, 24)
@@ -287,19 +303,35 @@ Item {
         _catalog.reload()
     }
 
-    function leafX(total) {
-        var w = leafW(total)
-        if (childAlign === "center")
+    function rowX(total, align, left, right, pct) {
+        var w = rowW(total, align, left, right, pct)
+        if (align === "center")
             return Math.max(0, Math.round((total - w) / 2))
-        if (childAlign === "right")
-            return Math.max(0, total - w - childRight)
-        return childLeft
+        if (align === "right")
+            return Math.max(0, total - w - right)
+        return left
+    }
+
+    function rowW(total, align, left, right, pct) {
+        if (align === "center")
+            return Math.max(120, Math.round(total * pct / 100))
+        return Math.max(120, total - left - right)
+    }
+
+    function leafX(total) {
+        return rowX(total, childAlign, childLeft, childRight, childWidthPct)
     }
 
     function leafW(total) {
-        if (childAlign === "center")
-            return Math.max(120, Math.round(total * childWidthPct / 100))
-        return Math.max(120, total - childLeft - childRight)
+        return rowW(total, childAlign, childLeft, childRight, childWidthPct)
+    }
+
+    function parentX(total) {
+        return rowX(total, parentAlign, parentLeft, parentRight, parentWidthPct)
+    }
+
+    function parentW(total) {
+        return rowW(total, parentAlign, parentLeft, parentRight, parentWidthPct)
     }
 
     Connections {
@@ -438,8 +470,8 @@ Item {
 
                     Rectangle {
                         id: _header
-                        x: isLeaf ? _root.leafX(_row.width) : 0
-                        width: isLeaf ? _root.leafW(_row.width) : _row.width
+                        x: isLeaf ? _root.leafX(_row.width) : _root.parentX(_row.width)
+                        width: isLeaf ? _root.leafW(_row.width) : _root.parentW(_row.width)
                         height: isLeaf ? lv.childH : lv.parentH
                         radius: lv.rowRad
                         border.width: selected ? 2 : 1
@@ -657,6 +689,49 @@ Item {
                             CheckBox { text: "Show live bars"; checked: showLiveBars; onToggled: showLiveBars = checked }
                             CheckBox { text: "Show LED dots"; checked: showLeds; onToggled: showLeds = checked }
                             CheckBox { text: "Show summary"; checked: showSummary; onToggled: showSummary = checked }
+                        }
+
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 26
+                                color: "#27272A"
+                                Label {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8
+                                    text: "PARENT ALIGNMENT"
+                                    color: "#E4E4E7"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+                            RowLayout {
+                                Label { text: "Align"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+                                ComboBox {
+                                    Layout.fillWidth: true
+                                    model: ["left", "center", "right"]
+                                    currentIndex: parentAlign === "center" ? 1 : (parentAlign === "right" ? 2 : 0)
+                                    onActivated: parentAlign = currentText
+                                }
+                            }
+                            RowLayout {
+                                visible: parentAlign !== "center"
+                                Label { text: "Left inset"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 800; stepSize: 8; value: parentLeft; onValueModified: parentLeft = value }
+                            }
+                            RowLayout {
+                                visible: parentAlign !== "center"
+                                Label { text: "Right inset"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 800; stepSize: 8; value: parentRight; onValueModified: parentRight = value }
+                            }
+                            RowLayout {
+                                visible: parentAlign === "center"
+                                Label { text: "Width %"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 20; to: 100; value: parentWidthPct; onValueModified: parentWidthPct = value }
+                            }
                         }
 
                         ColumnLayout {
