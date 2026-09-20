@@ -355,3 +355,13 @@ def test_compact_add_action_and_one_row_per_sequence() -> None:
     assert "def _sequence_row" in src
     assert "Add step" in src
 
+
+def test_mapped_insert_stays_in_device_order() -> None:
+    src = Path(__file__).resolve().parents[2] / "gremlin/ui/binding_catalog.py"
+    text = src.read_text(encoding="utf-8")
+    assert "def _mapped_insert_at(self, hid: int | None = None)" in text
+    assert "def _unmapped_insert_at(self, hid: int)" in text
+    assert "at = self._mapped_insert_at(hid)" in text
+    assert "at = self._unmapped_insert_at(hid)" in text
+    assert "if row[\"rowKind\"] != \"group\":" in text or 'if row["rowKind"] != "group":' in text
+
