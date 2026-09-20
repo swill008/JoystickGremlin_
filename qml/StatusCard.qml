@@ -36,6 +36,8 @@ Rectangle {
     property bool lifting: false
     property bool resizing: false
     property bool dropStacking: false
+    property bool selected: false
+    property bool canStackSelected: false
     z: stackIndex + (lifting || resizing ? 100 : 0)
 
     signal cardFocused()
@@ -57,13 +59,15 @@ Rectangle {
     signal clearSettings()
     signal unstackCard()
     signal unstackAllCards()
+    signal shiftToggled()
+    signal stackSelectedCards()
 
     implicitHeight: _body.implicitHeight + 20
     radius: 4
     clip: true
-    color: "#18181B"
-    border.width: focused || lifting || dropStacking ? 2 : 1
-    border.color: dropStacking ? "#22C55E" : (focused || lifting ? "#E4E4E7" : "#3F3F46")
+    color: selected ? "#1F2A37" : "#18181B"
+    border.width: focused || lifting || selected || dropStacking ? 2 : 1
+    border.color: dropStacking ? "#22C55E" : (focused || lifting || selected ? "#E4E4E7" : "#3F3F46")
 
     ColumnLayout {
         id: _body
@@ -181,6 +185,7 @@ Rectangle {
         // reflows the parent and the drop target chases itself.
         preventStealing: true
         property bool didDrag: false
+        property bool shiftHeld: false
         property real pressX: 0
         property real pressY: 0
         property real lastSx: 0
@@ -189,13 +194,16 @@ Rectangle {
 
         onPressed: function(mouse) {
             didDrag = false
+            shiftHeld = (mouse.modifiers & Qt.ShiftModifier) !== 0
             pressX = mouse.x
             pressY = mouse.y
-            if (mouse.button === Qt.LeftButton)
+            if (mouse.button === Qt.LeftButton && !shiftHeld)
                 _card.lifting = true
         }
         onPositionChanged: function(mouse) {
             if (!pressed)
+                return
+            if (shiftHeld)
                 return
             if (!didDrag) {
                 if (Math.abs(mouse.x - pressX) < 10 && Math.abs(mouse.y - pressY) < 10)
@@ -224,6 +232,8 @@ Rectangle {
                 return
             if (mouse.button === Qt.RightButton)
                 _menu.popup()
+            else if (shiftHeld || (mouse.modifiers & Qt.ShiftModifier))
+                _card.shiftToggled()
             else
                 _card.cardFocused()
         }
@@ -378,6 +388,12 @@ Rectangle {
             height: visible ? implicitHeight : 0
             text: "Assign hardware…"
             onTriggered: _card.assignHardware()
+        }
+        MenuItem {
+            visible: _card.canStackSelected
+            height: visible ? implicitHeight : 0
+            text: "Stack selected cards"
+            onTriggered: _card.stackSelectedCards()
         }
         MenuItem {
             visible: stacked
