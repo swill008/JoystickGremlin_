@@ -10,11 +10,12 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import "helpers.js" as Helpers
 
 Window {
     id: _win
     width: 560
-    height: 420
+    height: 320
     title: "Import devices"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
@@ -26,13 +27,12 @@ Window {
     property string zipUrl: ""
     property string statusText: "Pick a device pack zip first."
     property string packDevice: ""
-    property bool sliceImage: true
-    property bool sliceWiring: false
-    property bool sliceMacros: false
-    property bool sliceModes: false
-    property bool sliceOutput: false
 
     HardwareProfile { id: _hw }
+
+    function _chosenFile() {
+        return Helpers.fileDialogUrl(_pick)
+    }
 
     FileDialog {
         id: _pick
@@ -40,12 +40,18 @@ Window {
         fileMode: FileDialog.OpenFile
         nameFilters: ["Device packs (*.zip)"]
         onAccepted: {
-            zipUrl = currentFile
-            var raw = _hw.peekZip(currentFile)
+            zipUrl = _chosenFile()
+            if (!zipUrl || !zipUrl.length) {
+                statusText = "Could not read pack."
+                packDevice = ""
+                return
+            }
+            var raw = _hw.peekZip(zipUrl)
             try {
                 var info = JSON.parse(raw)
             } catch (e) {
                 statusText = "Could not read pack."
+                packDevice = ""
                 return
             }
             if (!info.ok) {
@@ -70,7 +76,7 @@ Window {
             font.bold: true
         }
         Label {
-            text: packDevice.length ? packDevice : "— (mandatory name line, never a checkbox)"
+            text: packDevice.length ? packDevice : "—"
             color: packDevice.length ? Style.foreground : "#F87171"
         }
         Label {
@@ -79,12 +85,6 @@ Window {
             Layout.fillWidth: true
             color: "#A1A1AA"
         }
-
-        CheckBox { text: "Image"; checked: sliceImage; onToggled: sliceImage = checked }
-        CheckBox { text: "Wiring"; checked: sliceWiring; onToggled: sliceWiring = checked }
-        CheckBox { text: "Macros"; checked: sliceMacros; onToggled: sliceMacros = checked }
-        CheckBox { text: "Modes (this device only)"; checked: sliceModes; onToggled: sliceModes = checked }
-        CheckBox { text: "Output (dest stub layout)"; checked: sliceOutput; onToggled: sliceOutput = checked }
 
         Item { Layout.fillHeight: true }
 
