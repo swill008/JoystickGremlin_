@@ -38,7 +38,7 @@ Item {
     Component { id: _baseVariant;    Base.TooltipComboBox    {} }
     Component { id: _compactVariant; Compact.TooltipComboBox {} }
 
-    VJoyDevices {
+    OutputModuleDevices {
         id: _vjoy
 
         onCurrentSelectionChanged: (vjoyId, inputType, inputId) => {
@@ -106,8 +106,15 @@ Item {
         Label {
             visible: _vjoy && !_vjoy.hasValidVJoyDevices
 
-            text: "No vJoy devices available."
+            text: "No output modules available."
             color: Style.error
+        }
+
+        Label {
+            visible: _vjoy && _vjoy.hasValidVJoyDevices && _vjoy.inputChoices.length === 0
+
+            text: "Output module has no claimed controls."
+            color: "#A1A1AA"
         }
     }
 }
