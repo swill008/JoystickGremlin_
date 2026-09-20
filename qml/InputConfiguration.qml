@@ -98,31 +98,5 @@ Item {
             }
         }
 
-        Rectangle {
-            id: _newActionButton
-
-            Layout.fillWidth: true
-            Layout.preferredHeight: 40
-
-            color: Style.background
-
-            Button {
-                anchors.horizontalCenter: parent.horizontalCenter
-                enabled: !editorLocked
-
-                text: "New Action Sequence"
-
-                onClicked: {
-                    if (editorLocked) {
-                        return
-                    }
-                    if (!_root.inputItemModel) {
-                        _selectInputDialog.open()
-                        return
-                    }
-                    _root.inputItemModel.newActionSequence()
-                }
-            }
-        }
     }
 }
