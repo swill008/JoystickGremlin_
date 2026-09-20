@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from xml.etree import ElementTree
+
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
@@ -183,6 +185,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     deviceNameChanged = QtCore.Signal()
     countChanged = QtCore.Signal()
     filtersChanged = QtCore.Signal()
+    historyChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -191,6 +194,10 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._dest_filter = "all"
         self._rows: list[dict] = []
         self._dest_choices: list[str] = ["All devices"]
+        self._undo: list[tuple[int, str]] = []
+        self._redo: list[tuple[int, str]] = []
+        self._last_xml: dict[int, str] = {}
+        self._restoring = False
         signal.profileChanged.connect(self.reload)
         signal.inputItemChanged.connect(self.refreshHid)
         signal.configChanged.connect(self.reload)
@@ -433,6 +440,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         if meta is None:
             return
         item = self._item_for_hid(hid)
+        self._track_item(hid, item)
         new_rows = self._build_rows(item, meta)
         start, end = self._hid_span(hid)
         old = self._rows[start:end] if start >= 0 else []
@@ -643,8 +651,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         names = [entry.name for entry in plugins if getattr(entry, "tag", "") != "root"]
         lead = [
             "Map to vJoy",
-            "Map to keyboard",
-            "Map to mouse",
+            "Map to Keyboard",
+            "Map to Mouse",
             "Map to Xbox",
             "Macro",
             "Change Mode",
@@ -686,6 +694,82 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         signal.reloadCurrentInputItem.emit()
         return True
 
+
+    def _xml_of(self, item) -> str:
+        if item is None:
+            return ""
+        try:
+            return ElementTree.tostring(item.to_xml(), encoding="unicode")
+        except Exception:
+            return ""
+
+    def _track_item(self, hid: int, item) -> None:
+        xml = self._xml_of(item)
+        if not xml:
+            return
+        prev = self._last_xml.get(hid)
+        self._last_xml[hid] = xml
+        if prev is None or prev == xml or self._restoring:
+            return
+        self._undo.append((hid, prev))
+        if len(self._undo) > 80:
+            self._undo = self._undo[-80:]
+        self._redo.clear()
+        self.historyChanged.emit()
+
+    def _apply_xml(self, hid: int, xml: str) -> None:
+        from gremlin.profile import InputItemBinding
+
+        item = self._item_for_hid(hid)
+        if item is None:
+            return
+        self._restoring = True
+        try:
+            node = ElementTree.fromstring(xml)
+            item.action_sequences.clear()
+            for entry in node.findall("action-configuration"):
+                binding = InputItemBinding(item)
+                binding.from_xml(entry)
+                item.action_sequences.append(binding)
+            self._last_xml[hid] = xml
+            signal.inputItemChanged.emit(int(hid))
+            signal.reloadCurrentInputItem.emit()
+        except Exception:
+            pass
+        finally:
+            self._restoring = False
+        self.historyChanged.emit()
+
+    @QtCore.Slot(result=bool)
+    def undo(self) -> bool:
+        if not self._undo:
+            return False
+        hid, xml = self._undo.pop()
+        item = self._item_for_hid(hid)
+        current = self._xml_of(item)
+        if current:
+            self._redo.append((hid, current))
+        self._apply_xml(hid, xml)
+        return True
+
+    @QtCore.Slot(result=bool)
+    def redo(self) -> bool:
+        if not self._redo:
+            return False
+        hid, xml = self._redo.pop()
+        item = self._item_for_hid(hid)
+        current = self._xml_of(item)
+        if current:
+            self._undo.append((hid, current))
+        self._apply_xml(hid, xml)
+        return True
+
+    def _can_undo(self) -> bool:
+        return bool(self._undo)
+
+    def _can_redo(self) -> bool:
+        return bool(self._redo)
+
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     deviceName = QtCore.Property(
         str, fget=_get_device_name, fset=_set_device_name, notify=deviceNameChanged
@@ -704,3 +788,6 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     @QtCore.Property(int, notify=countChanged)
     def count(self) -> int:
         return len(self._rows)
+
+    canUndo = QtCore.Property(bool, fget=_can_undo, notify=historyChanged)
+    canRedo = QtCore.Property(bool, fget=_can_redo, notify=historyChanged)
