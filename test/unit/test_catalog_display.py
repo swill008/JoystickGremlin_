@@ -31,6 +31,7 @@ def test_panel_matches_omv_chrome() -> None:
     assert "interval: 2000" in text
     assert "CloseOnPressOutside" in text
     assert 'text: "ROWS"' in text
+    assert 'text: "PARENT ALIGNMENT"' in text
     assert 'text: "CHILD ALIGNMENT"' in text
     assert 'text: "TEXT"' in text
     assert 'text: "COLORS"' in text
@@ -104,6 +105,39 @@ def test_leaf_geometry_left_center_right() -> None:
     text = _QML.read_text(encoding="utf-8")
     assert "function leafX(total)" in text
     assert "function leafW(total)" in text
+    assert "function parentX(total)" in text
+    assert "function parentW(total)" in text
+    assert "function rowX(total, align, left, right, pct)" in text
+    assert "parentX(_row.width)" in text
+    assert "parentW(_row.width)" in text
+
+
+def test_parent_geometry_defaults_full_width() -> None:
+    def row_w(total, align, left, right, width_pct):
+        if align == "center":
+            return max(120, round(total * width_pct / 100))
+        return max(120, total - left - right)
+
+    def row_x(total, align, left, right, width_pct):
+        w = row_w(total, align, left, right, width_pct)
+        if align == "center":
+            return max(0, round((total - w) / 2))
+        if align == "right":
+            return max(0, total - w - right)
+        return left
+
+    total = 1000
+    assert row_x(total, "left", 0, 0, 100) == 0
+    assert row_w(total, "left", 0, 0, 100) == 1000
+    assert row_x(total, "left", 40, 80, 100) == 40
+    assert row_w(total, "left", 40, 80, 100) == 880
+    assert row_w(total, "center", 0, 0, 80) == 800
+    assert row_x(total, "center", 0, 0, 80) == 100
+    mm = _MM.read_text(encoding="utf-8")
+    assert '"parentAlign": "left"' in mm
+    assert '"parentLeft": 0' in mm
+    assert '"parentRight": 0' in mm
+    assert '"parentWidthPct": 100' in mm
 
 
 def test_catalog_merge_does_not_touch_view() -> None:
