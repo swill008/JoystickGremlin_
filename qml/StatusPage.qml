@@ -444,7 +444,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Label {
-                text: "Status"
+                text: "Home"
                 color: "#E4E4E7"
                 font.pixelSize: 13
                 font.bold: true
