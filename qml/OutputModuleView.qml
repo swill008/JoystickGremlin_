@@ -6,6 +6,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Universal
 import QtQuick.Layouts
+import QtQuick.Dialogs
 
 import Gremlin.Device
 import Gremlin.Style
@@ -36,6 +37,7 @@ Item {
     property string colorLive: "#22C55E"
     property string colorMeter: "#3B82F6"
     property string colorPress: "#22C55E"
+    property string _colorTarget: "live"
 
     readonly property bool showPads: layout === "pads_meters_grid"
     readonly property bool showMeters: layout !== "grid_only"
@@ -47,6 +49,20 @@ Item {
         guid: _root.guid
         deviceName: _root.deviceName
         onCountChanged: _root.rebuild()
+    }
+
+    ColorDialog {
+        id: _colorDlg
+        title: "Choose color"
+        onAccepted: {
+            var c = selectedColor.toString()
+            if (_colorTarget === "meter")
+                colorMeter = c
+            else if (_colorTarget === "press")
+                colorPress = c
+            else
+                colorLive = c
+        }
     }
 
     DeviceLiveState {
@@ -604,18 +620,63 @@ Item {
                         Label { text: "COLORS"; color: "#A1A1AA"; font.pixelSize: 10 }
                         RowLayout {
                             Label { text: "Live"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
-                            TextField { Layout.fillWidth: true; text: colorLive; onEditingFinished: colorLive = text }
-                            Rectangle { width: 18; height: 18; color: colorLive; border.color: "#3F3F46" }
+                            Button {
+                                Layout.fillWidth: true
+                                text: "Choose…"
+                                onClicked: { _colorTarget = "live"; _colorDlg.selectedColor = colorLive; _colorDlg.open() }
+                                background: Rectangle {
+                                    color: colorLive
+                                    border.color: "#3F3F46"
+                                    border.width: 1
+                                    radius: 3
+                                }
+                                contentItem: Label {
+                                    text: parent.text
+                                    color: "#111111"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
                         }
                         RowLayout {
                             Label { text: "Meter"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
-                            TextField { Layout.fillWidth: true; text: colorMeter; onEditingFinished: colorMeter = text }
-                            Rectangle { width: 18; height: 18; color: colorMeter; border.color: "#3F3F46" }
+                            Button {
+                                Layout.fillWidth: true
+                                text: "Choose…"
+                                onClicked: { _colorTarget = "meter"; _colorDlg.selectedColor = colorMeter; _colorDlg.open() }
+                                background: Rectangle {
+                                    color: colorMeter
+                                    border.color: "#3F3F46"
+                                    border.width: 1
+                                    radius: 3
+                                }
+                                contentItem: Label {
+                                    text: parent.text
+                                    color: "#111111"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
                         }
                         RowLayout {
                             Label { text: "Press"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
-                            TextField { Layout.fillWidth: true; text: colorPress; onEditingFinished: colorPress = text }
-                            Rectangle { width: 18; height: 18; color: colorPress; border.color: "#3F3F46" }
+                            Button {
+                                Layout.fillWidth: true
+                                text: "Choose…"
+                                onClicked: { _colorTarget = "press"; _colorDlg.selectedColor = colorPress; _colorDlg.open() }
+                                background: Rectangle {
+                                    color: colorPress
+                                    border.color: "#3F3F46"
+                                    border.width: 1
+                                    radius: 3
+                                }
+                                contentItem: Label {
+                                    text: parent.text
+                                    color: "#111111"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
                         }
                     }
                 }
