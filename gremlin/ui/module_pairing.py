@@ -347,3 +347,4 @@ class ModulePairHatModel(_ModulePairMappedModel):
 
 import gremlin.ui.module_inputs  # noqa: F401
 import gremlin.ui.output_modules  # noqa: F401
+import gremlin.ui.auto_map_modules  # noqa: F401
