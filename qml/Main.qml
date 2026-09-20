@@ -887,7 +887,7 @@ ApplicationWindow {
             }
             Button {
                 visible: configDirection === "dest"
-                text: outputViewPanel ? "Hide display" : "Display"
+                text: outputViewPanel ? "Hide Display Options" : "Edit Display Options"
                 onClicked: outputViewPanel = !outputViewPanel
             }
             Button {
