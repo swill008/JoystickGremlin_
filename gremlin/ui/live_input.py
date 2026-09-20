@@ -45,6 +45,18 @@ def _extract_uuid(value: object) -> str:
 
 
 @ta.QmlElement
+def _hat_xy(direction: object) -> tuple[int, int]:
+    if direction is None:
+        return (0, 0)
+    raw = getattr(direction, "value", direction)
+    if isinstance(raw, (tuple, list)) and len(raw) >= 2:
+        try:
+            return (int(raw[0]), int(raw[1]))
+        except (TypeError, ValueError):
+            return (0, 0)
+    return (0, 0)
+
+
 class DeviceLiveState(QtCore.QObject):
     """Live axis/button/hat values for the current physical device tab."""
 
@@ -65,6 +77,8 @@ class DeviceLiveState(QtCore.QObject):
         self._driven = False
         self._kinds: list[str] = []
         self._values: list[float] = []
+        self._hat_x: list[int] = []
+        self._hat_y: list[int] = []
         self._axis_rows: dict[int, int] = {}
         self._stamp = 0
         self._axis_dirty = False
@@ -134,6 +148,8 @@ class DeviceLiveState(QtCore.QObject):
         self._vjoy_id = 0
         self._kinds = []
         self._values = []
+        self._hat_x = []
+        self._hat_y = []
         self._axis_rows = {}
         self._sync_poll()
         self.guidChanged.emit()
@@ -157,10 +173,14 @@ class DeviceLiveState(QtCore.QObject):
             return
         self._kinds = []
         self._values = []
+        self._hat_x = []
+        self._hat_y = []
         self._axis_rows = {}
         for i in range(self._device.axis_count):
             self._kinds.append("axis")
             self._values.append(0.0)
+            self._hat_x.append(0)
+            self._hat_y.append(0)
             try:
                 axis_id = int(self._device.axis_map[i].axis_index)
             except Exception:
@@ -177,9 +197,13 @@ class DeviceLiveState(QtCore.QObject):
         for _ in range(self._device.button_count):
             self._kinds.append("button")
             self._values.append(0.0)
+            self._hat_x.append(0)
+            self._hat_y.append(0)
         for _ in range(self._device.hat_count):
             self._kinds.append("hat")
             self._values.append(0.0)
+            self._hat_x.append(0)
+            self._hat_y.append(0)
         self._resolve_vjoy()
         self.guidChanged.emit()
         self._bump()
@@ -290,8 +314,12 @@ class DeviceLiveState(QtCore.QObject):
                     direction = getattr(dev.hat(hat_id), "_direction", None)
                     if direction is None:
                         direction = dev.hat(hat_id).direction
-                    center = getattr(HatDirection, "Center", (0, 0))
-                    value = 0.0 if direction == center else 1.0
+                    hx, hy = _hat_xy(direction)
+                    if i < len(self._hat_x) and (self._hat_x[i], self._hat_y[i]) != (hx, hy):
+                        self._hat_x[i] = hx
+                        self._hat_y[i] = hy
+                        changed = True
+                    value = 0.0 if (hx, hy) == (0, 0) else 1.0
             except Exception:
                 continue
             if value is None:
@@ -385,11 +413,10 @@ class DeviceLiveState(QtCore.QObject):
                 - 1
             )
             if 0 <= row < len(self._values):
-                value = event.value
-                active = False
-                if hasattr(value, "value"):
-                    active = value.value != (0, 0)
-                self._values[row] = 1.0 if active else 0.0
+                hx, hy = _hat_xy(event.value)
+                self._hat_x[row] = hx
+                self._hat_y[row] = hy
+                self._values[row] = 0.0 if (hx, hy) == (0, 0) else 1.0
                 self._bump()
 
     @QtCore.Slot(int, result=str)
@@ -403,6 +430,18 @@ class DeviceLiveState(QtCore.QObject):
         if 0 <= index < len(self._values):
             return self._values[index]
         return 0.0
+
+    @QtCore.Slot(int, result=int)
+    def hatXAt(self, index: int) -> int:
+        if 0 <= index < len(self._hat_x):
+            return int(self._hat_x[index])
+        return 0
+
+    @QtCore.Slot(int, result=int)
+    def hatYAt(self, index: int) -> int:
+        if 0 <= index < len(self._hat_y):
+            return int(self._hat_y[index])
+        return 0
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     locked = QtCore.Property(bool, fget=_get_locked, fset=_set_locked, notify=lockedChanged)
