@@ -160,8 +160,12 @@ Rectangle {
             text: "Bound to: [" + (target.length ? target : "Not bound") + "]"
             color: "#A1A1AA"
             font.pixelSize: 11
-            elide: Text.ElideRight
+            wrapMode: Text.WordWrap
             Layout.fillWidth: true
+            HoverHandler { id: _boundHover }
+            ToolTip.visible: _boundHover.hovered && target.length > 0
+            ToolTip.text: target
+            ToolTip.delay: 400
         }
 
         Label {
