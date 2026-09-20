@@ -44,7 +44,6 @@ def _extract_uuid(value: object) -> str:
     return text.strip().strip("{}").lower()
 
 
-@ta.QmlElement
 def _hat_xy(direction: object) -> tuple[int, int]:
     if direction is None:
         return (0, 0)
@@ -57,6 +56,7 @@ def _hat_xy(direction: object) -> tuple[int, int]:
     return (0, 0)
 
 
+@ta.QmlElement
 class DeviceLiveState(QtCore.QObject):
     """Live axis/button/hat values for the current physical device tab."""
 
