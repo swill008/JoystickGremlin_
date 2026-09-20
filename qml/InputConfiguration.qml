@@ -17,6 +17,8 @@ Item {
     property int inputIndex
     property bool isOutput: false
     property bool inlineMode: false
+    property color editorFill: "#0F2744"
+    property color editorEdge: "#3B82F6"
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
     enabled: true
     opacity: editorLocked ? 0.55 : 1.0
@@ -25,8 +27,8 @@ Item {
     Rectangle {
         visible: inlineMode
         anchors.fill: parent
-        color: "#0F2744"
-        border.color: "#3B82F6"
+        color: editorFill
+        border.color: editorEdge
         border.width: 1
         radius: 3
     }
@@ -38,7 +40,7 @@ Item {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.margins: 1
-        color: "#3B82F6"
+        color: editorEdge
     }
 
     Component.onCompleted: {
