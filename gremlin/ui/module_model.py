@@ -167,6 +167,25 @@ def _load_module_doc(device_name: str) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+_DEFAULT_VIEW = {
+    "layout": "pads_meters_grid",
+    "padAX": 1,
+    "padAY": 2,
+    "padBX": 4,
+    "padBY": 5,
+    "showHats": True,
+    "meterStyle": "vertical",
+    "meterWidth": 22,
+    "meters": [],
+    "buttonStyle": "tile",
+    "buttonSize": "medium",
+    "buttonColumns": 12,
+    "colorLive": "#22C55E",
+    "colorMeter": "#3B82F6",
+    "colorPress": "#22C55E",
+}
+
+
 def _claim_from_doc(doc: dict) -> dict:
     claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
     buttons: list[int] = list(claim.get("buttons") or [])
@@ -390,6 +409,48 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Property(str, notify=focusChanged)
     def focusedSlug(self) -> str:
         return self._focus
+
+    viewChanged = QtCore.Signal()
+
+    @QtCore.Slot(str, result=str)
+    def viewConfigJson(self, device_name: str) -> str:
+        doc = _load_module_doc(device_name) if device_name else {}
+        view = dict(_DEFAULT_VIEW)
+        raw = (doc or {}).get("view")
+        if isinstance(raw, dict):
+            view.update(raw)
+        return json.dumps(view)
+
+    @QtCore.Slot(str, str, result=bool)
+    def saveViewConfig(self, device_name: str, json_text: str) -> bool:
+        name = str(device_name or "").strip()
+        if not name:
+            return False
+        try:
+            incoming = json.loads(json_text or "{}")
+        except json.JSONDecodeError:
+            return False
+        if not isinstance(incoming, dict):
+            return False
+        path = _maps_dir() / f"{_slug(name)}.json"
+        doc: dict = {}
+        if path.is_file():
+            try:
+                doc = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                doc = {}
+        view = dict(_DEFAULT_VIEW)
+        raw = doc.get("view")
+        if isinstance(raw, dict):
+            view.update(raw)
+        view.update(incoming)
+        doc["view"] = view
+        doc.setdefault("kind", "control.hardware")
+        doc.setdefault("device", name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        self.viewChanged.emit()
+        return True
 
     @QtCore.Slot(str)
     def ignoreSlug(self, slug: str) -> None:
