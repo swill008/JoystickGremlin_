@@ -17,6 +17,7 @@ Item {
     property string pinSlug: ""
     property bool hoverPeek: true
     property var _liveCards: []
+    property var slotSnap: []
 
     property string dragSlug: ""
     property string dragDir: ""
@@ -81,20 +82,77 @@ Item {
         return ""
     }
 
-    function pickTargetAt(slug, gx, gy) {
-        var out = { stack: "", before: "" }
+    function cardBySlug(slug) {
+        for (var i = 0; i < _liveCards.length; ++i) {
+            if (_liveCards[i] && _liveCards[i].slug === slug)
+                return _liveCards[i]
+        }
+        return null
+    }
+
+    function snapshotSlots(dragged, dir, dragCard) {
+        var list = []
+        if (!model)
+            return
+        var leaders = model.pileLeaders(dir)
+        var dleft = 0
+        var dw = ghostW
+        if (dragCard) {
+            var dpos = dragCard.mapToItem(_page, 0, 0)
+            dleft = dpos.x
+            dw = dragCard.width
+        }
+        for (var i = 0; i < leaders.length; ++i) {
+            var s = leaders[i]
+            if (s === dragged)
+                continue
+            var card = cardBySlug(s)
+            if (!card)
+                continue
+            var o = card.mapToItem(_page, 0, 0)
+            var left = o.x
+            if (left > dleft)
+                left -= dw + 16
+            list.push({
+                slug: s,
+                left: left,
+                mid: left + card.width / 2,
+                top: o.y,
+                y: o.y + card.height / 2,
+                w: card.width,
+                h: card.height
+            })
+        }
+        slotSnap = list
+    }
+
+    function pickInsertFromSnap(gx, gy) {
+        var before = ""
+        var slots = slotSnap
+        if (!slots || !slots.length)
+            return before
+        for (var j = 0; j < slots.length; ++j) {
+            var s = slots[j]
+            var sameRow = Math.abs(gy - s.y) < Math.max(120, s.h * 0.75)
+            if (!sameRow)
+                continue
+            if (gx < s.mid) {
+                before = s.slug
+                break
+            }
+        }
+        return before
+    }
+
+    function pickStackAt(slug, gx, gy) {
+        var out = ""
         if (!model || !slug)
             return out
         var dir = dragDir
-        var leaders = {}
-        var leaderList = model.pileLeaders(dir)
-        for (var li = 0; li < leaderList.length; ++li)
-            leaders[leaderList[li]] = true
         var homePile = {}
         var members = model.pileMembers(slug)
         for (var mi = 0; mi < members.length; ++mi)
             homePile[members[mi]] = true
-        var slots = []
         var best = null
         var bestArea = 0
         var bestC = 1e12
@@ -111,20 +169,6 @@ Item {
             var origin = other.mapToItem(_page, 0, 0)
             var cx = origin.x + other.width / 2
             var cy = origin.y + other.height / 2
-            if (leaders[other.slug]) {
-                var left = origin.x
-                if (insertBefore === other.slug && ghostW > 0 && !dragStackSlug)
-                    left += ghostW + 16
-                slots.push({
-                    slug: other.slug,
-                    x: left + Math.min(other.width, fw) / 2,
-                    y: cy,
-                    left: left,
-                    top: origin.y,
-                    w: other.width,
-                    h: other.height
-                })
-            }
             var ox = Math.min(fx + fw, origin.x + other.width) - Math.max(fx, origin.x)
             var oy = Math.min(fy + fh, origin.y + other.height) - Math.max(fy, origin.y)
             var area = (ox > 0 && oy > 0) ? ox * oy : 0
@@ -141,30 +185,13 @@ Item {
         var heavy = fw * fh * 0.55
         var close = Math.min(fw, fh) * 0.22
         if (traveled >= stackTravel && best && !homePile[best.slug] && bestArea >= heavy && bestC < close) {
-            out.stack = best.slug
             pendingStackW = Math.round(best.width)
             pendingStackH = Math.round(best.height)
-        } else {
-            pendingStackW = 0
-            pendingStackH = 0
+            return best.slug
         }
-        slots.sort(function(a, b) {
-            if (Math.abs(a.y - b.y) < 48)
-                return a.x - b.x
-            return a.y - b.y
-        })
-        for (var j = 0; j < slots.length; ++j) {
-            var sameRow = Math.abs(gy - slots[j].y) < Math.max(80, slots[j].h * 0.6)
-            if (sameRow && gx < slots[j].x) {
-                out.before = slots[j].slug
-                break
-            }
-            if (!sameRow && gy < slots[j].top) {
-                out.before = slots[j].slug
-                break
-            }
-        }
-        return out
+        pendingStackW = 0
+        pendingStackH = 0
+        return ""
     }
 
     function nextLeader(slug, dir) {
@@ -212,6 +239,7 @@ Item {
         stackCandidate = ""
         pendingStackW = 0
         pendingStackH = 0
+        snapshotSlots(card.slug, dragDir, card)
         insertBefore = nextLeader(card.slug, dragDir)
         _stackDwell.stop()
     }
@@ -229,16 +257,12 @@ Item {
         floatY = p.y - grabOffY
         var gx = floatX + ghostW / 2
         var gy = floatY + ghostH / 2
-        var t = pickTargetAt(dragSlug, gx, gy)
-        noteStackHover(t.stack)
+        noteStackHover(pickStackAt(dragSlug, gx, gy))
         if (dragStackSlug.length)
             return
-        var dx = gx - dragOriginX
-        var dy = gy - dragOriginY
-        if (Math.sqrt(dx * dx + dy * dy) < 16)
-            return
-        if (insertBefore !== t.before)
-            insertBefore = t.before
+        var before = pickInsertFromSnap(gx, gy)
+        if (insertBefore !== before)
+            insertBefore = before
     }
 
     function clearDrag() {
@@ -253,6 +277,7 @@ Item {
         pendingStackW = 0
         pendingStackH = 0
         gotGrab = false
+        slotSnap = []
     }
 
     function handleDrop(slug) {
@@ -260,8 +285,6 @@ Item {
             clearDrag()
             return
         }
-        // Only stack if the 1.5s dwell armed it. A geometric re-pick on
-        // mouse-up would stack after a quick pass over a card.
         var stackTo = dragStackSlug
         var before = insertBefore
         var stackW = pendingStackW
@@ -618,7 +641,7 @@ Item {
                                     width: _pile.cardW
                                     height: _pile.cardH > 0 ? _pile.cardH : implicitHeight
                                     dropStacking: _page.dragStackSlug === slug
-                                    opacity: _page.dragSlug === slug ? 0 : 1
+                                    opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1
                                     onLiftingChanged: {
                                         if (lifting)
                                             _pile.freezeSlot()
