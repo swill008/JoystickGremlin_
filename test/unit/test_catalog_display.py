@@ -283,3 +283,14 @@ def test_add_does_not_reset_catalog_model() -> None:
     assert "refreshHid" in close
     assert "reloadKeepScroll" not in close
 
+
+def test_inline_repeater_exposes_index() -> None:
+    ic = _IC.read_text(encoding="utf-8")
+    assert "required property int index" in ic
+    assert "required property var modelData" in ic
+    assert "function loadModel()" in ic
+    assert "onSequenceIndexChanged: loadModel()" in ic
+    bc = Path(__file__).resolve().parents[2] / "gremlin/ui/binding_catalog.py"
+    src = bc.read_text(encoding="utf-8")
+    assert "signal.reloadCurrentInputItem.emit()" in src
+
