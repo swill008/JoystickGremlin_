@@ -594,6 +594,48 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._reload()
         self.panesChanged.emit()
 
+    @QtCore.Slot(str, str)
+    def stackSelected(self, leader: str, slugs_csv: str) -> None:
+        """Stack the listed slugs onto leader. Leader keeps the pile slot."""
+        if not leader:
+            return
+        names: list[str] = []
+        seen: set[str] = set()
+        for raw in [leader] + [p.strip() for p in (slugs_csv or "").split(",")]:
+            if raw and raw not in seen:
+                names.append(raw)
+                seen.add(raw)
+        dirs = {row.slug: row.direction for row in self._rows}
+        lead_dir = dirs.get(leader)
+        names = [
+            s for s in names
+            if s in dirs and (not lead_dir or dirs.get(s) == lead_dir)
+        ]
+        if leader not in names or len(names) < 2:
+            return
+        selected = set(names)
+        groups = []
+        for group in self._stacks():
+            rest = [s for s in group if s not in selected]
+            if len(rest) > 1:
+                groups.append(rest)
+        merged = [leader] + [s for s in names if s != leader]
+        groups.append(merged)
+        self._set_stacks(groups)
+        sizes = _sizes()
+        shared = sizes.get(leader)
+        if not shared:
+            for slug in names:
+                if slug in sizes:
+                    shared = sizes[slug]
+                    break
+        if shared:
+            for member in merged:
+                sizes[member] = shared
+            _set_sizes(sizes)
+        self._reload()
+        self.panesChanged.emit()
+
     @QtCore.Slot(str)
     def unstackSlug(self, slug: str) -> None:
         groups = []
