@@ -16,6 +16,7 @@ Button {
     property string nameKey: ""
     property string defaultName: name
     property var liveState: null
+    property bool runtimeActive: false
     property int liveIndex: index
     property int liveStamp: liveState && liveState.stamp !== undefined ? liveState.stamp : 0
     property string inputKind: liveStamp >= 0 && liveState && liveIndex !== undefined ? liveState.kindAt(liveIndex) : ""
@@ -29,7 +30,7 @@ Button {
         liveStamp
         if (!_outputScreen)
             return true
-        return !!(typeof backend !== "undefined" && backend && backend.gremlinActive)
+        return runtimeActive && !!(liveState && liveState.driven)
     }
     readonly property bool _ledOn: _showLive && (_buttonActive || _hatActive)
 
