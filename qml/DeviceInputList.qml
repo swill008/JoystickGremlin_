@@ -20,6 +20,7 @@ Item {
     property bool isOutput: false
     readonly property bool outputLive: isOutput || /^vJoy\s/i.test(claimDeviceName)
     readonly property bool editorLocked: backend && backend.gremlinActive && !outputLive
+    readonly property bool runtimeActive: !!(backend && backend.gremlinActive)
     readonly property int claimedCount: _claimed.count
 
     enabled: true
@@ -148,6 +149,7 @@ Item {
 
             liveIndex: model.deviceIndex
             liveState: (editorLocked && !outputLive) ? null : _liveState
+            runtimeActive: _root.runtimeActive
             selected: model.index === _inputList.currentIndex
             onClicked: () => {
                 if (!editorLocked) {
