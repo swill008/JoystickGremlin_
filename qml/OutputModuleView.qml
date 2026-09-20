@@ -27,6 +27,7 @@ Item {
     property int padAY: 2
     property int padBX: 4
     property int padBY: 5
+    property bool showPads: true
     property bool showHats: true
     property string meterStyle: "vertical"
     property int meterWidth: 22
@@ -39,7 +40,9 @@ Item {
     property string colorPress: "#22C55E"
     property string _colorTarget: "live"
 
-    readonly property bool showPads: layout === "pads_meters_grid"
+    readonly property bool padsOn: showPads && layout === "pads_meters_grid"
+    readonly property bool padAOn: padsOn && (padAX > 0 || padAY > 0)
+    readonly property bool padBOn: padsOn && (padBX > 0 || padBY > 0)
     readonly property bool showMeters: layout !== "grid_only"
     readonly property int btnCellW: buttonSize === "small" ? 52 : (buttonSize === "large" ? 88 : 64)
     readonly property int btnCellH: buttonSize === "small" ? 36 : (buttonSize === "large" ? 56 : 48)
@@ -144,6 +147,7 @@ Item {
             "padAY": padAY,
             "padBX": padBX,
             "padBY": padBY,
+            "showPads": showPads,
             "showHats": showHats,
             "meterStyle": meterStyle,
             "meterWidth": meterWidth,
@@ -166,10 +170,11 @@ Item {
             return
         }
         layout = v.layout || "pads_meters_grid"
-        padAX = v.padAX || 1
-        padAY = v.padAY || 2
-        padBX = v.padBX || 4
-        padBY = v.padBY || 5
+        padAX = (v.padAX === undefined || v.padAX === null) ? 1 : v.padAX
+        padAY = (v.padAY === undefined || v.padAY === null) ? 2 : v.padAY
+        padBX = (v.padBX === undefined || v.padBX === null) ? 4 : v.padBX
+        padBY = (v.padBY === undefined || v.padBY === null) ? 5 : v.padBY
+        showPads = v.showPads !== false
         showHats = v.showHats !== false
         meterStyle = v.meterStyle || "vertical"
         meterWidth = v.meterWidth || 22
@@ -190,6 +195,7 @@ Item {
     function resetView() {
         layout = "pads_meters_grid"
         padAX = 1; padAY = 2; padBX = 4; padBY = 5
+        showPads = true
         showHats = true
         meterStyle = "vertical"
         meterWidth = 22
@@ -293,7 +299,7 @@ Item {
         spacing: 16
 
         ColumnLayout {
-            visible: _root.showPads
+            visible: _root.padAOn || _root.padBOn || (_root.showHats && hatModel.count > 0)
             Layout.preferredWidth: 228
             Layout.maximumWidth: 228
             Layout.fillWidth: false
@@ -304,6 +310,7 @@ Item {
             CrossPad {
                 Layout.preferredWidth: 220
                 Layout.preferredHeight: 220
+                visible: _root.padAOn
                 label: "X / Y"
                 xVal: { var row = findAxis(padAX); return row ? liveVal(row.idx) : 0 }
                 yVal: { var row = findAxis(padAY); return row ? liveVal(row.idx) : 0 }
@@ -311,7 +318,7 @@ Item {
             CrossPad {
                 Layout.preferredWidth: 220
                 Layout.preferredHeight: 220
-                visible: padBX > 0 || padBY > 0
+                visible: _root.padBOn
                 label: "Rx / Ry"
                 xVal: { var row = findAxis(padBX); return row ? liveVal(row.idx) : 0 }
                 yVal: { var row = findAxis(padBY); return row ? liveVal(row.idx) : 0 }
@@ -492,6 +499,7 @@ Item {
                         }
 
                         Label { text: "PADS"; color: "#A1A1AA"; font.pixelSize: 10 }
+                        CheckBox { text: "Show pads"; checked: showPads; onToggled: showPads = checked }
                         Label { text: "X / Y pad"; color: "#E4E4E7"; font.pixelSize: 11 }
                         RowLayout {
                             Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
