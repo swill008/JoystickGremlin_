@@ -76,6 +76,22 @@ Item {
         }
     }
 
+    function showHid(hid) {
+        if (editorLocked || hid < 0) {
+            return
+        }
+        let row = _claimed.rowForDeviceIndex(hid)
+        if (row < 0) {
+            return
+        }
+        if (_inputList.currentIndex !== row) {
+            _inputList.currentIndex = row
+        }
+        Qt.callLater(function() {
+            _inputList.positionViewAtIndex(row, ListView.Contain)
+        })
+    }
+
     Connections {
         target: uiState
 
@@ -83,14 +99,7 @@ Item {
             if (!uiState || editorLocked) {
                 return
             }
-            let hid = uiState.currentInputIndex
-            if (hid < 0) {
-                return
-            }
-            let row = _claimed.rowForDeviceIndex(hid)
-            if (row >= 0 && _inputList.currentIndex !== row) {
-                _inputList.currentIndex = row
-            }
+            showHid(uiState.currentInputIndex)
         }
     }
 
@@ -98,13 +107,7 @@ Item {
         target: signal
 
         function onSetInputIndex(index) {
-            if (editorLocked || index < 0) {
-                return
-            }
-            let row = _claimed.rowForDeviceIndex(index)
-            if (row >= 0) {
-                _inputList.currentIndex = row
-            }
+            showHid(index)
         }
     }
 
