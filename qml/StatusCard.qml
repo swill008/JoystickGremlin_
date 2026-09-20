@@ -37,7 +37,6 @@ Rectangle {
     property bool resizing: false
     property bool dropStacking: false
     z: stackIndex + (lifting || resizing ? 100 : 0)
-    opacity: lifting ? 0.92 : 1
 
     signal cardFocused()
     signal openConfiguration()
@@ -50,10 +49,9 @@ Rectangle {
     signal openDeviceInformation()
     signal assignHardware()
     signal ignoreDevice()
-    signal dropAt(real cx, real cy)
+    signal dropAt(real sx, real sy)
     signal dragStarted()
-    signal dragMoved()
-    signal dragEnded()
+    signal dragMovedAt(real sx, real sy)
     signal sizeChanged(int w, int h)
     signal resetSize()
     signal clearSettings()
@@ -179,37 +177,46 @@ Rectangle {
         id: _grab
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        drag.target: _card.resizing ? null : _card
-        drag.threshold: 10
+        // Do not drag this item. It lives in a Flow; moving it there
+        // reflows the parent and the drop target chases itself.
         preventStealing: true
         property bool didDrag: false
+        property real pressX: 0
+        property real pressY: 0
+        property real lastSx: 0
+        property real lastSy: 0
         enabled: !_card.resizing
 
         onPressed: function(mouse) {
             didDrag = false
+            pressX = mouse.x
+            pressY = mouse.y
             if (mouse.button === Qt.LeftButton)
                 _card.lifting = true
         }
-        onPositionChanged: {
-            if (!drag.active)
+        onPositionChanged: function(mouse) {
+            if (!pressed)
                 return
             if (!didDrag) {
+                if (Math.abs(mouse.x - pressX) < 10 && Math.abs(mouse.y - pressY) < 10)
+                    return
                 didDrag = true
                 _card.dragStarted()
             }
-            _card.dragMoved()
+            var s = _grab.mapToItem(null, mouse.x, mouse.y)
+            lastSx = s.x
+            lastSy = s.y
+            _card.dragMovedAt(s.x, s.y)
         }
         onReleased: function(mouse) {
             var dragged = didDrag
-            var cx = _card.x + _card.width / 2
-            var cy = _card.y + _card.height / 2
+            var sx = lastSx
+            var sy = lastSy
             _card.lifting = false
             if (!dragged)
                 return
-            // Commit after this handler returns. moveSlugBefore rebuilds the
-            // Repeater and would destroy this card mid-release.
             Qt.callLater(function() {
-                _card.dropAt(cx, cy)
+                _card.dropAt(sx, sy)
             })
         }
         onClicked: function(mouse) {
@@ -255,7 +262,6 @@ Rectangle {
         ToolTip.text: "Hide device"
         ToolTip.delay: 400
     }
-
 
     function _clampW(w) { return Math.max(220, Math.min(720, w)) }
     function _clampH(h) { return Math.max(140, Math.min(520, h)) }
