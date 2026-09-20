@@ -109,6 +109,99 @@ def _norm_guid(value) -> str:
     return text.replace("{", "").replace("}", "").replace("-", "")
 
 
+
+def collect_bound_names(
+    source_guid_to_name: dict[str, str],
+    dest_vjoy_to_name: dict[int, str],
+    xbox_name: str,
+    maps: list[tuple[str, str, int]],
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Group profile wires into unique device names per source GUID and dest key."""
+    src_bound: dict[str, list[str]] = {}
+    dest_bound: dict[str, list[str]] = {}
+
+    def add(bucket: dict[str, list[str]], key: str, value: str) -> None:
+        if not key or not value:
+            return
+        items = bucket.setdefault(key, [])
+        if value not in items:
+            items.append(value)
+
+    for guid, kind, dest_id in maps:
+        src_name = source_guid_to_name.get(guid, "")
+        if kind == "xbox":
+            dest_name = xbox_name or "Xbox 360 Controller"
+            dest_key = "xbox"
+        else:
+            dest_name = dest_vjoy_to_name.get(int(dest_id), f"vJoy {dest_id}")
+            dest_key = f"vjoy:{int(dest_id)}"
+        add(src_bound, guid, dest_name)
+        add(dest_bound, dest_key, src_name)
+    return src_bound, dest_bound
+
+
+def _profile_wire_maps() -> list[tuple[str, str, int]]:
+    try:
+        from gremlin import shared_state
+        from gremlin.ui.input_pairing import _maps_for_item
+    except Exception:
+        return []
+    profile = getattr(shared_state, "current_profile", None)
+    if profile is None:
+        return []
+    out: list[tuple[str, str, int]] = []
+    for uid, items in (getattr(profile, "inputs", None) or {}).items():
+        guid = _norm_guid(uid)
+        for item in items or []:
+            try:
+                mapped = _maps_for_item(item)
+            except Exception:
+                continue
+            for vjoy_id, vtype, _hid in mapped:
+                kind = "xbox" if vtype is None else "vjoy"
+                try:
+                    out.append((guid, kind, int(vjoy_id)))
+                except (TypeError, ValueError):
+                    continue
+    return out
+
+
+def apply_bound_targets(rows: list) -> None:
+    guid_to_name = {
+        _norm_guid(getattr(row, "guid", "")): getattr(row, "name", "")
+        for row in rows
+        if getattr(row, "direction", "") == "source"
+    }
+    vjoy_to_name: dict[int, str] = {}
+    xbox_name = ""
+    for row in rows:
+        if getattr(row, "direction", "") != "dest":
+            continue
+        name = str(getattr(row, "name", "") or "")
+        tab = str(getattr(row, "tab", "") or "")
+        if tab == "xbox" or "xbox" in name.lower():
+            xbox_name = name
+            continue
+        digits = "".join(ch for ch in name if ch.isdigit())
+        if digits:
+            vjoy_to_name[int(digits)] = name
+    src_bound, dest_bound = collect_bound_names(
+        guid_to_name, vjoy_to_name, xbox_name, _profile_wire_maps()
+    )
+    for row in rows:
+        direction = getattr(row, "direction", "")
+        name = str(getattr(row, "name", "") or "")
+        tab = str(getattr(row, "tab", "") or "")
+        if direction == "source":
+            names = src_bound.get(_norm_guid(getattr(row, "guid", "")), [])
+        elif tab == "xbox" or "xbox" in name.lower():
+            names = dest_bound.get("xbox", [])
+        else:
+            digits = "".join(ch for ch in name if ch.isdigit())
+            names = dest_bound.get(f"vjoy:{int(digits)}", []) if digits else []
+        row.target = ", ".join(names)
+
+
 def _order_slugs() -> list[str]:
     _ensure_display_options()
     raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_ORDER) or "")
@@ -860,6 +953,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
             QtCore.Qt.ItemDataRole.UserRole + 12,
             QtCore.Qt.ItemDataRole.UserRole + 13,
         ]
+        apply_bound_targets(self._rows)
+        roles = roles + [QtCore.Qt.ItemDataRole.UserRole + 15]
         for idx, row in enumerate(self._rows):
             name = row.raw_name or row.name
             row.photo = self._hw.profilePhotoUrl(name)
@@ -1101,6 +1196,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
         trimmed = [slug for slug in order if slug in set(visible)]
         if visible and visible != trimmed:
             _set_order(visible)
+
+        apply_bound_targets(rows)
 
         self.beginResetModel()
         self._rows = rows
