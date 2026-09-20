@@ -14,6 +14,9 @@ Item {
 
     // Data to render
     property RootModel action
+    property bool compactMode: false
+    property var inputItemModel
+    property var inputBinding
 
     implicitHeight: _content.height
 
@@ -38,6 +41,9 @@ Item {
                 action: modelData
                 parentAction: _root.action
                 containerName: "children"
+                compactMode: _root.compactMode
+                inputItemModel: _root.inputItemModel
+                inputBinding: _root.inputBinding
 
                 Layout.fillWidth: true
             }
