@@ -16,9 +16,20 @@ Item {
     property InputItemModel inputItemModel
     property int inputIndex
     property bool isOutput: false
+    property bool inlineMode: false
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
     enabled: true
     opacity: editorLocked ? 0.55 : 1.0
+    implicitHeight: inlineMode ? Math.max(80, _content.implicitHeight) : 200
+
+    Component.onCompleted: {
+        if (!backend || !uiState)
+            return
+        _root.inputItemModel = backend.getInputItem(
+            uiState.currentInput,
+            uiState.currentInputIndex
+        )
+    }
 
     Connections {
         target: uiState
@@ -59,17 +70,30 @@ Item {
     ColumnLayout {
         id: _content
 
-        anchors.fill: parent
+        anchors.fill: inlineMode ? undefined : parent
+        width: parent.width
+        spacing: 8
+
+        Repeater {
+            id: _inlineRepeater
+            model: _root.inlineMode ? _root.inputItemModel : null
+
+            delegate: InputItemBinding {
+                Layout.fillWidth: true
+                enabled: !editorLocked
+                inputBinding: modelData
+                inputItemModel: _root.inputItemModel
+            }
+        }
 
         JGListView {
             id: _listView
-
+            visible: !_root.inlineMode
             Layout.fillHeight: true
             Layout.fillWidth: true
             scrollbarAlwaysVisible: true
             enabled: !editorLocked
-
-            model: _root.inputItemModel
+            model: _root.inlineMode ? null : _root.inputItemModel
             delegate: _entryDelegate
         }
 
@@ -97,6 +121,5 @@ Item {
                 }
             }
         }
-
     }
 }
