@@ -24,6 +24,7 @@ Item {
     property string dragName: ""
     property string dragPhoto: ""
     property string insertBefore: ""
+    property string homeBefore: ""
     property string dragStackSlug: ""
     property string stackCandidate: ""
     property int ghostW: 280
@@ -118,9 +119,17 @@ Item {
             dleft = dpos.x
             dw = dragCard.width
         }
+        var skip = dragged
+        for (var k = 0; k < leaders.length; ++k) {
+            var mem = model.pileMembers(leaders[k])
+            for (var m = 0; m < mem.length; ++m) {
+                if (mem[m] === dragged)
+                    skip = leaders[k]
+            }
+        }
         for (var i = 0; i < leaders.length; ++i) {
             var s = leaders[i]
-            if (s === dragged)
+            if (s === skip)
                 continue
             var card = cardBySlug(s)
             if (!card)
@@ -143,20 +152,24 @@ Item {
     }
 
     function pickInsertFromSnap(gx, gy) {
-        var before = ""
         var slots = slotSnap
         if (!slots || !slots.length)
-            return before
+            return insertBefore
+        var hit = false
+        var before = ""
         for (var j = 0; j < slots.length; ++j) {
             var s = slots[j]
             var sameRow = Math.abs(gy - s.y) < Math.max(120, s.h * 0.75)
             if (!sameRow)
                 continue
+            hit = true
             if (gx <= s.mid) {
                 before = s.slug
                 break
             }
         }
+        if (!hit)
+            return insertBefore
         return before
     }
 
@@ -216,6 +229,11 @@ Item {
         for (var i = 0; i < list.length; ++i) {
             if (list[i] === slug)
                 return (i + 1 < list.length) ? list[i + 1] : ""
+            var mem = model.pileMembers(list[i])
+            for (var j = 0; j < mem.length; ++j) {
+                if (mem[j] === slug)
+                    return (i + 1 < list.length) ? list[i + 1] : ""
+            }
         }
         return ""
     }
@@ -253,11 +271,9 @@ Item {
         stackCandidate = ""
         pendingStackW = 0
         pendingStackH = 0
-        // Measure the row first. Setting dragSlug collapses the home
-        // slot; a snapshot after that would subtract the width twice
-        // and the hole would jump to the far right.
         snapshotSlots(card.slug, dragDir, card)
-        insertBefore = nextLeader(card.slug, dragDir)
+        homeBefore = nextLeader(card.slug, dragDir)
+        insertBefore = homeBefore
         dragSlug = card.slug
         _stackDwell.stop()
     }
@@ -295,6 +311,7 @@ Item {
         dragName = ""
         dragPhoto = ""
         insertBefore = ""
+        homeBefore = ""
         dragStackSlug = ""
         stackCandidate = ""
         pendingStackW = 0
@@ -310,6 +327,7 @@ Item {
         }
         var stackTo = dragStackSlug
         var before = insertBefore
+        var home = homeBefore
         var stackW = pendingStackW
         var stackH = pendingStackH
         clearDrag()
@@ -319,6 +337,8 @@ Item {
                 model.setPileSize(stackTo, stackW, stackH)
             return
         }
+        if (before === home)
+            return
         model.unstackSlug(slug)
         model.moveSlugBefore(slug, before)
     }
