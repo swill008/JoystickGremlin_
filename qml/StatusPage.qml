@@ -26,6 +26,8 @@ Item {
     property string dragStackSlug: ""
     property int ghostW: 280
     property int ghostH: 240
+    property int pendingStackW: 0
+    property int pendingStackH: 0
 
     signal focusSlug(string slug)
     signal openConfiguration(var card)
@@ -130,8 +132,12 @@ Item {
         var heavy = card.width * card.height * 0.45
         if (best && bestArea >= heavy && bestC < Math.min(card.width, card.height) * 0.35) {
             out.stack = best.slug
+            pendingStackW = Math.round(best.width)
+            pendingStackH = Math.round(best.height)
             return out
         }
+        pendingStackW = 0
+        pendingStackH = 0
         slots.sort(function(a, b) {
             if (Math.abs(a.y - b.y) < 48)
                 return a.x - b.x
@@ -162,6 +168,8 @@ Item {
         ghostH = Math.round(card.height)
         insertBefore = ""
         dragStackSlug = ""
+        pendingStackW = 0
+        pendingStackH = 0
         updateDrag(card)
     }
 
@@ -192,25 +200,30 @@ Item {
     }
 
     function handleDrop(slug, card) {
-        if (!model || !slug || !card)
+        if (!model || !slug) {
+            clearDrag()
             return
-        var t = pickTarget(card)
+        }
+        var stackTo = dragStackSlug
+        var before = insertBefore
+        var stackW = pendingStackW
+        var stackH = pendingStackH
+        if (card) {
+            var t = pickTarget(card)
+            stackTo = t.stack
+            before = t.before
+            stackW = pendingStackW
+            stackH = pendingStackH
+        }
         clearDrag()
-        if (t.stack) {
-            model.stackSlugs(slug, t.stack)
-            var target = null
-            for (var i = 0; i < _liveCards.length; ++i) {
-                if (_liveCards[i] && _liveCards[i].slug === t.stack) {
-                    target = _liveCards[i]
-                    break
-                }
-            }
-            if (target)
-                model.setPileSize(t.stack, Math.round(target.width), Math.round(target.height))
+        if (stackTo) {
+            model.stackSlugs(slug, stackTo)
+            if (stackW > 0 && stackH > 0)
+                model.setPileSize(stackTo, stackW, stackH)
             return
         }
         model.unstackSlug(slug)
-        model.moveSlugBefore(slug, t.before)
+        model.moveSlugBefore(slug, before)
     }
 
     function bindCard(card) {
@@ -234,7 +247,6 @@ Item {
         card.dragStarted.connect(function() { _page.beginDrag(card) })
         card.dragMoved.connect(function() { _page.updateDrag(card) })
         card.dropAt.connect(function() { _page.handleDrop(card.slug, card) })
-        card.dragEnded.connect(function() { _page.clearDrag() })
         card.onSizeChanged.connect(function(w, h) {
             if (model)
                 model.setPileSize(card.slug, w, h)
