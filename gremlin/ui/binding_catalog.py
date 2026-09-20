@@ -650,6 +650,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             if action is not None:
                 binding.root_action.insert_action(action, "children")
         signal.inputItemChanged.emit(int(device_index))
+        signal.reloadCurrentInputItem.emit()
         return seq
 
     @QtCore.Slot(int, int, result=bool)
@@ -662,6 +663,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             return False
         item.remove_item_binding(seqs[int(seq_index)])
         signal.inputItemChanged.emit(int(device_index))
+        signal.reloadCurrentInputItem.emit()
         return True
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
