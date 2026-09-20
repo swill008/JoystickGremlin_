@@ -51,3 +51,12 @@ def test_unwired_stays_empty() -> None:
     )
     assert src == {}
     assert dest == {}
+
+
+from pathlib import Path
+
+def test_status_card_always_shows_bound_to() -> None:
+    text = Path(__file__).resolve().parents[2].joinpath("qml/StatusCard.qml").read_text(encoding="utf-8")
+    assert 'Bound to: [' in text
+    assert "Not bound" in text
+    assert "visible: target.length" not in text
