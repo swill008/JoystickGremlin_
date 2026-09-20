@@ -25,7 +25,10 @@ Button {
     readonly property bool _hatActive: inputKind === "hat" && liveValue > 0.5
     readonly property bool _axisActive: inputKind === "axis"
     readonly property bool _outputScreen: !!(liveState && liveState.liveWhileActive)
-    readonly property bool _outputDriven: !_outputScreen || !!(liveState && liveState.driven)
+    readonly property bool _outputDriven: {
+        liveStamp
+        return !_outputScreen || !!(liveState && liveState.driven)
+    }
     readonly property bool _ledOn: _outputDriven && (_buttonActive || _hatActive)
 
     signal renameRequested()
