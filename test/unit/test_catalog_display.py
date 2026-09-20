@@ -301,10 +301,21 @@ def test_add_opens_editor_after_insert() -> None:
     assert "Qt.callLater" in add
     assert "_root.editingHid = -1" in add
     open_ed = text[text.find("function openEditor") : text.find("function closeEditor")]
-    assert "Qt.callLater" in open_ed
     assert "_list.forceLayout" in open_ed
+    assert "onDoubleClicked" in text
+    assert "lv.okRow()" in text[text.find("onDoubleClicked"):text.find("onDoubleClicked")+500]
     bc = Path(__file__).resolve().parents[2] / "gremlin/ui/binding_catalog.py"
     src = bc.read_text(encoding="utf-8")
     assert "len(new_rows) > len(old)" in src
     assert "extra = new_rows[len(old)" in src
+
+
+def test_leaf_double_click_closes_editor() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    assert "onDoubleClicked" in text
+    block = text[text.find("onDoubleClicked") : text.find("onDoubleClicked") + 420]
+    assert "lv.okRow()" in block
+    assert "seqIndex === lv.editingSeq" in block
+    click = text[text.find("onClicked: function(mouse)") : text.find("onDoubleClicked")]
+    assert "lv.openRow(deviceIndex, seqIndex)" in click
 
