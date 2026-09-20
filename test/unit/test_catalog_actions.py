@@ -175,7 +175,9 @@ def test_wrapper_without_child_is_placeholder() -> None:
     binding = item.add_item_binding()
     binding.insert_action(_Act("tempo", children=[]), "children")
     leaves = ns["leaves_for_item"](item)
-    assert leaves == [(0, "", "New action", "Pick destination")]
+    assert leaves[0][0] == 0
+    assert leaves[0][1] == "tempo"
+    assert leaves[0][3] == "Add step"
 
 
 def test_wrapper_with_child_spawns_leaf() -> None:
@@ -239,3 +241,17 @@ def test_inline_editor_can_show_any_sequence() -> None:
     header = _HEADER.read_text(encoding="utf-8")
     assert "deleteActionSequnce" in header
     assert "property bool compactMode" in header
+
+
+def test_wrapper_two_dests_stay_one_row() -> None:
+    ns = _load_helpers()
+    item = _Item()
+    binding = item.add_item_binding()
+    a = _Act("map-to-vjoy", vjoy_device_id=1, vjoy_input_id=1)
+    b = _Act("map-to-keyboard", keys=["A"])
+    binding.insert_action(_Act("tempo", children=[a, b]), "children")
+    leaves = ns["leaves_for_item"](item)
+    assert len(leaves) == 1
+    assert leaves[0][1] == "tempo"
+    assert "vJoy 1" in leaves[0][3]
+
