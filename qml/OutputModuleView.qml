@@ -29,6 +29,7 @@ Item {
     property int padBY: 5
     property bool showPads: true
     property bool showHats: true
+    property bool showMeters: true
     property string meterStyle: "vertical"
     property int meterWidth: 22
     property var meters: []
@@ -43,7 +44,7 @@ Item {
     readonly property bool padsOn: showPads && layout === "pads_meters_grid"
     readonly property bool padAOn: padsOn && (padAX > 0 || padAY > 0)
     readonly property bool padBOn: padsOn && (padBX > 0 || padBY > 0)
-    readonly property bool showMeters: layout !== "grid_only"
+    readonly property bool metersOn: showMeters && layout !== "grid_only"
     readonly property int btnCellW: buttonSize === "small" ? 52 : (buttonSize === "large" ? 88 : 64)
     readonly property int btnCellH: buttonSize === "small" ? 48 : (buttonSize === "large" ? 68 : 56)
 
@@ -149,6 +150,7 @@ Item {
             "padBY": padBY,
             "showPads": showPads,
             "showHats": showHats,
+            "showMeters": showMeters,
             "meterStyle": meterStyle,
             "meterWidth": meterWidth,
             "meters": meters,
@@ -176,6 +178,7 @@ Item {
         padBY = (v.padBY === undefined || v.padBY === null) ? 5 : v.padBY
         showPads = v.showPads !== false
         showHats = v.showHats !== false
+        showMeters = v.showMeters !== false
         meterStyle = v.meterStyle || "vertical"
         meterWidth = v.meterWidth || 22
         meters = v.meters || []
@@ -198,6 +201,7 @@ Item {
         padAX = 1; padAY = 2; padBX = 4; padBY = 5
         showPads = true
         showHats = true
+        showMeters = true
         meterStyle = "vertical"
         meterWidth = 22
         meters = []
@@ -347,7 +351,7 @@ Item {
         }
 
         Row {
-            visible: _root.showMeters
+            visible: _root.metersOn
             Layout.fillWidth: false
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignTop
@@ -590,6 +594,7 @@ Item {
                         CheckBox { text: "Show hats"; checked: showHats; onToggled: showHats = checked }
 
                         Label { text: "METERS"; color: "#A1A1AA"; font.pixelSize: 10 }
+                        CheckBox { text: "Show meters"; checked: showMeters; onToggled: showMeters = checked }
                         ComboBox {
                             Layout.fillWidth: true
                             model: ["Vertical bar", "Horizontal bar"]
