@@ -17,6 +17,8 @@ Item {
     property int inputIndex
     property bool isOutput: false
     property bool inlineMode: false
+    property bool compactMode: false
+    property int sequenceIndex: -1
     property color editorFill: "#0F2744"
     property color editorEdge: "#3B82F6"
     property color editorAccent: "#3B82F6"
@@ -109,7 +111,10 @@ Item {
 
             delegate: InputItemBinding {
                 Layout.fillWidth: true
+                visible: _root.sequenceIndex < 0 || index === _root.sequenceIndex
+                height: visible ? implicitHeight : 0
                 enabled: !editorLocked
+                compactMode: _root.compactMode
                 inputBinding: modelData
                 inputItemModel: _root.inputItemModel
             }
