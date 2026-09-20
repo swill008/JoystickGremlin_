@@ -1,0 +1,17 @@
+# -*- coding: utf-8; -*-
+from pathlib import Path
+
+_SRC = Path(__file__).resolve().parents[2] / "gremlin/ui/window_placement.py"
+
+
+def test_restore_clamps_to_available_geometry() -> None:
+    text = _SRC.read_text(encoding="utf-8")
+    assert "def _fit_client" in text
+    assert "frameMargins" in text
+    assert "availableGeometry" in text
+    assert "QtCore.QMargins(11, 45, 11, 11)" in text
+    assert "window.setGeometry(fitted)" in text
+    # Maximized restore must not set a full-screen windowed rect first.
+    restore = text[text.find("def restore_window") : text.find("def save_window")]
+    assert "Visibility.Maximized" in restore
+    assert restore.find("KEY_MAX") < restore.find("setGeometry")
