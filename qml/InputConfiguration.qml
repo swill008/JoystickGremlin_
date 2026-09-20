@@ -15,8 +15,9 @@ Item {
 
     property InputItemModel inputItemModel
     property int inputIndex
-    readonly property bool editorLocked: backend && backend.gremlinActive
-    enabled: !editorLocked
+    property bool isOutput: false
+    readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
+    enabled: true
     opacity: editorLocked ? 0.55 : 1.0
 
     Connections {
