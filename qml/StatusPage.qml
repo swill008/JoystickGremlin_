@@ -583,7 +583,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             z: 1000
-            acceptedButtons: Qt.LeftButton
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             hoverEnabled: false
             propagateComposedEvents: true
             onPressed: function(mouse) {
@@ -593,6 +593,10 @@ Item {
                     return
                 if (_page.cardUnder(p.x, p.y))
                     return
+                if (mouse.button === Qt.RightButton) {
+                    _emptyMenu.popup()
+                    return
+                }
                 if (mouse.modifiers & Qt.ShiftModifier)
                     return
                 _page.deselectAll()
@@ -783,6 +787,21 @@ Item {
                 color: "#E4E4E7"
                 font.pixelSize: 13
                 font.bold: true
+            }
+        }
+    }
+
+    Menu {
+        id: _emptyMenu
+        onAboutToShow: {
+            _unhideAll.enabled = !!( _page.model && _page.model.hiddenList().length )
+        }
+        MenuItem {
+            id: _unhideAll
+            text: "Unhide all devices"
+            onTriggered: {
+                if (_page.model)
+                    _page.model.unignoreAll()
             }
         }
     }
