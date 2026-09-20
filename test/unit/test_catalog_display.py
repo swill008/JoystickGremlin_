@@ -319,3 +319,24 @@ def test_leaf_double_click_closes_editor() -> None:
     click = text[text.find("onClicked: function(mouse)") : text.find("onDoubleClicked")]
     assert "lv.openRow(deviceIndex, seqIndex)" in click
 
+
+def test_catalog_undo_redo_and_compact_close_x() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    assert 'text: "Undo"' in text
+    assert 'text: "Redo"' in text
+    assert "StandardKey.Undo" in text
+    assert "StandardKey.Redo" in text
+    assert "_catalog.undo()" in text
+    assert "_catalog.redo()" in text
+    header = Path(__file__).resolve().parents[2] / "qml/InputItemBindingConfigurationHeader.qml"
+    ht = header.read_text(encoding="utf-8")
+    assert "visible: !_root.compactMode" in ht
+    assert ht.count("visible: !_root.compactMode") >= 3
+    bc = Path(__file__).resolve().parents[2] / "gremlin/ui/binding_catalog.py"
+    src = bc.read_text(encoding="utf-8")
+    assert "def undo" in src
+    assert "def redo" in src
+    assert "def _apply_xml" in src
+    assert "canUndo" in src
+    assert "canRedo" in src
+
