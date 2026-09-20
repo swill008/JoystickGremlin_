@@ -25,11 +25,13 @@ Button {
     readonly property bool _hatActive: inputKind === "hat" && liveValue > 0.5
     readonly property bool _axisActive: inputKind === "axis"
     readonly property bool _outputScreen: !!(liveState && liveState.liveWhileActive)
-    readonly property bool _outputDriven: {
+    readonly property bool _showLive: {
         liveStamp
-        return !_outputScreen || !!(liveState && liveState.driven)
+        if (!_outputScreen)
+            return true
+        return !!(typeof backend !== "undefined" && backend && backend.gremlinActive)
     }
-    readonly property bool _ledOn: _outputDriven && (_buttonActive || _hatActive)
+    readonly property bool _ledOn: _showLive && (_buttonActive || _hatActive)
 
     signal renameRequested()
 
@@ -137,7 +139,7 @@ Button {
             color: Style.lowColor
 
             Rectangle {
-                width: _outputDriven
+                width: _showLive
                        ? Math.max(0, Math.min(parent.width, parent.width * ((liveValue + 1.0) * 0.5)))
                        : 0
                 height: parent.height
