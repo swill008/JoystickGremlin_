@@ -426,6 +426,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 return False
             item.add_item_binding()
             signal.inputItemChanged.emit(want)
+            # Same UI refresh as InputItemModel.newActionSequence()
+            signal.reloadCurrentInputItem.emit()
             return True
         return False
 
