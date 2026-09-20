@@ -17,10 +17,11 @@ Item {
     property Device device
     property var moduleModel: null
     property string claimDeviceName: ""
-    readonly property bool editorLocked: backend && backend.gremlinActive
+    property bool isOutput: false
+    readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
     readonly property int claimedCount: _claimed.count
 
-    enabled: !editorLocked
+    enabled: true
     opacity: editorLocked ? 0.55 : 1.0
 
     ModuleClaimedInputModel {
@@ -51,6 +52,7 @@ Item {
         id: _liveState
         guid: device ? device.guid : ""
         locked: editorLocked
+        liveWhileActive: isOutput
     }
 
     HighlightSpeedModel {
@@ -143,7 +145,7 @@ Item {
             enabled: !editorLocked
 
             liveIndex: model.deviceIndex
-            liveState: editorLocked ? null : _liveState
+            liveState: (editorLocked && !isOutput) ? null : _liveState
             selected: model.index === _inputList.currentIndex
             onClicked: () => {
                 if (!editorLocked) {
@@ -192,6 +194,8 @@ Item {
         wrapMode: Text.WordWrap
         horizontalAlignment: Text.AlignHCenter
         color: "#A1A1AA"
-        text: "This window only shows what the input module passes.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
+        text: isOutput
+              ? "This list is the output module's claimed controls.\nWhen Gremlin is Active, axes and buttons show live vJoy state."
+              : "This window only shows what the input module passes.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
     }
 }
