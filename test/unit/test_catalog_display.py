@@ -196,3 +196,39 @@ def test_editor_geometry_defaults_match_old_indent() -> None:
     assert '"editorIndent": 12' in mm
     assert '"editorRight": 0' in mm
     assert '"colorEditorAccent": "#3B82F6"' in mm
+
+
+def test_editor_attaches_to_leaf_not_parent() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    assert "required property int seqIndex" in text
+    assert "hideLeaf: isLeaf && !lv.kidsOn" in text
+    assert "deviceIndex === lv.editingHid || !lv.kidsOn" not in text
+    assert "expanded: isLeaf && deviceIndex === lv.editingHid && seqIndex === lv.editingSeq" in text
+    assert "function addActionOnRow" in text
+    assert "_catalog.addAction(hid, actionName)" in text
+    assert "_catalog.addSequence(hid)" not in text
+    assert "compactMode: true" in text
+    assert "sequenceIndex: _row.seqIndex" in text
+    assert "id: _addMenu" in text
+    assert "_catalog.actionNames" in text
+    bc = Path(__file__).resolve().parents[2] / "gremlin/ui/binding_catalog.py"
+    src = bc.read_text(encoding="utf-8")
+    assert 'QtCore.QByteArray(b"seqIndex")' in src
+    assert "def addAction" in src
+    assert "def actionNames" in src
+    assert 'out.append((si, "", "New action", "Pick destination"))' in src
+
+
+def test_compact_header_hides_r15_chrome() -> None:
+    ic = _IC.read_text(encoding="utf-8")
+    assert "property bool compactMode" in ic
+    assert "property int sequenceIndex" in ic
+    header = Path(__file__).resolve().parents[2] / "qml/InputItemBindingConfigurationHeader.qml"
+    text = header.read_text(encoding="utf-8")
+    assert "property bool compactMode" in text
+    assert "visible: !_root.compactMode" in text
+    binding = Path(__file__).resolve().parents[2] / "qml/InputItemBinding.qml"
+    b = binding.read_text(encoding="utf-8")
+    assert "property bool compactMode" in b
+    assert "compactMode: _root.compactMode" in b
+
