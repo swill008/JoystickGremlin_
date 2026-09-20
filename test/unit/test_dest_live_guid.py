@@ -76,3 +76,59 @@ def test_feeder_driven() -> None:
     assert dest_driven(True, True) is True
     assert dest_driven(True, False) is False
     assert dest_driven(False, True) is False
+
+
+import ast
+from pathlib import Path
+
+_REPO = Path(__file__).resolve().parents[2]
+
+
+def _hat_xy(direction: object) -> tuple[int, int]:
+    if direction is None:
+        return (0, 0)
+    raw = getattr(direction, "value", direction)
+    if isinstance(raw, (tuple, list)) and len(raw) >= 2:
+        try:
+            return (int(raw[0]), int(raw[1]))
+        except (TypeError, ValueError):
+            return (0, 0)
+    return (0, 0)
+
+
+def test_hat_xy_center_and_east() -> None:
+    assert _hat_xy(None) == (0, 0)
+    assert _hat_xy((1, 0)) == (1, 0)
+    assert _hat_xy((0, 1)) == (0, 1)
+    assert _hat_xy((-1, -1)) == (-1, -1)
+
+    class Enumish:
+        value = (1, 1)
+
+    assert _hat_xy(Enumish()) == (1, 1)
+
+
+def test_qml_element_on_device_live_state_class() -> None:
+    tree = ast.parse((_REPO / "gremlin/ui/live_input.py").read_text(encoding="utf-8"))
+    cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "DeviceLiveState")
+
+    def deco_names(node) -> list[str]:
+        names = []
+        for d in node.decorator_list:
+            if isinstance(d, ast.Attribute):
+                names.append(d.attr)
+            elif isinstance(d, ast.Name):
+                names.append(d.id)
+        return names
+
+    assert "QmlElement" in deco_names(cls)
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "_hat_xy":
+            assert "QmlElement" not in deco_names(node)
+
+
+def test_output_module_view_binds_hat_xy() -> None:
+    text = (_REPO / "qml/OutputModuleView.qml").read_text(encoding="utf-8")
+    assert "hatXAt" in text
+    assert "hatYAt" in text
+    assert "liveVal(idx) > 0.5 ? Qt.point(0, 1)" not in text
