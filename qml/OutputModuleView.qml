@@ -37,15 +37,17 @@ Item {
     property string buttonStyle: "tile"
     property string buttonSize: "medium"
     property int buttonColumns: 12
+    property int buttonWidth: 64
     property string colorLive: "#22C55E"
     property string colorMeter: "#3B82F6"
     property string colorPress: "#22C55E"
     property string _colorTarget: "live"
+    property string toastText: "Display Options Saved"
 
-    readonly property bool padsOn: showPads && layout === "pads_meters_grid"
+    readonly property bool padsOn: showPads
     readonly property bool padAOn: padsOn && (padAX > 0 || padAY > 0)
     readonly property bool padBOn: padsOn && (padBX > 0 || padBY > 0)
-    readonly property bool metersOn: showMeters && layout !== "grid_only"
+    readonly property bool metersOn: showMeters
     readonly property int btnCellW: buttonSize === "small" ? 52 : (buttonSize === "large" ? 88 : 64)
     readonly property int btnCellH: buttonSize === "small" ? 48 : (buttonSize === "large" ? 68 : 56)
 
@@ -124,14 +126,27 @@ Item {
         return null
     }
 
+    function allAxisHw() {
+        var out = []
+        for (var i = 0; i < axisModel.count; ++i)
+            out.push(axisModel.get(i).hw)
+        return out
+    }
+
     function meterOn(hw) {
         if (!meters || meters.length === 0)
             return true
+        if (meters.length === 1 && Number(meters[0]) === 0)
+            return false
         return meters.indexOf(hw) >= 0 || meters.indexOf(Number(hw)) >= 0
     }
 
     function toggleMeter(hw, on) {
         var list = (meters || []).slice()
+        if (list.length === 1 && Number(list[0]) === 0)
+            list = []
+        else if (list.length === 0)
+            list = allAxisHw()
         var i = list.indexOf(hw)
         if (i < 0)
             i = list.indexOf(Number(hw))
@@ -139,12 +154,14 @@ Item {
             list.push(hw)
         if (!on && i >= 0)
             list.splice(i, 1)
+        if (list.length === 0)
+            list = [0]
         meters = list
     }
 
     function viewPayload() {
         return {
-            "layout": layout,
+            "layout": (showPads && showMeters) ? "pads_meters_grid" : (showMeters ? "meters_grid" : "grid_only"),
             "padAX": padAX,
             "padAY": padAY,
             "padBX": padBX,
@@ -158,6 +175,7 @@ Item {
             "buttonStyle": buttonStyle,
             "buttonSize": buttonSize,
             "buttonColumns": buttonColumns,
+            "buttonWidth": buttonWidth,
             "colorLive": colorLive,
             "colorMeter": colorMeter,
             "colorPress": colorPress
@@ -177,15 +195,22 @@ Item {
         padAY = (v.padAY === undefined || v.padAY === null) ? 2 : v.padAY
         padBX = (v.padBX === undefined || v.padBX === null) ? 4 : v.padBX
         padBY = (v.padBY === undefined || v.padBY === null) ? 5 : v.padBY
-        showPads = v.showPads !== false
+        if (v.showPads === undefined)
+            showPads = !(layout === "meters_grid" || layout === "grid_only")
+        else
+            showPads = v.showPads !== false
         showHats = v.showHats !== false
-        showMeters = v.showMeters !== false
+        if (v.showMeters === undefined)
+            showMeters = layout !== "grid_only"
+        else
+            showMeters = v.showMeters !== false
         meterStyle = v.meterStyle || "vertical"
         meterWidth = v.meterWidth || 22
-        meters = v.meters || []
+        meters = (v.meters === undefined || v.meters === null) ? [] : v.meters
         buttonStyle = v.buttonStyle || "tile"
         buttonSize = v.buttonSize || "medium"
         buttonColumns = v.buttonColumns || 12
+        buttonWidth = v.buttonWidth || 64
         colorLive = v.colorLive || "#22C55E"
         colorMeter = v.colorMeter || "#3B82F6"
         colorPress = v.colorPress || "#22C55E"
@@ -194,6 +219,7 @@ Item {
     function saveView() {
         if (moduleModel && deviceName)
             moduleModel.saveViewConfig(deviceName, JSON.stringify(viewPayload()))
+        toastText = "Display Options Saved"
         _savedToast.open()
     }
 
@@ -209,10 +235,12 @@ Item {
         buttonStyle = "tile"
         buttonSize = "medium"
         buttonColumns = 12
+        buttonWidth = 64
         colorLive = "#22C55E"
         colorMeter = "#3B82F6"
         colorPress = "#22C55E"
-        saveView()
+        toastText = "Options have been reset"
+        _savedToast.open()
     }
 
     function rebuild() {
@@ -410,7 +438,11 @@ Item {
                 clip: true
                 cellWidth: {
                     var cols = Math.max(1, _root.buttonColumns)
-                    return Math.max(40, Math.floor(width / cols))
+                    var byCol = Math.floor(width / cols)
+                    var want = Math.max(40, _root.buttonWidth)
+                    if (byCol > 0)
+                        return Math.max(40, Math.min(want, byCol))
+                    return want
                 }
                 cellHeight: _root.btnCellH
                 model: buttonModel
@@ -504,152 +536,249 @@ Item {
                     clip: true
                     ColumnLayout {
                         width: 330
-                        spacing: 8
+                        spacing: 12
 
-                        Label { text: "LAYOUT"; color: "#A1A1AA"; font.pixelSize: 10 }
-                        ComboBox {
+                        ColumnLayout {
+                            spacing: 4
                             Layout.fillWidth: true
-                            model: ["Pads + meters + grid", "Meters + grid", "Grid only"]
-                            currentIndex: layout === "grid_only" ? 2 : (layout === "meters_grid" ? 1 : 0)
-                            onActivated: {
-                                layout = ["pads_meters_grid", "meters_grid", "grid_only"][currentIndex]
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 26
+                                color: "#27272A"
+                                Label {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8
+                                    text: "LAYOUT"
+                                    color: "#E4E4E7"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+                            CheckBox { text: "Show pads"; checked: showPads; onToggled: showPads = checked }
+                            CheckBox { text: "Show hats"; checked: showHats; onToggled: showHats = checked }
+                            CheckBox { text: "Show meters"; checked: showMeters; onToggled: showMeters = checked }
+                        }
+
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 26
+                                color: "#27272A"
+                                Label {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8
+                                    text: "PADS"
+                                    color: "#E4E4E7"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+                            Label {
+                                visible: !showPads
+                                text: "Pads hidden"
+                                color: "#71717A"
+                                font.pixelSize: 11
+                            }
+                            ColumnLayout {
+                                visible: showPads
+                                spacing: 4
+                                Layout.fillWidth: true
+                                Label { text: "X / Y pad"; color: "#E4E4E7"; font.pixelSize: 11 }
+                                RowLayout {
+                                    Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                                    ComboBox {
+                                        Layout.fillWidth: true
+                                        model: {
+                                            var labels = []
+                                            for (var i = 0; i < (axisPick || []).length; ++i)
+                                                labels.push(axisPick[i].label)
+                                            return labels
+                                        }
+                                        currentIndex: {
+                                            for (var i = 0; i < (axisPick || []).length; ++i)
+                                                if (axisPick[i].hw === padAX) return i
+                                            return 0
+                                        }
+                                        onActivated: if (axisPick && axisPick[currentIndex]) padAX = axisPick[currentIndex].hw
+                                    }
+                                }
+                                RowLayout {
+                                    Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                                    ComboBox {
+                                        Layout.fillWidth: true
+                                        model: {
+                                            var labels = []
+                                            for (var i = 0; i < (axisPick || []).length; ++i)
+                                                labels.push(axisPick[i].label)
+                                            return labels
+                                        }
+                                        currentIndex: {
+                                            for (var i = 0; i < (axisPick || []).length; ++i)
+                                                if (axisPick[i].hw === padAY) return i
+                                            return 0
+                                        }
+                                        onActivated: if (axisPick && axisPick[currentIndex]) padAY = axisPick[currentIndex].hw
+                                    }
+                                }
+                                Label { text: "Rx / Ry pad"; color: "#E4E4E7"; font.pixelSize: 11 }
+                                RowLayout {
+                                    Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                                    ComboBox {
+                                        Layout.fillWidth: true
+                                        model: {
+                                            var labels = []
+                                            for (var i = 0; i < (axisPick || []).length; ++i)
+                                                labels.push(axisPick[i].label)
+                                            return labels
+                                        }
+                                        currentIndex: {
+                                            for (var i = 0; i < (axisPick || []).length; ++i)
+                                                if (axisPick[i].hw === padBX) return i
+                                            return 0
+                                        }
+                                        onActivated: if (axisPick && axisPick[currentIndex]) padBX = axisPick[currentIndex].hw
+                                    }
+                                }
+                                RowLayout {
+                                    Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                                    ComboBox {
+                                        Layout.fillWidth: true
+                                        model: {
+                                            var labels = []
+                                            for (var i = 0; i < (axisPick || []).length; ++i)
+                                                labels.push(axisPick[i].label)
+                                            return labels
+                                        }
+                                        currentIndex: {
+                                            for (var i = 0; i < (axisPick || []).length; ++i)
+                                                if (axisPick[i].hw === padBY) return i
+                                            return 0
+                                        }
+                                        onActivated: if (axisPick && axisPick[currentIndex]) padBY = axisPick[currentIndex].hw
+                                    }
+                                }
                             }
                         }
 
-                        Label { text: "PADS"; color: "#A1A1AA"; font.pixelSize: 10 }
-                        CheckBox { text: "Show pads"; checked: showPads; onToggled: showPads = checked }
-                        Label { text: "X / Y pad"; color: "#E4E4E7"; font.pixelSize: 11 }
-                        RowLayout {
-                            Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 26
+                                color: "#27272A"
+                                Label {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8
+                                    text: "METERS"
+                                    color: "#E4E4E7"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
                             ComboBox {
                                 Layout.fillWidth: true
-                                model: {
-                                    var labels = []
-                                    for (var i = 0; i < (axisPick || []).length; ++i)
-                                        labels.push(axisPick[i].label)
-                                    return labels
-                                }
-                                currentIndex: {
-                                    for (var i = 0; i < (axisPick || []).length; ++i)
-                                        if (axisPick[i].hw === padAX) return i
-                                    return 0
-                                }
-                                onActivated: if (axisPick && axisPick[currentIndex]) padAX = axisPick[currentIndex].hw
+                                enabled: showMeters
+                                model: ["Vertical bar", "Horizontal bar"]
+                                currentIndex: meterStyle === "horizontal" ? 1 : 0
+                                onActivated: meterStyle = currentIndex === 1 ? "horizontal" : "vertical"
                             }
-                        }
-                        RowLayout {
-                            Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
-                            ComboBox {
+                            RowLayout {
+                                enabled: showMeters
+                                Label { text: "Width"; color: "#E4E4E7" }
+                                SpinBox { from: 12; to: 48; value: meterWidth; onValueModified: meterWidth = value }
+                            }
+                            Label {
+                                text: "Axes on bars"
+                                color: "#E4E4E7"
+                                font.pixelSize: 11
+                            }
+                            Label {
+                                text: "Uncheck an axis to hide its bar."
+                                color: "#A1A1AA"
+                                font.pixelSize: 11
+                                wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
-                                model: {
-                                    var labels = []
-                                    for (var i = 0; i < (axisPick || []).length; ++i)
-                                        labels.push(axisPick[i].label)
-                                    return labels
-                                }
-                                currentIndex: {
-                                    for (var i = 0; i < (axisPick || []).length; ++i)
-                                        if (axisPick[i].hw === padAY) return i
-                                    return 0
-                                }
-                                onActivated: if (axisPick && axisPick[currentIndex]) padAY = axisPick[currentIndex].hw
                             }
-                        }
-                        Label { text: "Rx / Ry pad"; color: "#E4E4E7"; font.pixelSize: 11 }
-                        RowLayout {
-                            Label { text: "Horizontal"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
-                            ComboBox {
+                            GridLayout {
+                                enabled: showMeters
+                                columns: 2
                                 Layout.fillWidth: true
-                                model: {
-                                    var labels = []
-                                    for (var i = 0; i < (axisPick || []).length; ++i)
-                                        labels.push(axisPick[i].label)
-                                    return labels
-                                }
-                                currentIndex: {
-                                    for (var i = 0; i < (axisPick || []).length; ++i)
-                                        if (axisPick[i].hw === padBX) return i
-                                    return 0
-                                }
-                                onActivated: if (axisPick && axisPick[currentIndex]) padBX = axisPick[currentIndex].hw
-                            }
-                        }
-                        RowLayout {
-                            Label { text: "Vertical"; color: "#A1A1AA"; Layout.preferredWidth: 80 }
-                            ComboBox {
-                                Layout.fillWidth: true
-                                model: {
-                                    var labels = []
-                                    for (var i = 0; i < (axisPick || []).length; ++i)
-                                        labels.push(axisPick[i].label)
-                                    return labels
-                                }
-                                currentIndex: {
-                                    for (var i = 0; i < (axisPick || []).length; ++i)
-                                        if (axisPick[i].hw === padBY) return i
-                                    return 0
-                                }
-                                onActivated: if (axisPick && axisPick[currentIndex]) padBY = axisPick[currentIndex].hw
-                            }
-                        }
-                        CheckBox { text: "Show hats"; checked: showHats; onToggled: showHats = checked }
-
-                        Label { text: "METERS"; color: "#A1A1AA"; font.pixelSize: 10 }
-                        CheckBox { text: "Show meters"; checked: showMeters; onToggled: showMeters = checked }
-                        ComboBox {
-                            Layout.fillWidth: true
-                            model: ["Vertical bar", "Horizontal bar"]
-                            currentIndex: meterStyle === "horizontal" ? 1 : 0
-                            onActivated: meterStyle = currentIndex === 1 ? "horizontal" : "vertical"
-                        }
-                        RowLayout {
-                            Label { text: "Width"; color: "#E4E4E7" }
-                            SpinBox { from: 12; to: 48; value: meterWidth; onValueModified: meterWidth = value }
-                        }
-                        Label {
-                            text: "Checked axes appear as bars."
-                            color: "#A1A1AA"
-                            font.pixelSize: 11
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
-                        }
-                        GridLayout {
-                            columns: 2
-                            Layout.fillWidth: true
-                            columnSpacing: 8
-                            rowSpacing: 0
-                            Repeater {
-                                model: axisModel
-                                delegate: CheckBox {
-                                    required property int hw
-                                    required property string name
-                                    Layout.preferredWidth: 155
-                                    text: axisLabel(hw, name)
-                                    checked: meterOn(hw)
-                                    onToggled: toggleMeter(hw, checked)
+                                columnSpacing: 8
+                                rowSpacing: 0
+                                Repeater {
+                                    model: axisModel
+                                    delegate: CheckBox {
+                                        required property int hw
+                                        required property string name
+                                        Layout.preferredWidth: 155
+                                        text: axisLabel(hw, name)
+                                        checked: meterOn(hw)
+                                        onToggled: toggleMeter(hw, checked)
+                                    }
                                 }
                             }
                         }
 
-                        Label { text: "BUTTONS"; color: "#A1A1AA"; font.pixelSize: 10 }
-                        ComboBox {
+                        ColumnLayout {
+                            spacing: 4
                             Layout.fillWidth: true
-                            model: ["Tile", "LED + number", "Compact"]
-                            currentIndex: buttonStyle === "led" ? 1 : (buttonStyle === "compact" ? 2 : 0)
-                            onActivated: buttonStyle = ["tile", "led", "compact"][currentIndex]
-                        }
-                        ComboBox {
-                            Layout.fillWidth: true
-                            model: ["Small", "Medium", "Large"]
-                            currentIndex: buttonSize === "small" ? 0 : (buttonSize === "large" ? 2 : 1)
-                            onActivated: buttonSize = ["small", "medium", "large"][currentIndex]
-                        }
-                        RowLayout {
-                            Label { text: "Columns"; color: "#E4E4E7" }
-                            SpinBox { from: 1; to: 16; value: buttonColumns; onValueModified: buttonColumns = value }
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 26
+                                color: "#27272A"
+                                Label {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8
+                                    text: "BUTTONS"
+                                    color: "#E4E4E7"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: ["Tile", "LED + number", "Compact"]
+                                currentIndex: buttonStyle === "led" ? 1 : (buttonStyle === "compact" ? 2 : 0)
+                                onActivated: buttonStyle = ["tile", "led", "compact"][currentIndex]
+                            }
+                            ComboBox {
+                                Layout.fillWidth: true
+                                model: ["Small", "Medium", "Large"]
+                                currentIndex: buttonSize === "small" ? 0 : (buttonSize === "large" ? 2 : 1)
+                                onActivated: buttonSize = ["small", "medium", "large"][currentIndex]
+                            }
+                            RowLayout {
+                                Label { text: "Columns"; color: "#E4E4E7" }
+                                SpinBox { from: 1; to: 16; value: buttonColumns; onValueModified: buttonColumns = value }
+                                Label { text: "Width"; color: "#E4E4E7" }
+                                SpinBox { from: 40; to: 200; value: buttonWidth; onValueModified: buttonWidth = value }
+                            }
                         }
 
-                        Label { text: "COLORS"; color: "#A1A1AA"; font.pixelSize: 10 }
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 26
+                                color: "#27272A"
+                                Label {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8
+                                    text: "COLORS"
+                                    color: "#E4E4E7"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
                         RowLayout {
                             Label { text: "Live"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
                             Button {
@@ -710,6 +839,7 @@ Item {
                                 }
                             }
                         }
+                        }
                     }
                 }
 
@@ -737,7 +867,7 @@ Item {
             radius: 6
         }
         contentItem: Label {
-            text: "Display Options Saved"
+            text: toastText
             color: "#F4F4F5"
             font.pixelSize: 14
             horizontalAlignment: Text.AlignHCenter
