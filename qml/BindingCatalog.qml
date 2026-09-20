@@ -464,6 +464,15 @@ Item {
         }
     }
 
+    Shortcut {
+        sequences: [StandardKey.Undo]
+        onActivated: if (_catalog.canUndo) _catalog.undo()
+    }
+    Shortcut {
+        sequences: [StandardKey.Redo]
+        onActivated: if (_catalog.canRedo) _catalog.redo()
+    }
+
     Connections {
         target: signal
         function onSetInputIndex(index) { showHid(index, true) }
@@ -673,7 +682,7 @@ Item {
 
                         MouseArea {
                             anchors.fill: parent
-                            anchors.rightMargin: expanded ? 120 : 64
+                            anchors.rightMargin: expanded ? 220 : 64
                             enabled: deviceIndex >= 0
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             onClicked: function(mouse) {
@@ -735,6 +744,24 @@ Item {
                                 implicitHeight: 28
                                 z: 2
                                 onClicked: lv.addOnRow(deviceIndex, index, this)
+                            }
+                            Button {
+                                visible: expanded && !lv.catalogLocked
+                                text: "Undo"
+                                enabled: _catalog.canUndo
+                                implicitWidth: 56
+                                implicitHeight: 28
+                                z: 2
+                                onClicked: _catalog.undo()
+                            }
+                            Button {
+                                visible: expanded && !lv.catalogLocked
+                                text: "Redo"
+                                enabled: _catalog.canRedo
+                                implicitWidth: 56
+                                implicitHeight: 28
+                                z: 2
+                                onClicked: _catalog.redo()
                             }
                             Button {
                                 visible: expanded && !lv.catalogLocked
