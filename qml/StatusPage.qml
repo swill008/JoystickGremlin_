@@ -360,6 +360,7 @@ Item {
             if (model)
                 model.raiseSlug(card.slug)
             _page.focusSlug(card.slug)
+            _page.refreshCards()
         })
         card.shiftToggled.connect(function() { _page.toggleSelect(card) })
         card.stackSelectedCards.connect(function() { _page.stackSelected(card.slug) })
@@ -431,6 +432,8 @@ Item {
         card.lastLine = info.lastLine || ""
         card.lastHardware = info.lastHardware || ""
         card.focused = !!info.focused
+        if (card.lifting && _page.dragSlug !== card.slug)
+            card.lifting = false
         card.pinActive = _page.pinSlug === card.slug
         card.selected = _page._selectHas(card.slug)
         card.canStackSelected = card.selected && selectedSlugs.length >= 2
@@ -580,28 +583,6 @@ Item {
         property string title: ""
         property string direction: ""
         property int dragLocks: 0
-        MouseArea {
-            anchors.fill: parent
-            z: 1000
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            hoverEnabled: false
-            propagateComposedEvents: true
-            onPressed: function(mouse) {
-                var p = mapToItem(_page, mouse.x, mouse.y)
-                mouse.accepted = false
-                if (_page.dragSlug.length)
-                    return
-                if (_page.cardUnder(p.x, p.y))
-                    return
-                if (mouse.button === Qt.RightButton) {
-                    _emptyMenu.popup()
-                    return
-                }
-                if (mouse.modifiers & Qt.ShiftModifier)
-                    return
-                _page.deselectAll()
-            }
-        }
         property bool paneActive: {
             var mode = _page.model ? _page.model.splitMode : "none"
             if (!_pane.direction.length)
@@ -631,6 +612,27 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 interactive: _pane.dragLocks === 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                MouseArea {
+                    z: -1
+                    width: _flick.width
+                    height: Math.max(_flick.height, _flow.implicitHeight)
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onPressed: function(mouse) {
+                        if (_page.dragSlug.length)
+                            return
+                        var p = mapToItem(_page, mouse.x, mouse.y)
+                        if (_page.cardUnder(p.x, p.y))
+                            return
+                        if (mouse.button === Qt.RightButton) {
+                            _emptyMenu.popup()
+                            return
+                        }
+                        if (mouse.modifiers & Qt.ShiftModifier)
+                            return
+                        _page.deselectAll()
+                    }
+                }
 
                 Flow {
                     id: _flow
