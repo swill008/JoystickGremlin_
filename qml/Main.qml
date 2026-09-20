@@ -34,7 +34,10 @@ ApplicationWindow {
             Style.isDarkMode = backend.useDarkMode
         }
         _windowPlacement.restore(_root)
+        catalogPanel = _windowPlacement.catalogPanelOpen()
     }
+
+    onCatalogPanelChanged: _windowPlacement.setCatalogPanelOpen(catalogPanel)
 
     Universal.theme: Style.theme
     color: Style.background
@@ -176,7 +179,6 @@ ApplicationWindow {
         configTitleName = ""
         configDirection = ""
         outputViewPanel = false
-        catalogPanel = false
         uiState.setCurrentRoom("status")
         uiState.setCurrentTab("physical")
         if (_scriptButton)
