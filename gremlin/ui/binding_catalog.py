@@ -192,7 +192,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._rows: list[dict] = []
         self._dest_choices: list[str] = ["All devices"]
         signal.profileChanged.connect(self.reload)
-        signal.inputItemChanged.connect(self.reload)
+        signal.inputItemChanged.connect(self.refreshHid)
         signal.configChanged.connect(self.reload)
         self._claimed.countChanged.connect(self.reload)
 
@@ -257,106 +257,248 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 return False
         return True
 
+    def _meta_at_claimed(self, i: int) -> dict:
+        return {
+            "kind": self._claimed.kindAt(i),
+            "hwId": self._claimed.hwIdAt(i),
+            "name": self._claimed.nameAt(i),
+            "deviceIndex": self._claimed.deviceIndexAt(i),
+        }
+
+    def _meta_for_hid(self, hid: int) -> dict | None:
+        want = int(hid)
+        n = self._claimed.rowCount()
+        for i in range(n):
+            if self._claimed.deviceIndexAt(i) == want:
+                return self._meta_at_claimed(i)
+        return None
+
+    def _blank_row(self, meta: dict, kind: str) -> dict:
+        return {
+            "rowKind": kind,
+            "name": meta.get("name", ""),
+            "summary": "",
+            "typeLabel": "",
+            "destLabel": "",
+            "kind": meta.get("kind", ""),
+            "hwId": meta.get("hwId", 0),
+            "deviceIndex": meta.get("deviceIndex", -1),
+            "bindingCount": 0,
+            "indent": 0,
+            "seqIndex": -1,
+        }
+
+    def _group_row(self, meta: dict, shown: list) -> dict:
+        summary = ", ".join(dest for _si, _t, _l, dest in shown)
+        row = self._blank_row(meta, "group")
+        row["summary"] = (
+            f"{len(shown)} assignment"
+            + ("s" if len(shown) != 1 else "")
+            + " — "
+            + summary
+        )
+        row["destLabel"] = summary
+        row["bindingCount"] = len(shown)
+        return row
+
+    def _leaf_row(self, meta: dict, si: int, lab: str, dest: str) -> dict:
+        row = self._blank_row(meta, "leaf")
+        row["summary"] = dest
+        row["typeLabel"] = lab
+        row["destLabel"] = dest
+        row["bindingCount"] = 1
+        row["indent"] = 1
+        row["seqIndex"] = int(si)
+        return row
+
+    def _unmapped_row(self, meta: dict) -> dict:
+        row = self._blank_row(meta, "unmapped")
+        row["destLabel"] = "Not bound"
+        return row
+
+    def _build_rows(self, item, meta: dict) -> list[dict]:
+        leaves = leaves_for_item(item)
+        shown = [x for x in leaves if self._leaf_ok(x[1], x[3])]
+        if self._type_filter == "unmapped":
+            return [] if leaves else [self._unmapped_row(meta)]
+        if not leaves:
+            if self._type_filter == "all" and self._dest_filter in (
+                "all",
+                "All devices",
+                "",
+            ):
+                return [self._unmapped_row(meta)]
+            return []
+        if not shown:
+            return []
+        return [self._group_row(meta, shown)] + [
+            self._leaf_row(meta, si, lab, dest) for si, _tag, lab, dest in shown
+        ]
+
+    def _hid_span(self, hid: int) -> tuple[int, int]:
+        start = -1
+        end = -1
+        want = int(hid)
+        for i, row in enumerate(self._rows):
+            if row["rowKind"] == "unmapped-header":
+                if start >= 0:
+                    break
+                continue
+            if int(row["deviceIndex"]) == want:
+                if start < 0:
+                    start = i
+                end = i + 1
+            elif start >= 0:
+                break
+        return start, end
+
+    def _mapped_insert_at(self) -> int:
+        for i, row in enumerate(self._rows):
+            if row["rowKind"] == "unmapped-header":
+                return i
+        return len(self._rows)
+
+    def _refresh_dest_choices(self) -> None:
+        dests: list[str] = []
+        for row in self._rows:
+            if row["rowKind"] != "leaf":
+                continue
+            dest = str(row.get("destLabel") or "")
+            if dest and dest not in dests:
+                dests.append(dest)
+        self._dest_choices = ["All devices"] + dests
+        self.filtersChanged.emit()
+
+    def _same_structure(self, old: list[dict], new: list[dict]) -> bool:
+        if len(old) != len(new):
+            return False
+        for a, b in zip(old, new):
+            if a["rowKind"] != b["rowKind"]:
+                return False
+            if int(a.get("seqIndex", -1)) != int(b.get("seqIndex", -1)):
+                return False
+        return True
+
+    def _drop_empty_unmapped_header(self) -> None:
+        header = -1
+        kids = 0
+        for i, row in enumerate(self._rows):
+            if row["rowKind"] == "unmapped-header":
+                header = i
+            elif row["rowKind"] == "unmapped":
+                kids += 1
+        if header < 0:
+            return
+        if kids:
+            row = dict(self._rows[header])
+            row["bindingCount"] = kids
+            row["summary"] = f"{kids} controls — click to add"
+            self._rows[header] = row
+            self.dataChanged.emit(self.index(header, 0), self.index(header, 0))
+            return
+        self.beginRemoveRows(QtCore.QModelIndex(), header, header)
+        del self._rows[header]
+        self.endRemoveRows()
+
+    def _ensure_unmapped_header(self) -> int:
+        for i, row in enumerate(self._rows):
+            if row["rowKind"] == "unmapped-header":
+                return i
+        at = len(self._rows)
+        header = {
+            "rowKind": "unmapped-header",
+            "name": "Unmapped",
+            "summary": "0 controls — click to add",
+            "typeLabel": "",
+            "destLabel": "",
+            "kind": "",
+            "hwId": 0,
+            "deviceIndex": -1,
+            "bindingCount": 0,
+            "indent": 0,
+            "seqIndex": -1,
+        }
+        self.beginInsertRows(QtCore.QModelIndex(), at, at)
+        self._rows.insert(at, header)
+        self.endInsertRows()
+        return at
+
+    @QtCore.Slot(int)
+    def refreshHid(self, device_index: int) -> None:
+        """Update one control's catalog rows without resetting the list."""
+        hid = int(device_index)
+        if hid < 0:
+            return
+        meta = self._meta_for_hid(hid)
+        if meta is None:
+            return
+        item = self._item_for_hid(hid)
+        new_rows = self._build_rows(item, meta)
+        start, end = self._hid_span(hid)
+        old = self._rows[start:end] if start >= 0 else []
+        old_was_unmapped = bool(old) and old[0]["rowKind"] == "unmapped"
+        if start >= 0 and self._same_structure(old, new_rows):
+            for i, row in enumerate(new_rows):
+                self._rows[start + i] = row
+            if new_rows:
+                self.dataChanged.emit(
+                    self.index(start, 0),
+                    self.index(start + len(new_rows) - 1, 0),
+                )
+            self._refresh_dest_choices()
+            return
+        if start >= 0 and end > start:
+            self.beginRemoveRows(QtCore.QModelIndex(), start, end - 1)
+            del self._rows[start:end]
+            self.endRemoveRows()
+        if not new_rows:
+            self._drop_empty_unmapped_header()
+            self.countChanged.emit()
+            self._refresh_dest_choices()
+            return
+        new_is_unmapped = new_rows[0]["rowKind"] == "unmapped"
+        if new_is_unmapped:
+            header = self._ensure_unmapped_header()
+            at = len(self._rows)
+            if at <= header:
+                at = header + 1
+        elif old_was_unmapped or start < 0:
+            at = self._mapped_insert_at()
+        else:
+            at = start
+        last = at + len(new_rows) - 1
+        self.beginInsertRows(QtCore.QModelIndex(), at, last)
+        for i, row in enumerate(new_rows):
+            self._rows.insert(at + i, row)
+        self.endInsertRows()
+        self._drop_empty_unmapped_header()
+        self.countChanged.emit()
+        self._refresh_dest_choices()
+
     @QtCore.Slot()
     def reload(self) -> None:
         self.beginResetModel()
         self._rows = []
-        dests: list[str] = []
-        mapped = 0
+        mapped: list[dict] = []
         unmapped: list[dict] = []
         n = self._claimed.rowCount()
         for i in range(n):
-            kind = self._claimed.kindAt(i)
-            hw = self._claimed.hwIdAt(i)
-            name = self._claimed.nameAt(i)
-            didx = self._claimed.deviceIndexAt(i)
+            meta = self._meta_at_claimed(i)
             item = self._claimed._input_item(
-                {"kind": kind, "hwId": hw, "deviceIndex": didx, "name": name}
-            )
-            leaves = leaves_for_item(item)
-            for _si, tag, _lab, dest in leaves:
-                if dest and dest not in dests:
-                    dests.append(dest)
-            shown = [x for x in leaves if self._leaf_ok(x[1], x[3])]
-            if self._type_filter == "unmapped":
-                if leaves:
-                    continue
-                unmapped.append(
-                    {
-                        "rowKind": "unmapped",
-                        "name": name,
-                        "summary": "",
-                        "typeLabel": "",
-                        "destLabel": "Not bound",
-                        "kind": kind,
-                        "hwId": hw,
-                        "deviceIndex": didx,
-                        "bindingCount": 0,
-                        "indent": 0,
-                        "seqIndex": -1,
-                    }
-                )
-                continue
-            if not leaves:
-                if self._type_filter == "all" and self._dest_filter in (
-                    "all",
-                    "All devices",
-                    "",
-                ):
-                    unmapped.append(
-                        {
-                            "rowKind": "unmapped",
-                            "name": name,
-                            "summary": "",
-                            "typeLabel": "",
-                            "destLabel": "Not bound",
-                            "kind": kind,
-                            "hwId": hw,
-                            "deviceIndex": didx,
-                            "bindingCount": 0,
-                            "indent": 0,
-                        "seqIndex": -1,
-                        }
-                    )
-                continue
-            if not shown:
-                continue
-            summary = ", ".join(dest for _si, _t, _l, dest in shown)
-            self._rows.append(
                 {
-                    "rowKind": "group",
-                    "name": name,
-                    "summary": f"{len(shown)} assignment"
-                    + ("s" if len(shown) != 1 else "")
-                    + " — "
-                    + summary,
-                    "typeLabel": "",
-                    "destLabel": summary,
-                    "kind": kind,
-                    "hwId": hw,
-                    "deviceIndex": didx,
-                    "bindingCount": len(shown),
-                    "indent": 0,
-                        "seqIndex": -1,
+                    "kind": meta["kind"],
+                    "hwId": meta["hwId"],
+                    "deviceIndex": meta["deviceIndex"],
+                    "name": meta["name"],
                 }
             )
-            mapped += 1
-            for si, tag, lab, dest in shown:
-                self._rows.append(
-                    {
-                        "rowKind": "leaf",
-                        "name": name,
-                        "summary": dest,
-                        "typeLabel": lab,
-                        "destLabel": dest,
-                        "kind": kind,
-                        "hwId": hw,
-                        "deviceIndex": didx,
-                        "bindingCount": 1,
-                        "indent": 1,
-                        "seqIndex": int(si),
-                    }
-                )
+            built = self._build_rows(item, meta)
+            for row in built:
+                if row["rowKind"] == "unmapped":
+                    unmapped.append(row)
+                else:
+                    mapped.append(row)
+        self._rows.extend(mapped)
         if unmapped:
             self._rows.append(
                 {
@@ -370,14 +512,13 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                     "deviceIndex": -1,
                     "bindingCount": len(unmapped),
                     "indent": 0,
-                        "seqIndex": -1,
+                    "seqIndex": -1,
                 }
             )
             self._rows.extend(unmapped)
-        self._dest_choices = ["All devices"] + dests
         self.endResetModel()
         self.countChanged.emit()
-        self.filtersChanged.emit()
+        self._refresh_dest_choices()
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._rows)
