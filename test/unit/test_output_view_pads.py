@@ -13,3 +13,11 @@ def test_show_pads_checkbox_and_off_is_zero() -> None:
     assert "padBOn" in text
     assert "v.padAX || 1" not in text
     assert "showPads !== false" in text
+
+
+def test_save_toast_click_off_or_two_seconds() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    assert "id: _savedToast" in text
+    assert "interval: 2000" in text
+    assert "CloseOnPressOutside" in text
+    assert "_savedToast.open()" in text
