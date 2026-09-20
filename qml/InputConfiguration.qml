@@ -19,28 +19,34 @@ Item {
     property bool inlineMode: false
     property color editorFill: "#0F2744"
     property color editorEdge: "#3B82F6"
+    property color editorAccent: "#3B82F6"
+    property int editorRadius: 3
+    property int editorBorderW: 1
+    property int editorAccentW: 3
+    property bool showAccent: true
+    property int editorPad: 10
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
     enabled: true
     opacity: editorLocked ? 0.55 : 1.0
-    implicitHeight: inlineMode ? Math.max(80, _content.implicitHeight) + 16 : 200
+    implicitHeight: inlineMode ? Math.max(80, _content.implicitHeight) + editorPad * 2 : 200
 
     Rectangle {
         visible: inlineMode
         anchors.fill: parent
         color: editorFill
         border.color: editorEdge
-        border.width: 1
-        radius: 3
+        border.width: editorBorderW
+        radius: editorRadius
     }
 
     Rectangle {
-        visible: inlineMode
-        width: 3
+        visible: inlineMode && showAccent && editorAccentW > 0
+        width: editorAccentW
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        anchors.margins: 1
-        color: editorEdge
+        anchors.margins: Math.max(1, editorBorderW)
+        color: editorAccent
     }
 
     Component.onCompleted: {
@@ -92,9 +98,9 @@ Item {
         id: _content
 
         anchors.fill: inlineMode ? undefined : parent
-        x: inlineMode ? 10 : 0
-        y: inlineMode ? 8 : 0
-        width: parent.width - (inlineMode ? 16 : 0)
+        x: inlineMode ? editorPad : 0
+        y: inlineMode ? editorPad : 0
+        width: parent.width - (inlineMode ? editorPad * 2 : 0)
         spacing: 8
 
         Repeater {
