@@ -98,7 +98,7 @@ Item {
         function onDeviceChanged() {
             if (!uiState)
                 return
-            showHid(uiState.currentInputIndex)
+            showHid(uiState.currentInputIndex, false)
         }
     }
 
@@ -321,7 +321,18 @@ Item {
         uiState.setCurrentInput(ident, hid)
     }
 
-    function showHid(hid) {
+    function rowOnScreen(row) {
+        if (row < 0 || !_list)
+            return false
+        var it = _list.itemAtIndex(row)
+        if (!it)
+            return false
+        var top = it.y
+        var bot = it.y + Math.min(it.height, Math.max(36, parentHeight))
+        return top >= _list.contentY - 2 && bot <= _list.contentY + _list.height + 2
+    }
+
+    function showHid(hid, follow) {
         if (hid < 0)
             return
         let row = _catalog.rowForDeviceIndex(hid)
@@ -329,8 +340,24 @@ Item {
             return
         if (_list.currentIndex !== row)
             _list.currentIndex = row
+        if (follow !== true)
+            return
         Qt.callLater(function() {
+            if (rowOnScreen(row))
+                return
             _list.positionViewAtIndex(row, ListView.Contain)
+        })
+    }
+
+    function reloadKeepScroll() {
+        var y = _list.contentY
+        var idx = _list.currentIndex
+        _catalog.reload()
+        Qt.callLater(function() {
+            var maxY = Math.max(0, _list.contentHeight - _list.height)
+            _list.contentY = Math.min(Math.max(0, y), maxY)
+            if (idx >= 0 && idx < _catalog.count)
+                _list.currentIndex = idx
         })
     }
 
@@ -340,13 +367,12 @@ Item {
         selectHid(hid)
         _root.editingHid = hid
         _root.editingSeq = (seq === undefined || seq === null) ? -1 : seq
-        showHid(hid)
     }
 
     function closeEditor() {
         _root.editingHid = -1
         _root.editingSeq = -1
-        _catalog.reload()
+        reloadKeepScroll()
     }
 
     function rowX(total, align, left, right, pct) {
@@ -405,7 +431,7 @@ Item {
 
     Connections {
         target: signal
-        function onSetInputIndex(index) { showHid(index) }
+        function onSetInputIndex(index) { showHid(index, true) }
         function onInputItemChanged(itemIndex) {
             if (_root.editingHid >= 0)
                 return
@@ -456,7 +482,7 @@ Item {
                 Layout.rightMargin: listPadding
                 scrollbarAlwaysVisible: true
                 spacing: rowSpacing
-                highlightFollowsCurrentItem: true
+                highlightFollowsCurrentItem: false
                 highlightMoveDuration: {
                     if (!_highlightSpeed)
                         return 150
@@ -520,10 +546,9 @@ Item {
                     var seq = _catalog.addAction(hid, actionName)
                     _root.editingHid = -1
                     _root.editingSeq = -1
-                    _catalog.reload()
+                    _root.reloadKeepScroll()
                     _root.editingHid = hid
                     _root.editingSeq = seq
-                    _root.showHid(hid)
                 }
                 function okRow() { _root.closeEditor() }
                 function openRow(hid, seq) { _root.openEditor(hid, seq) }
