@@ -62,6 +62,11 @@ Rectangle {
     border.width: focused ? 2 : 1
     border.color: focused ? "#A1A1AA" : "#3F3F46"
 
+    function restHome() {
+        x = stackIndex * 14
+        y = stackIndex * 14
+    }
+
     ColumnLayout {
         id: _body
         anchors.fill: parent
@@ -176,6 +181,7 @@ Rectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         drag.target: _card.resizing ? null : _card
         drag.threshold: 10
+        preventStealing: true
         property bool didDrag: false
         enabled: !_card.resizing
 
@@ -192,8 +198,7 @@ Rectangle {
             _card.lifting = false
             if (didDrag) {
                 _card.dropAt(_card.x + _card.width / 2, _card.y + _card.height / 2)
-                _card.x = 0
-                _card.y = 0
+                _card.restHome()
             }
         }
         onClicked: function(mouse) {
