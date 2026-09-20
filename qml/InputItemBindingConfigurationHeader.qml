@@ -72,7 +72,6 @@ Item {
             }
 
             ActionSelector {
-                visible: !_root.compactMode
                 Layout.alignment: Qt.AlignRight
 
                 actionNode: _root.inputBinding.rootAction
