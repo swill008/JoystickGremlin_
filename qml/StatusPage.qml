@@ -64,7 +64,6 @@ Item {
     signal ignoreDevice(var card)
 
     property int pileRev: 0
-    readonly property bool splitOn: !!(model && model.splitMode !== "none")
 
     function pack(m) {
         return {
@@ -491,8 +490,8 @@ Item {
         SplitView {
             id: _splitView
             Layout.fillWidth: true
-            Layout.fillHeight: _page.splitOn
-            visible: _page.splitOn
+            Layout.fillHeight: true
+            visible: _page.model && _page.model.splitMode !== "none"
             orientation: (_page.model && _page.model.splitMode === "horizontal") ? Qt.Vertical : Qt.Horizontal
             handle: Rectangle { implicitWidth: 8; implicitHeight: 8; color: "#52525B" }
 
@@ -532,8 +531,6 @@ Item {
             onVisibleChanged: {
                 if (visible)
                     Qt.callLater(applyRatio)
-                else
-                    saveRatio()
             }
             onResizingChanged: if (!resizing) saveRatio()
 
@@ -560,8 +557,8 @@ Item {
         StatusPane {
             id: _allPane
             Layout.fillWidth: true
-            Layout.fillHeight: !_page.splitOn
-            visible: !_page.splitOn
+            Layout.fillHeight: true
+            visible: !_page.model || _page.model.splitMode === "none"
             title: ""
             direction: ""
         }
