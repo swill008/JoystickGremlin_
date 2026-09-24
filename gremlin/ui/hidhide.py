@@ -567,7 +567,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
                 continue
             detail = ctypes.create_string_buffer(needed.value)
             path_off = 8 if ctypes.sizeof(ctypes.c_void_p) == 8 else 6
-            ctypes.c_dword.from_buffer(detail, 0).value = path_off
+            wintypes.DWORD.from_buffer(detail).value = path_off
             info = SP_DEVINFO_DATA()
             info.cbSize = ctypes.sizeof(SP_DEVINFO_DATA)
             if not setup.SetupDiGetDeviceInterfaceDetailW(
