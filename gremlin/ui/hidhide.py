@@ -395,64 +395,198 @@ def _is_keyboard_mouse(instance: str, name: str) -> bool:
     return "KEYBOARD" in blob or "MOUSE" in blob or "&MI_01" in blob and "KBD" in blob
 
 
-def list_hid_devices() -> list[dict]:
-    """System-wide HID instance IDs HidHide can hide. Not Gremlin modules."""
+
+def list_hid_devices(gaming_only: bool = True) -> list[dict]:
+    """HidHide Client method: HID interfaces, grouped by container, gaming filter on."""
     if os.name != "nt":
         return []
     try:
-        return _list_hid_cfgmgr()
+        return _list_hidhide_style(gaming_only)
     except Exception:
         return []
 
 
-def _list_hid_cfgmgr() -> list[dict]:
+def _hid_guid():
+    import ctypes
+    hid = ctypes.WinDLL("hid")
+    guid = (ctypes.c_ubyte * 16)()
+    hid.HidD_GetHidGuid(ctypes.byref(guid))
+    return guid
+
+
+def _is_gaming(vid: int, pid: int, usage_page: int, usage: int) -> bool:
+    if vid == 0x28DE and pid in (0x1142, 0x1205):
+        return True
+    if usage_page == 0x05:
+        return True
+    if usage_page == 0x01 and usage in (0x04, 0x05):
+        return True
+    return False
+
+
+def _list_hidhide_style(gaming_only: bool) -> list[dict]:
     import ctypes
     from ctypes import wintypes
 
-    cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
-    CM_GETIDLIST_FILTER_ENUMERATOR = 0x00000001
-    CR_SUCCESS = 0
-    size = wintypes.ULONG(0)
-    filt = "HID"
-    flags = CM_GETIDLIST_FILTER_ENUMERATOR
-    if cfg.CM_Get_Device_ID_List_SizeW(ctypes.byref(size), filt, flags) != CR_SUCCESS:
-        filt = None
-        flags = 0
-        if cfg.CM_Get_Device_ID_List_SizeW(ctypes.byref(size), filt, flags) != CR_SUCCESS:
-            return []
-    if size.value < 2:
-        return []
-    buf = ctypes.create_unicode_buffer(size.value)
-    if cfg.CM_Get_Device_ID_ListW(filt, buf, size, flags) != CR_SUCCESS:
-        return []
-    text = ctypes.wstring_at(ctypes.addressof(buf), size.value)
-    ids = [p for p in text.split(chr(0)) if p]
-    out = []
-    seen = set()
-    for instance in ids:
-        up = instance.upper()
-        if not (up.startswith("HID") or up.startswith("USB")):
-            continue
-        if up.startswith("USB") and "VID_" not in up:
-            continue
-        if instance in seen:
-            continue
-        seen.add(instance)
-        setup_name = _friendly_name(instance)
-        name = setup_name or instance
-        if _is_virtual(instance, name):
-            continue
-        out.append(
-            {
-                "instanceId": instance,
-                "name": name,
-                "canHide": not _is_keyboard_mouse(instance, name),
-                "photo": "",
-            }
-        )
-    out.sort(key=lambda r: r["name"].lower())
-    return out
+    setup = ctypes.WinDLL("setupapi", use_last_error=True)
+    hid = ctypes.WinDLL("hid", use_last_error=True)
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
+    class GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", wintypes.DWORD),
+            ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD),
+            ("Data4", ctypes.c_ubyte * 8),
+        ]
+
+    class SP_DEVINFO_DATA(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("ClassGuid", GUID),
+            ("DevInst", wintypes.DWORD),
+            ("Reserved", ctypes.c_void_p),
+        ]
+
+    class SP_DEVICE_INTERFACE_DATA(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("InterfaceClassGuid", GUID),
+            ("Flags", wintypes.DWORD),
+            ("Reserved", ctypes.c_void_p),
+        ]
+
+    class HIDD_ATTRIBUTES(ctypes.Structure):
+        _fields_ = [
+            ("Size", wintypes.ULONG),
+            ("VendorID", wintypes.USHORT),
+            ("ProductID", wintypes.USHORT),
+            ("VersionNumber", wintypes.USHORT),
+        ]
+
+    class HIDP_CAPS(ctypes.Structure):
+        _fields_ = [
+            ("Usage", wintypes.USHORT),
+            ("UsagePage", wintypes.USHORT),
+            ("InputReportByteLength", wintypes.USHORT),
+            ("OutputReportByteLength", wintypes.USHORT),
+            ("FeatureReportByteLength", wintypes.USHORT),
+            ("Reserved", wintypes.USHORT * 17),
+            ("NumberLinkCollectionNodes", wintypes.USHORT),
+            ("NumberInputButtonCaps", wintypes.USHORT),
+            ("NumberInputValueCaps", wintypes.USHORT),
+            ("NumberInputDataIndices", wintypes.USHORT),
+            ("NumberOutputButtonCaps", wintypes.USHORT),
+            ("NumberOutputValueCaps", wintypes.USHORT),
+            ("NumberOutputDataIndices", wintypes.USHORT),
+            ("NumberFeatureButtonCaps", wintypes.USHORT),
+            ("NumberFeatureValueCaps", wintypes.USHORT),
+            ("NumberFeatureDataIndices", wintypes.USHORT),
+        ]
+
+    hid_guid = GUID()
+    hid.HidD_GetHidGuid(ctypes.byref(hid_guid))
+    DIGCF_PRESENT = 0x00000002
+    DIGCF_DEVICEINTERFACE = 0x00000010
+    setup.SetupDiGetClassDevsW.restype = ctypes.c_void_p
+    devs = setup.SetupDiGetClassDevsW(
+        ctypes.byref(hid_guid), None, None, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE
+    )
+    if not devs or devs == ctypes.c_void_p(-1).value:
+        return []
+
+    groups: dict[str, dict] = {}
+    try:
+        index = 0
+        while True:
+            iface = SP_DEVICE_INTERFACE_DATA()
+            iface.cbSize = ctypes.sizeof(SP_DEVICE_INTERFACE_DATA)
+            if not setup.SetupDiEnumDeviceInterfaces(
+                devs, None, ctypes.byref(hid_guid), index, ctypes.byref(iface)
+            ):
+                break
+            index += 1
+            needed = wintypes.DWORD(0)
+            setup.SetupDiGetDeviceInterfaceDetailW(
+                devs, ctypes.byref(iface), None, 0, ctypes.byref(needed), None
+            )
+            if needed.value < 8:
+                continue
+            detail = ctypes.create_string_buffer(needed.value)
+            ctypes.c_dword.from_buffer(detail, 0).value = 8 if ctypes.sizeof(ctypes.c_void_p) == 8 else 6
+            info = SP_DEVINFO_DATA()
+            info.cbSize = ctypes.sizeof(SP_DEVINFO_DATA)
+            if not setup.SetupDiGetDeviceInterfaceDetailW(
+                devs, ctypes.byref(iface), detail, needed, None, ctypes.byref(info)
+            ):
+                continue
+            # path starts after DWORD cbSize
+            link = ctypes.wstring_at(ctypes.addressof(detail) + ctypes.sizeof(wintypes.DWORD))
+            inst_buf = ctypes.create_unicode_buffer(512)
+            if not setup.SetupDiGetDeviceInstanceIdW(devs, ctypes.byref(info), inst_buf, 512, None):
+                continue
+            instance = inst_buf.value
+            handle = k32.CreateFileW(link, 0, 3, None, 3, 0, None)
+            if handle == _INVALID or handle == -1:
+                continue
+            try:
+                attrs = HIDD_ATTRIBUTES()
+                attrs.Size = ctypes.sizeof(HIDD_ATTRIBUTES)
+                vid = pid = 0
+                if hid.HidD_GetAttributes(handle, ctypes.byref(attrs)):
+                    vid = int(attrs.VendorID)
+                    pid = int(attrs.ProductID)
+                usage_page = usage = 0
+                preparsed = ctypes.c_void_p()
+                if hid.HidD_GetPreparsedData(handle, ctypes.byref(preparsed)) and preparsed:
+                    caps = HIDP_CAPS()
+                    hid.HidP_GetCaps(preparsed, ctypes.byref(caps))
+                    usage_page = int(caps.UsagePage)
+                    usage = int(caps.Usage)
+                    hid.HidD_FreePreparsedData(preparsed)
+                prod = ctypes.create_unicode_buffer(127)
+                manu = ctypes.create_unicode_buffer(127)
+                product = prod.value if hid.HidD_GetProductString(handle, prod, 254) else ""
+                vendor = manu.value if hid.HidD_GetManufacturerString(handle, manu, 254) else ""
+            finally:
+                k32.CloseHandle(handle)
+            if _is_virtual(instance, product or vendor):
+                continue
+            gaming = _is_gaming(vid, pid, usage_page, usage)
+            if gaming_only and not gaming:
+                continue
+            container = _container_id(instance) or f"{vid:04X}:{pid:04X}:{instance}"
+            name_parts = [p for p in (vendor.strip(), product.strip()) if p]
+            label = " ".join(name_parts).strip() or product or instance
+            group = groups.setdefault(
+                container,
+                {
+                    "instanceId": instance,
+                    "instanceIds": [],
+                    "name": label,
+                    "canHide": True,
+                    "photo": "",
+                    "gaming": False,
+                },
+            )
+            if instance not in group["instanceIds"]:
+                group["instanceIds"].append(instance)
+            group["gaming"] = group["gaming"] or gaming
+            if label and (group["name"] == instance or len(label) > len(group["name"])):
+                group["name"] = label
+        out = list(groups.values())
+        out.sort(key=lambda r: r["name"].lower())
+        return out
+    finally:
+        setup.SetupDiDestroyDeviceInfoList(devs)
+
+
+def _container_id(instance: str) -> str:
+    try:
+        text = _cm_property(instance, "8C7ED206-3F8A-4827-B3AB-AE9E1FAEFC6C", 2)
+    except Exception:
+        text = ""
+    return text or ""
 
 
 def _guid_le(text: str) -> bytes:
@@ -609,6 +743,7 @@ class HidHideModel(QtCore.QObject):
         self._active = False
         self._devices: list[dict] = []
         self._games: list[dict] = []
+        self._gaming_only = True
         _ensure_options()
         self.reload()
 
@@ -620,7 +755,7 @@ class HidHideModel(QtCore.QObject):
         hidden = persistent | session
         self._devices = []
         try:
-            rows = list_hid_devices()
+            rows = list_hid_devices(self._gaming_only)
         except Exception:
             rows = []
         for row in _enrich_devices(rows):
@@ -652,6 +787,15 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Property(bool, notify=changed)
     def cloakOn(self) -> bool:
         return self._active
+
+    @QtCore.Property(bool, notify=changed)
+    def gamingOnly(self) -> bool:
+        return self._gaming_only
+
+    @QtCore.Slot(bool)
+    def setGamingOnly(self, on: bool) -> None:
+        self._gaming_only = bool(on)
+        self.reload()
 
     @QtCore.Property(int, notify=changed)
     def deviceCount(self) -> int:
@@ -692,10 +836,16 @@ class HidHideModel(QtCore.QObject):
         if not self._present or not instance_id:
             return False
         snapshot_if_needed()
-        key = instance_id
-        want = {i for i in _session_ids if i.upper() != key.upper()}
+        group_ids = [instance_id]
+        for row in self._devices:
+            ids = row.get("instanceIds") or [row.get("instanceId")]
+            if instance_id.upper() in {str(x).upper() for x in ids}:
+                group_ids = [str(x) for x in ids if x]
+                break
+        drop = {x.upper() for x in group_ids}
+        want = {i for i in _session_ids if i.upper() not in drop}
         if hidden:
-            want.add(key)
+            want.update(group_ids)
         if not clear_session_hides():
             return False
         if want and not add_session_hides(sorted(want)):
@@ -733,8 +883,6 @@ class HidHideModel(QtCore.QObject):
         self._sync_whitelist()
         self.changed.emit()
         return True
-
-    @QtCore.Slot()
 
     @QtCore.Slot(str, str, result=bool)
     def setDevicePhoto(self, instance_id: str, path: str) -> bool:
