@@ -417,6 +417,9 @@ def _hid_guid():
 def _is_gaming(vid: int, pid: int, usage_page: int, usage: int) -> bool:
     if vid == 0x28DE and pid in (0x1142, 0x1205):
         return True
+    # vJoy virtual joystick (HidHide lists these with the sticks)
+    if vid == 0x1234 and pid == 0xBEAD:
+        return True
     if usage_page == 0x05:
         return True
     if usage_page == 0x01 and usage in (0x04, 0x05):
