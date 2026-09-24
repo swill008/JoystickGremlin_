@@ -721,27 +721,25 @@ Item {
                                 var saved = _page.model ? _page.model.cardHeight(modelData) : 0
                                 return saved >= 140 ? saved : 0
                             }
+                            property int liveH: 0
                             property int ghostPad: showGhost ? _page.ghostW + 16 : 0
+
+                            function noteCardSize(w, h) {
+                                var hh = Math.max(Math.round(h), 0)
+                                if (hh > liveH)
+                                    liveH = hh
+                            }
 
                             width: isDragHome ? 0 : (cardW + extra + ghostPad)
                             height: {
                                 if (isDragHome)
                                     return Math.max(1, _page.ghostH)
-                                var c = _memberCards.itemAt(0)
-                                var live = 0
-                                if (c) {
-                                    if (c.height > 1)
-                                        live = Math.round(c.height)
-                                    if (c.implicitHeight > live)
-                                        live = Math.round(c.implicitHeight)
-                                }
-                                if (live < 1)
-                                    live = 260
-                                var h = Math.max(cardH >= 140 ? cardH : 0, live) + extra
+                                var h = Math.max(cardH, liveH, 280) + extra
                                 if (showGhost)
                                     h = Math.max(h, _page.ghostH)
                                 return h
                             }
+                            onMembersChanged: liveH = 0
                             z: dragging || isDragHome ? 10000 : 0
                             clip: false
 
@@ -778,6 +776,9 @@ Item {
                                     height: Math.max(_pile.cardH > 0 ? _pile.cardH : 0, implicitHeight)
                                     stretchPhoto: _pile.cardH >= 140
                                     dropStacking: false
+                                    onHeightChanged: _pile.noteCardSize(width, height)
+                                    onImplicitHeightChanged: _pile.noteCardSize(width, implicitHeight)
+                                    Component.onCompleted: _pile.noteCardSize(width, Math.max(height, implicitHeight))
                                     opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1
                                     onLiftingChanged: {
                                         if (lifting)
