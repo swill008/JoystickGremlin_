@@ -495,6 +495,30 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             ("NumberFeatureDataIndices", wintypes.USHORT),
         ]
 
+    setup.SetupDiGetClassDevsW.restype = ctypes.c_void_p
+    setup.SetupDiGetClassDevsW.argtypes = [
+        ctypes.POINTER(GUID), wintypes.LPCWSTR, wintypes.HWND, wintypes.DWORD
+    ]
+    setup.SetupDiEnumDeviceInterfaces.restype = wintypes.BOOL
+    setup.SetupDiEnumDeviceInterfaces.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.POINTER(GUID),
+        wintypes.DWORD,
+        ctypes.c_void_p,
+    ]
+    setup.SetupDiGetDeviceInterfaceDetailW.restype = wintypes.BOOL
+    setup.SetupDiGetDeviceInterfaceDetailW.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+        ctypes.c_void_p,
+    ]
+    setup.SetupDiDestroyDeviceInfoList.restype = wintypes.BOOL
+    setup.SetupDiDestroyDeviceInfoList.argtypes = [ctypes.c_void_p]
+
     hid_guid = GUID()
     hid.HidD_GetHidGuid(ctypes.byref(hid_guid))
     CR_SUCCESS = 0
@@ -526,7 +550,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
         devs = setup.SetupDiGetClassDevsW(
             ctypes.byref(hid_guid), instance, None, DIGCF_DEVICEINTERFACE
         )
-        if not devs or devs == ctypes.c_void_p(-1).value:
+        if not devs or int(devs) in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
             continue
         try:
             iface = SP_DEVICE_INTERFACE_DATA()
