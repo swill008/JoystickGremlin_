@@ -402,10 +402,7 @@ def list_hid_devices(gaming_only: bool = True) -> list[dict]:
     """HidHide HidDevices(). Tools → Hardware Hide only."""
     if os.name != "nt":
         return []
-    try:
-        return _list_hidhide_class_enum(gaming_only)
-    except Exception:
-        return []
+    return _list_hidhide_class_enum(gaming_only)
 
 
 def _hid_guid():
@@ -844,21 +841,6 @@ class HidHideModel(QtCore.QObject):
             item = dict(row)
             item["hidden"] = item["instanceId"].upper() in hidden
             self._devices.append(item)
-        if self._present:
-            for hid in get_blacklist():
-                if not hid or hid.upper().startswith("USB"):
-                    continue
-                if any(hid.upper() == str(x).upper() for d in self._devices for x in (d.get("instanceIds") or [d.get("instanceId")])):
-                    continue
-                named = {
-                    "instanceId": hid,
-                    "instanceIds": [hid],
-                    "name": _display_name("", "", _device_description(hid), ""),
-                    "canHide": True,
-                    "hidden": True,
-                    "photo": "",
-                }
-                self._devices.extend(_enrich_devices([named]))
         self._games = _load_games()
         self.changed.emit()
 
