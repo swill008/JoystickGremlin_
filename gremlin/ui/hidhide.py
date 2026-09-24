@@ -601,14 +601,7 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
 
 
 def _group_key(instance: str, vid: int | None = None, pid: int | None = None) -> str:
-    """One row per physical device, same idea as HidHide base container."""
-    cid = ""
-    try:
-        cid = _container_id(instance)
-    except Exception:
-        cid = ""
-    if cid and "FFFFFFFFFFFF" not in cid.upper() and cid.upper() not in ("", "{00000000-0000-0000-0000-000000000000}"):
-        return "cid:" + cid.upper()
+    """One row per physical device. USB parent first (HidHide base container)."""
     node = instance
     for _ in range(8):
         try:
@@ -617,11 +610,17 @@ def _group_key(instance: str, vid: int | None = None, pid: int | None = None) ->
             parent = ""
         if not parent or parent.upper() == node.upper():
             break
-        if parent.upper().startswith("USB\\VID_") or parent.upper().startswith("USB\VID_"):
-            return "usb:" + parent.upper()
+        up = parent.upper()
+        if up.startswith("USB\\VID_") or up.startswith("USB\VID_"):
+            return "usb:" + up
         node = parent
-    if vid is not None:
-        return f"vid:{vid:04X}"
+    cid = ""
+    try:
+        cid = _container_id(instance)
+    except Exception:
+        cid = ""
+    if cid and "FFFFFFFFFFFF" not in cid.upper() and cid not in ("", "{00000000-0000-0000-0000-000000000000}"):
+        return "cid:" + cid.upper()
     return "id:" + (instance or "").upper()
 
 
