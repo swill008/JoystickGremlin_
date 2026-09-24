@@ -41,6 +41,14 @@ IOCTL_GET_ACTIVE = _ctl(2052)
 IOCTL_SET_ACTIVE = _ctl(2053)
 IOCTL_ADD_SESSION_BLACKLIST = _ctl(2056)
 IOCTL_CLR_SESSION_BLACKLIST = _ctl(2057)
+
+DEVPROP_TYPE_EMPTY = 0x00000000
+DEVPROP_TYPE_GUID = 0x0000000D
+DEVPROP_TYPE_STRING = 0x00000012
+GUID_NULL = "00000000-0000-0000-0000-000000000000"
+GUID_CONTAINER_ID_SYSTEM = "00000000-0000-0000-FFFF-FFFFFFFFFFFF"
+CM_LOCATE_DEVNODE_NORMAL = 0
+CM_LOCATE_DEVNODE_PHANTOM = 1
 _WALK_STATS = {}
 
 # Hardware Hide list = HidHide HidDevices() in HidHideCLI/src/HID.cpp.
@@ -767,6 +775,7 @@ def _container_id(instance: str) -> str:
     cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
     CR_SUCCESS = 0
     CR_NO_SUCH_VALUE = 37
+    DEVPROP_TYPE_GUID = 0x0000000D
     class DEVPROPKEY(ctypes.Structure):
         _fields_ = [("fmtid", ctypes.c_ubyte * 16), ("pid", wintypes.ULONG)]
     key = DEVPROPKEY()
