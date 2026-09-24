@@ -532,7 +532,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     if size.value < 2:
         return []
     buf = ctypes.create_unicode_buffer(size.value)
-    if cfg.CM_Get_Device_ID_ListW(class_s, buf, size, flags) != CR_SUCCESS:
+    if cfg.CM_Get_Device_ID_ListW(class_s, buf, size.value, flags) != CR_SUCCESS:
         return []
     instances = [p for p in ctypes.wstring_at(ctypes.addressof(buf), size.value).split(chr(0)) if p]
     groups: dict[str, dict] = {}
