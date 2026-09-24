@@ -431,7 +431,9 @@ def _list_hid_cfgmgr() -> list[dict]:
     seen = set()
     for instance in ids:
         up = instance.upper()
-        if not up.startswith("HID"):
+        if not (up.startswith("HID") or up.startswith("USB")):
+            continue
+        if up.startswith("USB") and "VID_" not in up:
             continue
         if instance in seen:
             continue
@@ -452,46 +454,92 @@ def _list_hid_cfgmgr() -> list[dict]:
     return out
 
 
-def _friendly_name(instance: str) -> str:
+
+def _guid_le(text: str) -> bytes:
+    import uuid
+    u = uuid.UUID(text)
+    return u.bytes_le[:4] + u.bytes_le[4:6] + u.bytes_le[6:8] + u.bytes[8:]
+
+
+def _cm_property(instance: str, fmtid: str, pid: int) -> str:
     import ctypes
     from ctypes import wintypes
 
-    setup = ctypes.WinDLL("setupapi", use_last_error=True)
+    cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
+    CR_SUCCESS = 0
+    CR_BUFFER_SMALL = 26
+    DEVPROP_TYPE_STRING = 0x00000012
 
-    class SP_DEVINFO_DATA(ctypes.Structure):
-        _fields_ = [
-            ("cbSize", wintypes.DWORD),
-            ("ClassGuid", ctypes.c_byte * 16),
-            ("DevInst", wintypes.DWORD),
-            ("Reserved", ctypes.c_void_p),
-        ]
+    class DEVPROPKEY(ctypes.Structure):
+        _fields_ = [("fmtid", ctypes.c_ubyte * 16), ("pid", wintypes.ULONG)]
 
-    setup.SetupDiCreateDeviceInfoList.restype = ctypes.c_void_p
-    handle = setup.SetupDiCreateDeviceInfoList(None, None)
-    if not handle or handle == ctypes.c_void_p(-1).value:
+    key = DEVPROPKEY()
+    raw = _guid_le(fmtid)
+    for i, b in enumerate(raw):
+        key.fmtid[i] = b
+    key.pid = pid
+    devinst = wintypes.DWORD(0)
+    if cfg.CM_Locate_DevNodeW(ctypes.byref(devinst), instance, 0) != CR_SUCCESS:
         return ""
+    ptype = wintypes.ULONG(0)
+    size = wintypes.ULONG(0)
+    cfg.CM_Get_DevNode_PropertyW(
+        devinst, ctypes.byref(key), ctypes.byref(ptype), None, ctypes.byref(size), 0
+    )
+    if size.value < 2:
+        return ""
+    buf = ctypes.create_unicode_buffer(max(2, size.value // 2))
+    if cfg.CM_Get_DevNode_PropertyW(
+        devinst, ctypes.byref(key), ctypes.byref(ptype), buf, ctypes.byref(size), 0
+    ) != CR_SUCCESS:
+        return ""
+    return (buf.value or "").strip()
+
+
+def _parent_instance(instance: str) -> str:
+    import ctypes
+    from ctypes import wintypes
+
+    cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
+    CR_SUCCESS = 0
+    devinst = wintypes.DWORD(0)
+    parent = wintypes.DWORD(0)
+    if cfg.CM_Locate_DevNodeW(ctypes.byref(devinst), instance, 0) != CR_SUCCESS:
+        return ""
+    if cfg.CM_Get_Parent(ctypes.byref(parent), devinst, 0) != CR_SUCCESS:
+        return ""
+    buf = ctypes.create_unicode_buffer(512)
+    if cfg.CM_Get_Device_IDW(parent, buf, 512, 0) != CR_SUCCESS:
+        return ""
+    return buf.value or ""
+
+
+def _friendly_name(instance: str) -> str:
+    keys = [
+        ("A45C254E-DF1C-4EFD-8020-67D146A850E0", 14),  # FriendlyName
+        ("540B947E-8B40-45BC-A8A2-6A0B894E8B2D", 4),   # BusReportedDeviceDesc
+        ("B725F130-47EF-101A-A5F1-02608C9EEBAC", 10),  # NAME
+    ]
+    for fmt, pid in keys:
+        try:
+            text = _cm_property(instance, fmt, pid)
+        except Exception:
+            text = ""
+        if text and not text.upper().startswith("HID\\") and not text.upper().startswith("USB\\"):
+            return text
     try:
-        info = SP_DEVINFO_DATA()
-        info.cbSize = ctypes.sizeof(SP_DEVINFO_DATA)
-        if not setup.SetupDiOpenDeviceInfoW(handle, instance, None, 0, ctypes.byref(info)):
-            return ""
-        name_buf = ctypes.create_unicode_buffer(512)
-        required = wintypes.DWORD(0)
-        for prop in (12, 0):
-            if setup.SetupDiGetDeviceRegistryPropertyW(
-                handle,
-                ctypes.byref(info),
-                prop,
-                None,
-                name_buf,
-                ctypes.sizeof(name_buf),
-                ctypes.byref(required),
-            ):
-                return name_buf.value or ""
-        return ""
-    finally:
-        setup.SetupDiDestroyDeviceInfoList(handle)
-
+        parent = _parent_instance(instance)
+    except Exception:
+        parent = ""
+    if parent:
+        for fmt, pid in keys:
+            try:
+                text = _cm_property(parent, fmt, pid)
+            except Exception:
+                text = ""
+            if text and not text.upper().startswith("HID\\") and not text.upper().startswith("USB\\"):
+                return text
+    return ""
 
 
 def _enrich_devices(rows: list[dict]) -> list[dict]:
@@ -507,15 +555,35 @@ def _enrich_devices(rows: list[dict]) -> list[dict]:
         instance = row["instanceId"]
         vid, pid = _vid_pid(instance)
         match = None
-        if vid is not None and pid is not None:
+        same_vid = []
+        if vid is not None:
             for dev in dill_devs:
-                if int(dev.vendor_id) == vid and int(dev.product_id) == pid:
+                try:
+                    dvid = int(dev.vendor_id)
+                    dpid = int(dev.product_id)
+                except Exception:
+                    continue
+                if dvid != vid:
+                    continue
+                same_vid.append(dev)
+                if pid is not None and dpid == pid:
                     match = dev
                     break
+        if match is None and len(same_vid) == 1:
+            match = same_vid[0]
+        windows_name = row.get("name") if row.get("name") != instance else ""
+        if not windows_name:
+            windows_name = _friendly_name(instance)
         if match and match.name:
             row["name"] = match.name
-        elif row["name"] == instance:
-            row["name"] = row.get("name") or instance
+            if pid is not None and int(match.product_id) != pid:
+                row["name"] = f"{match.name} (PID {pid:04X})"
+        elif windows_name:
+            row["name"] = windows_name
+        elif same_vid:
+            row["name"] = same_vid[0].name + (f" (PID {pid:04X})" if pid is not None else "")
+        elif vid == 0x231D:
+            row["name"] = f"VKB (PID {pid:04X})" if pid is not None else "VKB"
         photo = photos.get(instance) or photos.get(instance.upper(), "")
         if photo:
             row["photo"] = _file_url(Path(photo)) if not str(photo).startswith("file:") else photo
