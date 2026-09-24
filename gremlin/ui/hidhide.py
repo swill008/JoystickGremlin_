@@ -524,6 +524,13 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     hid.HidD_GetHidGuid.restype = None
     hid_guid = GUID()
     hid.HidD_GetHidGuid(ctypes.byref(hid_guid))
+    import uuid
+    raw = uuid.UUID("4D1E55B2-F16F-11CF-88CB-001111000030").bytes_le
+    hid_guid.Data1 = int.from_bytes(raw[0:4], "little")
+    hid_guid.Data2 = int.from_bytes(raw[4:6], "little")
+    hid_guid.Data3 = int.from_bytes(raw[6:8], "little")
+    for i, b in enumerate(raw[8:16]):
+        hid_guid.Data4[i] = b
     CR_SUCCESS = 0
     CM_GETIDLIST_FILTER_CLASS = 0x00000200  # cfgmgr32.h, not 0x8 (REMOVALRELATIONS)
     # {745A17A0-74D3-11D0-B6FE-00A0C90F57DA} HIDClass
@@ -542,7 +549,17 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
         _WALK_STATS = {"error": "CM_Get_Device_ID_ListW", "cmSize": int(size.value)}
         return []
     instances = [p for p in ctypes.wstring_at(ctypes.addressof(buf), size.value).split(chr(0)) if p]
-    stats = {"cm": int(size.value), "classIds": len(instances), "links": 0, "opened": 0, "rows": 0, "cmSize": 0, "cmList": 0}
+    stats = {
+        "cm": int(size.value),
+        "classIds": len(instances),
+        "enumOk": 0,
+        "links": 0,
+        "opened": 0,
+        "rows": 0,
+        "cmSize": 0,
+        "cmList": 0,
+        "sample": instances[:3],
+    }
     stats["cmSize"] = 1
     stats["cmList"] = 1
     groups: dict[str, dict] = {}
@@ -570,6 +587,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
                 devs, None, ctypes.byref(hid_guid), 0, ctypes.byref(iface)
             ):
                 continue
+            stats["enumOk"] += 1
             needed = wintypes.DWORD(0)
             setup.SetupDiGetDeviceInterfaceDetailW(
                 devs, ctypes.byref(iface), None, 0, ctypes.byref(needed), None
@@ -582,7 +600,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             info = SP_DEVINFO_DATA()
             info.cbSize = ctypes.sizeof(SP_DEVINFO_DATA)
             if not setup.SetupDiGetDeviceInterfaceDetailW(
-                devs, ctypes.byref(iface), detail, needed, None, ctypes.byref(info)
+                devs, ctypes.byref(iface), detail, int(needed.value), None, ctypes.byref(info)
             ):
                 continue
             link = ctypes.wstring_at(ctypes.addressof(detail) + path_off)
