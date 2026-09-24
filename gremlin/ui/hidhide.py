@@ -520,6 +520,8 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     setup.SetupDiDestroyDeviceInfoList.restype = wintypes.BOOL
     setup.SetupDiDestroyDeviceInfoList.argtypes = [ctypes.c_void_p]
 
+    hid.HidD_GetHidGuid.argtypes = [ctypes.POINTER(GUID)]
+    hid.HidD_GetHidGuid.restype = None
     hid_guid = GUID()
     hid.HidD_GetHidGuid(ctypes.byref(hid_guid))
     CR_SUCCESS = 0
@@ -560,6 +562,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
         )
         if not devs or int(devs) in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
             continue
+        link = ""
         try:
             iface = SP_DEVICE_INTERFACE_DATA()
             iface.cbSize = ctypes.sizeof(SP_DEVICE_INTERFACE_DATA)
