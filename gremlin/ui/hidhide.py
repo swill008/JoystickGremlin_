@@ -598,6 +598,7 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
             ):
                 group["name"] = label
         out = list(groups.values())
+        out.extend(_vjoy_rows(out))
         out.sort(key=lambda r: r["name"].lower())
         return out
     finally:
@@ -611,6 +612,81 @@ CM_LOCATE_DEVNODE_PHANTOM = 1
 DEVPROP_TYPE_GUID = 0x0000000D
 GUID_CONTAINER_ID_SYSTEM = "00000000-0000-0000-FFFF-FFFFFFFFFFFF"
 GUID_NULL = "00000000-0000-0000-0000-000000000000"
+
+
+
+def _vjoy_rows(existing: list[dict]) -> list[dict]:
+    """HidHide lists vJoy with gaming devices. Interface walk often misses them."""
+    have = {str(r.get("instanceId") or "").upper() for r in existing}
+    for r in existing:
+        for x in r.get("instanceIds") or []:
+            have.add(str(x).upper())
+    found: list[dict] = []
+    seen_pid = set()
+    for inst in _hid_class_instances():
+        vid, pid = _vid_pid(inst)
+        if vid != 0x1234 or pid != 0xBEAD:
+            continue
+        if inst.upper() in have:
+            continue
+        key = inst.upper()
+        if key in seen_pid:
+            continue
+        seen_pid.add(key)
+        desc = _usable_name(_device_description(inst)) or "Shaul Eizikovich vJoy - Virtual Joystick"
+        found.append(
+            {
+                "instanceId": inst,
+                "instanceIds": [inst],
+                "name": desc,
+                "canHide": True,
+                "photo": "",
+                "gaming": True,
+            }
+        )
+    if found:
+        return found
+    # DILL fallback when SetupAPI did not return a vJoy HID path
+    extra = []
+    try:
+        from gremlin.device_initialization import vjoy_devices
+        devices = list(vjoy_devices())
+    except Exception:
+        devices = []
+    for i, dev in enumerate(devices, start=1):
+        name = getattr(dev, "name", None) or f"vJoy Device {i}"
+        extra.append(
+            {
+                "instanceId": f"VJOY\\{i}",
+                "instanceIds": [f"VJOY\\{i}"],
+                "name": name,
+                "canHide": True,
+                "photo": "",
+                "gaming": True,
+            }
+        )
+    return extra
+
+
+def _hid_class_instances() -> list[str]:
+    if os.name != "nt":
+        return []
+    try:
+        import ctypes
+        from ctypes import wintypes
+        cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
+        CR_SUCCESS = 0
+        CM_GETIDLIST_FILTER_ENUMERATOR = 0x00000001
+        size = wintypes.ULONG(0)
+        if cfg.CM_Get_Device_ID_List_SizeW(ctypes.byref(size), "HID", CM_GETIDLIST_FILTER_ENUMERATOR) != CR_SUCCESS:
+            return []
+        buf = ctypes.create_unicode_buffer(size.value)
+        if cfg.CM_Get_Device_ID_ListW("HID", buf, size, CM_GETIDLIST_FILTER_ENUMERATOR) != CR_SUCCESS:
+            return []
+        text = ctypes.wstring_at(ctypes.addressof(buf), size.value)
+        return [p for p in text.split(chr(0)) if p.upper().startswith("HID")]
+    except Exception:
+        return []
 
 
 def _guid_text(raw: bytes) -> str:
