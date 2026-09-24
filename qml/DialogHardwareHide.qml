@@ -108,6 +108,11 @@ Window {
                             checked = _hh.cloakOn
                     }
                 }
+                Switch {
+                    checked: _hh.gamingOnly
+                    text: "Gaming devices only"
+                    onToggled: _hh.setGamingOnly(checked)
+                }
             }
         }
 
