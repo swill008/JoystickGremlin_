@@ -449,6 +449,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     focusChanged = QtCore.Signal()
     hiddenChanged = QtCore.Signal()
     panesChanged = QtCore.Signal()
+    splitRatioChanged = QtCore.Signal()
     claimsChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -749,7 +750,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return
         self.panesChanged.emit()
 
-    @QtCore.Property(float, notify=panesChanged)
+    @QtCore.Property(float, notify=splitRatioChanged)
     def splitRatio(self) -> float:
         try:
             _ensure_display_options()
@@ -768,7 +769,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             _write_status(_CFG_SPLIT_RATIO, value)
         except Exception:
             return
-        self.panesChanged.emit()
+        self.splitRatioChanged.emit()
 
     @QtCore.Slot(str, result=list)
     def pileLeaders(self, direction: str) -> list:
