@@ -257,16 +257,65 @@ def _is_keyboard_mouse(instance: str, name: str) -> bool:
 
 
 def list_hid_devices() -> list[dict]:
-    """System-wide HID devices HidHide can target. Not Gremlin modules."""
+    """System-wide HID instance IDs HidHide can hide. Not Gremlin modules."""
     if os.name != "nt":
         return []
+    try:
+        return _list_hid_cfgmgr()
+    except Exception:
+        return []
+
+
+def _list_hid_cfgmgr() -> list[dict]:
+    import ctypes
+    from ctypes import wintypes
+
+    cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
+    CM_GETIDLIST_FILTER_ENUMERATOR = 0x00000001
+    CR_SUCCESS = 0
+    size = wintypes.ULONG(0)
+    filt = "HID"
+    flags = CM_GETIDLIST_FILTER_ENUMERATOR
+    if cfg.CM_Get_Device_ID_List_SizeW(ctypes.byref(size), filt, flags) != CR_SUCCESS:
+        filt = None
+        flags = 0
+        if cfg.CM_Get_Device_ID_List_SizeW(ctypes.byref(size), filt, flags) != CR_SUCCESS:
+            return []
+    if size.value < 2:
+        return []
+    buf = ctypes.create_unicode_buffer(size.value)
+    if cfg.CM_Get_Device_ID_ListW(filt, buf, size, flags) != CR_SUCCESS:
+        return []
+    text = ctypes.wstring_at(ctypes.addressof(buf), size.value)
+    ids = [p for p in text.split(chr(0)) if p]
+    out = []
+    seen = set()
+    for instance in ids:
+        up = instance.upper()
+        if not up.startswith("HID"):
+            continue
+        if instance in seen:
+            continue
+        seen.add(instance)
+        name = _friendly_name(instance) or instance
+        if _is_virtual(instance, name):
+            continue
+        out.append(
+            {
+                "instanceId": instance,
+                "name": name,
+                "canHide": not _is_keyboard_mouse(instance, name),
+            }
+        )
+    out.sort(key=lambda r: r["name"].lower())
+    return out
+
+
+def _friendly_name(instance: str) -> str:
     import ctypes
     from ctypes import wintypes
 
     setup = ctypes.WinDLL("setupapi", use_last_error=True)
-    GUID_DEVCLASS_HIDCLASS = (ctypes.c_byte * 16)(
-        *bytes.fromhex("A0175A74D374D011B6FE00A0C90F57DA")
-    )
 
     class SP_DEVINFO_DATA(ctypes.Structure):
         _fields_ = [
@@ -276,69 +325,31 @@ def list_hid_devices() -> list[dict]:
             ("Reserved", ctypes.c_void_p),
         ]
 
-    DIGCF_PRESENT = 0x00000002
-    setup.SetupDiGetClassDevsW.restype = ctypes.c_void_p
-    handle = setup.SetupDiGetClassDevsW(
-        ctypes.byref(GUID_DEVCLASS_HIDCLASS), None, None, DIGCF_PRESENT
-    )
-    if handle == ctypes.c_void_p(-1).value:
-        return []
-    out: list[dict] = []
+    setup.SetupDiCreateDeviceInfoList.restype = ctypes.c_void_p
+    handle = setup.SetupDiCreateDeviceInfoList(None, None)
+    if not handle or handle == ctypes.c_void_p(-1).value:
+        return ""
     try:
         info = SP_DEVINFO_DATA()
         info.cbSize = ctypes.sizeof(SP_DEVINFO_DATA)
-        index = 0
-        while setup.SetupDiEnumDeviceInfo(handle, index, ctypes.byref(info)):
-            index += 1
-            inst_buf = ctypes.create_unicode_buffer(512)
-            if not setup.SetupDiGetDeviceInstanceIdW(
-                handle, ctypes.byref(info), inst_buf, 512, None
-            ):
-                continue
-            instance = inst_buf.value
-            name_buf = ctypes.create_unicode_buffer(512)
-            required = wintypes.DWORD(0)
-            name = instance
+        if not setup.SetupDiOpenDeviceInfoW(handle, instance, None, 0, ctypes.byref(info)):
+            return ""
+        name_buf = ctypes.create_unicode_buffer(512)
+        required = wintypes.DWORD(0)
+        for prop in (12, 0):
             if setup.SetupDiGetDeviceRegistryPropertyW(
                 handle,
                 ctypes.byref(info),
-                12,  # SPDRP_FRIENDLYNAME
+                prop,
                 None,
-                ctypes.cast(name_buf, ctypes.c_void_p),
-                1024,
+                name_buf,
+                ctypes.sizeof(name_buf),
                 ctypes.byref(required),
             ):
-                name = name_buf.value or name
-            elif setup.SetupDiGetDeviceRegistryPropertyW(
-                handle,
-                ctypes.byref(info),
-                0,  # SPDRP_DEVICEDESC
-                None,
-                ctypes.cast(name_buf, ctypes.c_void_p),
-                1024,
-                ctypes.byref(required),
-            ):
-                name = name_buf.value or name
-            if _is_virtual(instance, name):
-                continue
-            out.append(
-                {
-                    "instanceId": instance,
-                    "name": name,
-                    "canHide": not _is_keyboard_mouse(instance, name),
-                }
-            )
+                return name_buf.value or ""
+        return ""
     finally:
         setup.SetupDiDestroyDeviceInfoList(handle)
-    seen = set()
-    unique = []
-    for row in out:
-        if row["instanceId"] in seen:
-            continue
-        seen.add(row["instanceId"])
-        unique.append(row)
-    unique.sort(key=lambda r: r["name"].lower())
-    return unique
 
 
 @ta.QmlElement
@@ -349,6 +360,10 @@ class HidHideModel(QtCore.QObject):
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
+        self._present = False
+        self._active = False
+        self._devices: list[dict] = []
+        self._games: list[dict] = []
         _ensure_options()
         self.reload()
 
@@ -357,7 +372,11 @@ class HidHideModel(QtCore.QObject):
         self._active = get_active() if self._present else False
         hidden = {i.upper() for i in get_blacklist()} if self._present else set()
         self._devices = []
-        for row in list_hid_devices():
+        try:
+            rows = list_hid_devices()
+        except Exception:
+            rows = []
+        for row in rows:
             item = dict(row)
             item["hidden"] = item["instanceId"].upper() in hidden
             self._devices.append(item)
