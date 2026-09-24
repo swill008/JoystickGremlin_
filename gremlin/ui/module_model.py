@@ -449,6 +449,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     focusChanged = QtCore.Signal()
     hiddenChanged = QtCore.Signal()
     panesChanged = QtCore.Signal()
+    splitModeChanged = QtCore.Signal()
     splitRatioChanged = QtCore.Signal()
     claimsChanged = QtCore.Signal()
 
@@ -725,7 +726,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         packed = "|".join("+".join(g) for g in groups if len(g) > 1)
         _write_status(_CFG_STACKS, packed)
 
-    @QtCore.Property(str, notify=panesChanged)
+    @QtCore.Property(str, notify=splitModeChanged)
     def splitMode(self) -> str:
         try:
             _ensure_display_options()
@@ -748,7 +749,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             _write_status(_CFG_SPLIT, name)
         except Exception:
             return
-        self.panesChanged.emit()
+        self.splitModeChanged.emit()
 
     @QtCore.Property(float, notify=splitRatioChanged)
     def splitRatio(self) -> float:
@@ -764,6 +765,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(float)
     def setSplitRatio(self, ratio: float) -> None:
         value = min(0.8, max(0.2, float(ratio)))
+        if abs(value - self.splitRatio) < 0.001:
+            return
         try:
             _ensure_display_options()
             _write_status(_CFG_SPLIT_RATIO, value)
@@ -806,7 +809,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         for member in self.pileMembers(slug):
             sizes[member] = (w, h)
         _set_sizes(sizes)
-        self.panesChanged.emit()
 
     @QtCore.Slot(str)
     def resetCardSize(self, slug: str) -> None:
