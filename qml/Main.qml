@@ -562,6 +562,12 @@ ApplicationWindow {
             }
             MenuSeparator {}
             MenuItem {
+                text: qsTr("Hardware Hide")
+                onTriggered: () => {
+                    Helpers.createComponent("DialogHardwareHide.qml")
+                }
+            }
+            MenuItem {
                 text: qsTr("Options")
                 onTriggered: () => {
                     Helpers.createComponent("DialogOptions.qml")
