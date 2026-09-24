@@ -24,6 +24,18 @@ Window {
     }
 
     FileDialog {
+        id: _pickPhoto
+        title: "Device image"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp)", "All files (*)"]
+        property string targetId: ""
+        onAccepted: {
+            if (targetId)
+                _hh.setDevicePhoto(targetId, selectedFile.toString())
+        }
+    }
+
+    FileDialog {
         id: _pickExe
         title: "Add a game or program"
         fileMode: FileDialog.OpenFile
@@ -126,7 +138,7 @@ Window {
             delegate: Rectangle {
                 required property int index
                 width: ListView.view.width
-                height: 48
+                height: 56
                 radius: 3
                 color: "#111113"
                 border.color: "#3F3F46"
@@ -134,6 +146,23 @@ Window {
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 8
+                    spacing: 8
+                    Rectangle {
+                        width: 40
+                        height: 40
+                        radius: 3
+                        color: "#09090B"
+                        border.color: "#3F3F46"
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            source: row.photo || ""
+                            fillMode: Image.PreserveAspectFit
+                            visible: !!(row.photo)
+                            asynchronous: true
+                            cache: true
+                        }
+                    }
                     ColumnLayout {
                         spacing: 0
                         Layout.fillWidth: true
@@ -144,9 +173,18 @@ Window {
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: row.canHide ? "HID controller" : "Cannot hide (keyboard or mouse)"
+                            text: row.canHide ? (row.instanceId || "") : "Cannot hide (keyboard or mouse)"
                             color: "#A1A1AA"
                             font.pixelSize: 11
+                            elide: Text.ElideMiddle
+                            Layout.fillWidth: true
+                        }
+                    }
+                    Button {
+                        text: row.photo ? "Change image" : "Add image"
+                        onClicked: {
+                            _pickPhoto.targetId = row.instanceId
+                            _pickPhoto.open()
                         }
                     }
                     Switch {
