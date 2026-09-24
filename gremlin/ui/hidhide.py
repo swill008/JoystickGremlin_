@@ -38,6 +38,8 @@ IOCTL_GET_BLACKLIST = _ctl(2050)
 IOCTL_SET_BLACKLIST = _ctl(2051)
 IOCTL_GET_ACTIVE = _ctl(2052)
 IOCTL_SET_ACTIVE = _ctl(2053)
+IOCTL_ADD_SESSION_BLACKLIST = _ctl(2056)
+IOCTL_CLR_SESSION_BLACKLIST = _ctl(2057)
 
 _GENERIC_READ = 0x80000000
 _SHARE = 0x00000007
@@ -236,6 +238,72 @@ def set_whitelist(paths: list[str]) -> bool:
     return _set_multi(IOCTL_SET_WHITELIST, paths)
 
 
+_snap_active = None
+_snap_whitelist = None
+_borrowed_active = False
+_borrowed_whitelist = False
+_session_ids: set[str] = set()
+
+
+def snapshot_if_needed() -> None:
+    global _snap_active, _snap_whitelist
+    if not driver_present():
+        return
+    if _snap_active is None:
+        _snap_active = get_active()
+    if _snap_whitelist is None:
+        _snap_whitelist = get_whitelist()
+
+
+def restore_borrowed() -> None:
+    """Undo cloak and whitelist we borrowed. Session hides die with the process."""
+    global _snap_active, _snap_whitelist, _borrowed_active, _borrowed_whitelist
+    if not driver_present():
+        _session_ids.clear()
+        return
+    try:
+        clear_session_hides()
+    except Exception:
+        pass
+    try:
+        if _borrowed_whitelist and _snap_whitelist is not None:
+            set_whitelist(list(_snap_whitelist))
+    except Exception:
+        pass
+    try:
+        if _borrowed_active and _snap_active is not None:
+            set_active(bool(_snap_active))
+    except Exception:
+        pass
+    _borrowed_active = False
+    _borrowed_whitelist = False
+    _session_ids.clear()
+
+
+def add_session_hides(ids: list[str]) -> bool:
+    handle = _open_control()
+    if handle is None:
+        return False
+    try:
+        payload = _encode_multi_sz([i for i in ids if i])
+        ok, _ = _ioctl(handle, IOCTL_ADD_SESSION_BLACKLIST, payload, 0)
+        return ok
+    finally:
+        _close(handle)
+
+
+def clear_session_hides() -> bool:
+    handle = _open_control()
+    if handle is None:
+        return False
+    try:
+        ok, _ = _ioctl(handle, IOCTL_CLR_SESSION_BLACKLIST, None, 0)
+        _session_ids.clear()
+        return ok
+    finally:
+        _close(handle)
+
+
 def _is_virtual(instance: str, name: str) -> bool:
     blob = f"{instance} {name}".upper()
     return any(
@@ -370,7 +438,9 @@ class HidHideModel(QtCore.QObject):
     def reload(self) -> None:
         self._present = driver_present()
         self._active = get_active() if self._present else False
-        hidden = {i.upper() for i in get_blacklist()} if self._present else set()
+        persistent = {i.upper() for i in get_blacklist()} if self._present else set()
+        session = {i.upper() for i in _session_ids}
+        hidden = persistent | session
         self._devices = []
         try:
             rows = list_hid_devices()
@@ -430,9 +500,12 @@ class HidHideModel(QtCore.QObject):
     def setCloak(self, on: bool) -> bool:
         if not self._present:
             return False
+        global _borrowed_active
+        snapshot_if_needed()
         self._ensure_gremlin_whitelisted()
         if not set_active(bool(on)):
             return False
+        _borrowed_active = True
         self._active = bool(on)
         self.changed.emit()
         return True
@@ -441,13 +514,22 @@ class HidHideModel(QtCore.QObject):
     def setDeviceHidden(self, instance_id: str, hidden: bool) -> bool:
         if not self._present or not instance_id:
             return False
-        current = get_blacklist()
-        key = instance_id.upper()
-        kept = [x for x in current if x.upper() != key]
+        snapshot_if_needed()
+        key = instance_id
+        want = {i for i in _session_ids if i.upper() != key.upper()}
         if hidden:
-            kept.append(instance_id)
-        if not set_blacklist(kept):
+            want.add(key)
+        if not clear_session_hides():
             return False
+        if want and not add_session_hides(sorted(want)):
+            return False
+        _session_ids.clear()
+        _session_ids.update(want)
+        if hidden and not get_active():
+            global _borrowed_active
+            if set_active(True):
+                _borrowed_active = True
+                self._active = True
         self.reload()
         return True
 
@@ -489,16 +571,19 @@ class HidHideModel(QtCore.QObject):
     def _sync_whitelist(self) -> None:
         if not self._present:
             return
-        current = get_whitelist()
+        global _borrowed_whitelist
+        snapshot_if_needed()
+        base = list(_snap_whitelist or [])
         wanted = {_gremlin_exe()}
         for row in self._games:
             wanted.add(row["path"])
         merged = []
         seen = set()
-        for item in list(current) + list(wanted):
+        for item in base + list(wanted):
             key = item.lower()
             if key in seen or not item:
                 continue
             seen.add(key)
             merged.append(item)
-        set_whitelist(merged)
+        if set_whitelist(merged):
+            _borrowed_whitelist = True
