@@ -41,6 +41,7 @@ IOCTL_GET_ACTIVE = _ctl(2052)
 IOCTL_SET_ACTIVE = _ctl(2053)
 IOCTL_ADD_SESSION_BLACKLIST = _ctl(2056)
 IOCTL_CLR_SESSION_BLACKLIST = _ctl(2057)
+_WALK_STATS = {}
 
 # Hardware Hide list = HidHide HidDevices() in HidHideCLI/src/HID.cpp.
 
@@ -527,14 +528,21 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     class_s = "{745A17A0-74D3-11D0-B6FE-00A0C90F57DA}"
     size = wintypes.ULONG(0)
     flags = CM_GETIDLIST_FILTER_CLASS  # HidHide DeviceInstancePathsPresentOrNot: no FILTER_PRESENT
+    global _WALK_STATS
     if cfg.CM_Get_Device_ID_List_SizeW(ctypes.byref(size), class_s, flags) != CR_SUCCESS:
+        _WALK_STATS = {"error": "CM_Get_Device_ID_List_SizeW", "cmSize": int(size.value)}
         return []
     if size.value < 2:
+        _WALK_STATS = {"error": "cm size < 2", "cmSize": int(size.value)}
         return []
     buf = ctypes.create_unicode_buffer(size.value)
     if cfg.CM_Get_Device_ID_ListW(class_s, buf, size.value, flags) != CR_SUCCESS:
+        _WALK_STATS = {"error": "CM_Get_Device_ID_ListW", "cmSize": int(size.value)}
         return []
     instances = [p for p in ctypes.wstring_at(ctypes.addressof(buf), size.value).split(chr(0)) if p]
+    stats = {"cm": int(size.value), "classIds": len(instances), "links": 0, "opened": 0, "rows": 0, "cmSize": 0, "cmList": 0}
+    stats["cmSize"] = 1
+    stats["cmList"] = 1
     groups: dict[str, dict] = {}
     DIGCF_PRESENT = 0x00000002
     DIGCF_DEVICEINTERFACE = 0x00000010
@@ -579,6 +587,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             setup.SetupDiDestroyDeviceInfoList(devs)
         if not link or not link.startswith("\\"):
             continue
+        stats["links"] += 1
         handle = k32.CreateFileW(link, GENERIC_READ, FILE_SHARE, None, 3, FILE_ATTRIBUTE_NORMAL, None)
         vid = pid = 0
         parsed = _vid_pid(instance)
@@ -589,6 +598,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
         usage_page = usage = 0
         product = vendor = ""
         if handle != _INVALID and handle != -1:
+            stats["opened"] += 1
             try:
                 attrs = HIDD_ATTRIBUTES()
                 attrs.Size = ctypes.sizeof(HIDD_ATTRIBUTES)
@@ -636,6 +646,9 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             group["name"] = label
     out = list(groups.values())
     out.sort(key=lambda r: r["name"].lower())
+    stats["rows"] = len(out)
+    _WALK_STATS = dict(stats)
+    print("Hardware Hide walk", _WALK_STATS, flush=True)
     return out
 
 
@@ -903,6 +916,22 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Property(int, notify=changed)
     def deviceCount(self) -> int:
         return len(self._devices)
+
+    @QtCore.Property(str, notify=changed)
+    def walkStatus(self) -> str:
+        stats = dict(_WALK_STATS)
+        if not stats:
+            return "walk: no stats"
+        if stats.get("error"):
+            return "walk error: " + str(stats)
+        return (
+            "walk class {classIds} links {links} opened {opened} rows {rows}".format(
+                classIds=stats.get("classIds", 0),
+                links=stats.get("links", 0),
+                opened=stats.get("opened", 0),
+                rows=stats.get("rows", 0),
+            )
+        )
 
     @QtCore.Property(int, notify=changed)
     def gameCount(self) -> int:
