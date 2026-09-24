@@ -23,6 +23,14 @@ Window {
         id: _hh
     }
 
+    function titleOf(row) {
+        var n = (row && row.name) ? String(row.name) : ""
+        var u = n.toUpperCase()
+        if (!n || u.indexOf("HID\\") === 0 || u.indexOf("USB\\") === 0)
+            return "HID-compliant game controller"
+        return n
+    }
+
     FileDialog {
         id: _pickPhoto
         title: "Device image"
@@ -172,7 +180,7 @@ Window {
                         spacing: 0
                         Layout.fillWidth: true
                         Label {
-                            text: row.name || row.instanceId
+                            text: titleOf(row)
                             color: "#E4E4E7"
                             elide: Text.ElideRight
                             Layout.fillWidth: true
