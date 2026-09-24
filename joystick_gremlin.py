@@ -154,6 +154,11 @@ def shutdown_cleanup() -> None:
         gremlin.osc.OscRuntime().stop()
     except Exception:
         log.exception("Shutdown: OSC")
+    try:
+        import gremlin.ui.hidhide as hidhide
+        hidhide.restore_borrowed()
+    except Exception:
+        log.exception("Shutdown: HidHide")
 
 
 def _this_process_tree() -> set[int]:
