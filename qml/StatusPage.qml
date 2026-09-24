@@ -778,7 +778,6 @@ Item {
                                     dropStacking: false
                                     onHeightChanged: _pile.noteCardSize(width, height)
                                     onImplicitHeightChanged: _pile.noteCardSize(width, implicitHeight)
-                                    Component.onCompleted: _pile.noteCardSize(width, Math.max(height, implicitHeight))
                                     opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1
                                     onLiftingChanged: {
                                         if (lifting)
@@ -789,6 +788,7 @@ Item {
                                     Component.onCompleted: {
                                         _page.fillCard(_card, modelData)
                                         _page.bindCard(_card)
+                                        _pile.noteCardSize(width, Math.max(height, implicitHeight))
                                     }
                                 }
                             }
