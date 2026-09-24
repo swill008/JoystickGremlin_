@@ -62,6 +62,7 @@ import gremlin.osc
 import gremlin.ui.osc_device_model  # noqa: F401
 import gremlin.ui.device_names  # noqa: F401
 import gremlin.ui.module_model  # noqa: F401
+import gremlin.ui.hidhide  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
 import gremlin.ui.module_pairing  # noqa: F401
 import gremlin.ui.shell_option  # noqa: F401
