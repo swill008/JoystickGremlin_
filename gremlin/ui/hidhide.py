@@ -21,6 +21,7 @@ QML_IMPORT_MAJOR_VERSION = 1
 _CFG_SECTION = "display"
 _CFG_GROUP = "hidhide"
 _CFG_GAMES = "games"
+_CFG_PHOTOS = "photos"
 _DOWNLOAD = "https://github.com/nefarius/HidHide/releases"
 
 _DEVICE_TYPE = 32769
@@ -60,6 +61,16 @@ def _ensure_options() -> None:
             {},
             True,
         )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_PHOTOS,
+            PropertyType.String,
+            "{}",
+            "Hardware Hide device photos keyed by instance id.",
+            {},
+            True,
+        )
     except Exception:
         pass
 
@@ -94,6 +105,66 @@ def _save_games(rows: list[dict]) -> None:
         config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_GAMES, packed)
     except Exception:
         pass
+
+
+
+def _load_photos() -> dict[str, str]:
+    _ensure_options()
+    raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_PHOTOS) or "{}")
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): str(v) for k, v in data.items() if k and v}
+
+
+def _save_photos(rows: dict[str, str]) -> None:
+    _ensure_options()
+    try:
+        config.Configuration().set(
+            _CFG_SECTION, _CFG_GROUP, _CFG_PHOTOS, json.dumps(rows, ensure_ascii=True)
+        )
+    except Exception:
+        pass
+
+
+def _vid_pid(instance: str) -> tuple[int | None, int | None]:
+    up = (instance or "").upper()
+    vid = pid = None
+    if "VID_" in up:
+        try:
+            vid = int(up.split("VID_", 1)[1][:4], 16)
+        except ValueError:
+            vid = None
+    if "PID_" in up:
+        try:
+            pid = int(up.split("PID_", 1)[1][:4], 16)
+        except ValueError:
+            pid = None
+    return vid, pid
+
+
+def _dill_matches() -> list:
+    try:
+        from gremlin.device_initialization import joystick_devices
+        return list(joystick_devices())
+    except Exception:
+        return []
+
+
+def _photo_dir() -> Path:
+    root = Path(sys.argv[0]).resolve().parent
+    folder = root / "qml" / "maps" / "hidhide_photos"
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def _file_url(path: Path) -> str:
+    if not path.is_file():
+        return ""
+    return path.resolve().as_uri()
 
 
 def _gremlin_exe() -> str:
@@ -365,7 +436,8 @@ def _list_hid_cfgmgr() -> list[dict]:
         if instance in seen:
             continue
         seen.add(instance)
-        name = _friendly_name(instance) or instance
+        setup_name = _friendly_name(instance)
+        name = setup_name or instance
         if _is_virtual(instance, name):
             continue
         out.append(
@@ -373,6 +445,7 @@ def _list_hid_cfgmgr() -> list[dict]:
                 "instanceId": instance,
                 "name": name,
                 "canHide": not _is_keyboard_mouse(instance, name),
+                "photo": "",
             }
         )
     out.sort(key=lambda r: r["name"].lower())
@@ -420,6 +493,42 @@ def _friendly_name(instance: str) -> str:
         setup.SetupDiDestroyDeviceInfoList(handle)
 
 
+
+def _enrich_devices(rows: list[dict]) -> list[dict]:
+    photos = _load_photos()
+    dill_devs = _dill_matches()
+    hw = None
+    try:
+        from gremlin.ui.hardware_profile import HardwareProfile
+        hw = HardwareProfile()
+    except Exception:
+        hw = None
+    for row in rows:
+        instance = row["instanceId"]
+        vid, pid = _vid_pid(instance)
+        match = None
+        if vid is not None and pid is not None:
+            for dev in dill_devs:
+                if int(dev.vendor_id) == vid and int(dev.product_id) == pid:
+                    match = dev
+                    break
+        if match and match.name:
+            row["name"] = match.name
+        elif row["name"] == instance:
+            row["name"] = row.get("name") or instance
+        photo = photos.get(instance) or photos.get(instance.upper(), "")
+        if photo:
+            row["photo"] = _file_url(Path(photo)) if not str(photo).startswith("file:") else photo
+        elif match and hw is not None:
+            try:
+                url = hw.profilePhotoUrl(match.name) or ""
+                row["photo"] = url
+            except Exception:
+                row["photo"] = ""
+        else:
+            row["photo"] = row.get("photo") or ""
+    return rows
+
 @ta.QmlElement
 class HidHideModel(QtCore.QObject):
     """System-wide HidHide panel. Persistent cloak, devices, and game list."""
@@ -446,7 +555,7 @@ class HidHideModel(QtCore.QObject):
             rows = list_hid_devices()
         except Exception:
             rows = []
-        for row in rows:
+        for row in _enrich_devices(rows):
             item = dict(row)
             item["hidden"] = item["instanceId"].upper() in hidden
             self._devices.append(item)
@@ -558,6 +667,31 @@ class HidHideModel(QtCore.QObject):
         return True
 
     @QtCore.Slot()
+
+    @QtCore.Slot(str, str, result=bool)
+    def setDevicePhoto(self, instance_id: str, path: str) -> bool:
+        if not instance_id or not path:
+            return False
+        src = Path(path)
+        if not src.is_file():
+            # QML file url
+            text = path
+            if text.startswith("file:///"):
+                text = text[8:]
+            src = Path(text)
+        if not src.is_file():
+            return False
+        dest = _photo_dir() / f"{abs(hash(instance_id)) & 0xFFFFFFFF:08x}{src.suffix.lower() or '.jpg'}"
+        try:
+            dest.write_bytes(src.read_bytes())
+        except OSError:
+            return False
+        photos = _load_photos()
+        photos[instance_id] = str(dest)
+        _save_photos(photos)
+        self.reload()
+        return True
+
     def refresh(self) -> None:
         self.reload()
 
