@@ -434,6 +434,15 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
     cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
 
+    cfg.CM_Get_Device_ID_List_SizeW.argtypes = [
+        ctypes.POINTER(wintypes.ULONG), wintypes.LPCWSTR, wintypes.ULONG
+    ]
+    cfg.CM_Get_Device_ID_List_SizeW.restype = wintypes.DWORD
+    cfg.CM_Get_Device_ID_ListW.argtypes = [
+        wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.ULONG, wintypes.ULONG
+    ]
+    cfg.CM_Get_Device_ID_ListW.restype = wintypes.DWORD
+
     class GUID(ctypes.Structure):
         _fields_ = [
             ("Data1", wintypes.DWORD),
@@ -836,6 +845,8 @@ class HidHideModel(QtCore.QObject):
         try:
             rows = list_hid_devices(self._gaming_only)
         except Exception:
+            import traceback
+            traceback.print_exc()
             rows = []
         for row in _enrich_devices(rows):
             item = dict(row)
