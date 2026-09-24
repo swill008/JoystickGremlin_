@@ -492,8 +492,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     hid_guid = GUID()
     hid.HidD_GetHidGuid(ctypes.byref(hid_guid))
     CR_SUCCESS = 0
-    CM_GETIDLIST_FILTER_CLASS = 0x00000008
-    CM_GETIDLIST_FILTER_PRESENT = 0x00000004
+    CM_GETIDLIST_FILTER_CLASS = 0x00000200  # cfgmgr32.h, not 0x8 (REMOVALRELATIONS)
     # {745A17A0-74D3-11D0-B6FE-00A0C90F57DA} HIDClass
     class_s = "{745A17A0-74D3-11D0-B6FE-00A0C90F57DA}"
     size = wintypes.ULONG(0)
