@@ -615,6 +615,47 @@ GUID_NULL = "00000000-0000-0000-0000-000000000000"
 
 
 
+
+def _dill_vjoy_rows(existing: list[dict]) -> list[dict]:
+    """Always surface DILL vJoy devices. Stick rows are left untouched."""
+    have = " ".join(
+        (str(r.get("instanceId") or "") + " " + str(r.get("name") or "")).upper()
+        for r in existing
+    )
+    if "VID_1234" in have or "VJOY DEVICE" in have or "VJOY" in have and "PID_BEAD" in have:
+        return []
+    extra = []
+    try:
+        from gremlin.device_initialization import vjoy_devices
+        devices = list(vjoy_devices())
+    except Exception:
+        devices = []
+    if not devices:
+        try:
+            from gremlin.device_initialization import joystick_devices
+            devices = [d for d in joystick_devices() if getattr(d, "is_virtual", False)]
+        except Exception:
+            devices = []
+    for i, dev in enumerate(devices, start=1):
+        vid = int(getattr(dev, "vendor_id", 0) or 0)
+        pid = int(getattr(dev, "product_id", 0) or 0)
+        if vid and pid and (vid != 0x1234 or pid != 0xBEAD):
+            continue
+        name = getattr(dev, "name", None) or f"vJoy Device {i}"
+        guid = str(getattr(dev, "device_guid", "") or i)
+        extra.append(
+            {
+                "instanceId": f"HID\\VID_1234&PID_BEAD\\{guid}",
+                "instanceIds": [f"HID\\VID_1234&PID_BEAD\\{guid}"],
+                "name": name,
+                "canHide": True,
+                "photo": "",
+                "gaming": True,
+            }
+        )
+    return extra
+
+
 def _vjoy_rows(existing: list[dict]) -> list[dict]:
     """HidHide lists vJoy with gaming devices. Interface walk often misses them."""
     have = {str(r.get("instanceId") or "").upper() for r in existing}
@@ -920,7 +961,7 @@ class HidHideModel(QtCore.QObject):
             rows = list_hid_devices(self._gaming_only)
         except Exception:
             rows = []
-        for row in _enrich_devices(rows):
+        for row in _enrich_devices(rows + _dill_vjoy_rows(rows)):
             item = dict(row)
             item["hidden"] = item["instanceId"].upper() in hidden
             self._devices.append(item)
