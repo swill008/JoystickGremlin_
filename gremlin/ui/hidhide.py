@@ -570,7 +570,7 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
             gaming = _is_gaming(vid, pid, usage_page, usage)
             if gaming_only and not gaming:
                 continue
-            container = _container_id(instance) or f"{vid:04X}:{pid:04X}:{instance}"
+            container = _group_key(instance, vid, pid)
             name_parts = []
             for part in (vendor.strip(), product.strip()):
                 if part and part not in name_parts:
@@ -597,6 +597,32 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
         return out
     finally:
         setup.SetupDiDestroyDeviceInfoList(devs)
+
+
+
+def _group_key(instance: str, vid: int | None = None, pid: int | None = None) -> str:
+    """One row per physical device, same idea as HidHide base container."""
+    cid = ""
+    try:
+        cid = _container_id(instance)
+    except Exception:
+        cid = ""
+    if cid and "FFFFFFFFFFFF" not in cid.upper() and cid.upper() not in ("", "{00000000-0000-0000-0000-000000000000}"):
+        return "cid:" + cid.upper()
+    node = instance
+    for _ in range(8):
+        try:
+            parent = _parent_instance(node)
+        except Exception:
+            parent = ""
+        if not parent or parent.upper() == node.upper():
+            break
+        if parent.upper().startswith("USB\\VID_") or parent.upper().startswith("USB\VID_"):
+            return "usb:" + parent.upper()
+        node = parent
+    if vid is not None:
+        return f"vid:{vid:04X}"
+    return "id:" + (instance or "").upper()
 
 
 def _container_id(instance: str) -> str:
@@ -721,16 +747,8 @@ def _enrich_devices(rows: list[dict]) -> list[dict]:
                 if pid is not None and dpid == pid:
                     match = dev
                     break
-        if match is None and len(same_vid) == 1:
-            match = same_vid[0]
-        windows_name = row.get("name") if row.get("name") != instance else ""
-        if not windows_name:
-            windows_name = _friendly_name(instance)
-        generic = row.get("name") in ("", instance) or str(row.get("name","")).upper().startswith("HID-COMPLIANT")
-        if match and match.name and (generic or not row.get("name")):
+        if match and match.name:
             row["name"] = match.name
-        elif same_vid and generic:
-            row["name"] = same_vid[0].name
         photo = photos.get(instance) or photos.get(instance.upper(), "")
         if photo:
             row["photo"] = _file_url(Path(photo)) if not str(photo).startswith("file:") else photo
