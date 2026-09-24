@@ -513,19 +513,23 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
             if needed.value < 8:
                 continue
             detail = ctypes.create_string_buffer(needed.value)
-            ctypes.c_dword.from_buffer(detail, 0).value = 8 if ctypes.sizeof(ctypes.c_void_p) == 8 else 6
+            path_off = 8 if ctypes.sizeof(ctypes.c_void_p) == 8 else 6
+            ctypes.c_dword.from_buffer(detail, 0).value = path_off
             info = SP_DEVINFO_DATA()
             info.cbSize = ctypes.sizeof(SP_DEVINFO_DATA)
             if not setup.SetupDiGetDeviceInterfaceDetailW(
                 devs, ctypes.byref(iface), detail, needed, None, ctypes.byref(info)
             ):
                 continue
-            # path starts after DWORD cbSize
-            link = ctypes.wstring_at(ctypes.addressof(detail) + ctypes.sizeof(wintypes.DWORD))
+            link = ctypes.wstring_at(ctypes.addressof(detail) + path_off)
             inst_buf = ctypes.create_unicode_buffer(512)
             if not setup.SetupDiGetDeviceInstanceIdW(devs, ctypes.byref(info), inst_buf, 512, None):
                 continue
             instance = inst_buf.value
+            if not instance or instance.upper().startswith("USB"):
+                continue
+            if not link or not link.startswith("\\"):
+                continue
             handle = k32.CreateFileW(link, 0, 3, None, 3, 0, None)
             if handle == _INVALID or handle == -1:
                 continue
@@ -773,15 +777,19 @@ class HidHideModel(QtCore.QObject):
             self._devices.append(item)
         if self._present:
             for hid in get_blacklist():
-                if not any(d["instanceId"].upper() == hid.upper() for d in self._devices):
-                    self._devices.append(
-                        {
-                            "instanceId": hid,
-                            "name": hid,
-                            "canHide": True,
-                            "hidden": True,
-                        }
-                    )
+                if not hid or hid.upper().startswith("USB"):
+                    continue
+                if any(hid.upper() == str(x).upper() for d in self._devices for x in (d.get("instanceIds") or [d.get("instanceId")])):
+                    continue
+                named = {
+                    "instanceId": hid,
+                    "instanceIds": [hid],
+                    "name": _friendly_name(hid) or hid,
+                    "canHide": True,
+                    "hidden": True,
+                    "photo": "",
+                }
+                self._devices.extend(_enrich_devices([named]))
         self._games = _load_games()
         self.changed.emit()
 
