@@ -505,14 +505,14 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     # {745A17A0-74D3-11D0-B6FE-00A0C90F57DA} HIDClass
     class_s = "{745A17A0-74D3-11D0-B6FE-00A0C90F57DA}"
     size = wintypes.ULONG(0)
-    flags = CM_GETIDLIST_FILTER_CLASS | CM_GETIDLIST_FILTER_PRESENT
+    flags = CM_GETIDLIST_FILTER_CLASS  # HidHide DeviceInstancePathsPresentOrNot: no FILTER_PRESENT
     if cfg.CM_Get_Device_ID_List_SizeW(ctypes.byref(size), class_s, flags) != CR_SUCCESS:
-        return _list_hidhide_style(gaming_only)
+        return []
     if size.value < 2:
-        return _list_hidhide_style(gaming_only)
+        return []
     buf = ctypes.create_unicode_buffer(size.value)
     if cfg.CM_Get_Device_ID_ListW(class_s, buf, size, flags) != CR_SUCCESS:
-        return _list_hidhide_style(gaming_only)
+        return []
     instances = [p for p in ctypes.wstring_at(ctypes.addressof(buf), size.value).split(chr(0)) if p]
     groups: dict[str, dict] = {}
     DIGCF_PRESENT = 0x00000002
@@ -525,8 +525,9 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
         if instance.upper().startswith("USB"):
             continue
         # SymbolicLink(hidGuid, instance) — SetupDi scoped to this instance
+        # HidHide SymbolicLink: DIGCF_DEVICEINTERFACE only (no DIGCF_PRESENT)
         devs = setup.SetupDiGetClassDevsW(
-            ctypes.byref(hid_guid), instance, None, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE
+            ctypes.byref(hid_guid), instance, None, DIGCF_DEVICEINTERFACE
         )
         if not devs or devs == ctypes.c_void_p(-1).value:
             continue
