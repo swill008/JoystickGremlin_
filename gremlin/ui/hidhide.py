@@ -995,6 +995,7 @@ class HidHideModel(QtCore.QObject):
         self.reload()
         return True
 
+    @QtCore.Slot()
     def refresh(self) -> None:
         self.reload()
 
