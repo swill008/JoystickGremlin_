@@ -756,6 +756,8 @@ def _parent_instance(instance: str) -> str:
     return buf.value or ""
 
 
+CM_LOCATE_DEVNODE_PHANTOM = 1
+
 def _container_id(instance: str) -> str:
     """DEVPKEY_Device_ContainerId as GUID text. HidHide BaseContainerId."""
     if not instance or os.name != "nt":
