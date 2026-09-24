@@ -600,36 +600,23 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
 
 
 
-def _group_key(instance: str, vid: int | None = None, pid: int | None = None) -> str:
-    """One row per physical device. USB parent first (HidHide base container)."""
-    node = instance
-    for _ in range(8):
-        try:
-            parent = _parent_instance(node)
-        except Exception:
-            parent = ""
-        if not parent or parent.upper() == node.upper():
-            break
-        up = parent.upper()
-        if up.startswith("USB\\VID_") or up.startswith("USB\VID_"):
-            return "usb:" + up
-        node = parent
-    cid = ""
-    try:
-        cid = _container_id(instance)
-    except Exception:
-        cid = ""
-    if cid and "FFFFFFFFFFFF" not in cid.upper() and cid not in ("", "{00000000-0000-0000-0000-000000000000}"):
-        return "cid:" + cid.upper()
-    return "id:" + (instance or "").upper()
+
+CM_LOCATE_DEVNODE_NORMAL = 0
+CM_LOCATE_DEVNODE_PHANTOM = 1
+DEVPROP_TYPE_GUID = 0x0000000D
+GUID_CONTAINER_ID_SYSTEM = "00000000-0000-0000-FFFF-FFFFFFFFFFFF"
+GUID_NULL = "00000000-0000-0000-0000-000000000000"
 
 
-def _container_id(instance: str) -> str:
-    try:
-        text = _cm_property(instance, "8C7ED206-3F8A-4827-B3AB-AE9E1FAEFC6C", 2)
-    except Exception:
-        text = ""
-    return text or ""
+def _guid_text(raw: bytes) -> str:
+    if len(raw) < 16:
+        return GUID_NULL
+    d1 = int.from_bytes(raw[0:4], "little")
+    d2 = int.from_bytes(raw[4:6], "little")
+    d3 = int.from_bytes(raw[6:8], "little")
+    d4 = raw[8:16]
+    return f"{d1:08X}-{d2:04X}-{d3:04X}-{d4[0]:02X}{d4[1]:02X}-{d4[2:8].hex().upper()}"
+
 
 
 def _guid_le(text: str) -> bytes:
@@ -638,50 +625,16 @@ def _guid_le(text: str) -> bytes:
     return u.bytes_le[:4] + u.bytes_le[4:6] + u.bytes_le[6:8] + u.bytes[8:]
 
 
-def _cm_property(instance: str, fmtid: str, pid: int) -> str:
-    import ctypes
-    from ctypes import wintypes
-
-    cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
-    CR_SUCCESS = 0
-    CR_BUFFER_SMALL = 26
-    DEVPROP_TYPE_STRING = 0x00000012
-
-    class DEVPROPKEY(ctypes.Structure):
-        _fields_ = [("fmtid", ctypes.c_ubyte * 16), ("pid", wintypes.ULONG)]
-
-    key = DEVPROPKEY()
-    raw = _guid_le(fmtid)
-    for i, b in enumerate(raw):
-        key.fmtid[i] = b
-    key.pid = pid
-    devinst = wintypes.DWORD(0)
-    if cfg.CM_Locate_DevNodeW(ctypes.byref(devinst), instance, 0) != CR_SUCCESS:
-        return ""
-    ptype = wintypes.ULONG(0)
-    size = wintypes.ULONG(0)
-    cfg.CM_Get_DevNode_PropertyW(
-        devinst, ctypes.byref(key), ctypes.byref(ptype), None, ctypes.byref(size), 0
-    )
-    if size.value < 2:
-        return ""
-    buf = ctypes.create_unicode_buffer(max(2, size.value // 2))
-    if cfg.CM_Get_DevNode_PropertyW(
-        devinst, ctypes.byref(key), ctypes.byref(ptype), buf, ctypes.byref(size), 0
-    ) != CR_SUCCESS:
-        return ""
-    return (buf.value or "").strip()
-
-
 def _parent_instance(instance: str) -> str:
+    if not instance or os.name != "nt":
+        return ""
     import ctypes
     from ctypes import wintypes
-
     cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
     CR_SUCCESS = 0
     devinst = wintypes.DWORD(0)
     parent = wintypes.DWORD(0)
-    if cfg.CM_Locate_DevNodeW(ctypes.byref(devinst), instance, 0) != CR_SUCCESS:
+    if cfg.CM_Locate_DevNodeW(ctypes.byref(devinst), instance, 1) != CR_SUCCESS:
         return ""
     if cfg.CM_Get_Parent(ctypes.byref(parent), devinst, 0) != CR_SUCCESS:
         return ""
@@ -689,6 +642,62 @@ def _parent_instance(instance: str) -> str:
     if cfg.CM_Get_Device_IDW(parent, buf, 512, 0) != CR_SUCCESS:
         return ""
     return buf.value or ""
+
+
+def _container_id(instance: str) -> str:
+    """DEVPKEY_Device_ContainerId as GUID text. HidHide BaseContainerId."""
+    if not instance or os.name != "nt":
+        return GUID_NULL
+    import ctypes
+    from ctypes import wintypes
+    cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
+    CR_SUCCESS = 0
+    CR_NO_SUCH_VALUE = 37
+    class DEVPROPKEY(ctypes.Structure):
+        _fields_ = [("fmtid", ctypes.c_ubyte * 16), ("pid", wintypes.ULONG)]
+    key = DEVPROPKEY()
+    raw = _guid_le("8C7ED206-3F8A-4827-B3AB-AE9E1FAEFC6C")
+    for i, b in enumerate(raw):
+        key.fmtid[i] = b
+    key.pid = 2
+    devinst = wintypes.DWORD(0)
+    if cfg.CM_Locate_DevNodeW(ctypes.byref(devinst), instance, CM_LOCATE_DEVNODE_PHANTOM) != CR_SUCCESS:
+        return GUID_NULL
+    ptype = wintypes.ULONG(0)
+    size = wintypes.ULONG(16)
+    buf = (ctypes.c_ubyte * 16)()
+    rc = cfg.CM_Get_DevNode_PropertyW(
+        devinst, ctypes.byref(key), ctypes.byref(ptype), buf, ctypes.byref(size), 0
+    )
+    if rc == CR_NO_SUCH_VALUE or rc != CR_SUCCESS:
+        return GUID_NULL
+    if ptype.value != DEVPROP_TYPE_GUID:
+        return GUID_NULL
+    return _guid_text(bytes(buf))
+
+
+def _base_container_path(instance: str) -> str:
+    """HidHide BaseContainerDeviceInstancePath."""
+    cid = _container_id(instance)
+    if cid in (GUID_NULL, GUID_CONTAINER_ID_SYSTEM):
+        return ""
+    it = instance
+    for _ in range(12):
+        parent = _parent_instance(it)
+        if not parent:
+            return it
+        if _container_id(parent) == cid:
+            it = parent
+            continue
+        return it
+    return it
+
+
+def _group_key(instance: str, vid: int | None = None, pid: int | None = None) -> str:
+    base = _base_container_path(instance)
+    if base:
+        return "base:" + base.upper()
+    return "id:" + (instance or "").upper()
 
 
 def _friendly_name(instance: str) -> str:
@@ -732,22 +741,14 @@ def _enrich_devices(rows: list[dict]) -> list[dict]:
         instance = row["instanceId"]
         vid, pid = _vid_pid(instance)
         match = None
-        same_vid = []
-        if vid is not None:
+        if vid is not None and pid is not None:
             for dev in dill_devs:
                 try:
-                    dvid = int(dev.vendor_id)
-                    dpid = int(dev.product_id)
+                    if int(dev.vendor_id) == vid and int(dev.product_id) == pid:
+                        match = dev
+                        break
                 except Exception:
                     continue
-                if dvid != vid:
-                    continue
-                same_vid.append(dev)
-                if pid is not None and dpid == pid:
-                    match = dev
-                    break
-        if match and match.name:
-            row["name"] = match.name
         photo = photos.get(instance) or photos.get(instance.upper(), "")
         if photo:
             row["photo"] = _file_url(Path(photo)) if not str(photo).startswith("file:") else photo
