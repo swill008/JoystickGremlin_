@@ -594,16 +594,25 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             )
             if needed.value < 8:
                 continue
-            detail = ctypes.create_string_buffer(needed.value)
-            path_off = 8 if ctypes.sizeof(ctypes.c_void_p) == 8 else 6
-            wintypes.DWORD.from_buffer(detail).value = path_off
-            info = SP_DEVINFO_DATA()
-            info.cbSize = ctypes.sizeof(SP_DEVINFO_DATA)
+            path_chars = max(2, needed.value // 2)
+            class DETAIL(ctypes.Structure):
+                _fields_ = [
+                    ("cbSize", wintypes.DWORD),
+                    ("DevicePath", ctypes.c_wchar * path_chars),
+                ]
+            detail = DETAIL()
+            # sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W) is 8 on x64, 6 on x86
+            detail.cbSize = 8 if ctypes.sizeof(ctypes.c_void_p) == 8 else 6
             if not setup.SetupDiGetDeviceInterfaceDetailW(
-                devs, ctypes.byref(iface), detail, int(needed.value), None, ctypes.byref(info)
+                devs,
+                ctypes.byref(iface),
+                ctypes.byref(detail),
+                int(needed.value),
+                None,
+                None,
             ):
                 continue
-            link = ctypes.wstring_at(ctypes.addressof(detail) + path_off)
+            link = detail.DevicePath or ""
         finally:
             setup.SetupDiDestroyDeviceInfoList(devs)
         if not link or not link.startswith("\\"):
