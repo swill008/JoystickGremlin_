@@ -759,12 +759,16 @@ def _display_name(vendor: str, product: str, description: str, dill_name: str = 
         part = _usable_name(part)
         if part and part not in parts:
             parts.append(part)
-    return (
-        " ".join(parts).strip()
-        or _usable_name(description)
-        or _usable_name(dill_name)
-        or "HID-compliant game controller"
-    )
+    merged = " ".join(parts).strip()
+    if merged:
+        return merged
+    named = _usable_name(dill_name)
+    if named:
+        return named
+    desc = _usable_name(description)
+    if desc and desc.lower() != "hid-compliant game controller":
+        return desc
+    return desc or "HID-compliant game controller"
 
 
 def _friendly_name(instance: str) -> str:
