@@ -473,12 +473,17 @@ Item {
                 id: _split
                 model: ["None", "Vertical", "Horizontal"]
                 implicitWidth: 140
-                currentIndex: {
+                function syncFromModel() {
                     var mode = _page.model ? _page.model.splitMode : "none"
-                    if (mode === "vertical") return 1
-                    if (mode === "horizontal") return 2
-                    return 0
+                    var idx = 0
+                    if (mode === "vertical")
+                        idx = 1
+                    else if (mode === "horizontal")
+                        idx = 2
+                    if (currentIndex !== idx)
+                        currentIndex = idx
                 }
+                Component.onCompleted: syncFromModel()
                 onActivated: {
                     if (!_page.model)
                         return
@@ -828,8 +833,10 @@ Item {
         target: model
         function onPanesChanged() {
             _page.pileRev++
-            if (_splitView.visible)
-                Qt.callLater(_splitView.applyRatio)
+        }
+        function onSplitModeChanged() {
+            if (_split)
+                _split.syncFromModel()
         }
         function onClaimsChanged() {
             Qt.callLater(_page.refreshCards)
