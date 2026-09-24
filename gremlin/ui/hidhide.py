@@ -530,52 +530,52 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
                 continue
             if not link or not link.startswith("\\"):
                 continue
-            handle = k32.CreateFileW(link, 0, 3, None, 3, 0, None)
-            if handle == _INVALID or handle == -1:
-                continue
-            try:
-                attrs = HIDD_ATTRIBUTES()
-                attrs.Size = ctypes.sizeof(HIDD_ATTRIBUTES)
-                vid = pid = 0
-                if hid.HidD_GetAttributes(handle, ctypes.byref(attrs)):
-                    vid = int(attrs.VendorID)
-                    pid = int(attrs.ProductID)
-                usage_page = usage = 0
-                preparsed = ctypes.c_void_p()
-                if hid.HidD_GetPreparsedData(handle, ctypes.byref(preparsed)) and preparsed:
-                    caps = HIDP_CAPS()
-                    hid.HidP_GetCaps(preparsed, ctypes.byref(caps))
-                    usage_page = int(caps.UsagePage)
-                    usage = int(caps.Usage)
-                    hid.HidD_FreePreparsedData(preparsed)
-                prod = ctypes.create_unicode_buffer(127)
-                manu = ctypes.create_unicode_buffer(127)
-                product = prod.value if hid.HidD_GetProductString(handle, prod, 254) else ""
-                vendor = manu.value if hid.HidD_GetManufacturerString(handle, manu, 254) else ""
-            finally:
-                k32.CloseHandle(handle)
-            desc_buf = ctypes.create_unicode_buffer(512)
-            required = wintypes.DWORD(0)
-            description = ""
-            if setup.SetupDiGetDeviceRegistryPropertyW(
-                devs,
-                ctypes.byref(info),
-                0,
-                None,
-                desc_buf,
-                ctypes.sizeof(desc_buf),
-                ctypes.byref(required),
-            ):
-                description = (desc_buf.value or "").strip()
+            # HidHide HidModelInfo CreateFileW(GENERIC_READ, FILE_SHARE_READ|WRITE|DELETE)
+            GENERIC_READ = 0x80000000
+            FILE_SHARE = 0x00000007
+            FILE_ATTRIBUTE_NORMAL = 0x80
+            handle = k32.CreateFileW(link, GENERIC_READ, FILE_SHARE, None, 3, FILE_ATTRIBUTE_NORMAL, None)
+            vid = pid = 0
+            parsed = _vid_pid(instance)
+            if parsed[0] is not None:
+                vid = parsed[0]
+            if parsed[1] is not None:
+                pid = parsed[1]
+            usage_page = usage = 0
+            product = vendor = ""
+            if handle != _INVALID and handle != -1:
+                try:
+                    attrs = HIDD_ATTRIBUTES()
+                    attrs.Size = ctypes.sizeof(HIDD_ATTRIBUTES)
+                    if hid.HidD_GetAttributes(handle, ctypes.byref(attrs)):
+                        vid = int(attrs.VendorID)
+                        pid = int(attrs.ProductID)
+                    preparsed = ctypes.c_void_p()
+                    if hid.HidD_GetPreparsedData(handle, ctypes.byref(preparsed)) and preparsed:
+                        caps = HIDP_CAPS()
+                        hid.HidP_GetCaps(preparsed, ctypes.byref(caps))
+                        usage_page = int(caps.UsagePage)
+                        usage = int(caps.Usage)
+                        hid.HidD_FreePreparsedData(preparsed)
+                    prod = ctypes.create_unicode_buffer(127)
+                    manu = ctypes.create_unicode_buffer(127)
+                    if hid.HidD_GetProductString(handle, prod, 254):
+                        product = (prod.value or "").strip()
+                    if hid.HidD_GetManufacturerString(handle, manu, 254):
+                        vendor = (manu.value or "").strip()
+                finally:
+                    k32.CloseHandle(handle)
+            # HidHide DeviceDescription; friendly name = vendor+product else description
+            description = _device_description(instance)
             gaming = _is_gaming(vid, pid, usage_page, usage)
             if gaming_only and not gaming:
                 continue
             container = _group_key(instance, vid, pid)
             name_parts = []
-            for part in (vendor.strip(), product.strip()):
+            for part in (vendor, product):
                 if part and part not in name_parts:
                     name_parts.append(part)
-            label = " ".join(name_parts).strip() or description or instance
+            label = " ".join(name_parts).strip() or description or "HID-compliant game controller"
             group = groups.setdefault(
                 container,
                 {
@@ -590,7 +590,7 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
             if instance not in group["instanceIds"]:
                 group["instanceIds"].append(instance)
             group["gaming"] = group["gaming"] or gaming
-            if label and (group["name"] == instance or len(label) > len(group["name"])):
+            if label and (str(group["name"]).upper().startswith("HID") or len(label) > len(group["name"])):
                 group["name"] = label
         out = list(groups.values())
         out.sort(key=lambda r: r["name"].lower())
@@ -625,7 +625,45 @@ def _guid_le(text: str) -> bytes:
     return u.bytes_le[:4] + u.bytes_le[4:6] + u.bytes_le[6:8] + u.bytes[8:]
 
 
+def _device_description(instance: str) -> str:
+    """HidHide DeviceDescription: DEVPKEY_Device_DeviceDesc via CM_Get_DevNode_PropertyW."""
+    if not instance or os.name != "nt":
+        return ""
+    import ctypes
+    from ctypes import wintypes
+    cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
+    CR_SUCCESS = 0
+    CR_BUFFER_SMALL = 26
+    DEVPROP_TYPE_STRING = 0x00000012
+    class DEVPROPKEY(ctypes.Structure):
+        _fields_ = [("fmtid", ctypes.c_ubyte * 16), ("pid", wintypes.ULONG)]
+    key = DEVPROPKEY()
+    raw = _guid_le("A45C254E-DF1C-4EFD-8020-67D146A850E0")
+    for i, b in enumerate(raw):
+        key.fmtid[i] = b
+    key.pid = 2
+    devinst = wintypes.DWORD(0)
+    if cfg.CM_Locate_DevNodeW(ctypes.byref(devinst), instance, 1) != CR_SUCCESS:
+        return ""
+    ptype = wintypes.ULONG(0)
+    size = wintypes.ULONG(0)
+    cfg.CM_Get_DevNode_PropertyW(
+        devinst, ctypes.byref(key), ctypes.byref(ptype), None, ctypes.byref(size), 0
+    )
+    if size.value < 4:
+        return ""
+    buf = ctypes.create_unicode_buffer(max(2, size.value // 2))
+    if cfg.CM_Get_DevNode_PropertyW(
+        devinst, ctypes.byref(key), ctypes.byref(ptype), buf, ctypes.byref(size), 0
+    ) != CR_SUCCESS:
+        return ""
+    if ptype.value != DEVPROP_TYPE_STRING:
+        return ""
+    return (buf.value or "").strip()
+
+
 def _parent_instance(instance: str) -> str:
+
     if not instance or os.name != "nt":
         return ""
     import ctypes
