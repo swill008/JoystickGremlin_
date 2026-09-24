@@ -42,6 +42,11 @@ IOCTL_SET_ACTIVE = _ctl(2053)
 IOCTL_ADD_SESSION_BLACKLIST = _ctl(2056)
 IOCTL_CLR_SESSION_BLACKLIST = _ctl(2057)
 
+# Hardware Hide device walk. True = HidHide Client class-GUID + symlink
+# (HidHideCLI/src/HID.cpp HidDevices). False = prior SetupDi HID-interface
+# walk that listed EVO R / NXT / EVO OT L correctly but missed vJoy.
+USE_HIDHIDE_CLASS_ENUM = True
+
 _GENERIC_READ = 0x80000000
 _SHARE = 0x00000007
 _OPEN_EXISTING = 3
@@ -397,10 +402,12 @@ def _is_keyboard_mouse(instance: str, name: str) -> bool:
 
 
 def list_hid_devices(gaming_only: bool = True) -> list[dict]:
-    """HidHide Client method: HID interfaces, grouped by container, gaming filter on."""
+    """Device rows for Tools → Hardware Hide only. Does not feed Status/DILL."""
     if os.name != "nt":
         return []
     try:
+        if USE_HIDHIDE_CLASS_ENUM:
+            return _list_hidhide_class_enum(gaming_only)
         return _list_hidhide_style(gaming_only)
     except Exception:
         return []
@@ -425,6 +432,189 @@ def _is_gaming(vid: int, pid: int, usage_page: int, usage: int) -> bool:
     if usage_page == 0x01 and usage in (0x04, 0x05):
         return True
     return False
+
+
+
+def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
+    """HidHide HidDevices: GUID_DEVCLASS_HIDCLASS list + HID symbolic link."""
+    import ctypes
+    from ctypes import wintypes
+
+    setup = ctypes.WinDLL("setupapi", use_last_error=True)
+    hid = ctypes.WinDLL("hid", use_last_error=True)
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
+
+    class GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", wintypes.DWORD),
+            ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD),
+            ("Data4", ctypes.c_ubyte * 8),
+        ]
+
+    class SP_DEVINFO_DATA(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("ClassGuid", GUID),
+            ("DevInst", wintypes.DWORD),
+            ("Reserved", ctypes.c_void_p),
+        ]
+
+    class SP_DEVICE_INTERFACE_DATA(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("InterfaceClassGuid", GUID),
+            ("Flags", wintypes.DWORD),
+            ("Reserved", ctypes.c_void_p),
+        ]
+
+    class HIDD_ATTRIBUTES(ctypes.Structure):
+        _fields_ = [
+            ("Size", wintypes.ULONG),
+            ("VendorID", wintypes.USHORT),
+            ("ProductID", wintypes.USHORT),
+            ("VersionNumber", wintypes.USHORT),
+        ]
+
+    class HIDP_CAPS(ctypes.Structure):
+        _fields_ = [
+            ("Usage", wintypes.USHORT),
+            ("UsagePage", wintypes.USHORT),
+            ("InputReportByteLength", wintypes.USHORT),
+            ("OutputReportByteLength", wintypes.USHORT),
+            ("FeatureReportByteLength", wintypes.USHORT),
+            ("Reserved", wintypes.USHORT * 17),
+            ("NumberLinkCollectionNodes", wintypes.USHORT),
+            ("NumberInputButtonCaps", wintypes.USHORT),
+            ("NumberInputValueCaps", wintypes.USHORT),
+            ("NumberInputDataIndices", wintypes.USHORT),
+            ("NumberOutputButtonCaps", wintypes.USHORT),
+            ("NumberOutputValueCaps", wintypes.USHORT),
+            ("NumberOutputDataIndices", wintypes.USHORT),
+            ("NumberFeatureButtonCaps", wintypes.USHORT),
+            ("NumberFeatureValueCaps", wintypes.USHORT),
+            ("NumberFeatureDataIndices", wintypes.USHORT),
+        ]
+
+    hid_guid = GUID()
+    hid.HidD_GetHidGuid(ctypes.byref(hid_guid))
+    CR_SUCCESS = 0
+    CM_GETIDLIST_FILTER_CLASS = 0x00000008
+    CM_GETIDLIST_FILTER_PRESENT = 0x00000004
+    # {745A17A0-74D3-11D0-B6FE-00A0C90F57DA} HIDClass
+    class_s = "{745A17A0-74D3-11D0-B6FE-00A0C90F57DA}"
+    size = wintypes.ULONG(0)
+    flags = CM_GETIDLIST_FILTER_CLASS | CM_GETIDLIST_FILTER_PRESENT
+    if cfg.CM_Get_Device_ID_List_SizeW(ctypes.byref(size), class_s, flags) != CR_SUCCESS:
+        return _list_hidhide_style(gaming_only)
+    if size.value < 2:
+        return _list_hidhide_style(gaming_only)
+    buf = ctypes.create_unicode_buffer(size.value)
+    if cfg.CM_Get_Device_ID_ListW(class_s, buf, size, flags) != CR_SUCCESS:
+        return _list_hidhide_style(gaming_only)
+    instances = [p for p in ctypes.wstring_at(ctypes.addressof(buf), size.value).split(chr(0)) if p]
+    groups: dict[str, dict] = {}
+    DIGCF_PRESENT = 0x00000002
+    DIGCF_DEVICEINTERFACE = 0x00000010
+    setup.SetupDiGetClassDevsW.restype = ctypes.c_void_p
+    GENERIC_READ = 0x80000000
+    FILE_SHARE = 0x00000007
+    FILE_ATTRIBUTE_NORMAL = 0x80
+    for instance in instances:
+        if instance.upper().startswith("USB"):
+            continue
+        # SymbolicLink(hidGuid, instance) — SetupDi scoped to this instance
+        devs = setup.SetupDiGetClassDevsW(
+            ctypes.byref(hid_guid), instance, None, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE
+        )
+        if not devs or devs == ctypes.c_void_p(-1).value:
+            continue
+        try:
+            iface = SP_DEVICE_INTERFACE_DATA()
+            iface.cbSize = ctypes.sizeof(SP_DEVICE_INTERFACE_DATA)
+            if not setup.SetupDiEnumDeviceInterfaces(
+                devs, None, ctypes.byref(hid_guid), 0, ctypes.byref(iface)
+            ):
+                continue
+            needed = wintypes.DWORD(0)
+            setup.SetupDiGetDeviceInterfaceDetailW(
+                devs, ctypes.byref(iface), None, 0, ctypes.byref(needed), None
+            )
+            if needed.value < 8:
+                continue
+            detail = ctypes.create_string_buffer(needed.value)
+            path_off = 8 if ctypes.sizeof(ctypes.c_void_p) == 8 else 6
+            ctypes.c_dword.from_buffer(detail, 0).value = path_off
+            info = SP_DEVINFO_DATA()
+            info.cbSize = ctypes.sizeof(SP_DEVINFO_DATA)
+            if not setup.SetupDiGetDeviceInterfaceDetailW(
+                devs, ctypes.byref(iface), detail, needed, None, ctypes.byref(info)
+            ):
+                continue
+            link = ctypes.wstring_at(ctypes.addressof(detail) + path_off)
+        finally:
+            setup.SetupDiDestroyDeviceInfoList(devs)
+        if not link or not link.startswith("\\"):
+            continue
+        handle = k32.CreateFileW(link, GENERIC_READ, FILE_SHARE, None, 3, FILE_ATTRIBUTE_NORMAL, None)
+        vid = pid = 0
+        parsed = _vid_pid(instance)
+        if parsed[0] is not None:
+            vid = parsed[0]
+        if parsed[1] is not None:
+            pid = parsed[1]
+        usage_page = usage = 0
+        product = vendor = ""
+        if handle != _INVALID and handle != -1:
+            try:
+                attrs = HIDD_ATTRIBUTES()
+                attrs.Size = ctypes.sizeof(HIDD_ATTRIBUTES)
+                if hid.HidD_GetAttributes(handle, ctypes.byref(attrs)):
+                    vid = int(attrs.VendorID)
+                    pid = int(attrs.ProductID)
+                preparsed = ctypes.c_void_p()
+                if hid.HidD_GetPreparsedData(handle, ctypes.byref(preparsed)) and preparsed:
+                    caps = HIDP_CAPS()
+                    hid.HidP_GetCaps(preparsed, ctypes.byref(caps))
+                    usage_page = int(caps.UsagePage)
+                    usage = int(caps.Usage)
+                    hid.HidD_FreePreparsedData(preparsed)
+                prod = ctypes.create_unicode_buffer(127)
+                manu = ctypes.create_unicode_buffer(127)
+                if hid.HidD_GetProductString(handle, prod, 254):
+                    product = (prod.value or "").strip()
+                if hid.HidD_GetManufacturerString(handle, manu, 254):
+                    vendor = (manu.value or "").strip()
+            finally:
+                k32.CloseHandle(handle)
+        description = _device_description(instance)
+        gaming = _is_gaming(vid, pid, usage_page, usage)
+        if gaming_only and not gaming:
+            continue
+        container = _group_key(instance, vid, pid)
+        label = _display_name(vendor, product, description, "")
+        group = groups.setdefault(
+            container,
+            {
+                "instanceId": instance,
+                "instanceIds": [],
+                "name": label,
+                "canHide": True,
+                "photo": "",
+                "gaming": False,
+            },
+        )
+        if instance not in group["instanceIds"]:
+            group["instanceIds"].append(instance)
+        group["gaming"] = group["gaming"] or gaming
+        if _usable_name(label) and (
+            _looks_like_instance(group["name"]) or len(_usable_name(label)) > len(group["name"])
+        ):
+            group["name"] = label
+    out = list(groups.values())
+    out.sort(key=lambda r: r["name"].lower())
+    return out
 
 
 def _list_hidhide_style(gaming_only: bool) -> list[dict]:
@@ -961,7 +1151,7 @@ class HidHideModel(QtCore.QObject):
             rows = list_hid_devices(self._gaming_only)
         except Exception:
             rows = []
-        for row in _enrich_devices(rows + _dill_vjoy_rows(rows)):
+        for row in _enrich_devices(rows):
             item = dict(row)
             item["hidden"] = item["instanceId"].upper() in hidden
             self._devices.append(item)
