@@ -57,7 +57,7 @@ Window {
                 wrapMode: Text.WordWrap
                 color: "#A1A1AA"
                 font.pixelSize: 12
-                text: "HidHide hides physical controllers from other programs so games only see vJoy and Xbox. Gremlin does not install HidHide. These settings are system-wide and stay in effect when a game is launched outside Gremlin."
+                text: "HidHide hides physical controllers from other programs so games only see vJoy and Xbox. Gremlin does not install HidHide. Hides last while Gremlin is running. On Exit we put HidHide back the way we found it."
             }
             Button {
                 text: "Get HidHide"
@@ -224,7 +224,7 @@ Window {
             Layout.fillWidth: true
             color: "#A1A1AA"
             font.pixelSize: 12
-            text: "Add each game exe you want to keep seeing the real controllers. Everything else, including games launched outside Gremlin, will not see hidden devices while hiding is on. Gremlin is always allowed to see them."
+            text: "Add each game exe that should still see the real controllers while Gremlin is running. After Exit, HidHide uses the lists that were already in its Client. Gremlin is allowed to see hidden devices during this session."
         }
 
         RowLayout {
