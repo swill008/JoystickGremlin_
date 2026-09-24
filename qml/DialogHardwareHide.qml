@@ -117,9 +117,10 @@ Window {
                     }
                 }
                 Switch {
+                    id: _gamingOnly
                     checked: _hh.gamingOnly
                     text: "Gaming devices only"
-                    onToggled: _hh.setGamingOnly(checked)
+                    onClicked: _hh.setGamingOnly(_gamingOnly.checked)
                 }
             }
         }
