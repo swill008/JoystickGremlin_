@@ -575,7 +575,7 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
             for part in (vendor, product):
                 if part and part not in name_parts:
                     name_parts.append(part)
-            label = " ".join(name_parts).strip() or description or "HID-compliant game controller"
+            label = _display_name(vendor, product, description, "")
             group = groups.setdefault(
                 container,
                 {
@@ -590,7 +590,9 @@ def _list_hidhide_style(gaming_only: bool) -> list[dict]:
             if instance not in group["instanceIds"]:
                 group["instanceIds"].append(instance)
             group["gaming"] = group["gaming"] or gaming
-            if label and (str(group["name"]).upper().startswith("HID") or len(label) > len(group["name"])):
+            if _usable_name(label) and (
+                _looks_like_instance(group["name"]) or len(_usable_name(label)) > len(group["name"])
+            ):
                 group["name"] = label
         out = list(groups.values())
         out.sort(key=lambda r: r["name"].lower())
@@ -738,32 +740,36 @@ def _group_key(instance: str, vid: int | None = None, pid: int | None = None) ->
     return "id:" + (instance or "").upper()
 
 
+def _looks_like_instance(text: str) -> bool:
+    u = (text or "").strip().upper()
+    return u.startswith("HID" + chr(92)) or u.startswith("USB" + chr(92))
+
+
+def _usable_name(text: str) -> str:
+    value = (text or "").strip()
+    if not value or _looks_like_instance(value):
+        return ""
+    return value
+
+
+def _display_name(vendor: str, product: str, description: str, dill_name: str = "") -> str:
+    """HidHide friendly name: vendor + product, else DeviceDescription, never the instance path."""
+    parts = []
+    for part in (vendor, product):
+        part = _usable_name(part)
+        if part and part not in parts:
+            parts.append(part)
+    return (
+        " ".join(parts).strip()
+        or _usable_name(description)
+        or _usable_name(dill_name)
+        or "HID-compliant game controller"
+    )
+
+
 def _friendly_name(instance: str) -> str:
-    keys = [
-        ("A45C254E-DF1C-4EFD-8020-67D146A850E0", 14),  # FriendlyName
-        ("540B947E-8B40-45BC-A8A2-6A0B894E8B2D", 4),   # BusReportedDeviceDesc
-        ("B725F130-47EF-101A-A5F1-02608C9EEBAC", 10),  # NAME
-    ]
-    for fmt, pid in keys:
-        try:
-            text = _cm_property(instance, fmt, pid)
-        except Exception:
-            text = ""
-        if text and not text.upper().startswith("HID\\") and not text.upper().startswith("USB\\"):
-            return text
-    try:
-        parent = _parent_instance(instance)
-    except Exception:
-        parent = ""
-    if parent:
-        for fmt, pid in keys:
-            try:
-                text = _cm_property(parent, fmt, pid)
-            except Exception:
-                text = ""
-            if text and not text.upper().startswith("HID\\") and not text.upper().startswith("USB\\"):
-                return text
-    return ""
+    return _usable_name(_device_description(instance))
+
 
 
 def _enrich_devices(rows: list[dict]) -> list[dict]:
@@ -787,6 +793,10 @@ def _enrich_devices(rows: list[dict]) -> list[dict]:
                         break
                 except Exception:
                     continue
+        if match and match.name:
+            row["name"] = _display_name("", "", row.get("name") or "", match.name)
+        else:
+            row["name"] = _display_name("", "", row.get("name") or "", "")
         photo = photos.get(instance) or photos.get(instance.upper(), "")
         if photo:
             row["photo"] = _file_url(Path(photo)) if not str(photo).startswith("file:") else photo
@@ -840,7 +850,7 @@ class HidHideModel(QtCore.QObject):
                 named = {
                     "instanceId": hid,
                     "instanceIds": [hid],
-                    "name": _friendly_name(hid) or hid,
+                    "name": _display_name("", "", _device_description(hid), ""),
                     "canHide": True,
                     "hidden": True,
                     "photo": "",
