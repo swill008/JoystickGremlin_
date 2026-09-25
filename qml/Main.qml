@@ -231,6 +231,17 @@ ApplicationWindow {
         })
     }
 
+    function openBlankButtonMap() {
+        var existing = buttonMapWindow()
+        if (existing && existing.openBlank) {
+            existing.openBlank()
+            return
+        }
+        Helpers.createComponent("DialogJoystickButtonMap.qml", {
+            "startBlank": true
+        })
+    }
+
     function buttonMapNeedsLeave() {
         var w = buttonMapWindow()
         if (!w)
@@ -532,10 +543,8 @@ ApplicationWindow {
                 }
             }
             MenuItem {
-                text: qsTr("Joystick Button Map")
-                onTriggered: () => {
-                    Helpers.toggleComponent("DialogJoystickButtonMap.qml")
-                }
+                text: qsTr("Button Mapper")
+                onTriggered: () => { openBlankButtonMap() }
             }
             MenuItem {
                 text: qsTr("Device Viewer")
