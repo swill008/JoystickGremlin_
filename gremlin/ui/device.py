@@ -1525,8 +1525,10 @@ class AxisCalibration(QtCore.QAbstractListModel):
             index: index of the axis whose data to save
         """
         if self._device_uuid is None or self._device is None:
+            print(f"Persist calibration skipped index={index} reason='no device'", flush=True)
             return False
         if not (0 <= index < len(self._state)):
+            print(f"Persist calibration skipped index={index} reason='bad index'", flush=True)
             return False
 
         self._config.set_calibration(
@@ -1546,6 +1548,10 @@ class AxisCalibration(QtCore.QAbstractListModel):
             self._device.axis_map[index].axis_index,
         )
         self.emit_update(index)
+        print(
+            f"Persist calibration ok guid={self._device_uuid} axis={self._device.axis_map[index].axis_index}",
+            flush=True,
+        )
         return True
 
     def _update_calibration(self, index: int) -> None:
