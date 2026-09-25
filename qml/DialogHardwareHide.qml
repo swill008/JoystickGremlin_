@@ -194,6 +194,8 @@ Window {
                                 if (!row.canHide)
                                     return "Cannot hide (keyboard or mouse)"
                                 var bits = []
+                                if (row.openDenied)
+                                    bits.push("Denied")
                                 if (confirmed)
                                     bits.push("Hidden")
                                 if (row.clientBlocked)
