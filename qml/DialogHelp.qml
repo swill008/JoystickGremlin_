@@ -26,6 +26,7 @@ Window {
     RowLayout {
         anchors.fill: parent
         anchors.margins: 12
+        anchors.bottomMargin: 58
         spacing: 12
 
         Rectangle {
@@ -111,5 +112,11 @@ Window {
                 }
             }
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
