@@ -157,6 +157,8 @@ Window {
                 color: "#111113"
                 border.color: "#3F3F46"
                 property var row: _hh.deviceAt(index)
+                property bool confirmed: !!(row && row.confirmed)
+                opacity: confirmed ? 0.55 : 1
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 8
@@ -182,13 +184,19 @@ Window {
                         Layout.fillWidth: true
                         Label {
                             text: titleOf(row)
-                            color: "#E4E4E7"
+                            color: confirmed ? "#A1A1AA" : "#E4E4E7"
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: row.canHide ? (row.instanceId || "") : "Cannot hide (keyboard or mouse)"
-                            color: "#A1A1AA"
+                            text: {
+                                if (!row.canHide)
+                                    return "Cannot hide (keyboard or mouse)"
+                                if (confirmed)
+                                    return "Hidden  " + (row.instanceId || "")
+                                return row.instanceId || ""
+                            }
+                            color: confirmed ? "#71717A" : "#A1A1AA"
                             font.pixelSize: 11
                             elide: Text.ElideMiddle
                             Layout.fillWidth: true
