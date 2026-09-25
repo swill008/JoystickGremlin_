@@ -104,17 +104,18 @@ def _binding_store() -> dict[str, str]:
 
     cfg = Configuration()
     section, group, name = "global", "internal", "module-file-bindings"
-    if not cfg.exists(section, group, name):
-        cfg.register(
-            section,
-            group,
-            name,
-            PropertyType.String,
-            "{}",
-            "Input module file chosen for each device.",
-            {},
-            False,
-        )
+    # Register every launch. An existing value is kept. Skipping this when
+    # the key already exists leaves it unregistered, and purge_unused deletes it.
+    cfg.register(
+        section,
+        group,
+        name,
+        PropertyType.String,
+        "{}",
+        "Input module file chosen for each device.",
+        {},
+        False,
+    )
     try:
         data = json.loads(cfg.value(section, group, name) or "{}")
     except (TypeError, json.JSONDecodeError):
