@@ -877,6 +877,7 @@ ApplicationWindow {
         id: _columnLayout
 
         anchors.fill: parent
+        anchors.bottomMargin: 58
 
         property InputConfiguration inputConfigurationWidget
         property bool onStatus: !uiState || uiState.currentRoom === "status"
@@ -1225,4 +1226,10 @@ ApplicationWindow {
         }
     }
 
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+    }
 }
