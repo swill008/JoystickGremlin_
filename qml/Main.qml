@@ -557,7 +557,15 @@ ApplicationWindow {
             }
             MenuItem {
                 text: qsTr("Joystick Button Map")
-                onTriggered: () => { openBlankButtonMap() }
+                onTriggered: () => {
+                    var card = _statusLastCard
+                    if ((!card || !(card.rawName || card.name)) && _moduleModel)
+                        card = _moduleModel.focusedCardMap()
+                    if (card && (card.rawName || card.name))
+                        openButtonMapForCard(card)
+                    else
+                        openBlankButtonMap()
+                }
             }
             MenuItem {
                 text: qsTr("Device Viewer")
