@@ -337,27 +337,6 @@ def _claim_from_doc(doc: dict) -> dict:
     axes: list[int] = list(claim.get("axes") or [])
     hats: list[int] = list(claim.get("hats") or [])
     friendly: dict[str, str] = dict(claim.get("friendly") or {})
-    if not buttons and not axes and not hats:
-        for node in doc.get("nodes") or []:
-            if not isinstance(node, dict):
-                continue
-            kind = str(node.get("kind") or "")
-            if kind == "btn" and node.get("hwId") is not None:
-                buttons.append(int(node["hwId"]))
-                if node.get("friendly"):
-                    friendly[f"button:{int(node['hwId'])}"] = str(node["friendly"])
-            elif kind == "axis" and node.get("hwId") is not None:
-                axes.append(int(node["hwId"]))
-            elif kind == "hat" and node.get("hwId") is not None:
-                hats.append(int(node["hwId"]))
-            elif kind in ("stack", "axis_stack"):
-                for member in node.get("members") or []:
-                    if not isinstance(member, dict) or member.get("hwId") is None:
-                        continue
-                    hid = int(member["hwId"])
-                    buttons.append(hid)
-                    if member.get("friendly"):
-                        friendly[f"button:{hid}"] = str(member["friendly"])
     return {
         "buttons": sorted(set(buttons)),
         "axes": sorted(set(axes)),
@@ -449,8 +428,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
     focusChanged = QtCore.Signal()
     hiddenChanged = QtCore.Signal()
     panesChanged = QtCore.Signal()
-    splitModeChanged = QtCore.Signal()
-    splitRatioChanged = QtCore.Signal()
     claimsChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
@@ -726,7 +703,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         packed = "|".join("+".join(g) for g in groups if len(g) > 1)
         _write_status(_CFG_STACKS, packed)
 
-    @QtCore.Property(str, notify=splitModeChanged)
+    @QtCore.Property(str, notify=panesChanged)
     def splitMode(self) -> str:
         try:
             _ensure_display_options()
@@ -749,9 +726,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
             _write_status(_CFG_SPLIT, name)
         except Exception:
             return
-        self.splitModeChanged.emit()
+        self.panesChanged.emit()
 
-    @QtCore.Property(float, notify=splitRatioChanged)
+    @QtCore.Property(float, notify=panesChanged)
     def splitRatio(self) -> float:
         try:
             _ensure_display_options()
@@ -765,14 +742,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(float)
     def setSplitRatio(self, ratio: float) -> None:
         value = min(0.8, max(0.2, float(ratio)))
-        if abs(value - self.splitRatio) < 0.001:
-            return
         try:
             _ensure_display_options()
             _write_status(_CFG_SPLIT_RATIO, value)
         except Exception:
             return
-        self.splitRatioChanged.emit()
+        self.panesChanged.emit()
 
     @QtCore.Slot(str, result=list)
     def pileLeaders(self, direction: str) -> list:
@@ -809,6 +784,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         for member in self.pileMembers(slug):
             sizes[member] = (w, h)
         _set_sizes(sizes)
+        self.panesChanged.emit()
 
     @QtCore.Slot(str)
     def resetCardSize(self, slug: str) -> None:
@@ -1071,8 +1047,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 row.buttons = len(claim["buttons"])
                 row.axes = len(claim["axes"])
                 row.hats = len(claim["hats"])
-                if doc.get("device"):
-                    row.name = str(doc.get("device"))
                 if row.direction == "dest":
                     row.status = "Virtual"
                 elif row.status == "Stub":
@@ -1211,8 +1185,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 row.buttons = len(claim["buttons"]) or int(getattr(dev, "button_count", 0) or 0)
                 row.axes = len(claim["axes"]) or int(getattr(dev, "axis_count", 0) or 0)
                 row.hats = len(claim["hats"]) or int(getattr(dev, "hat_count", 0) or 0)
-                if doc.get("device"):
-                    row.name = str(doc.get("device"))
             else:
                 row.is_stub = True
                 row.is_module = False
