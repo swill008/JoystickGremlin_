@@ -154,7 +154,7 @@ Window {
                 wrapMode: Text.WordWrap
                 color: "#A1A1AA"
                 font.pixelSize: 12
-                text: "HiDHide hides the selected controllers from other programs. This program does not install HiDHide. Click on Get HiDHide to download the program."
+                text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. HiDHide hides the selected controllers from other programs. This program does not install HiDHide. Click on Get HiDHide to download the program."
             }
             Column {
                 Layout.alignment: Qt.AlignTop
@@ -170,14 +170,6 @@ Window {
                     onClicked: _hh.openGameControllers()
                 }
             }
-        }
-
-        Label {
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            color: "#A1A1AA"
-            font.pixelSize: 12
-            text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything."
         }
 
         Label {
