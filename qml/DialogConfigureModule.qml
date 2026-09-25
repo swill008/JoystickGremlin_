@@ -215,6 +215,8 @@ Window {
                     if (_win.photoUrl && _win.photoUrl.length)
                         _hw.keepPhoto(deviceName, _win.photoUrl)
                     if (_driver.saveClaim(deviceName, direction)) {
+                        if (direction === "dest" && backend && backend.profilePath() !== "")
+                            backend.saveProfile(backend.profilePath())
                         if (moduleModel && moduleModel.notifyClaims)
                             moduleModel.notifyClaims()
                         _win.close()
