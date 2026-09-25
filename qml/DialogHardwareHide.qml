@@ -356,9 +356,9 @@ Window {
                             }
                         }
                         Row {
-                            anchors.fill: parent
-                            anchors.leftMargin: 6
-                            anchors.rightMargin: 6
+                            anchors.centerIn: parent
+                            width: parent.width / 3
+                            height: parent.height
                             visible: confirmed
                             enabled: false
                             z: 2
