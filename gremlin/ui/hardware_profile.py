@@ -167,6 +167,8 @@ def save_module_file_as(device_name: str, guid: str, file_name: str) -> str:
     src = _maps_dir() / f"{resolve_module_slug(device_name, guid)}.json"
     dest = _maps_dir() / f"{slug}.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists() and (not src.is_file() or src.resolve() != dest.resolve()):
+        return ""
     if src.is_file() and src.resolve() != dest.resolve():
         shutil.copy2(src, dest)
     elif not dest.is_file():
@@ -190,6 +192,97 @@ def save_module_file_as(device_name: str, guid: str, file_name: str) -> str:
             encoding="utf-8",
         )
     return bind_module_file(device_name, guid, slug)
+
+
+def module_file_exists(device_name: str, guid: str = "") -> bool:
+    slug = resolve_module_slug(device_name, guid)
+    return bool(slug) and (_maps_dir() / f"{slug}.json").is_file()
+
+
+def _live_devices() -> list:
+    try:
+        from gremlin import device_initialization
+        devices = list(device_initialization.physical_devices() or [])
+        devices.extend(device_initialization.vjoy_devices() or [])
+        return devices
+    except Exception:
+        return []
+
+
+def _users_of_slug(slug: str) -> set[str]:
+    users: set[str] = set()
+    for key, value in _binding_store().items():
+        if _plain_slug(value) == slug:
+            users.add(key)
+    for dev in _live_devices():
+        guid = _norm_guid(getattr(dev, "device_guid", ""))
+        name = str(getattr(dev, "name", "") or "")
+        if guid and name and resolve_module_slug(name, guid) == slug:
+            users.add(guid)
+    return users
+
+
+def load_module_file(device_name: str, guid: str, source_url: str) -> str:
+    try:
+        src = to_local_path(source_url)
+    except Exception:
+        return ""
+    if not src or not src.is_file() or src.suffix.lower() != ".json":
+        return ""
+    slug = _plain_slug(src.stem)
+    if not slug:
+        return ""
+    dest = _maps_dir() / f"{slug}.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if src.resolve() != dest.resolve():
+        if dest.exists():
+            return ""
+        shutil.copy2(src, dest)
+    return bind_module_file(device_name, guid, slug)
+
+
+def rename_module_file(device_name: str, guid: str, file_name: str) -> str:
+    new_slug = _plain_slug(file_name)
+    old_slug = resolve_module_slug(device_name, guid)
+    if not new_slug:
+        return "Enter a file name."
+    if new_slug == old_slug:
+        return ""
+    src = _maps_dir() / f"{old_slug}.json"
+    dest = _maps_dir() / f"{new_slug}.json"
+    if not src.is_file():
+        return "This file has not been saved yet."
+    if dest.exists():
+        return "That file already exists."
+    src.rename(dest)
+    data = _binding_store()
+    for key in _users_of_slug(old_slug):
+        data[key] = new_slug
+    key = _norm_guid(guid) or _guid_for_name(device_name)
+    if key:
+        data[key] = new_slug
+    _write_bindings(data)
+    return ""
+
+
+def delete_module_file(device_name: str, guid: str) -> str:
+    slug = resolve_module_slug(device_name, guid)
+    key = _norm_guid(guid) or _guid_for_name(device_name)
+    others = _users_of_slug(slug) - ({key} if key else set())
+    if others:
+        return "Another stick is using this file."
+    path = _maps_dir() / f"{slug}.json"
+    if path.is_file():
+        path.unlink()
+    if key:
+        data = _binding_store()
+        data.pop(key, None)
+        _write_bindings(data)
+    return ""
+
+
+def maps_folder_url() -> str:
+    return _maps_dir().as_uri()
 
 
 def _stock_photo() -> Path:
