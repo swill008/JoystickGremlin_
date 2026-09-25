@@ -156,7 +156,8 @@ Window {
                 radius: 3
                 color: "#111113"
                 border.color: "#3F3F46"
-                property var row: _hh.deviceAt(index)
+                property int _gen: _hh.generation
+                property var row: _gen >= 0 ? _hh.deviceAt(index) : ({})
                 property bool confirmed: !!(row && row.confirmed)
                 opacity: confirmed ? 0.55 : 1
                 RowLayout {
@@ -192,9 +193,13 @@ Window {
                             text: {
                                 if (!row.canHide)
                                     return "Cannot hide (keyboard or mouse)"
+                                var bits = []
                                 if (confirmed)
-                                    return "Hidden  " + (row.instanceId || "")
-                                return row.instanceId || ""
+                                    bits.push("Hidden")
+                                if (row.clientBlocked)
+                                    bits.push("Client list")
+                                var prefix = bits.length ? bits.join(" · ") + "  " : ""
+                                return prefix + (row.instanceId || "")
                             }
                             color: confirmed ? "#71717A" : "#A1A1AA"
                             font.pixelSize: 11
@@ -210,16 +215,26 @@ Window {
                         }
                     }
                     Switch {
+                        id: hideSwitch
                         enabled: _hh.installed && row.canHide
-                        checked: !!row.hidden
+                        checked: !!(row && row.session)
                         text: "Hide from games"
-                        onToggled: {
-                            if (!_hh.setDeviceHidden(row.instanceId, checked))
-                                checked = !!row.hidden
+                        onClicked: {
+                            _hh.setDeviceHidden(row.instanceId, hideSwitch.checked)
+                            hideSwitch.checked = Qt.binding(function() { return !!(row && row.session) })
                         }
                     }
                 }
             }
+        }
+
+        Label {
+            visible: _hh.lastError.length > 0
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            color: "#FCA5A5"
+            font.pixelSize: 12
+            text: _hh.lastError
         }
 
         Label {
