@@ -82,11 +82,37 @@ ApplicationWindow {
         return card.rawName || card.name || ""
     }
 
+    property bool _moduleFileQuiet: false
+    ListModel { id: _moduleFileModel }
+
+    function reloadModuleFiles() {
+        if (!_moduleModel || !configTitleName.length || configDirection === "dest")
+            return
+        var names = _moduleModel.moduleFileNames(uiState ? uiState.currentDevice : "", configTitleName) || []
+        var current = _moduleModel.moduleFileFor(uiState ? uiState.currentDevice : "", configTitleName)
+        _moduleFileQuiet = true
+        _moduleFileModel.clear()
+        var pick = 0
+        var i
+        for (i = 0; i < names.length; i++) {
+            var slug = String(names[i] || "")
+            if (!slug.length)
+                continue
+            if (slug === current)
+                pick = _moduleFileModel.count
+            _moduleFileModel.append({ "slug": slug, "label": slug + ".json" })
+        }
+        if (_moduleFileBox)
+            _moduleFileBox.currentIndex = pick
+        _moduleFileQuiet = false
+    }
+
     function openConfigurationForCard(card) {
         if (!uiState || !card)
             return
         _moduleModel.setFocus(card.slug)
         configTitleName = moduleFileName(card)
+        reloadModuleFiles()
         refreshDestBound()
         configDirection = card.direction || "source"
         uiState.setCurrentDevice(card.guid)
@@ -915,6 +941,47 @@ ApplicationWindow {
                     text: "View only — driven by input module mappings."
                     color: "#A1A1AA"
                     font.pixelSize: 12
+                }
+                RowLayout {
+                    visible: configDirection !== "dest" && configTitleName.length > 0
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Label {
+                        text: "Module file"
+                        color: "#A1A1AA"
+                        font.pixelSize: 12
+                    }
+                    ComboBox {
+                        id: _moduleFileBox
+                        Layout.preferredWidth: 280
+                        model: _moduleFileModel
+                        textRole: "label"
+                        onActivated: function(index) {
+                            if (_moduleFileQuiet || !_moduleModel)
+                                return
+                            var slug = _moduleFileModel.get(index).slug
+                            _moduleModel.bindModuleFile(uiState.currentDevice, configTitleName, slug)
+                        }
+                    }
+                    TextField {
+                        id: _moduleFileNew
+                        placeholderText: "New file name"
+                        Layout.preferredWidth: 180
+                        selectByMouse: true
+                    }
+                    Button {
+                        text: "Save as new file"
+                        onClicked: {
+                            if (!_moduleModel || !_moduleFileNew.text.trim().length)
+                                return
+                            var slug = _moduleModel.saveModuleFileAs(
+                                uiState.currentDevice, configTitleName, _moduleFileNew.text)
+                            if (!slug)
+                                return
+                            _moduleFileNew.text = ""
+                            reloadModuleFiles()
+                        }
+                    }
                 }
             }
             Button {
