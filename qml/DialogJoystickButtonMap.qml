@@ -40,6 +40,7 @@ Window {
     property string pendingDevice: ""
     property string pendingPhoto: ""
     property bool startBlank: false
+    property bool faceLive: false
     property int fileMenuW: 280
 
     TextMetrics {
@@ -980,8 +981,10 @@ Window {
     }
 
     function refreshReservoir() {
+        if (!faceLive)
+            return
         var e = _ed()
-        var all = (e && typeof e.catalog === "function") ? e.catalog() : []
+        var all = (e && e.catalog) ? e.catalog() : []
         var q = (poolFilter || "").trim().toLowerCase()
         var u = []
         for (var i = 0; i < all.length; i++) {
@@ -1124,6 +1127,8 @@ Window {
     }
 
     function applyPhotoToEditor() {
+        if (!faceLive)
+            return
         var e = _ed()
         if (!e)
             return
@@ -1177,6 +1182,8 @@ Window {
     }
 
     function applyViewToFace() {
+        if (!faceLive)
+            return
         var f = _cardLoader.item
         if (!f || !f.zoomFit)
             return
@@ -1227,6 +1234,8 @@ Window {
     }
 
     function applyGridToEditor() {
+        if (!faceLive)
+            return
         var e = _cardLoader.item ? _cardLoader.item.editorItem : null
         if (!e)
             return
@@ -2117,19 +2126,23 @@ Window {
                         photoOverride: _buttonMap.photoOverride
                         Connections {
                             target: _card.editorItem
-                            function onSelectedChanged() { _buttonMap.applySelected() }
+                            function onSelectedChanged() { Qt.callLater(_buttonMap.applySelected) }
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
                             function onOverlayImportRequested() { _overlayDialog.open() }
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }
                             function onDrawToolChanged() { _buttonMap.resTick++ }
                             function onHistoryChanged() {
-                                _buttonMap.applySelected()
-                                _buttonMap.refreshReservoir()
+                                Qt.callLater(function() {
+                                    _buttonMap.applySelected()
+                                    _buttonMap.refreshReservoir()
+                                })
                             }
                             function onNodesChanged() {
-                                _buttonMap.applySelected()
-                                _buttonMap.refreshReservoir()
+                                Qt.callLater(function() {
+                                    _buttonMap.applySelected()
+                                    _buttonMap.refreshReservoir()
+                                })
                             }
                         }
                         Component.onCompleted: _cardLoader.item = _card
@@ -2151,11 +2164,23 @@ Window {
                         property string dName: name
                         property string dPair: pairLabel
                         sourceComponent: _cardComp
-                        onActiveChanged: if (active) _hasTarget.hit = true
+                        onActiveChanged: {
+                            if (active) {
+                                _hasTarget.hit = true
+                                return
+                            }
+                            _buttonMap.faceLive = false
+                            if (_cardLoader.item === item)
+                                _cardLoader.item = null
+                        }
                         onLoaded: {
                             _hasTarget.hit = true
                             _cardLoader.item = item
-                            Qt.callLater(_buttonMap.applyGridToEditor)
+                            _buttonMap.faceLive = true
+                            Qt.callLater(function() {
+                                _buttonMap.applyGridToEditor()
+                                _buttonMap.refreshReservoir()
+                            })
                         }
                     }
                 }
@@ -2273,8 +2298,10 @@ Window {
                                         required property var modelData
                                         property bool lit: {
                                             var t = _buttonMap.resTick
+                                            if (!_buttonMap.faceLive || !modelData)
+                                                return false
                                             var e = _ed()
-                                            if (!e || typeof e.litOf !== "function" || !modelData)
+                                            if (!e || !e.litOf)
                                                 return false
                                             return e.litOf(modelData.kind, modelData.hwId)
                                         }
