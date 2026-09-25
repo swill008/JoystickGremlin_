@@ -470,7 +470,7 @@ Window {
         RowLayout {
             Layout.fillWidth: true
             Button {
-                text: "Add game…"
+                text: "Add Program"
                 enabled: _hh.installed
                 onClicked: _pickExe.open()
             }
