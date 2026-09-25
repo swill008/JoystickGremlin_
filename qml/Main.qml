@@ -34,7 +34,10 @@ ApplicationWindow {
             Style.isDarkMode = backend.useDarkMode
         }
         _windowPlacement.restore(_root)
+        catalogPanel = _windowPlacement.catalogPanelOpen()
     }
+
+    onCatalogPanelChanged: _windowPlacement.setCatalogPanelOpen(catalogPanel)
 
     Universal.theme: Style.theme
     color: Style.background
@@ -184,7 +187,6 @@ ApplicationWindow {
         configTitleName = ""
         configDirection = ""
         outputViewPanel = false
-        catalogPanel = false
         uiState.setCurrentRoom("status")
         uiState.setCurrentTab("physical")
         if (_scriptButton)
@@ -211,6 +213,46 @@ ApplicationWindow {
 
     function buttonMapWindow() {
         return Helpers.windowOf("DialogJoystickButtonMap.qml")
+    }
+
+    function openButtonMapForCard(card) {
+        var name = ""
+        var photo = ""
+        var guid = ""
+        if (card) {
+            name = String(card.rawName || card.name || "")
+            photo = String(card.photo || "")
+            guid = String(card.guid || "")
+        }
+        name = name.trim()
+        if (!name.length)
+            return
+        var existing = buttonMapWindow()
+        if (existing && existing.openForDevice) {
+            existing.openForDevice(name, photo, guid)
+            existing.show()
+            existing.raise()
+            existing.requestActivate()
+            return
+        }
+        Helpers.createComponent("DialogJoystickButtonMap.qml", {
+            "targetName": name,
+            "targetGuid": guid,
+            "initialPhoto": photo
+        })
+    }
+
+    function openBlankButtonMap() {
+        var existing = buttonMapWindow()
+        if (existing && existing.openBlank) {
+            existing.openBlank()
+            return
+        }
+        Helpers.createComponent("DialogJoystickButtonMap.qml", {
+            "startBlank": true,
+            "targetName": "",
+            "targetGuid": ""
+        })
     }
 
     function buttonMapNeedsLeave() {
@@ -515,9 +557,7 @@ ApplicationWindow {
             }
             MenuItem {
                 text: qsTr("Joystick Button Map")
-                onTriggered: () => {
-                    Helpers.toggleComponent("DialogJoystickButtonMap.qml")
-                }
+                onTriggered: () => { openBlankButtonMap() }
             }
             MenuItem {
                 text: qsTr("Device Viewer")
@@ -585,7 +625,18 @@ ApplicationWindow {
             title: qsTr("Help")
 
             MenuItem {
-                text: qsTr("About")
+                text: qsTr("Joystick Gremlin Help")
+                onTriggered: () => {
+                    Helpers.createComponent("DialogHelp.qml")
+                }
+            }
+        }
+
+        Menu {
+            title: qsTr("About")
+
+            MenuItem {
+                text: qsTr("About Joystick Gremlin")
                 onTriggered: () => {
                     Helpers.createComponent("DialogAbout.qml")
                 }
@@ -849,6 +900,10 @@ ApplicationWindow {
             onOpenConfiguration: function(card) {
                 _statusLastCard = card
                 openConfigurationForCard(card)
+            }
+            onOpenButtonMap: function(card) {
+                _statusLastCard = card
+                openButtonMapForCard(card)
             }
             onOpenOutputView: function(card) {
                 _statusLastCard = card
