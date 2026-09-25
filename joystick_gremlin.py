@@ -656,6 +656,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         gremlin.plugin_manager.PluginManager()
         self.cfg.purge_unused()
         update_action_priorities()
+        try:
+            gremlin.ui.hidhide.apply_saved_list()
+        except Exception:
+            self.syslog.exception("Hardware Hide")
 
         self.engine.load(
             QtCore.QUrl.fromLocalFile(gremlin.util.resource_path("qml/Main.qml"))
