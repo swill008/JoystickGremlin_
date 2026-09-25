@@ -584,11 +584,12 @@ ApplicationWindow {
                     Helpers.createComponent("DialogHelp.qml")
                 }
             }
-            MenuItem {
-                text: qsTr("About")
-                onTriggered: () => {
-                    Helpers.createComponent("DialogAbout.qml")
-                }
+        }
+
+        MenuBarItem {
+            text: qsTr("About")
+            onTriggered: () => {
+                Helpers.createComponent("DialogAbout.qml")
             }
         }
     }
