@@ -24,6 +24,10 @@ Window {
     property string moduleFileLabel: ""
     property string moduleFileMessage: ""
     property string shownModulePath: ""
+    property bool claimDirty: false
+    property bool allowClose: false
+    property string saveIntent: "close"
+    property string pendingFileSlug: ""
     property var moduleFileChoices: []
     property bool _moduleFileQuiet: false
 
@@ -60,6 +64,7 @@ Window {
             _hw.setDeviceGuid(deviceGuid)
         shownModulePath = _hw.defaultPath(deviceName)
         _driver.loadDevice(deviceGuid, deviceName)
+        claimDirty = false
         var url = _hw.profilePhotoUrl(deviceName)
         photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
     }
@@ -81,13 +86,58 @@ Window {
 
     HardwareProfile { id: _hw }
     DriverInputModel { id: _driver }
+    Connections {
+        target: _driver
+        function onUserEdited() { claimDirty = true }
+    }
 
     Component.onCompleted: {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(deviceGuid)
         shownModulePath = _hw.defaultPath(deviceName)
         _driver.loadDevice(deviceGuid, deviceName)
+        claimDirty = false
         _win.photoUrl = _hw.profilePhotoUrl(deviceName)
+    }
+
+    function commitModule() {
+        if (_win.photoUrl && _win.photoUrl.length)
+            _hw.keepPhoto(deviceName, _win.photoUrl)
+        if (!_driver.saveClaim(deviceName, direction)) {
+            _saveGate.announce(false, "The module file was not written. The checks are still only on this screen.")
+            return false
+        }
+        if (direction === "dest" && backend && backend.profilePath() !== "") {
+            if (!backend.saveProfile(backend.profilePath())) {
+                _saveGate.announce(false, "The module file was written, but the profile file was not.")
+                return false
+            }
+        }
+        if (moduleModel && moduleModel.notifyClaims)
+            moduleModel.notifyClaims()
+        claimDirty = false
+        refreshModuleFileLabel()
+        _saveGate.announce(true, "Saved " + (shownModulePath.length ? shownModulePath : moduleFileLabel))
+        return true
+    }
+
+    function applyPendingFile() {
+        if (!pendingFileSlug.length || !moduleModel)
+            return
+        moduleModel.bindModuleFile(deviceGuid, deviceName, pendingFileSlug)
+        pendingFileSlug = ""
+        moduleFileMessage = ""
+        refreshModuleFileLabel()
+        reloadModuleControls()
+    }
+
+    onClosing: function(close) {
+        if (!claimDirty || allowClose)
+            return
+        close.accepted = false
+        saveIntent = "close"
+        _saveGate.detail = "Checks, names, and the picture on this screen are not saved. Close without saving and they will be lost."
+        _saveGate.ask()
     }
 
     FileDialog {
@@ -109,6 +159,7 @@ Window {
             if (!url.length)
                 url = _hw.profilePhotoUrl(deviceName)
             _win.photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
+            claimDirty = true
         }
     }
 
@@ -202,6 +253,7 @@ Window {
                         CheckBox {
                             checked: model.claimed
                             onClicked: {
+                                claimDirty = true
                                 if (checked)
                                     _driver.setClaimed(index, true)
                                 else
@@ -217,7 +269,10 @@ Window {
                             Layout.fillWidth: true
                             text: model.friendly
                             placeholderText: "Friendly name"
-                            onEditingFinished: _driver.setFriendly(index, text)
+                            onEditingFinished: {
+                                claimDirty = true
+                                _driver.setFriendly(index, text)
+                            }
                         }
                         }
                     }
@@ -269,15 +324,8 @@ Window {
                 text: "Save module"
                 focusPolicy: Qt.NoFocus
                 onClicked: {
-                    if (_win.photoUrl && _win.photoUrl.length)
-                        _hw.keepPhoto(deviceName, _win.photoUrl)
-                    if (_driver.saveClaim(deviceName, direction)) {
-                        if (direction === "dest" && backend && backend.profilePath() !== "")
-                            backend.saveProfile(backend.profilePath())
-                        if (moduleModel && moduleModel.notifyClaims)
-                            moduleModel.notifyClaims()
-                        _win.close()
-                    }
+                    saveIntent = "stay"
+                    commitModule()
                 }
             }
         }
@@ -321,10 +369,15 @@ Window {
                         return
                     var label = String(currentText || "")
                     var slug = label.replace(/\.json$/i, "")
-                    moduleModel.bindModuleFile(deviceGuid, deviceName, slug)
-                    moduleFileMessage = ""
-                    refreshModuleFileLabel()
-                    reloadModuleControls()
+                    if (claimDirty) {
+                        pendingFileSlug = slug
+                        saveIntent = "file"
+                        _saveGate.detail = "Checks on this screen are not saved. Switch files without saving and they will be lost."
+                        _saveGate.ask()
+                        return
+                    }
+                    pendingFileSlug = slug
+                    applyPendingFile()
                 }
             }
             Button {
@@ -373,6 +426,34 @@ Window {
             refreshModuleFileLabel()
             if (!moduleFileMessage.length)
                 reloadModuleControls()
+        }
+    }
+
+    SavePrompts {
+        id: _saveGate
+        onSaveChosen: {
+            if (!_win.commitModule())
+                return
+            if (saveIntent === "file")
+                applyPendingFile()
+        }
+        onDiscardChosen: {
+            claimDirty = false
+            if (saveIntent === "close") {
+                allowClose = true
+                _win.close()
+            } else if (saveIntent === "file") {
+                applyPendingFile()
+            }
+        }
+        onCancelled: refreshModuleFileLabel()
+        onAcknowledged: {
+            if (claimDirty)
+                return
+            if (saveIntent === "close" || saveIntent === "stay") {
+                allowClose = true
+                _win.close()
+            }
         }
     }
 
