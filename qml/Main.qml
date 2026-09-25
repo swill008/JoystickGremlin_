@@ -586,10 +586,14 @@ ApplicationWindow {
             }
         }
 
-        MenuBarItem {
-            text: qsTr("About")
-            onTriggered: () => {
-                Helpers.createComponent("DialogAbout.qml")
+        Menu {
+            title: qsTr("About")
+
+            MenuItem {
+                text: qsTr("About Joystick Gremlin")
+                onTriggered: () => {
+                    Helpers.createComponent("DialogAbout.qml")
+                }
             }
         }
     }
