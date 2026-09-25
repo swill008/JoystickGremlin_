@@ -1535,6 +1535,19 @@ class HidHideModel(QtCore.QObject):
     def openDownload(self) -> None:
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(_DOWNLOAD))
 
+    @QtCore.Slot()
+    def openGameControllers(self) -> None:
+        if os.name != "nt":
+            return
+        import subprocess
+        try:
+            subprocess.Popen(
+                ["rundll32.exe", "shell32.dll,Control_RunDLL", "joy.cpl"],
+                close_fds=True,
+            )
+        except OSError as exc:
+            _hh_log(f"joy.cpl failed: {exc}")
+
     def _ensure_gremlin_whitelisted(self) -> None:
         self._sync_whitelist()
 
