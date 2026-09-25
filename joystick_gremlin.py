@@ -62,7 +62,6 @@ import gremlin.osc
 import gremlin.ui.osc_device_model  # noqa: F401
 import gremlin.ui.device_names  # noqa: F401
 import gremlin.ui.module_model  # noqa: F401
-import gremlin.ui.hidhide  # noqa: F401
 import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
 import gremlin.ui.module_pairing  # noqa: F401
 import gremlin.ui.shell_option  # noqa: F401
@@ -154,11 +153,6 @@ def shutdown_cleanup() -> None:
         gremlin.osc.OscRuntime().stop()
     except Exception:
         log.exception("Shutdown: OSC")
-    try:
-        import gremlin.ui.hidhide as hidhide
-        hidhide.restore_borrowed()
-    except Exception:
-        log.exception("Shutdown: HidHide")
 
 
 def _this_process_tree() -> set[int]:
@@ -560,10 +554,10 @@ def register_config_options() -> None:
     ):
         if cfg.exists("global", "osc", name):
             cfg.set(osc_sec, osc_grp, name, cfg.value("global", "osc", name))
-    # Status layout must be registered before purge_unused() or split/stacks vanish.
+    # Status layout and the chosen module file must be registered before
+    # purge_unused() or the next launch deletes them.
     gremlin.ui.module_model._ensure_display_options()
-    # Hardware Hide games must be registered before purge or the saved list is deleted.
-    gremlin.ui.hidhide._ensure_options()
+    gremlin.ui.hardware_profile._binding_store()
 
 
 def configure_loggers() -> None:
@@ -656,10 +650,6 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         gremlin.plugin_manager.PluginManager()
         self.cfg.purge_unused()
         update_action_priorities()
-        try:
-            gremlin.ui.hidhide.apply_saved_list()
-        except Exception:
-            self.syslog.exception("Hardware Hide")
 
         self.engine.load(
             QtCore.QUrl.fromLocalFile(gremlin.util.resource_path("qml/Main.qml"))
