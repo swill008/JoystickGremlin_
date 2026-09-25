@@ -10,6 +10,7 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
+import Gremlin.UI
 
 Window {
     id: _buttonMap
@@ -40,6 +41,14 @@ Window {
     property string pendingDevice: ""
     property string pendingPhoto: ""
     property bool startBlank: false
+    property int fileMenuWidth: 240
+    property int fileMenuHeight: 560
+
+    WindowPlacement { id: _place }
+
+    function saveMenuSize() {
+        _place.saveButtonMapMenuSize(fileMenuWidth, fileMenuHeight)
+    }
     property string stockImage: {
         if (/evo l|ot l/i.test(targetName))
             return "qml/images/vkb_gladiator_evo_l.jpg"
@@ -194,7 +203,7 @@ Window {
         delegate: MenuItem {
             id: _devItem
             required property string name
-            readonly property int _labelCap: 168
+            readonly property int _labelCap: Math.max(96, _buttonMap.fileMenuWidth - 72)
             text: name
             enabled: !_buttonMap.editing
             checkable: true
@@ -714,6 +723,12 @@ Window {
         resItems = []
         if (_devices)
             _devices.reload()
+        var savedMenuW = _place.buttonMapMenuWidth()
+        var savedMenuH = _place.buttonMapMenuHeight()
+        if (savedMenuW >= 180)
+            fileMenuWidth = savedMenuW
+        if (savedMenuH >= 160)
+            fileMenuHeight = savedMenuH
         if (startBlank) {
             targetName = ""
             loadedDevice = ""
@@ -1727,6 +1742,87 @@ Window {
             Menu {
                 id: _fileMenu
                 title: "File"
+                width: _buttonMap.fileMenuWidth
+                height: _buttonMap.fileMenuHeight
+                padding: 4
+                rightPadding: 12
+                bottomPadding: 14
+                contentItem: ListView {
+                    clip: true
+                    model: _fileMenu.contentModel
+                    implicitWidth: contentWidth
+                    implicitHeight: contentHeight
+                    interactive: contentHeight > height
+                    boundsBehavior: Flickable.StopAtBounds
+                    currentIndex: _fileMenu.currentIndex
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                }
+                background: Item {
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "#18181B"
+                        border.color: "#3F3F46"
+                        radius: 3
+                    }
+                    Rectangle {
+                        width: 8
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 10
+                        radius: 2
+                        color: _widthDrag.containsMouse || _widthDrag.pressed ? "#A1A1AA" : "#3F3F46"
+                        MouseArea {
+                            id: _widthDrag
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            preventStealing: true
+                            cursorShape: Qt.SizeHorCursor
+                            property real origin
+                            property real originW
+                            onPressed: function(mouse) {
+                                origin = mapToGlobal(mouse.x, mouse.y).x
+                                originW = _buttonMap.fileMenuWidth
+                            }
+                            onPositionChanged: function(mouse) {
+                                if (!pressed)
+                                    return
+                                var x = mapToGlobal(mouse.x, mouse.y).x
+                                _buttonMap.fileMenuWidth = Math.max(180, Math.min(900, originW + x - origin))
+                            }
+                            onReleased: _buttonMap.saveMenuSize()
+                        }
+                    }
+                    Rectangle {
+                        height: 8
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.rightMargin: 10
+                        radius: 2
+                        color: _lengthDrag.containsMouse || _lengthDrag.pressed ? "#A1A1AA" : "#3F3F46"
+                        MouseArea {
+                            id: _lengthDrag
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            preventStealing: true
+                            cursorShape: Qt.SizeVerCursor
+                            property real origin
+                            property real originH
+                            onPressed: function(mouse) {
+                                origin = mapToGlobal(mouse.x, mouse.y).y
+                                originH = _buttonMap.fileMenuHeight
+                            }
+                            onPositionChanged: function(mouse) {
+                                if (!pressed)
+                                    return
+                                var y = mapToGlobal(mouse.x, mouse.y).y
+                                _buttonMap.fileMenuHeight = Math.max(160, Math.min(1000, originH + y - origin))
+                            }
+                            onReleased: _buttonMap.saveMenuSize()
+                        }
+                    }
+                }
                 MenuItem {
                     text: "Edit Mapping"
                     enabled: !_buttonMap.editing
