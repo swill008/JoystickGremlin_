@@ -252,7 +252,12 @@ Window {
                         font.family: "bootstrap-icons"
                         font.bold: true
 
-                        onClicked: () => _axisView.model.save(index)
+                        onClicked: {
+                            var ok = _axisView.model.save(index)
+                            _saveGate.announce(ok,
+                                ok ? "Calibration was written to the configuration file."
+                                   : "Calibration was not written.")
+                        }
 
                         Rectangle {
                             anchors.fill: parent
@@ -304,6 +309,8 @@ Window {
         to: 32767
         value: 0
     }
+
+    SavePrompts { id: _saveGate }
 
     DebugFileLine {
         anchors.left: parent.left
