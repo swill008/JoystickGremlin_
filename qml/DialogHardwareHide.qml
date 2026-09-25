@@ -132,8 +132,18 @@ Window {
                     }
                 }
                 Switch {
-                    id: cloakSwitch
+                    id: controlSwitch
                     enabled: _hh.installed
+                    checked: _hh.gremlinControl
+                    text: "Gremlin control"
+                    onClicked: {
+                        _hh.setGremlinControl(controlSwitch.checked)
+                        controlSwitch.checked = Qt.binding(function() { return _hh.gremlinControl })
+                    }
+                }
+                Switch {
+                    id: cloakSwitch
+                    enabled: _hh.installed && _hh.gremlinControl
                     checked: _hh.cloakOn
                     text: "HiDHide Enabled"
                     onClicked: {
@@ -328,7 +338,7 @@ Window {
                             }
                             Switch {
                                 id: hideSwitch
-                                enabled: _hh.installed && row.canHide
+                                enabled: _hh.installed && _hh.gremlinControl && row.canHide
                                 checked: !!(row && row.session)
                                 onClicked: {
                                     _hh.setDeviceHidden(row.instanceId, hideSwitch.checked)
@@ -360,7 +370,7 @@ Window {
                     RadioButton {
                         id: allowList
                         text: "Allow list"
-                        enabled: _hh.installed
+                        enabled: _hh.installed && _hh.gremlinControl
                         checked: !_hh.inverseOn
                         ButtonGroup.group: listMode
                         onClicked: {
@@ -372,7 +382,7 @@ Window {
                     RadioButton {
                         id: blockList
                         text: "Block list"
-                        enabled: _hh.installed
+                        enabled: _hh.installed && _hh.gremlinControl
                         checked: _hh.inverseOn
                         ButtonGroup.group: listMode
                         onClicked: {
