@@ -133,8 +133,9 @@ def _save_games(rows: list[dict]) -> None:
     )
     try:
         config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_GAMES, packed)
-    except Exception:
-        pass
+        _hh_log(f"saved games count={len(rows)}")
+    except Exception as exc:
+        _hh_log(f"save games failed: {exc}")
 
 
 
