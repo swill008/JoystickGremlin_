@@ -258,13 +258,36 @@ Window {
         return _nameTick, _names.display(guid, name)
     }
 
+    function sameGuid(a, b) {
+        var left = String(a || "").toLowerCase().replace(/[{}-]/g, "")
+        var right = String(b || "").toLowerCase().replace(/[{}-]/g, "")
+        return left.length > 0 && left === right
+    }
+
     function isTarget(guid, name) {
+        if (sameGuid(guid, targetGuid))
+            return true
         if (!targetName.length)
             return false
         var raw = String(name || "")
         var shown = String(displayName(guid, raw) || "")
         var t = targetName.toLowerCase()
         return raw.toLowerCase() === t || shown.toLowerCase() === t
+    }
+
+    function targetListed() {
+        var rows = []
+        try {
+            rows = _devices.listRows() || []
+        } catch (err) {
+            return false
+        }
+        var i
+        for (i = 0; i < rows.length; i++) {
+            if (isTarget(rows[i].guid, rows[i].name))
+                return true
+        }
+        return false
     }
 
     function parseDoc(text) {
@@ -684,7 +707,7 @@ Window {
         pendingGuid = String(guid || "")
         if (!next.length)
             return
-        if (next === loadedDevice) {
+        if (next === loadedDevice && sameGuid(pendingGuid, targetGuid) && _hasTarget.hit) {
             show()
             raise()
             requestActivate()
@@ -2175,6 +2198,37 @@ Window {
                                 _buttonMap.refreshReservoir()
                             })
                         }
+                    }
+                }
+
+                Loader {
+                    id: _directCard
+                    anchors.fill: parent
+                    active: {
+                        var named = _buttonMap.targetName.length > 0
+                        var guid = _buttonMap.targetGuid
+                        return named && !_buttonMap.targetListed()
+                    }
+                    visible: active
+                    property string dGuid: _buttonMap.targetGuid
+                    property string dName: _buttonMap.targetName
+                    property string dPair: ""
+                    sourceComponent: _cardComp
+                    onActiveChanged: {
+                        if (active)
+                            return
+                        _buttonMap.faceLive = false
+                        if (_cardLoader.item === item)
+                            _cardLoader.item = null
+                    }
+                    onLoaded: {
+                        _hasTarget.hit = true
+                        _cardLoader.item = item
+                        _buttonMap.faceLive = true
+                        Qt.callLater(function() {
+                            _buttonMap.applyGridToEditor()
+                            _buttonMap.refreshReservoir()
+                        })
                     }
                 }
 
