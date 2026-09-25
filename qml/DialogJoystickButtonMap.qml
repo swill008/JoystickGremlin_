@@ -260,24 +260,8 @@ Window {
             return false
         var raw = String(name || "")
         var shown = String(displayName(guid, raw) || "")
-        if (raw === targetName || shown === targetName)
-            return true
-        var a = raw.toLowerCase()
-        var b = shown.toLowerCase()
         var t = targetName.toLowerCase()
-        if (a === t || b === t)
-            return true
-        function isLeft(s) {
-            return s.indexOf("gladiator") !== -1 && (s.indexOf("evo l") !== -1 || s.indexOf("ot l") !== -1)
-        }
-        function isRight(s) {
-            return s.indexOf("gladiator") !== -1 && (s.indexOf("evo r") !== -1 || s.indexOf("ot r") !== -1)
-        }
-        if (isLeft(t))
-            return isLeft(a) || isLeft(b)
-        if (isRight(t))
-            return isRight(a) || isRight(b)
-        return a.indexOf(t) !== -1 || b.indexOf(t) !== -1 || t.indexOf(a) !== -1 || t.indexOf(b) !== -1
+        return raw.toLowerCase() === t || shown.toLowerCase() === t
     }
 
     function parseDoc(text) {
@@ -2124,6 +2108,7 @@ Window {
                         editing: _buttonMap.editing
                         editorNodes: _buttonMap.editing ? _buttonMap.workNodes : _buttonMap.liveNodes
                         photoOverride: _buttonMap.photoOverride
+                        onChipRowsChanged: Qt.callLater(_buttonMap.refreshReservoir)
                         Connections {
                             target: _card.editorItem
                             function onSelectedChanged() { Qt.callLater(_buttonMap.applySelected) }
