@@ -21,6 +21,39 @@ Window {
     property string photoUrl: ""
     property var moduleModel: null
 
+    property string moduleFileLabel: ""
+    property string moduleFileMessage: ""
+    property var moduleFileChoices: []
+    property bool _moduleFileQuiet: false
+
+    function refreshModuleFileLabel() {
+        if (!moduleModel || !deviceName.length) {
+            moduleFileLabel = ""
+            moduleFileChoices = []
+            return
+        }
+        var slug = String(moduleModel.moduleFileFor(deviceGuid, deviceName) || "")
+        var saved = moduleModel.moduleFileExists(deviceGuid, deviceName)
+        var names = moduleModel.moduleFileNames(deviceGuid, deviceName) || []
+        var choices = []
+        var pick = 0
+        var i
+        moduleFileLabel = slug + ".json" + (saved ? "" : " (not saved yet)")
+        for (i = 0; i < names.length; i++) {
+            var item = String(names[i] || "")
+            if (!item.length)
+                continue
+            if (item === slug)
+                pick = choices.length
+            choices.push(item + ".json")
+        }
+        _moduleFileQuiet = true
+        moduleFileChoices = choices
+        if (_moduleFilePick)
+            _moduleFilePick.currentIndex = pick
+        _moduleFileQuiet = false
+    }
+
     width: 980
     height: 640
     minimumWidth: 800
@@ -202,6 +235,16 @@ Window {
                 focusPolicy: Qt.NoFocus
                 onClicked: Helpers.createComponent("DialogExportDevices.qml", {"deviceName": deviceName})
             }
+            Button {
+                text: "Module file"
+                visible: direction !== "dest"
+                focusPolicy: Qt.NoFocus
+                onClicked: {
+                    refreshModuleFileLabel()
+                    moduleFileMessage = ""
+                    _moduleFileDialog.open()
+                }
+            }
             Item { Layout.fillWidth: true }
             Button {
                 text: "Cancel"
@@ -223,6 +266,94 @@ Window {
                     }
                 }
             }
+        }
+    }
+
+    Dialog {
+        id: _moduleFileDialog
+        title: "Module file"
+        modal: true
+        anchors.centerIn: parent
+        width: 460
+        padding: 16
+        standardButtons: Dialog.Close
+
+        contentItem: ColumnLayout {
+            spacing: 10
+            Label {
+                text: "Current file"
+                color: "#A1A1AA"
+                font.pixelSize: 12
+            }
+            Label {
+                Layout.fillWidth: true
+                text: moduleFileLabel.length ? moduleFileLabel : "None"
+                wrapMode: Text.WordWrap
+                font.pixelSize: 14
+            }
+            Label {
+                Layout.fillWidth: true
+                text: "This stick's inputs and button map use this file."
+                color: "#A1A1AA"
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+            }
+            ComboBox {
+                id: _moduleFilePick
+                Layout.fillWidth: true
+                model: moduleFileChoices
+                onActivated: function(index) {
+                    if (_moduleFileQuiet || !moduleModel)
+                        return
+                    var label = String(currentText || "")
+                    var slug = label.replace(/\.json$/i, "")
+                    moduleModel.bindModuleFile(deviceGuid, deviceName, slug)
+                    moduleFileMessage = ""
+                    refreshModuleFileLabel()
+                }
+            }
+            Button {
+                text: "Browse for File"
+                Layout.fillWidth: true
+                onClicked: {
+                    if (moduleModel)
+                        _moduleLoadDialog.currentFolder = moduleModel.mapsFolderUrl()
+                    _moduleLoadDialog.open()
+                }
+            }
+            Button {
+                text: "Delete file"
+                Layout.fillWidth: true
+                onClicked: {
+                    if (!moduleModel)
+                        return
+                    moduleFileMessage = moduleModel.deleteModuleFile(deviceGuid, deviceName)
+                    refreshModuleFileLabel()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: moduleFileMessage.length > 0
+                text: moduleFileMessage
+                color: "#F87171"
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
+
+    FileDialog {
+        id: _moduleLoadDialog
+        title: "Browse for file"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Module files (*.json)"]
+        onAccepted: {
+            if (!moduleModel)
+                return
+            var src = selectedFile
+            if (src && src.toString)
+                src = src.toString()
+            moduleFileMessage = moduleModel.loadModuleFile(deviceGuid, deviceName, src || "")
+            refreshModuleFileLabel()
         }
     }
 }
