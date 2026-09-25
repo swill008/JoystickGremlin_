@@ -22,6 +22,8 @@ _CFG_SECTION = "display"
 _CFG_GROUP = "hidhide"
 _CFG_GAMES = "games"
 _CFG_PHOTOS = "photos"
+_CFG_WINDOW_W = "window-width"
+_CFG_WINDOW_H = "window-height"
 _DOWNLOAD = "https://github.com/nefarius/HidHide/releases"
 
 _DEVICE_TYPE = 32769
@@ -99,6 +101,26 @@ def _ensure_options() -> None:
             "{}",
             "Hardware Hide device photos keyed by instance id.",
             {},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_WINDOW_W,
+            PropertyType.Int,
+            720,
+            "Hardware Hide window width.",
+            {"min": 480, "max": 8000},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_WINDOW_H,
+            PropertyType.Int,
+            640,
+            "Hardware Hide window height.",
+            {"min": 360, "max": 8000},
             True,
         )
     except Exception:
@@ -1196,6 +1218,29 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Property(str, notify=changed)
     def driverVersion(self) -> str:
         return self._version
+
+    @QtCore.Property(int, constant=True)
+    def windowWidth(self) -> int:
+        _ensure_options()
+        try:
+            return max(480, int(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW_W)))
+        except (TypeError, ValueError):
+            return 720
+
+    @QtCore.Property(int, constant=True)
+    def windowHeight(self) -> int:
+        _ensure_options()
+        try:
+            return max(360, int(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW_H)))
+        except (TypeError, ValueError):
+            return 640
+
+    @QtCore.Slot(int, int)
+    def saveWindowSize(self, width: int, height: int) -> None:
+        _ensure_options()
+        cfg = config.Configuration()
+        cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW_W, max(480, min(8000, int(width))))
+        cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW_H, max(360, min(8000, int(height))))
 
     @QtCore.Property(str, constant=True)
     def downloadUrl(self) -> str:
