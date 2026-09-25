@@ -1967,7 +1967,8 @@ Window {
                     visible: true
                     text: {
                         var f = _cardLoader.item
-                        var pct = f ? Math.round(f.viewPct * 100) : 100
+                        var raw = f ? Number(f.viewPct) : 1
+                        var pct = (raw === raw) ? Math.round(raw * 100) : 100
                         return "View " + pct + "%"
                     }
                     color: "#E4E4E7"
