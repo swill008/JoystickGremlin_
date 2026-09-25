@@ -238,7 +238,8 @@ ApplicationWindow {
             return
         }
         Helpers.createComponent("DialogJoystickButtonMap.qml", {
-            "startBlank": true
+            "startBlank": true,
+            "targetName": ""
         })
     }
 
