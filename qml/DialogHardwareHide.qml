@@ -149,16 +149,20 @@ Window {
             Layout.fillWidth: true
             Label {
                 Layout.fillWidth: true
+                Layout.preferredWidth: 0
+                Layout.minimumWidth: 40
                 wrapMode: Text.WordWrap
                 color: "#A1A1AA"
                 font.pixelSize: 12
                 text: "HiDHide hides the selected controllers from other programs. This program does not install HiDHide. Click on Get HiDHide to download the program."
             }
             ColumnLayout {
+                Layout.alignment: Qt.AlignTop
+                Layout.minimumWidth: _getHid.implicitWidth
                 spacing: 6
                 Button {
+                    id: _getHid
                     text: "Get HiDHide"
-                    Layout.fillWidth: true
                     onClicked: _hh.openDownload()
                 }
                 Button {
