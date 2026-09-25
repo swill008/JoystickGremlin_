@@ -141,6 +141,10 @@ Window {
                         controlSwitch.checked = Qt.binding(function() { return _hh.gremlinControl })
                     }
                 }
+                Button {
+                    text: "Get HiDHide"
+                    onClicked: _hh.openDownload()
+                }
             }
         }
 
@@ -174,6 +178,10 @@ Window {
                     text: "Gaming devices only"
                     onClicked: _hh.setGamingOnly(_gamingOnly.checked)
                 }
+                Button {
+                    text: "Test"
+                    onClicked: _hh.openGameControllers()
+                }
                 Item { Layout.fillWidth: true }
             }
         }
@@ -185,31 +193,12 @@ Window {
             font.bold: true
         }
 
-        RowLayout {
+        Label {
             Layout.fillWidth: true
-            spacing: 12
-            Label {
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignTop
-                wrapMode: Text.WordWrap
-                color: "#A1A1AA"
-                font.pixelSize: 12
-                text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. HiDHide hides the selected controllers from other programs. This program does not install HiDHide. Click on Get HiDHide to download the program."
-            }
-            Column {
-                Layout.alignment: Qt.AlignTop
-                spacing: 6
-                Button {
-                    id: _getHid
-                    text: "Get HiDHide"
-                    onClicked: _hh.openDownload()
-                }
-                Button {
-                    text: "Test"
-                    width: _getHid.implicitWidth
-                    onClicked: _hh.openGameControllers()
-                }
-            }
+            wrapMode: Text.WordWrap
+            color: "#A1A1AA"
+            font.pixelSize: 12
+            text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything. HiDHide hides the selected controllers from other programs. This program does not install HiDHide. Click on Get HiDHide to download the program."
         }
 
         Label {
