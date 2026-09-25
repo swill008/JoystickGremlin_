@@ -430,6 +430,15 @@ Window {
                 text: "Refresh"
                 onClicked: _hh.refresh()
             }
+            Switch {
+                id: debugSwitch
+                checked: _hh.debugLog
+                text: "Debug log"
+                onClicked: {
+                    _hh.setDebugLog(debugSwitch.checked)
+                    debugSwitch.checked = Qt.binding(function() { return _hh.debugLog })
+                }
+            }
             Item { Layout.fillWidth: true }
             Button {
                 text: "Close"
