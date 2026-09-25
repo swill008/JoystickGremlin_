@@ -25,6 +25,8 @@ Window {
         id: _hh
     }
 
+    ButtonGroup { id: listMode }
+
     Timer {
         id: _sizeSave
         interval: 400
@@ -335,14 +337,29 @@ Window {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Switch {
-                        id: inverseSwitch
+                    spacing: 16
+                    RadioButton {
+                        id: allowList
+                        text: "Allow list"
+                        enabled: _hh.installed
+                        checked: !_hh.inverseOn
+                        ButtonGroup.group: listMode
+                        onClicked: {
+                            _hh.setInverse(false)
+                            allowList.checked = Qt.binding(function() { return !_hh.inverseOn })
+                            blockList.checked = Qt.binding(function() { return _hh.inverseOn })
+                        }
+                    }
+                    RadioButton {
+                        id: blockList
+                        text: "Block list"
                         enabled: _hh.installed
                         checked: _hh.inverseOn
-                        text: "Inverse"
+                        ButtonGroup.group: listMode
                         onClicked: {
-                            _hh.setInverse(inverseSwitch.checked)
-                            inverseSwitch.checked = Qt.binding(function() { return _hh.inverseOn })
+                            _hh.setInverse(true)
+                            allowList.checked = Qt.binding(function() { return !_hh.inverseOn })
+                            blockList.checked = Qt.binding(function() { return _hh.inverseOn })
                         }
                     }
                 }
@@ -352,7 +369,7 @@ Window {
                     Layout.fillWidth: true
                     color: "#A1A1AA"
                     font.pixelSize: 12
-                    text: "Inverse off: the list is an allow list. Inverse on: the list is a block list."
+                    text: "Allow list: only these programs can see the hidden controllers. Block list: these programs cannot see them. Joystick Gremlin is allowed in both modes."
                 }
 
                 ListView {
