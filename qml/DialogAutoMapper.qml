@@ -44,6 +44,7 @@ Window {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
+        anchors.bottomMargin: 58
 
         RowLayout {
             ColumnLayout {
@@ -190,5 +191,11 @@ Window {
                 }
             }
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
