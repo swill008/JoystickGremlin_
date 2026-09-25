@@ -82,29 +82,18 @@ ApplicationWindow {
         return card.rawName || card.name || ""
     }
 
-    property bool _moduleFileQuiet: false
-    ListModel { id: _moduleFileModel }
+    property string moduleFileLabel: ""
+    property string moduleFileMessage: ""
 
-    function reloadModuleFiles() {
-        if (!_moduleModel || !configTitleName.length || configDirection === "dest")
+    function refreshModuleFileLabel() {
+        if (!_moduleModel || !configTitleName.length || configDirection === "dest") {
+            moduleFileLabel = ""
             return
-        var names = _moduleModel.moduleFileNames(uiState ? uiState.currentDevice : "", configTitleName) || []
-        var current = _moduleModel.moduleFileFor(uiState ? uiState.currentDevice : "", configTitleName)
-        _moduleFileQuiet = true
-        _moduleFileModel.clear()
-        var pick = 0
-        var i
-        for (i = 0; i < names.length; i++) {
-            var slug = String(names[i] || "")
-            if (!slug.length)
-                continue
-            if (slug === current)
-                pick = _moduleFileModel.count
-            _moduleFileModel.append({ "slug": slug, "label": slug + ".json" })
         }
-        if (_moduleFileBox)
-            _moduleFileBox.currentIndex = pick
-        _moduleFileQuiet = false
+        var guid = uiState ? uiState.currentDevice : ""
+        var slug = _moduleModel.moduleFileFor(guid, configTitleName)
+        var saved = _moduleModel.moduleFileExists(guid, configTitleName)
+        moduleFileLabel = slug + ".json" + (saved ? "" : " (not saved yet)")
     }
 
     function openConfigurationForCard(card) {
@@ -112,7 +101,7 @@ ApplicationWindow {
             return
         _moduleModel.setFocus(card.slug)
         configTitleName = moduleFileName(card)
-        reloadModuleFiles()
+        refreshModuleFileLabel()
         refreshDestBound()
         configDirection = card.direction || "source"
         uiState.setCurrentDevice(card.guid)
@@ -413,6 +402,127 @@ ApplicationWindow {
             if (backend) {
                 backend.loadProfile(currentFile)
             }
+        }
+    }
+
+    Dialog {
+        id: _moduleFileDialog
+        title: "Module file"
+        modal: true
+        anchors.centerIn: parent
+        width: 460
+        padding: 16
+        standardButtons: Dialog.Close
+
+        contentItem: ColumnLayout {
+            spacing: 10
+            Label {
+                text: "Current file"
+                color: "#A1A1AA"
+                font.pixelSize: 12
+            }
+            Label {
+                Layout.fillWidth: true
+                text: moduleFileLabel.length ? moduleFileLabel : "None"
+                wrapMode: Text.WordWrap
+                font.pixelSize: 14
+            }
+            Label {
+                Layout.fillWidth: true
+                text: "This stick's inputs and button map use this file."
+                color: "#A1A1AA"
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+            }
+            Button {
+                text: "Load file"
+                Layout.fillWidth: true
+                onClicked: {
+                    if (_moduleModel)
+                        _moduleLoadDialog.currentFolder = _moduleModel.mapsFolderUrl()
+                    _moduleLoadDialog.open()
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                TextField {
+                    id: _moduleRename
+                    Layout.fillWidth: true
+                    placeholderText: "New name"
+                    selectByMouse: true
+                }
+                Button {
+                    text: "Rename file"
+                    onClicked: {
+                        if (!_moduleModel)
+                            return
+                        moduleFileMessage = _moduleModel.renameModuleFile(
+                            uiState.currentDevice, configTitleName, _moduleRename.text)
+                        if (!moduleFileMessage.length)
+                            _moduleRename.text = ""
+                        refreshModuleFileLabel()
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                TextField {
+                    id: _moduleCopy
+                    Layout.fillWidth: true
+                    placeholderText: "Copy name"
+                    selectByMouse: true
+                }
+                Button {
+                    text: "Duplicate"
+                    onClicked: {
+                        if (!_moduleModel || !_moduleCopy.text.trim().length) {
+                            moduleFileMessage = "Enter a file name."
+                            return
+                        }
+                        var slug = _moduleModel.saveModuleFileAs(
+                            uiState.currentDevice, configTitleName, _moduleCopy.text)
+                        moduleFileMessage = slug.length ? "" : "That file already exists."
+                        if (slug.length)
+                            _moduleCopy.text = ""
+                        refreshModuleFileLabel()
+                    }
+                }
+            }
+            Button {
+                text: "Delete file"
+                Layout.fillWidth: true
+                onClicked: {
+                    if (!_moduleModel)
+                        return
+                    moduleFileMessage = _moduleModel.deleteModuleFile(
+                        uiState.currentDevice, configTitleName)
+                    refreshModuleFileLabel()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: moduleFileMessage.length > 0
+                text: moduleFileMessage
+                color: "#F87171"
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
+
+    FileDialog {
+        id: _moduleLoadDialog
+        title: "Load module file"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Module files (*.json)"]
+        onAccepted: {
+            if (!_moduleModel)
+                return
+            var src = selectedFile
+            if (src && src.toString)
+                src = src.toString()
+            moduleFileMessage = _moduleModel.loadModuleFile(
+                uiState.currentDevice, configTitleName, src || "")
+            refreshModuleFileLabel()
         }
     }
 
@@ -942,46 +1052,16 @@ ApplicationWindow {
                     color: "#A1A1AA"
                     font.pixelSize: 12
                 }
-                RowLayout {
-                    visible: configDirection !== "dest" && configTitleName.length > 0
-                    Layout.fillWidth: true
-                    spacing: 8
-                    Label {
-                        text: "Module file"
-                        color: "#A1A1AA"
-                        font.pixelSize: 12
-                    }
-                    ComboBox {
-                        id: _moduleFileBox
-                        Layout.preferredWidth: 280
-                        model: _moduleFileModel
-                        textRole: "label"
-                        onActivated: function(index) {
-                            if (_moduleFileQuiet || !_moduleModel)
-                                return
-                            var slug = _moduleFileModel.get(index).slug
-                            _moduleModel.bindModuleFile(uiState.currentDevice, configTitleName, slug)
-                        }
-                    }
-                    TextField {
-                        id: _moduleFileNew
-                        placeholderText: "New file name"
-                        Layout.preferredWidth: 180
-                        selectByMouse: true
-                    }
-                    Button {
-                        text: "Save as new file"
-                        onClicked: {
-                            if (!_moduleModel || !_moduleFileNew.text.trim().length)
-                                return
-                            var slug = _moduleModel.saveModuleFileAs(
-                                uiState.currentDevice, configTitleName, _moduleFileNew.text)
-                            if (!slug)
-                                return
-                            _moduleFileNew.text = ""
-                            reloadModuleFiles()
-                        }
-                    }
+            }
+            Button {
+                visible: configDirection !== "dest" && configTitleName.length > 0
+                text: "Module file"
+                onClicked: {
+                    refreshModuleFileLabel()
+                    moduleFileMessage = ""
+                    _moduleRename.text = ""
+                    _moduleCopy.text = ""
+                    _moduleFileDialog.open()
                 }
             }
             Button {
