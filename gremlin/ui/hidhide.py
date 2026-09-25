@@ -686,7 +686,6 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     out.sort(key=lambda r: r["name"].lower())
     stats["rows"] = len(out)
     _WALK_STATS = dict(stats)
-    print("Hardware Hide walk", _WALK_STATS, flush=True)
     return out
 
 
@@ -958,22 +957,7 @@ class HidHideModel(QtCore.QObject):
     def deviceCount(self) -> int:
         return len(self._devices)
 
-    @QtCore.Property(str, notify=changed)
-    def walkStatus(self) -> str:
-        stats = dict(_WALK_STATS)
-        if not stats:
-            return "walk: no stats"
-        if stats.get("error"):
-            return "walk error: " + str(stats)
-        return (
-            "walk class {classIds} links {links} opened {opened} rows {rows}".format(
-                classIds=stats.get("classIds", 0),
-                links=stats.get("links", 0),
-                opened=stats.get("opened", 0),
-                rows=stats.get("rows", 0),
-            )
-        )
-
+    
     @QtCore.Property(int, notify=changed)
     def gameCount(self) -> int:
         return len(self._games)
