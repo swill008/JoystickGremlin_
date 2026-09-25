@@ -42,6 +42,21 @@ IOCTL_SET_ACTIVE = _ctl(2053)
 IOCTL_ADD_SESSION_BLACKLIST = _ctl(2056)
 IOCTL_CLR_SESSION_BLACKLIST = _ctl(2057)
 
+_IOCTL_NAMES = {
+    IOCTL_GET_WHITELIST: "GET_WHITELIST",
+    IOCTL_SET_WHITELIST: "SET_WHITELIST",
+    IOCTL_GET_BLACKLIST: "GET_BLACKLIST",
+    IOCTL_SET_BLACKLIST: "SET_BLACKLIST",
+    IOCTL_GET_ACTIVE: "GET_ACTIVE",
+    IOCTL_SET_ACTIVE: "SET_ACTIVE",
+    IOCTL_ADD_SESSION_BLACKLIST: "ADD_SESSION_BLACKLIST",
+    IOCTL_CLR_SESSION_BLACKLIST: "CLR_SESSION_BLACKLIST",
+}
+
+
+def _hh_log(message: str) -> None:
+    print(f"Hardware Hide {message}", flush=True)
+
 DEVPROP_TYPE_EMPTY = 0x00000000
 DEVPROP_TYPE_GUID = 0x0000000D
 DEVPROP_TYPE_STRING = 0x00000012
@@ -210,6 +225,7 @@ def _open_control():
         None,
     )
     if not handle or int(handle) in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
+        _hh_log(f"open \\\\.\\HidHide failed err={ctypes.get_last_error()} handle={handle!r}")
         return None
     return handle
 def _close(handle) -> None:
@@ -253,6 +269,11 @@ def _ioctl(handle, code: int, inn: bytes | None = None, out_size: int = 0) -> tu
     )
     if not ok:
         _ioctl_error = f"HidHide driver call failed ({ctypes.get_last_error()})."
+    name = _IOCTL_NAMES.get(int(code) & 0xFFFFFFFF, "OTHER")
+    _hh_log(
+        f"ioctl {name} code=0x{int(code) & 0xFFFFFFFF:08X} in={in_len} out={out_size} "
+        f"ok={bool(ok)} returned={int(returned.value)} err={0 if ok else ctypes.get_last_error()}"
+    )
     data = out_buf.raw[: returned.value] if out_buf else b""
     return bool(ok), data
 
@@ -397,6 +418,7 @@ def add_session_hides(ids: list[str]) -> bool:
         return False
     try:
         payload = _encode_multi_sz([i for i in ids if i])
+        _hh_log(f"add session count={len(ids)} bytes={len(payload)} even={len(payload) % 2 == 0} ids={list(ids)}")
         ok, _ = _ioctl(handle, IOCTL_ADD_SESSION_BLACKLIST, payload, 0)
         return ok
     finally:
@@ -966,6 +988,10 @@ class HidHideModel(QtCore.QObject):
             self._devices.append(item)
         self._games = _load_games()
         self._generation += 1
+        _hh_log(
+            f"reload present={self._present} cloak={self._active} "
+            f"client={len(persistent)} session={sorted(session)} rows={len(self._devices)}"
+        )
         self.changed.emit()
 
     @QtCore.Property(bool, notify=changed)
@@ -1047,17 +1073,21 @@ class HidHideModel(QtCore.QObject):
         want = {i for i in _session_ids if i.upper() not in drop}
         if hidden:
             want.update(group_ids)
+        _hh_log(f"set hidden={bool(hidden)} id={instance_id} group={group_ids} want={sorted(want)}")
         if not clear_session_hides():
             self._last_error = _ioctl_error or "HidHide driver call failed."
+            _hh_log(f"set failed on clear: {self._last_error}")
             self.reload()
             return False
         if want and not add_session_hides(sorted(want)):
             self._last_error = _ioctl_error or "HidHide driver call failed."
+            _hh_log(f"set failed on add: {self._last_error}")
             self.reload()
             return False
         _session_ids.clear()
         _session_ids.update(want)
         self._last_error = ""
+        _hh_log(f"set session now {sorted(_session_ids)}")
         if hidden and not get_active():
             global _borrowed_active
             if set_active(True):
