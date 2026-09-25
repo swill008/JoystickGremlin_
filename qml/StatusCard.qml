@@ -43,6 +43,7 @@ Rectangle {
 
     signal cardFocused()
     signal openConfiguration()
+    signal openButtonMap()
     signal openOutputView()
     signal configureModule()
     signal pinControlDisplay()
@@ -105,7 +106,6 @@ Rectangle {
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     cache: true
-                    sourceSize.width: 640
                     visible: photo && photo.length
                     onStatusChanged: _photoWell.Layout.preferredHeightChanged()
                     onImplicitWidthChanged: _photoWell.Layout.preferredHeightChanged()
@@ -379,6 +379,10 @@ Rectangle {
         MenuItem {
             text: direction === "dest" ? "Output View" : "Open Configuration"
             onTriggered: direction === "dest" ? _card.openOutputView() : _card.openConfiguration()
+        }
+        MenuItem {
+            text: "Button mapper"
+            onTriggered: _card.openButtonMap()
         }
         MenuItem {
             text: direction === "dest" ? "Configure output module" : "Configure input module"
