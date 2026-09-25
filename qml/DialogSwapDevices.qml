@@ -45,6 +45,7 @@ Window {
 
         anchors.fill: parent
         anchors.margins: 10
+        anchors.bottomMargin: 58
 
         RowLayout {
             Label {
@@ -117,5 +118,11 @@ Window {
                 text: "Select devices, then click the button."
             }
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
