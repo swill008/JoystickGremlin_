@@ -10,7 +10,6 @@ import QtQuick.Window
 
 import Gremlin.Device
 import Gremlin.Style
-import Gremlin.UI
 
 Window {
     id: _buttonMap
@@ -35,20 +34,12 @@ Window {
         _leaveDlg.open()
     }
 
-    property string targetName: "VKBsim Gladiator EVO R"
+    property string targetName: ""
     property string initialPhoto: ""
     property string loadedDevice: ""
     property string pendingDevice: ""
     property string pendingPhoto: ""
     property bool startBlank: false
-    property int fileMenuWidth: 240
-    property int fileMenuHeight: 560
-
-    WindowPlacement { id: _place }
-
-    function saveMenuSize() {
-        _place.saveButtonMapMenuSize(fileMenuWidth, fileMenuHeight)
-    }
     property string stockImage: {
         if (/evo l|ot l/i.test(targetName))
             return "qml/images/vkb_gladiator_evo_l.jpg"
@@ -201,42 +192,12 @@ Window {
         id: _inputDeviceItems
         model: _devices
         delegate: MenuItem {
-            id: _devItem
             required property string name
-            readonly property int _labelCap: Math.max(96, _buttonMap.fileMenuWidth - 72)
             text: name
             enabled: !_buttonMap.editing
             checkable: true
             checked: name === _buttonMap.targetName
             onTriggered: _buttonMap.openForDevice(name, "")
-            contentItem: Item {
-                implicitWidth: Math.min(_devText.implicitWidth, _devItem._labelCap)
-                implicitHeight: _devText.implicitHeight
-                clip: true
-                Text {
-                    id: _devText
-                    text: _devItem.text
-                    font: _devItem.font
-                    color: !_devItem.enabled ? "#71717A" : (_devItem.highlighted ? "#FFFFFF" : "#E4E4E7")
-                    y: (parent.height - height) / 2
-                    x: _overflow ? -_shift : 0
-                    property bool _overflow: implicitWidth > parent.width + 1
-                    property real _shift: 0
-                    SequentialAnimation on _shift {
-                        running: _devText._overflow && _fileMenu.visible
-                        loops: Animation.Infinite
-                        PauseAnimation { duration: 900 }
-                        NumberAnimation {
-                            from: 0
-                            to: Math.max(0, _devText.implicitWidth - _devText.parent.width)
-                            duration: Math.max(1800, (_devText.implicitWidth - _devText.parent.width) * 22)
-                            easing.type: Easing.Linear
-                        }
-                        PauseAnimation { duration: 900 }
-                        ScriptAction { script: _devText._shift = 0 }
-                    }
-                }
-            }
         }
         onObjectAdded: function(index, object) {
             _fileMenu.insertItem(4 + index, object)
@@ -723,13 +684,7 @@ Window {
         resItems = []
         if (_devices)
             _devices.reload()
-        var savedMenuW = _place.buttonMapMenuWidth()
-        var savedMenuH = _place.buttonMapMenuHeight()
-        if (savedMenuW >= 180)
-            fileMenuWidth = savedMenuW
-        if (savedMenuH >= 160)
-            fileMenuHeight = savedMenuH
-        if (startBlank) {
+        if (startBlank || !targetName.length) {
             targetName = ""
             loadedDevice = ""
             initialPhoto = ""
@@ -990,7 +945,7 @@ Window {
 
     function refreshReservoir() {
         var e = _ed()
-        var all = e ? e.catalog() : []
+        var all = (e && typeof e.catalog === "function") ? e.catalog() : []
         var q = (poolFilter || "").trim().toLowerCase()
         var u = []
         for (var i = 0; i < all.length; i++) {
@@ -1742,87 +1697,6 @@ Window {
             Menu {
                 id: _fileMenu
                 title: "File"
-                width: _buttonMap.fileMenuWidth
-                height: _buttonMap.fileMenuHeight
-                padding: 4
-                rightPadding: 12
-                bottomPadding: 14
-                contentItem: ListView {
-                    clip: true
-                    model: _fileMenu.contentModel
-                    implicitWidth: contentWidth
-                    implicitHeight: contentHeight
-                    interactive: contentHeight > height
-                    boundsBehavior: Flickable.StopAtBounds
-                    currentIndex: _fileMenu.currentIndex
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                }
-                background: Item {
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "#18181B"
-                        border.color: "#3F3F46"
-                        radius: 3
-                    }
-                    Rectangle {
-                        width: 8
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 10
-                        radius: 2
-                        color: _widthDrag.containsMouse || _widthDrag.pressed ? "#A1A1AA" : "#3F3F46"
-                        MouseArea {
-                            id: _widthDrag
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            preventStealing: true
-                            cursorShape: Qt.SizeHorCursor
-                            property real origin
-                            property real originW
-                            onPressed: function(mouse) {
-                                origin = mapToGlobal(mouse.x, mouse.y).x
-                                originW = _buttonMap.fileMenuWidth
-                            }
-                            onPositionChanged: function(mouse) {
-                                if (!pressed)
-                                    return
-                                var x = mapToGlobal(mouse.x, mouse.y).x
-                                _buttonMap.fileMenuWidth = Math.max(180, Math.min(900, originW + x - origin))
-                            }
-                            onReleased: _buttonMap.saveMenuSize()
-                        }
-                    }
-                    Rectangle {
-                        height: 8
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.rightMargin: 10
-                        radius: 2
-                        color: _lengthDrag.containsMouse || _lengthDrag.pressed ? "#A1A1AA" : "#3F3F46"
-                        MouseArea {
-                            id: _lengthDrag
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            preventStealing: true
-                            cursorShape: Qt.SizeVerCursor
-                            property real origin
-                            property real originH
-                            onPressed: function(mouse) {
-                                origin = mapToGlobal(mouse.x, mouse.y).y
-                                originH = _buttonMap.fileMenuHeight
-                            }
-                            onPositionChanged: function(mouse) {
-                                if (!pressed)
-                                    return
-                                var y = mapToGlobal(mouse.x, mouse.y).y
-                                _buttonMap.fileMenuHeight = Math.max(160, Math.min(1000, originH + y - origin))
-                            }
-                            onReleased: _buttonMap.saveMenuSize()
-                        }
-                    }
-                }
                 MenuItem {
                     text: "Edit Mapping"
                     enabled: !_buttonMap.editing
@@ -2360,7 +2234,7 @@ Window {
                                         property bool lit: {
                                             var t = _buttonMap.resTick
                                             var e = _ed()
-                                            if (!e || !modelData)
+                                            if (!e || typeof e.litOf !== "function" || !modelData)
                                                 return false
                                             return e.litOf(modelData.kind, modelData.hwId)
                                         }
