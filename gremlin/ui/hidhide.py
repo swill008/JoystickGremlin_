@@ -24,6 +24,8 @@ _CFG_GAMES = "games"
 _CFG_PHOTOS = "photos"
 _CFG_LINKS = "module-links"
 _CFG_LIST_MODE = "list-mode"
+_CFG_HIDDEN = "hidden-devices"
+_CFG_CLOAK = "cloak"
 _CFG_WINDOW_W = "window-width"
 _CFG_WINDOW_H = "window-height"
 _CFG_SPLIT = "split-ratio"
@@ -128,6 +130,26 @@ def _ensure_options() -> None:
             PropertyType.String,
             "",
             "Hardware Hide program list mode: allow or block.",
+            {},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_HIDDEN,
+            PropertyType.String,
+            "",
+            "Hardware Hide device instance ids that stay hidden.",
+            {},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_CLOAK,
+            PropertyType.String,
+            "",
+            "Hardware Hide enforcement: on or off.",
             {},
             True,
         )
@@ -273,6 +295,78 @@ def _apply_saved_list_mode() -> bool:
     if bool(get_inverse()) != choice:
         if not set_inverse(choice):
             return bool(get_inverse())
+    return choice
+
+
+def _saved_hidden() -> list[str] | None:
+    """None means this install has not stored a device list yet."""
+    _ensure_options()
+    raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_HIDDEN) or "")
+    if not raw.strip():
+        return None
+    try:
+        loaded = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(loaded, list):
+        return None
+    return [str(item) for item in loaded if str(item).strip()]
+
+
+def _save_hidden(ids: list[str]) -> None:
+    _ensure_options()
+    kept: list[str] = []
+    seen: set[str] = set()
+    for item in ids:
+        text = str(item).strip()
+        key = text.upper()
+        if not text or key in seen:
+            continue
+        seen.add(key)
+        kept.append(text)
+    try:
+        config.Configuration().set(
+            _CFG_SECTION, _CFG_GROUP, _CFG_HIDDEN, json.dumps(kept, ensure_ascii=True)
+        )
+    except Exception:
+        pass
+
+
+def _apply_saved_hidden() -> None:
+    """Write the saved device list. The first run keeps the driver's current list."""
+    saved = _saved_hidden()
+    if saved is None:
+        saved = get_blacklist()
+        _save_hidden(saved)
+    set_blacklist(saved)
+
+
+def _saved_cloak() -> bool | None:
+    _ensure_options()
+    raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_CLOAK) or "").strip().lower()
+    if raw == "on":
+        return True
+    if raw == "off":
+        return False
+    return None
+
+
+def _save_cloak(on: bool) -> None:
+    _ensure_options()
+    try:
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_CLOAK, "on" if on else "off")
+    except Exception:
+        pass
+
+
+def _apply_saved_cloak() -> bool:
+    """Write the saved HiDHide Enabled switch. The first run keeps the driver's current switch."""
+    choice = _saved_cloak()
+    if choice is None:
+        choice = bool(get_active())
+        _save_cloak(choice)
+    if bool(get_active()) != choice:
+        set_active(choice)
     return choice
 
 
@@ -706,92 +800,12 @@ def set_whitelist(paths: list[str]) -> bool:
     return _set_multi(IOCTL_SET_WHITELIST, paths)
 
 
-_snap_active = None
-_snap_whitelist = None
-_snap_blacklist = None
-_snap_inverse = None
-_borrowed_active = False
-_borrowed_whitelist = False
-_borrowed_blacklist = False
-_borrowed_inverse = False
-_session_ids: set[str] = set()
-
-
-def snapshot_if_needed() -> None:
-    global _snap_active, _snap_whitelist, _snap_blacklist, _snap_inverse
-    if not driver_present():
-        return
-    if _snap_active is None:
-        _snap_active = get_active()
-    if _snap_whitelist is None:
-        _snap_whitelist = get_whitelist()
-    if _snap_blacklist is None:
-        _snap_blacklist = get_blacklist()
-        _hh_log(f"snapshot blacklist count={len(_snap_blacklist)} ids={list(_snap_blacklist)}")
-    if _snap_inverse is None:
-        _snap_inverse = get_inverse()
-        _hh_log(f"snapshot inverse={bool(_snap_inverse)}")
-
-
 def restore_borrowed() -> None:
-    """Put cloak, application list, and device list back, then apply the saved list mode."""
-    global _snap_active, _snap_whitelist, _snap_blacklist, _snap_inverse
-    global _borrowed_active, _borrowed_whitelist, _borrowed_blacklist, _borrowed_inverse
-    if not driver_present():
-        _session_ids.clear()
-        return
+    """Write Gremlin's saved HiDHide settings again. The previous client state is not put back."""
     try:
-        if _borrowed_blacklist and _snap_blacklist is not None:
-            _hh_log(f"restore blacklist count={len(_snap_blacklist)}")
-            set_blacklist(list(_snap_blacklist))
+        apply_saved_list()
     except Exception:
-        _hh_log("restore blacklist failed")
-    try:
-        if _borrowed_whitelist and _snap_whitelist is not None:
-            set_whitelist(list(_snap_whitelist))
-    except Exception:
-        pass
-    try:
-        choice = _apply_saved_list_mode()
-        _hh_log(f"shutdown list mode block={choice}")
-    except Exception:
-        _hh_log("shutdown list mode failed")
-    try:
-        if _borrowed_active and _snap_active is not None:
-            set_active(bool(_snap_active))
-    except Exception:
-        pass
-    _borrowed_active = False
-    _borrowed_whitelist = False
-    _borrowed_blacklist = False
-    _borrowed_inverse = False
-    _session_ids.clear()
-
-
-def add_session_hides(ids: list[str]) -> bool:
-    handle = _open_control()
-    if handle is None:
-        return False
-    try:
-        payload = _encode_multi_sz([i for i in ids if i])
-        _hh_log(f"add session count={len(ids)} bytes={len(payload)} even={len(payload) % 2 == 0} ids={list(ids)}")
-        ok, _ = _ioctl(handle, IOCTL_ADD_SESSION_BLACKLIST, payload, 0)
-        return ok
-    finally:
-        _close(handle)
-
-
-def clear_session_hides() -> bool:
-    handle = _open_control()
-    if handle is None:
-        return False
-    try:
-        ok, _ = _ioctl(handle, IOCTL_CLR_SESSION_BLACKLIST, None, 0)
-        if ok:
-            _session_ids.clear()
-        return ok
-    finally:
-        _close(handle)
+        _hh_log("shutdown apply failed")
 
 
 def _is_virtual(instance: str, name: str) -> bool:
@@ -1521,16 +1535,13 @@ class HidHideModel(QtCore.QObject):
 
     @QtCore.Slot(bool, result=bool)
     def setInverse(self, on: bool) -> bool:
-        global _borrowed_inverse
         if not self._present:
             return False
-        snapshot_if_needed()
         if not set_inverse(bool(on)):
             self._last_error = _ioctl_error or "HiDHide driver call failed."
             self.reload()
             return False
         _save_list_mode(bool(on))
-        _borrowed_inverse = True
         self._inverse = bool(on)
         self._last_error = ""
         self._sync_whitelist()
@@ -1579,21 +1590,16 @@ class HidHideModel(QtCore.QObject):
     def setCloak(self, on: bool) -> bool:
         if not self._present:
             return False
-        global _borrowed_active
-        snapshot_if_needed()
-        self._ensure_gremlin_whitelisted()
         if not set_active(bool(on)):
             return False
-        _borrowed_active = True
+        _save_cloak(bool(on))
         self.reload()
         return True
 
     @QtCore.Slot(str, bool, result=bool)
     def setDeviceHidden(self, instance_id: str, hidden: bool) -> bool:
-        global _borrowed_blacklist
         if not self._present or not instance_id:
             return False
-        snapshot_if_needed()
         group_ids = [instance_id]
         for row in self._devices:
             ids = row.get("instanceIds") or [row.get("instanceId")]
@@ -1601,8 +1607,8 @@ class HidHideModel(QtCore.QObject):
                 group_ids = [str(x) for x in ids if x]
                 break
         drop = {x.upper() for x in group_ids}
-        base = list(_snap_blacklist or [])
-        if _borrowed_blacklist:
+        base = _saved_hidden()
+        if base is None:
             base = get_blacklist()
         kept = [i for i in base if i.upper() not in drop]
         if hidden:
@@ -1612,12 +1618,12 @@ class HidHideModel(QtCore.QObject):
                     kept.append(group_id)
                     have.add(group_id.upper())
         _hh_log(f"set hidden={bool(hidden)} id={instance_id} group={group_ids} blacklist={kept}")
+        _save_hidden(kept)
         if not set_blacklist(kept):
             self._last_error = _ioctl_error or "HiDHide driver call failed."
             _hh_log(f"set blacklist failed: {self._last_error}")
             self.reload()
             return False
-        _borrowed_blacklist = True
         self._last_error = ""
         self.reload()
         return True
@@ -1712,15 +1718,13 @@ class HidHideModel(QtCore.QObject):
 
 
 def apply_saved_list() -> None:
-    """Write the saved program list at startup. Does not wait for the dialog."""
+    """Write Gremlin's saved HiDHide settings. Does not put an older client state back."""
     if not driver_present():
         _hh_log("apply skipped, driver not present")
         return
     _hh_log("apply saved list")
-    snapshot_if_needed()
     inverse = _apply_saved_list_mode()
-    _hh_log(f"startup list mode block={inverse}")
-    base = list(_snap_whitelist or [])
+    _hh_log(f"list mode block={inverse}")
     gremlin = _gremlin_exe()
     gremlin_image = _full_image_name(gremlin)
     drop = set()
@@ -1742,13 +1746,14 @@ def apply_saved_list() -> None:
         _hh_log(f"gremlin path not converted {gremlin}")
     merged = []
     seen = set()
-    for item in list(base) + wanted:
+    for item in wanted:
         key = item.lower()
         if key in seen or not item or key in drop:
             continue
         seen.add(key)
         merged.append(item)
-    global _borrowed_whitelist
     _hh_log(f"whitelist count={len(merged)} inverse={inverse}")
-    if set_whitelist(merged):
-        _borrowed_whitelist = True
+    set_whitelist(merged)
+    _apply_saved_hidden()
+    cloak = _apply_saved_cloak()
+    _hh_log(f"cloak={cloak}")
