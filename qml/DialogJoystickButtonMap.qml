@@ -22,7 +22,7 @@ Window {
     color: Style.background
     Universal.theme: Style.theme
 
-    title: "Joystick Button Map — " + targetName
+    title: targetName.length ? ("Button Mapper — " + targetName) : "Button Mapper"
 
     onClosing: (e) => {
         if (_allowClose || !editing)
@@ -39,6 +39,7 @@ Window {
     property string loadedDevice: ""
     property string pendingDevice: ""
     property string pendingPhoto: ""
+    property bool startBlank: false
     property string stockImage: {
         if (/evo l|ot l/i.test(targetName))
             return "qml/images/vkb_gladiator_evo_l.jpg"
@@ -219,6 +220,8 @@ Window {
     }
 
     function isTarget(guid, name) {
+        if (!targetName.length)
+            return false
         var raw = String(name || "")
         var shown = String(displayName(guid, raw) || "")
         if (raw === targetName || shown === targetName)
@@ -555,6 +558,8 @@ Window {
             }
         } else if (_leaveDlg.kind === "switch") {
             finishSwitch(pendingDevice)
+        } else if (_leaveDlg.kind === "blank") {
+            clearToBlank()
         } else if (_leaveDlg.kind === "appquit") {
             _allowClose = true
             close()
@@ -567,6 +572,8 @@ Window {
         _leaveDlg.close()
         if (_leaveDlg.kind === "switch")
             finishSwitch(pendingDevice)
+        if (_leaveDlg.kind === "blank")
+            clearToBlank()
         if (_leaveDlg.kind === "close" || _leaveDlg.kind === "appquit") {
             _allowClose = true
             close()
@@ -599,11 +606,35 @@ Window {
         liveNodes = []
         workNodes = []
         var img = String(photo || "")
-        if (!img.length)
-            img = stockImage
         liveImage = img
         storedImage = img
-        applyImage(img)
+        photoOverride = img.length ? _hw.imageUrl(img) : ""
+    }
+
+    function clearToBlank() {
+        discardEdit()
+        targetName = ""
+        loadedDevice = ""
+        initialPhoto = ""
+        pendingPhoto = ""
+        pendingDevice = ""
+        showBlank("")
+    }
+
+    function openBlank() {
+        if (editing && isDirty()) {
+            pendingDevice = ""
+            _leaveDlg.kind = "blank"
+            show()
+            raise()
+            requestActivate()
+            _leaveDlg.open()
+            return
+        }
+        clearToBlank()
+        show()
+        raise()
+        requestActivate()
     }
 
     function finishSwitch(next) {
@@ -651,10 +682,16 @@ Window {
         liveNodes = []
         workNodes = []
         resItems = []
-        loadedDevice = targetName
-        if (_devices) {
+        if (_devices)
             _devices.reload()
+        if (startBlank) {
+            targetName = ""
+            loadedDevice = ""
+            initialPhoto = ""
+            showBlank("")
+            return
         }
+        loadedDevice = targetName
         if (!loadLive())
             showBlank(initialPhoto)
     }
@@ -2010,7 +2047,14 @@ Window {
 
                 JGText {
                     anchors.centerIn: parent
-                    visible: !_hasTarget.hit
+                    visible: !targetName.length
+                    text: "Choose a device from the File menu."
+                    opacity: 0.65
+                }
+
+                JGText {
+                    anchors.centerIn: parent
+                    visible: targetName.length > 0 && !_hasTarget.hit
                     text: "Connect " + targetName
                     opacity: 0.65
                 }
