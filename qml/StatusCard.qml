@@ -237,7 +237,7 @@ Rectangle {
             if (didDrag)
                 return
             if (mouse.button === Qt.RightButton)
-                _menu.popup()
+                _menu.popup(_grab, mouse.x, mouse.y)
             else if (shiftHeld || (mouse.modifiers & Qt.ShiftModifier))
                 _card.shiftToggled()
             else
