@@ -262,8 +262,8 @@ def _show_stubs() -> bool:
     return bool(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SHOW_STUBS))
 
 
-def _load_module_doc(device_name: str) -> dict:
-    path = _maps_dir() / f"{resolve_module_slug(device_name)}.json"
+def _load_module_doc(device_name: str, guid: str = "") -> dict:
+    path = _maps_dir() / f"{resolve_module_slug(device_name, guid)}.json"
     if not path.is_file():
         return {}
     try:
@@ -1144,7 +1144,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             hid = int(getattr(event, "identifier", 0) or 0)
         except (TypeError, ValueError):
             return
-        doc = _load_module_doc(row.raw_name or row.name)
+        doc = _load_module_doc(row.raw_name or row.name, row.guid)
         claim = _claim_from_doc(doc) if doc else {}
         has_claim = bool(
             (claim.get("axes") or claim.get("buttons") or claim.get("hats") or claim.get("keys"))
@@ -1217,7 +1217,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             if changed is None:
                 continue
             kind, hid = changed
-            doc = _load_module_doc(row.raw_name or row.name)
+            doc = _load_module_doc(row.raw_name or row.name, row.guid)
             claim = _claim_from_doc(doc) if doc else {}
             self._set_last(row, kind, hid, claim)
 
@@ -1246,7 +1246,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.pid = f"{dev.product_id:04X}"
             row.photo = self._hw.profilePhotoUrl(name)
             if saved:
-                doc = _load_module_doc(name)
+                doc = _load_module_doc(name, str(dev.device_guid))
                 claim = _claim_from_doc(doc)
                 row.is_stub = False
                 row.is_module = True
@@ -1282,7 +1282,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row.status = "Virtual" if direction == "dest" else ("Connected" if saved else "Stub")
             row.photo = self._hw.profilePhotoUrl(name)
             if saved:
-                claim = _claim_from_doc(_load_module_doc(name))
+                claim = _claim_from_doc(_load_module_doc(name, guid))
                 row.buttons = len(claim["buttons"])
                 row.axes = len(claim["axes"])
                 row.hats = len(claim["hats"])
@@ -1311,7 +1311,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             if not row.photo:
                 row.photo = self._hw.profilePhotoUrl("vJoy")
             if row.is_module:
-                claim = _claim_from_doc(_load_module_doc(name))
+                claim = _claim_from_doc(_load_module_doc(name, str(vdev.device_guid)))
                 row.buttons = len(claim["buttons"]) or int(vdev.button_count)
                 row.axes = len(claim["axes"]) or int(vdev.axis_count)
                 row.hats = len(claim["hats"]) or int(vdev.hat_count)
@@ -1401,7 +1401,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._guid = guid or ""
         self._device_name = device_name or ""
         rows: list[dict] = []
-        claim = _claim_from_doc(_load_module_doc(device_name)) if device_name else {
+        claim = _claim_from_doc(_load_module_doc(device_name, guid)) if device_name else {
             "buttons": [],
             "axes": [],
             "hats": [],
@@ -1771,5 +1771,6 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 doc["image"] = f"qml/maps/{resolve_module_slug(name, self._guid)}/{photos[-1].name}"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        bind_module_file(name, self._guid, resolve_module_slug(name, self._guid))
         signal.configChanged.emit()
         return True
