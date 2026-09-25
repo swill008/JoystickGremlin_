@@ -201,7 +201,7 @@ def _open_control():
         ctypes.c_void_p,
     ]
     handle = k32.CreateFileW(
-        "\\.\HidHide",
+        "\\\\.\\HidHide",
         _GENERIC_READ,
         _SHARE,
         None,
