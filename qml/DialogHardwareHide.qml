@@ -221,7 +221,6 @@ Window {
                         id: hideSwitch
                         enabled: _hh.installed && row.canHide
                         checked: !!(row && row.session)
-                        text: "Hide from games"
                         onClicked: {
                             _hh.setDeviceHidden(row.instanceId, hideSwitch.checked)
                             hideSwitch.checked = Qt.binding(function() { return !!(row && row.session) })
