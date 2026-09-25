@@ -82,46 +82,11 @@ ApplicationWindow {
         return card.rawName || card.name || ""
     }
 
-    property string moduleFileLabel: ""
-    property string moduleFileMessage: ""
-    property var moduleFileChoices: []
-    property bool _moduleFileQuiet: false
-
-    function refreshModuleFileLabel() {
-        if (!_moduleModel || !configTitleName.length || configDirection === "dest") {
-            moduleFileLabel = ""
-            moduleFileChoices = []
-            return
-        }
-        var guid = uiState ? uiState.currentDevice : ""
-        var slug = String(_moduleModel.moduleFileFor(guid, configTitleName) || "")
-        var saved = _moduleModel.moduleFileExists(guid, configTitleName)
-        var names = _moduleModel.moduleFileNames(guid, configTitleName) || []
-        var choices = []
-        var pick = 0
-        var i
-        moduleFileLabel = slug + ".json" + (saved ? "" : " (not saved yet)")
-        for (i = 0; i < names.length; i++) {
-            var item = String(names[i] || "")
-            if (!item.length)
-                continue
-            if (item === slug)
-                pick = choices.length
-            choices.push(item + ".json")
-        }
-        _moduleFileQuiet = true
-        moduleFileChoices = choices
-        if (_moduleFilePick)
-            _moduleFilePick.currentIndex = pick
-        _moduleFileQuiet = false
-    }
-
     function openConfigurationForCard(card) {
         if (!uiState || !card)
             return
         _moduleModel.setFocus(card.slug)
         configTitleName = moduleFileName(card)
-        refreshModuleFileLabel()
         refreshDestBound()
         configDirection = card.direction || "source"
         uiState.setCurrentDevice(card.guid)
@@ -422,96 +387,6 @@ ApplicationWindow {
             if (backend) {
                 backend.loadProfile(currentFile)
             }
-        }
-    }
-
-    Dialog {
-        id: _moduleFileDialog
-        title: "Module file"
-        modal: true
-        anchors.centerIn: parent
-        width: 460
-        padding: 16
-        standardButtons: Dialog.Close
-
-        contentItem: ColumnLayout {
-            spacing: 10
-            Label {
-                text: "Current file"
-                color: "#A1A1AA"
-                font.pixelSize: 12
-            }
-            Label {
-                Layout.fillWidth: true
-                text: moduleFileLabel.length ? moduleFileLabel : "None"
-                wrapMode: Text.WordWrap
-                font.pixelSize: 14
-            }
-            Label {
-                Layout.fillWidth: true
-                text: "This stick's inputs and button map use this file."
-                color: "#A1A1AA"
-                wrapMode: Text.WordWrap
-                font.pixelSize: 12
-            }
-            ComboBox {
-                id: _moduleFilePick
-                Layout.fillWidth: true
-                model: moduleFileChoices
-                onActivated: function(index) {
-                    if (_moduleFileQuiet || !_moduleModel)
-                        return
-                    var label = String(currentText || "")
-                    var slug = label.replace(/\.json$/i, "")
-                    _moduleModel.bindModuleFile(uiState.currentDevice, configTitleName, slug)
-                    moduleFileMessage = ""
-                    refreshModuleFileLabel()
-                }
-            }
-            Button {
-                text: "Browse for File"
-                Layout.fillWidth: true
-                onClicked: {
-                    if (_moduleModel)
-                        _moduleLoadDialog.currentFolder = _moduleModel.mapsFolderUrl()
-                    _moduleLoadDialog.open()
-                }
-            }
-            Button {
-                text: "Delete file"
-                Layout.fillWidth: true
-                onClicked: {
-                    if (!_moduleModel)
-                        return
-                    moduleFileMessage = _moduleModel.deleteModuleFile(
-                        uiState.currentDevice, configTitleName)
-                    refreshModuleFileLabel()
-                }
-            }
-            Label {
-                Layout.fillWidth: true
-                visible: moduleFileMessage.length > 0
-                text: moduleFileMessage
-                color: "#F87171"
-                wrapMode: Text.WordWrap
-            }
-        }
-    }
-
-    FileDialog {
-        id: _moduleLoadDialog
-        title: "Browse for file"
-        fileMode: FileDialog.OpenFile
-        nameFilters: ["Module files (*.json)"]
-        onAccepted: {
-            if (!_moduleModel)
-                return
-            var src = selectedFile
-            if (src && src.toString)
-                src = src.toString()
-            moduleFileMessage = _moduleModel.loadModuleFile(
-                uiState.currentDevice, configTitleName, src || "")
-            refreshModuleFileLabel()
         }
     }
 
@@ -1040,15 +915,6 @@ ApplicationWindow {
                     text: "View only — driven by input module mappings."
                     color: "#A1A1AA"
                     font.pixelSize: 12
-                }
-            }
-            Button {
-                visible: configDirection !== "dest" && configTitleName.length > 0
-                text: "Module file"
-                onClicked: {
-                    refreshModuleFileLabel()
-                    moduleFileMessage = ""
-                    _moduleFileDialog.open()
                 }
             }
             Button {
