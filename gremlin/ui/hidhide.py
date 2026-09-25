@@ -187,9 +187,21 @@ def _gremlin_exe() -> str:
 def _open_control():
     if os.name != "nt":
         return None
-    k32 = __import__("ctypes").WinDLL("kernel32", use_last_error=True)
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.restype = ctypes.c_void_p
+    k32.CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+    ]
     handle = k32.CreateFileW(
-        "\\\\.\\HidHide",
+        "\\.\HidHide",
         _GENERIC_READ,
         _SHARE,
         None,
@@ -197,11 +209,9 @@ def _open_control():
         0,
         None,
     )
-    if handle == _INVALID or handle == -1:
+    if not handle or int(handle) in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
         return None
     return handle
-
-
 def _close(handle) -> None:
     if handle:
         __import__("ctypes").windll.kernel32.CloseHandle(handle)
@@ -212,6 +222,17 @@ def _ioctl(handle, code: int, inn: bytes | None = None, out_size: int = 0) -> tu
     from ctypes import wintypes
 
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.DeviceIoControl.restype = wintypes.BOOL
+    k32.DeviceIoControl.argtypes = [
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+        ctypes.c_void_p,
+    ]
     returned = wintypes.DWORD(0)
     in_buf = ctypes.create_string_buffer(inn) if inn else None
     in_len = len(inn) if inn else 0
@@ -299,9 +320,11 @@ def set_active(on: bool) -> bool:
         return False
     try:
         ok, _ = _ioctl(handle, IOCTL_SET_ACTIVE, bytes([1 if on else 0]), 0)
-        return ok
+        if not ok:
+            return False
     finally:
         _close(handle)
+    return bool(get_active()) == bool(on)
 
 
 def get_blacklist() -> list[str]:
@@ -927,7 +950,9 @@ class HidHideModel(QtCore.QObject):
             rows = []
         for row in _enrich_devices(rows):
             item = dict(row)
-            item["hidden"] = item["instanceId"].upper() in hidden
+            ids = [str(x).upper() for x in (item.get("instanceIds") or [item.get("instanceId")]) if x]
+            item["hidden"] = any(i in hidden for i in ids)
+            item["confirmed"] = bool(self._active and item["hidden"])
             self._devices.append(item)
         self._games = _load_games()
         self.changed.emit()
