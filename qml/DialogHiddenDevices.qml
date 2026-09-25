@@ -40,6 +40,7 @@ Window {
         id: _list
         anchors.fill: parent
         anchors.margins: 12
+        anchors.bottomMargin: 58
         model: hiddenRows
         delegate: RowLayout {
             width: ListView.view.width
@@ -60,5 +61,11 @@ Window {
         visible: _list.count === 0
         text: "No hidden devices."
         color: "#A1A1AA"
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
