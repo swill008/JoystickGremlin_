@@ -72,6 +72,7 @@ Item {
             name: m.cardName || m.name,
             rawName: m.rawName,
             guid: m.guid,
+            photo: m.photo || "",
             direction: m.direction,
             status: m.status,
             bus: m.bus,
@@ -475,17 +476,12 @@ Item {
                 id: _split
                 model: ["None", "Vertical", "Horizontal"]
                 implicitWidth: 140
-                function syncFromModel() {
+                currentIndex: {
                     var mode = _page.model ? _page.model.splitMode : "none"
-                    var idx = 0
-                    if (mode === "vertical")
-                        idx = 1
-                    else if (mode === "horizontal")
-                        idx = 2
-                    if (currentIndex !== idx)
-                        currentIndex = idx
+                    if (mode === "vertical") return 1
+                    if (mode === "horizontal") return 2
+                    return 0
                 }
-                Component.onCompleted: syncFromModel()
                 onActivated: {
                     if (!_page.model)
                         return
@@ -497,19 +493,10 @@ Item {
         SplitView {
             id: _splitView
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: visible
             visible: _page.model && _page.model.splitMode !== "none"
             orientation: (_page.model && _page.model.splitMode === "horizontal") ? Qt.Vertical : Qt.Horizontal
-            handle: Item {
-                implicitWidth: 16
-                implicitHeight: 16
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: parent.width >= parent.height ? parent.width : 2
-                    height: parent.height >= parent.width ? parent.height : 2
-                    color: "#52525B"
-                }
-            }
+            handle: Rectangle { implicitWidth: 8; implicitHeight: 8; color: "#52525B" }
 
             property bool applying: false
 
@@ -520,17 +507,10 @@ Item {
                 var r = _page.model.splitRatio
                 if (!(r > 0))
                     r = 0.5
-                if (orientation === Qt.Horizontal) {
-                    var minW = Math.max(_inputPane.SplitView.minimumWidth, 180)
-                    var otherMin = Math.max(_outputPane.SplitView.minimumWidth, 180)
-                    var maxW = Math.max(minW, width - otherMin - 16)
-                    _inputPane.SplitView.preferredWidth = Math.round(Math.min(maxW, Math.max(minW, width * r)))
-                } else {
-                    var minH = Math.max(_inputPane.SplitView.minimumHeight, 280)
-                    var otherMinH = Math.max(_outputPane.SplitView.minimumHeight, 280)
-                    var maxH = Math.max(minH, height - otherMinH - 16)
-                    _inputPane.SplitView.preferredHeight = Math.round(Math.min(maxH, Math.max(minH, height * r)))
-                }
+                if (orientation === Qt.Horizontal)
+                    _inputPane.SplitView.preferredWidth = Math.round(width * r)
+                else
+                    _inputPane.SplitView.preferredHeight = Math.round(height * r)
                 applying = false
             }
 
@@ -554,13 +534,15 @@ Item {
             onVisibleChanged: {
                 if (visible)
                     Qt.callLater(applyRatio)
+                else
+                    saveRatio()
             }
             onResizingChanged: if (!resizing) saveRatio()
 
             StatusPane {
                 id: _inputPane
                 SplitView.minimumWidth: 180
-                SplitView.minimumHeight: 280
+                SplitView.minimumHeight: 120
                 title: "Input modules"
                 direction: "source"
                 onWidthChanged: if (_splitView.visible && !_splitView.applying) _ratioSave.restart()
@@ -569,7 +551,7 @@ Item {
             StatusPane {
                 id: _outputPane
                 SplitView.minimumWidth: 180
-                SplitView.minimumHeight: 280
+                SplitView.minimumHeight: 120
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
                 title: "Output modules"
@@ -580,7 +562,7 @@ Item {
         StatusPane {
             id: _allPane
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.fillHeight: visible
             visible: !_page.model || _page.model.splitMode === "none"
             title: ""
             direction: ""
@@ -602,7 +584,6 @@ Item {
             visible: _page.dragPhoto && _page.dragPhoto.length
             asynchronous: true
             cache: true
-            sourceSize.width: 640
         }
 
         Label {
@@ -631,11 +612,7 @@ Item {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.topMargin: 12
-            anchors.bottomMargin: 8
-            anchors.leftMargin: 4
-            anchors.rightMargin: 4
-            spacing: 8
+            spacing: 6
 
             Label {
                 visible: _pane.title.length
@@ -685,7 +662,7 @@ Item {
                 Flow {
                     id: _flow
                     width: _flick.width
-                    spacing: 20
+                    spacing: 16
 
                     Repeater {
                         id: _piles
@@ -724,25 +701,19 @@ Item {
                                 var saved = _page.model ? _page.model.cardHeight(modelData) : 0
                                 return saved >= 140 ? saved : 0
                             }
-                            property int liveH: 0
                             property int ghostPad: showGhost ? _page.ghostW + 16 : 0
-
-                            function noteCardSize(w, h) {
-                                var hh = Math.max(Math.round(h), 0)
-                                if (hh > liveH)
-                                    liveH = hh
-                            }
 
                             width: isDragHome ? 0 : (cardW + extra + ghostPad)
                             height: {
                                 if (isDragHome)
                                     return Math.max(1, _page.ghostH)
-                                var h = Math.max(cardH, liveH, 280) + extra
+                                var c = _memberCards.itemAt(0)
+                                var need = (c && c.implicitHeight > 0) ? Math.round(c.implicitHeight) : 260
+                                var h = Math.max(cardH >= 140 ? cardH : 0, need) + extra
                                 if (showGhost)
                                     h = Math.max(h, _page.ghostH)
                                 return h
                             }
-                            onMembersChanged: liveH = 0
                             z: dragging || isDragHome ? 10000 : 0
                             clip: false
 
@@ -779,8 +750,6 @@ Item {
                                     height: Math.max(_pile.cardH > 0 ? _pile.cardH : 0, implicitHeight)
                                     stretchPhoto: _pile.cardH >= 140
                                     dropStacking: false
-                                    onHeightChanged: _pile.noteCardSize(width, height)
-                                    onImplicitHeightChanged: _pile.noteCardSize(width, implicitHeight)
                                     opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1
                                     onLiftingChanged: {
                                         if (lifting)
@@ -791,7 +760,6 @@ Item {
                                     Component.onCompleted: {
                                         _page.fillCard(_card, modelData)
                                         _page.bindCard(_card)
-                                        _pile.noteCardSize(width, Math.max(height, implicitHeight))
                                     }
                                 }
                             }
@@ -832,7 +800,6 @@ Item {
                 visible: _page.dragPhoto && _page.dragPhoto.length
                 asynchronous: true
                 cache: true
-                sourceSize.width: 640
             }
 
             Label {
@@ -866,10 +833,8 @@ Item {
         target: model
         function onPanesChanged() {
             _page.pileRev++
-        }
-        function onSplitModeChanged() {
-            if (_split)
-                _split.syncFromModel()
+            if (_splitView.visible)
+                Qt.callLater(_splitView.applyRatio)
         }
         function onClaimsChanged() {
             Qt.callLater(_page.refreshCards)
