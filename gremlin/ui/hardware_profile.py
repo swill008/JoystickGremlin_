@@ -410,6 +410,22 @@ class HardwareProfile(QtCore.QObject):
         payload.pop("worldRev", None)
         payload["photo"] = _photo_pose(payload.get("photo"))
         payload = self._pack_assets(name, payload)
+        if path.is_file():
+            try:
+                existing = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                existing = {}
+            if isinstance(existing, dict):
+                for key in (
+                    "claim",
+                    "direction",
+                    "boundGuidLocal",
+                    "boundName",
+                    "view",
+                    "catalog",
+                ):
+                    if key in existing and key not in payload:
+                        payload[key] = existing[key]
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         self._path = str(path)
