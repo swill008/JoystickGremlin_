@@ -92,7 +92,12 @@ def _frame_margins(window: QtGui.QWindow | None) -> QtCore.QMargins:
 def _fit_client(
     saved: QtCore.QRect, screen: QtGui.QScreen, window: QtGui.QWindow | None
 ) -> QtCore.QRect:
-    """Client rect that fits inside availableGeometry after window chrome."""
+    """Center the outer frame on the work area.
+
+    availableGeometry already excludes the taskbar. setGeometry is the client
+    rect; the native title bar sits above it (frame margin). The QML menu bar
+    is inside the client height, so it is part of the box being centered.
+    """
     avail = screen.availableGeometry()
     margins = _frame_margins(window)
     slack = 2
@@ -102,18 +107,11 @@ def _fit_client(
     height = min(max(int(saved.height() or DEFAULT_H), MIN_H), max_h)
     frame_w = width + margins.left() + margins.right()
     frame_h = height + margins.top() + margins.bottom()
-    min_x = avail.x()
-    min_y = avail.y()
-    max_x = avail.x() + max(0, avail.width() - frame_w)
-    max_y = avail.y() + max(0, avail.height() - frame_h)
-    x = int(saved.x())
-    y = int(saved.y())
-    if x < min_x or x > max_x:
-        x = avail.x() + max(0, (avail.width() - frame_w) // 2)
-    if y < min_y or y > max_y:
-        y = avail.y() + max(0, (avail.height() - frame_h) // 2)
-    x = min(max(x, min_x), max_x)
-    y = min(max(y, min_y), max_y)
+    frame_x = avail.x() + max(0, (avail.width() - frame_w) // 2)
+    frame_y = avail.y() + max(0, (avail.height() - frame_h) // 2)
+    # Client origin is inset from the frame so the title bar stays on screen.
+    x = frame_x + margins.left()
+    y = frame_y + margins.top()
     return QtCore.QRect(int(x), int(y), int(width), int(height))
 
 
