@@ -6491,7 +6491,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.margins: 6
         z: 9
-        visible: _ed.interactive
+        visible: _ed.interactive && text.length
         color: "#A1A1AA"
         font.pixelSize: 10
         text: {
@@ -6513,7 +6513,7 @@ Item {
                 var who = mem ? (_ed.roleWord(_ed.fiveWayRole(mem)) || "cell") : "group"
                 return "Edit group " + _ed.groupEditId + " · " + who + ". Drag a cell to nudge. Esc done."
             }
-            return "Right-click Chip / Draw / Group / Leader. Edit group to style or drag one cell."
+            return ""
         }
     }
 
