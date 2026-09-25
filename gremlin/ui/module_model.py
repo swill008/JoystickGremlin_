@@ -24,7 +24,12 @@ from gremlin.ui.hardware_profile import (
     _maps_dir,
     _slug,
     bind_module_file,
+    delete_module_file,
+    load_module_file,
+    maps_folder_url,
     module_file_choices,
+    module_file_exists,
+    rename_module_file,
     resolve_module_slug,
     save_module_file_as,
 )
@@ -1089,6 +1094,39 @@ class ModuleListModel(QtCore.QAbstractListModel):
             signal.configChanged.emit()
             self._refresh_inplace()
         return slug
+
+    @QtCore.Slot(result=str)
+    def mapsFolderUrl(self) -> str:
+        return maps_folder_url()
+
+    @QtCore.Slot(str, str, result=bool)
+    def moduleFileExists(self, guid: str, device_name: str) -> bool:
+        return module_file_exists(device_name, guid)
+
+    @QtCore.Slot(str, str, str, result=str)
+    def loadModuleFile(self, guid: str, device_name: str, source_url: str) -> str:
+        slug = load_module_file(device_name, guid, source_url)
+        if not slug:
+            return "That file could not be loaded."
+        signal.configChanged.emit()
+        self._refresh_inplace()
+        return ""
+
+    @QtCore.Slot(str, str, str, result=str)
+    def renameModuleFile(self, guid: str, device_name: str, file_name: str) -> str:
+        message = rename_module_file(device_name, guid, file_name)
+        if not message:
+            signal.configChanged.emit()
+            self._refresh_inplace()
+        return message
+
+    @QtCore.Slot(str, str, result=str)
+    def deleteModuleFile(self, guid: str, device_name: str) -> str:
+        message = delete_module_file(device_name, guid)
+        if not message:
+            signal.configChanged.emit()
+            self._refresh_inplace()
+        return message
 
     def _on_joy(self, event: event_handler.Event) -> None:
         if event is None:
