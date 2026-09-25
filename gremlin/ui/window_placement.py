@@ -20,15 +20,11 @@ KEY_W = "window-width"
 KEY_H = "window-height"
 KEY_MAX = "window-maximized"
 KEY_CATALOG_PANEL = "catalog-display-options-open"
-KEY_MENU_W = "button-map-menu-width"
-KEY_MENU_H = "button-map-menu-height"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
 MIN_W = 900
 MIN_H = 600
-DEFAULT_MENU_W = 240
-DEFAULT_MENU_H = 560
 
 
 def _ensure() -> Configuration:
@@ -40,8 +36,6 @@ def _ensure() -> Configuration:
         (KEY_H, PropertyType.Int, DEFAULT_H),
         (KEY_MAX, PropertyType.Bool, False),
         (KEY_CATALOG_PANEL, PropertyType.Bool, False),
-        (KEY_MENU_W, PropertyType.Int, DEFAULT_MENU_W),
-        (KEY_MENU_H, PropertyType.Int, DEFAULT_MENU_H),
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
@@ -177,17 +171,3 @@ class WindowPlacement(QtCore.QObject):
     @QtCore.Slot(bool)
     def setCatalogPanelOpen(self, open_: bool) -> None:
         _ensure().set(SECTION, GROUP, KEY_CATALOG_PANEL, bool(open_))
-
-    @QtCore.Slot(result=int)
-    def buttonMapMenuWidth(self) -> int:
-        return int(_ensure().value(SECTION, GROUP, KEY_MENU_W) or DEFAULT_MENU_W)
-
-    @QtCore.Slot(result=int)
-    def buttonMapMenuHeight(self) -> int:
-        return int(_ensure().value(SECTION, GROUP, KEY_MENU_H) or DEFAULT_MENU_H)
-
-    @QtCore.Slot(int, int)
-    def saveButtonMapMenuSize(self, width: int, height: int) -> None:
-        cfg = _ensure()
-        cfg.set(SECTION, GROUP, KEY_MENU_W, max(180, min(900, int(width))))
-        cfg.set(SECTION, GROUP, KEY_MENU_H, max(160, min(1000, int(height))))
