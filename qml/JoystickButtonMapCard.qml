@@ -52,15 +52,11 @@ Item {
 
     HardwareProfile { id: _inventory }
 
-    property var chipRows: []
-
-    function reloadChips() {
-        chipRows = _inventory.chips(deviceGuid) || []
+    property var chipRows: {
+        var _stamp = liveStamp
+        var _guid = deviceGuid
+        return _inventory.chips(_guid) || []
     }
-
-    onDeviceGuidChanged: reloadChips()
-    onLiveStampChanged: reloadChips()
-    Component.onCompleted: reloadChips()
 
     function hwAxis(id) {
         if (!_live) {
