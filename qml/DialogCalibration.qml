@@ -50,6 +50,7 @@ Window {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.bottomMargin: 58
         anchors.leftMargin: 10
 
         RowLayout {
@@ -302,5 +303,11 @@ Window {
         from: -32768
         to: 32767
         value: 0
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
