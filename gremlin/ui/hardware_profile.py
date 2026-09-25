@@ -54,19 +54,142 @@ def _maps_dir() -> Path:
     return path
 
 
-def _slug(device_name: str) -> str:
-    raw = (device_name or "device").strip().lower()
-    if "gladiator" in raw and ("evo r" in raw or "ot r" in raw):
-        return "vkb_evo_r"
-    if "gladiator" in raw and ("evo l" in raw or "ot l" in raw):
-        return "vkb_evo_l"
+def _plain_slug(device_name: str) -> str:
+    raw = (device_name or "").strip().lower()
+    if raw.endswith(".json"):
+        raw = raw[:-5]
     out = []
     for ch in raw:
         if ch.isalnum():
             out.append(ch)
         elif out and out[-1] != "_":
             out.append("_")
-    return "".join(out).strip("_") or "device"
+    return "".join(out).strip("_")
+
+
+def _slug(device_name: str) -> str:
+    raw = (device_name or "device").strip().lower()
+    if "gladiator" in raw and "ot" not in raw and ("evo r" in raw):
+        return "vkb_evo_r"
+    if "gladiator" in raw and "ot" not in raw and ("evo l" in raw):
+        return "vkb_evo_l"
+    return _plain_slug(device_name) or "device"
+
+
+def _norm_guid(value: object) -> str:
+    return str(value or "").upper().replace("{", "").replace("}", "").replace("-", "")
+
+
+def _guid_for_name(device_name: str) -> str:
+    wanted = (device_name or "").strip().lower()
+    if not wanted:
+        return ""
+    try:
+        from gremlin import device_initialization
+        devices = list(device_initialization.physical_devices() or [])
+        devices.extend(device_initialization.vjoy_devices() or [])
+    except Exception:
+        devices = []
+    for dev in devices:
+        name = str(getattr(dev, "name", "") or "")
+        if name.strip().lower() != wanted:
+            continue
+        return _norm_guid(getattr(dev, "device_guid", ""))
+    return ""
+
+
+def _binding_store() -> dict[str, str]:
+    from gremlin.config import Configuration
+    from gremlin.types import PropertyType
+
+    cfg = Configuration()
+    section, group, name = "global", "internal", "module-file-bindings"
+    if not cfg.exists(section, group, name):
+        cfg.register(
+            section,
+            group,
+            name,
+            PropertyType.String,
+            "{}",
+            "Input module file chosen for each device.",
+            {},
+            False,
+        )
+    try:
+        data = json.loads(cfg.value(section, group, name) or "{}")
+    except (TypeError, json.JSONDecodeError):
+        data = {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(key): str(value) for key, value in data.items() if key and value}
+
+
+def _write_bindings(data: dict[str, str]) -> None:
+    from gremlin.config import Configuration
+
+    _binding_store()
+    Configuration().set("global", "internal", "module-file-bindings", json.dumps(data))
+
+
+def resolve_module_slug(device_name: str, guid: str = "") -> str:
+    key = _norm_guid(guid) or _guid_for_name(device_name)
+    if key:
+        bound = _binding_store().get(key, "")
+        if bound:
+            return _plain_slug(bound) or _slug(device_name)
+    return _slug(device_name)
+
+
+def module_file_choices(device_name: str, guid: str = "") -> list[str]:
+    names = sorted(path.stem for path in _maps_dir().glob("*.json") if path.is_file())
+    current = resolve_module_slug(device_name, guid)
+    if current and current not in names:
+        names.append(current)
+        names.sort()
+    return names
+
+
+def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
+    slug = _plain_slug(file_name)
+    key = _norm_guid(guid) or _guid_for_name(device_name)
+    if not slug or not key:
+        return ""
+    data = _binding_store()
+    data[key] = slug
+    _write_bindings(data)
+    return slug
+
+
+def save_module_file_as(device_name: str, guid: str, file_name: str) -> str:
+    slug = _plain_slug(file_name)
+    if not slug:
+        return ""
+    src = _maps_dir() / f"{resolve_module_slug(device_name, guid)}.json"
+    dest = _maps_dir() / f"{slug}.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if src.is_file() and src.resolve() != dest.resolve():
+        shutil.copy2(src, dest)
+    elif not dest.is_file():
+        dest.write_text(
+            json.dumps(
+                {
+                    "kind": "control.hardware",
+                    "device": device_name,
+                    "claim": {
+                        "buttons": [],
+                        "axes": [],
+                        "hats": [],
+                        "keys": [],
+                        "friendly": {},
+                    },
+                    "nodes": [],
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    return bind_module_file(device_name, guid, slug)
 
 
 def _stock_photo() -> Path:
@@ -267,10 +390,10 @@ class HardwareProfile(QtCore.QObject):
         self._peek_photo = ""
 
     def _file_for(self, device_name: str) -> Path:
-        return _maps_dir() / f"{_slug(device_name)}.json"
+        return _maps_dir() / f"{resolve_module_slug(device_name)}.json"
 
     def _profile_dir(self, device_name: str) -> Path:
-        path = _maps_dir() / _slug(device_name)
+        path = _maps_dir() / resolve_module_slug(device_name)
         path.mkdir(parents=True, exist_ok=True)
         return path
 
