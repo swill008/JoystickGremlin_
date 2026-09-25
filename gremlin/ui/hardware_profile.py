@@ -173,6 +173,7 @@ def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
     if name_key:
         data[name_key] = slug
     _write_bindings(data)
+    print(f"Persist bind file name={device_name!r} guid={guid!r} slug={slug!r}", flush=True)
     return slug
 
 
@@ -633,6 +634,10 @@ class HardwareProfile(QtCore.QObject):
             self._text = path.read_text(encoding="utf-8")
         else:
             self._text = ""
+        print(
+            f"Persist map load name={name!r} guid={self._device_guid!r} path={path} bytes={len(self._text)}",
+            flush=True,
+        )
         self.documentChanged.emit()
         return self._text
 
@@ -672,6 +677,14 @@ class HardwareProfile(QtCore.QObject):
                         payload[key] = existing[key]
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        kept = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
+        print(
+            f"Persist map save name={name!r} guid={self._device_guid!r} path={path} "
+            f"nodes={len(payload.get('nodes') or [])} "
+            f"claimButtons={len(kept.get('buttons') or [])} "
+            f"claimAxes={len(kept.get('axes') or [])}",
+            flush=True,
+        )
         self._path = str(path)
         self._text = path.read_text(encoding="utf-8")
         self.pathChanged.emit()
@@ -699,6 +712,7 @@ class HardwareProfile(QtCore.QObject):
         payload["ui"] = incoming.get("ui", payload.get("ui") or {})
         payload.pop("worldRev", None)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        print(f"Persist map ui name={name!r} guid={self._device_guid!r} path={path}", flush=True)
         self._path = str(path)
         self._text = path.read_text(encoding="utf-8")
         self.pathChanged.emit()
@@ -779,6 +793,7 @@ class HardwareProfile(QtCore.QObject):
         doc["image"] = rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        print(f"Persist photo name={name!r} guid={self._device_guid!r} path={path} image={rel!r}", flush=True)
         self._path = str(path)
         self.pathChanged.emit()
         self.documentChanged.emit()
@@ -971,6 +986,7 @@ class HardwareProfile(QtCore.QObject):
             return json.dumps({"ok": False, "error": "Profile JSON is not valid."})
         payload = self._pack_assets(name, payload)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        print(f"Persist export rewrite name={name!r} guid={self._device_guid!r} path={path}", flush=True)
         packed = json.loads(json.dumps(payload))
         packed.pop("boundGuidLocal", None)
         files = []
