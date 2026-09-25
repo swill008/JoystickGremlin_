@@ -801,7 +801,6 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     out = list(groups.values())
     for row in out:
         row.pop("sawOpen", None)
-    out.sort(key=lambda r: r["name"].lower())
     stats["rows"] = len(out)
     _WALK_STATS = dict(stats)
     return out
@@ -1038,6 +1037,11 @@ class HidHideModel(QtCore.QObject):
         self._active = get_active() if self._present else False
         self._inverse = get_inverse() if self._present else False
         persistent = {i.upper() for i in get_blacklist()} if self._present else set()
+        prior_index = {}
+        for old in self._devices:
+            for raw in old.get("instanceIds") or [old.get("instanceId")]:
+                if raw:
+                    prior_index.setdefault(str(raw).upper(), len(prior_index))
         self._devices = []
         try:
             rows = list_hid_devices(self._gaming_only)
@@ -1045,6 +1049,7 @@ class HidHideModel(QtCore.QObject):
             import traceback
             traceback.print_exc()
             rows = []
+        built = []
         for row in _enrich_devices(rows):
             item = dict(row)
             ids = [str(x).upper() for x in (item.get("instanceIds") or [item.get("instanceId")]) if x]
@@ -1052,7 +1057,14 @@ class HidHideModel(QtCore.QObject):
             item["clientBlocked"] = item["session"]
             item["hidden"] = item["session"]
             item["confirmed"] = bool(self._active and item["hidden"])
-            self._devices.append(item)
+            built.append(item)
+        order = []
+        for index, item in enumerate(built):
+            ids = [str(x).upper() for x in (item.get("instanceIds") or [item.get("instanceId")]) if x]
+            seen = [prior_index[i] for i in ids if i in prior_index]
+            order.append((min(seen) if seen else len(prior_index) + index, index, item))
+        order.sort(key=lambda part: (part[0], part[1]))
+        self._devices = [part[2] for part in order]
         self._games = _load_games()
         self._generation += 1
         _hh_log(
