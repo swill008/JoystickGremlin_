@@ -63,6 +63,60 @@ Window {
         anchors.margins: 16
         spacing: 10
 
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: driverRow.implicitHeight + 20
+            radius: 3
+            color: "#111113"
+            border.color: "#3F3F46"
+
+            RowLayout {
+                id: driverRow
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.margins: 10
+                spacing: 10
+                Rectangle {
+                    width: 8
+                    height: 8
+                    radius: 4
+                    Layout.alignment: Qt.AlignVCenter
+                    color: _hh.installed ? "#22C55E" : "#A1A1AA"
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Label {
+                        color: "#E4E4E7"
+                        text: _hh.installed ? "HidHide driver found" : "HidHide is not installed"
+                    }
+                    Label {
+                        visible: _hh.driverVersion.length > 0
+                        color: "#A1A1AA"
+                        font.pixelSize: 11
+                        text: _hh.driverVersion
+                    }
+                }
+                Switch {
+                    id: cloakSwitch
+                    enabled: _hh.installed
+                    checked: _hh.cloakOn
+                    text: "HiDHide Enabled"
+                    onClicked: {
+                        _hh.setCloak(cloakSwitch.checked)
+                        cloakSwitch.checked = Qt.binding(function() { return _hh.cloakOn })
+                    }
+                }
+                Switch {
+                    id: _gamingOnly
+                    checked: _hh.gamingOnly
+                    text: "Gaming devices only"
+                    onClicked: _hh.setGamingOnly(_gamingOnly.checked)
+                }
+            }
+        }
+
         Label {
             text: "Hardware Hide"
             color: "#E4E4E7"
@@ -91,47 +145,6 @@ Window {
             color: "#A1A1AA"
             font.pixelSize: 12
             text: "HiDHide Enabled means HidHide enforces the device list and the program list. Off means HidHide is installed but HidHide is not hiding anything."
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: 44
-            radius: 3
-            color: "#111113"
-            border.color: "#3F3F46"
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 10
-                Rectangle {
-                    width: 8
-                    height: 8
-                    radius: 4
-                    color: _hh.installed ? "#22C55E" : "#A1A1AA"
-                }
-                Label {
-                    Layout.fillWidth: true
-                    color: "#E4E4E7"
-                    text: _hh.installed ? "HidHide driver found" : "HidHide is not installed"
-                }
-                Switch {
-                    id: cloakSwitch
-                    enabled: _hh.installed
-                    checked: _hh.cloakOn
-                    text: "HiDHide Enabled"
-                    onClicked: {
-                        _hh.setCloak(cloakSwitch.checked)
-                        cloakSwitch.checked = Qt.binding(function() { return _hh.cloakOn })
-                    }
-                }
-                Switch {
-                    id: _gamingOnly
-                    checked: _hh.gamingOnly
-                    text: "Gaming devices only"
-                    onClicked: _hh.setGamingOnly(_gamingOnly.checked)
-                }
-            }
         }
 
         Label {
