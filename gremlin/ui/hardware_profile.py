@@ -21,37 +21,6 @@ QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
 _IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
-_MAX_PHOTO_SIDE = 1600
-
-
-def limit_image_file(src: Path, dest: Path, max_side: int = _MAX_PHOTO_SIDE) -> None:
-    """Copy an image, scaling it down when the long side is larger than max_side."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    from PySide6 import QtGui
-
-    image = QtGui.QImage(str(src))
-    if image.isNull() or max(image.width(), image.height()) <= max_side:
-        if dest.resolve() != src.resolve():
-            shutil.copy2(src, dest)
-        return
-    scaled = image.scaled(
-        max_side,
-        max_side,
-        QtCore.Qt.AspectRatioMode.KeepAspectRatio,
-        QtCore.Qt.TransformationMode.SmoothTransformation,
-    )
-    formats = {
-        ".jpg": "JPEG",
-        ".jpeg": "JPEG",
-        ".png": "PNG",
-        ".webp": "WEBP",
-        ".bmp": "BMP",
-    }
-    fmt = formats.get(dest.suffix.lower(), "JPEG")
-    quality = 85 if fmt == "JPEG" else -1
-    if not scaled.save(str(dest), fmt, quality):
-        if dest.resolve() != src.resolve():
-            shutil.copy2(src, dest)
 
 
 def _photo_pose(raw) -> dict:
@@ -87,9 +56,9 @@ def _maps_dir() -> Path:
 
 def _slug(device_name: str) -> str:
     raw = (device_name or "device").strip().lower()
-    if "gladiator" in raw and ("evo r" in raw or "ot r" in raw):
+    if "gladiator" in raw and "ot" not in raw and ("evo r" in raw):
         return "vkb_evo_r"
-    if "gladiator" in raw and ("evo l" in raw or "ot l" in raw):
+    if "gladiator" in raw and "ot" not in raw and ("evo l" in raw):
         return "vkb_evo_l"
     out = []
     for ch in raw:
@@ -122,6 +91,164 @@ def _safe_name(name: str, fallback: str = "image.jpg") -> str:
     if Path(out).suffix.lower() not in _IMAGE_EXT:
         out = out + Path(fallback).suffix
     return out
+
+
+def _explicit_ids(claim: dict, key: str) -> list[int]:
+    raw = claim.get(key) if isinstance(claim, dict) else None
+    ids: list[int] = []
+    for item in raw or []:
+        try:
+            number = int(item)
+        except (TypeError, ValueError):
+            continue
+        if number > 0:
+            ids.append(number)
+    return sorted(set(ids))
+
+
+def _device_input_ids(guid: str) -> tuple[list[int], list[int], list[int]]:
+    buttons: list[int] = []
+    axes: list[int] = []
+    hats: list[int] = []
+    try:
+        import dill
+        info = dill.DILL.get_device_information_by_guid(dill.GUID.from_str(guid))
+    except Exception:
+        info = None
+    if info is None:
+        return buttons, axes, hats
+    try:
+        button_count = int(getattr(info, "button_count", 0) or 0)
+    except (TypeError, ValueError):
+        button_count = 0
+    buttons = list(range(1, button_count + 1))
+    try:
+        hat_count = int(getattr(info, "hat_count", 0) or 0)
+    except (TypeError, ValueError):
+        hat_count = 0
+    hats = list(range(1, hat_count + 1))
+    for entry in getattr(info, "axis_map", None) or []:
+        index = getattr(entry, "axis_index", None)
+        if index is None and isinstance(entry, dict):
+            index = entry.get("axis_index")
+        try:
+            number = int(index)
+        except (TypeError, ValueError):
+            continue
+        if number > 0:
+            axes.append(number)
+    if not axes:
+        try:
+            axis_count = int(getattr(info, "axis_count", 0) or 0)
+        except (TypeError, ValueError):
+            axis_count = 0
+        axes = list(range(1, axis_count + 1))
+    return buttons, sorted(set(axes)), hats
+
+
+def _profile_input_ids(guid: str) -> tuple[list[int], list[int], list[int]]:
+    from gremlin.types import InputType
+    from gremlin.ui import input_pairing as pairing
+
+    buttons: list[int] = []
+    axes: list[int] = []
+    hats: list[int] = []
+    for item in pairing._items_for_guid(guid):
+        try:
+            number = int(item.input_id)
+        except (TypeError, ValueError):
+            continue
+        if number <= 0:
+            continue
+        kind = getattr(item, "input_type", None)
+        if kind == InputType.JoystickAxis:
+            axes.append(number)
+        elif kind == InputType.JoystickHat:
+            hats.append(number)
+        elif kind == InputType.JoystickButton:
+            buttons.append(number)
+    return sorted(set(buttons)), sorted(set(axes)), sorted(set(hats))
+
+
+def _output_labels(item) -> str:
+    from gremlin.ui import input_pairing as pairing
+
+    labels: list[str] = []
+    seen: set[str] = set()
+
+    def add(text: object) -> None:
+        label = str(text or "").strip()
+        if not label or label in seen:
+            return
+        seen.add(label)
+        labels.append(label)
+
+    for text in pairing._dest_labels_for_item(item):
+        add(text)
+    if item is None:
+        return ""
+    for seq in getattr(item, "action_sequences", []) or []:
+        root = getattr(seq, "root_action", None)
+        if root is None:
+            continue
+        for action in pairing._walk_actions(root):
+            tag = str(getattr(action, "tag", "") or "")
+            if tag in ("", "root", "map-to-vjoy", "map-to-xbox"):
+                continue
+            add(getattr(action, "name", "") or tag.replace("-", " "))
+    return " + ".join(labels)
+
+
+def _label_for(guid: str, kind: str, hw_id: int) -> str:
+    from gremlin.types import InputType
+    from gremlin.ui import input_pairing as pairing
+
+    wanted = {
+        "axis": InputType.JoystickAxis,
+        "hat": InputType.JoystickHat,
+    }.get(kind, InputType.JoystickButton)
+    labels: list[str] = []
+    for item in pairing._items_for_guid(guid):
+        try:
+            number = int(item.input_id)
+        except (TypeError, ValueError):
+            continue
+        if number != hw_id or getattr(item, "input_type", None) != wanted:
+            continue
+        text = _output_labels(item)
+        if text:
+            labels.append(text)
+    return " + ".join(labels)
+
+
+def chips_for_guid(guid: str) -> list[dict]:
+    """One chip per input this device's module reports, labeled from its outputs."""
+    text = str(guid or "").strip()
+    if not text:
+        return []
+    from gremlin.ui import input_pairing as pairing
+    from gremlin.ui.module_model import _load_module_doc
+
+    name = pairing._device_name(text)
+    doc = _load_module_doc(name) if name else {}
+    claim = doc.get("claim") if isinstance(doc, dict) and isinstance(doc.get("claim"), dict) else {}
+    reported = _device_input_ids(text)
+    stored = _profile_input_ids(text)
+    groups = (
+        ("btn", _explicit_ids(claim, "buttons"), reported[0], stored[0]),
+        ("axis", _explicit_ids(claim, "axes"), reported[1], stored[1]),
+        ("hat", _explicit_ids(claim, "hats"), reported[2], stored[2]),
+    )
+    rows: list[dict] = []
+    for kind, claimed, live, saved in groups:
+        ids = claimed or live or saved
+        for hw_id in ids:
+            rows.append({
+                "kind": kind,
+                "hwId": int(hw_id),
+                "dest": _label_for(text, kind, int(hw_id)),
+            })
+    return rows
 
 
 @ta.QmlElement
@@ -243,6 +370,10 @@ class HardwareProfile(QtCore.QObject):
     def defaultExportUrl(self, device_name: str) -> str:
         path = _maps_dir() / f"{_slug(device_name)}_map.zip"
         return path.as_uri()
+
+    @QtCore.Slot(str, result="QVariant")
+    def chips(self, guid: str):
+        return chips_for_guid(guid)
 
     @QtCore.Slot(str, result=str)
     def slugFor(self, device_name: str) -> str:
@@ -369,7 +500,7 @@ class HardwareProfile(QtCore.QObject):
                 except OSError:
                     pass
         try:
-            limit_image_file(src, dest)
+            self._copy_file(src, dest)
         except OSError:
             dest = folder / f"photo_{src.stem}{ext}"
             self._copy_file(src, dest)
