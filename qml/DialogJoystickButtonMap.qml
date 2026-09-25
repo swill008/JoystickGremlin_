@@ -35,9 +35,19 @@ Window {
     }
 
     property string targetName: "VKBsim Gladiator EVO R"
-    property string stockImage: /evo l|ot l/i.test(targetName)
-                                ? "qml/images/vkb_gladiator_evo_l.jpg"
-                                : "qml/images/vkb_gladiator_rig.jpg"
+    property string initialPhoto: ""
+    property string loadedDevice: ""
+    property string pendingDevice: ""
+    property string pendingPhoto: ""
+    property string stockImage: {
+        if (/evo l|ot l/i.test(targetName))
+            return "qml/images/vkb_gladiator_evo_l.jpg"
+        if (/gladiator/i.test(targetName))
+            return "qml/images/vkb_gladiator_rig.jpg"
+        if (initialPhoto.length)
+            return initialPhoto
+        return "qml/images/vkb_gladiator_rig.jpg"
+    }
     property int _nameTick: 0
     property bool editing: false
     onEditingChanged: {
@@ -192,20 +202,24 @@ Window {
     function isTarget(guid, name) {
         var raw = String(name || "")
         var shown = String(displayName(guid, raw) || "")
-        if (raw === targetName || shown === targetName) {
+        if (raw === targetName || shown === targetName)
             return true
-        }
         var a = raw.toLowerCase()
         var b = shown.toLowerCase()
+        var t = targetName.toLowerCase()
+        if (a === t || b === t)
+            return true
         function isLeft(s) {
             return s.indexOf("gladiator") !== -1 && (s.indexOf("evo l") !== -1 || s.indexOf("ot l") !== -1)
         }
         function isRight(s) {
             return s.indexOf("gladiator") !== -1 && (s.indexOf("evo r") !== -1 || s.indexOf("ot r") !== -1)
         }
-        if (isLeft(targetName.toLowerCase()))
+        if (isLeft(t))
             return isLeft(a) || isLeft(b)
-        return isRight(a) || isRight(b)
+        if (isRight(t))
+            return isRight(a) || isRight(b)
+        return a.indexOf(t) !== -1 || b.indexOf(t) !== -1 || t.indexOf(a) !== -1 || t.indexOf(b) !== -1
     }
 
     function parseDoc(text) {
@@ -520,6 +534,8 @@ Window {
                 _allowClose = true
                 close()
             }
+        } else if (_leaveDlg.kind === "switch") {
+            finishSwitch(pendingDevice)
         } else if (_leaveDlg.kind === "appquit") {
             _allowClose = true
             close()
@@ -530,6 +546,8 @@ Window {
     function confirmLeaveDiscard() {
         discardEdit()
         _leaveDlg.close()
+        if (_leaveDlg.kind === "switch")
+            finishSwitch(pendingDevice)
         if (_leaveDlg.kind === "close" || _leaveDlg.kind === "appquit") {
             _allowClose = true
             close()
@@ -558,17 +576,68 @@ Window {
         selectedId = n ? n.id : ""
     }
 
+    function showBlank(photo) {
+        liveNodes = []
+        workNodes = []
+        var img = String(photo || "")
+        if (!img.length)
+            img = stockImage
+        liveImage = img
+        storedImage = img
+        applyImage(img)
+    }
+
+    function finishSwitch(next) {
+        var name = String(next || "")
+        if (!name.length) {
+            pendingDevice = ""
+            return
+        }
+        discardEdit()
+        initialPhoto = pendingPhoto.length ? pendingPhoto : initialPhoto
+        targetName = name
+        loadedDevice = name
+        if (!loadLive())
+            showBlank(initialPhoto)
+        pendingDevice = ""
+    }
+
+    function openForDevice(name, photo) {
+        var next = String(name || "")
+        pendingPhoto = String(photo || "")
+        if (!next.length)
+            return
+        if (next === loadedDevice) {
+            show()
+            raise()
+            requestActivate()
+            return
+        }
+        if (editing && isDirty()) {
+            pendingDevice = next
+            _leaveDlg.kind = "switch"
+            show()
+            raise()
+            requestActivate()
+            _leaveDlg.open()
+            return
+        }
+        finishSwitch(next)
+        show()
+        raise()
+        requestActivate()
+    }
+
     Component.onCompleted: {
         liveNodes = []
         workNodes = []
         resItems = []
+        loadedDevice = targetName
         if (_devices) {
             _devices.reload()
         }
-        if (!loadLive()) {
-            liveImage = stockImage
-            storedImage = stockImage
-        }
+        if (!loadLive())
+            showBlank(initialPhoto)
     }
 
     Dialog {
@@ -601,7 +670,10 @@ Window {
                 spacing: 8
                 Button {
                     text: "Stay"
-                    onClicked: _leaveDlg.close()
+                    onClicked: {
+                        _buttonMap.pendingDevice = ""
+                        _leaveDlg.close()
+                    }
                 }
                 Button {
                     text: "Discard"
