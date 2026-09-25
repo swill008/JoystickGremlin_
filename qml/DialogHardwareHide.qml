@@ -156,196 +156,235 @@ Window {
             text: "Install HidHide from the Nefarius releases page, then click Refresh. Gremlin will not download or bundle that installer."
         }
 
-        Label {
-            text: "DEVICES"
-            color: "#A1A1AA"
-            font.pixelSize: 11
-            font.capitalization: Font.AllUppercase
-        }
-
-        ListView {
-            id: _devs
+        SplitView {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredHeight: 180
-            clip: true
-            spacing: 6
-            model: _hh.deviceCount
-            delegate: Rectangle {
-                required property int index
-                width: ListView.view.width
-                height: 56
-                radius: 3
-                color: "#111113"
-                border.color: "#3F3F46"
-                property int _gen: _hh.generation
-                property var row: _gen >= 0 ? _hh.deviceAt(index) : ({})
-                property bool confirmed: !!(row && row.confirmed)
-                opacity: confirmed ? 0.55 : 1
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    spacing: 8
-                    Rectangle {
-                        width: 40
-                        height: 40
+            orientation: Qt.Vertical
+            handle: Rectangle {
+                implicitWidth: 8
+                implicitHeight: 10
+                color: SplitHandle.pressed ? "#3F3F46" : (SplitHandle.hovered ? "#27272A" : "#18181B")
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 36
+                    height: 3
+                    radius: 1
+                    color: "#71717A"
+                }
+            }
+
+            ColumnLayout {
+                SplitView.fillWidth: true
+                SplitView.fillHeight: true
+                SplitView.preferredHeight: 300
+                SplitView.minimumHeight: 96
+                spacing: 6
+
+                Label {
+                    text: "DEVICES"
+                    color: "#A1A1AA"
+                    font.pixelSize: 11
+                    font.capitalization: Font.AllUppercase
+                }
+
+                Label {
+                    visible: _hh.lastError.length > 0
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    color: "#FCA5A5"
+                    font.pixelSize: 12
+                    text: _hh.lastError
+                }
+
+                Label {
+                    visible: _hh.deviceCount === 0
+                    text: _hh.installed ? "No HID devices reported." : "Device list needs the HidHide driver."
+                    color: "#A1A1AA"
+                }
+
+                ListView {
+                    id: _devs
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 48
+                    clip: true
+                    spacing: 6
+                    boundsBehavior: Flickable.StopAtBounds
+                    model: _hh.deviceCount
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    delegate: Rectangle {
+                        required property int index
+                        width: ListView.view.width
+                        height: 56
                         radius: 3
-                        color: "#09090B"
+                        color: "#111113"
                         border.color: "#3F3F46"
-                        Image {
+                        property int _gen: _hh.generation
+                        property var row: _gen >= 0 ? _hh.deviceAt(index) : ({})
+                        property bool confirmed: !!(row && row.confirmed)
+                        opacity: confirmed ? 0.55 : 1
+                        RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 2
-                            source: row.photo || ""
-                            fillMode: Image.PreserveAspectFit
-                            visible: !!(row.photo)
-                            asynchronous: true
-                            cache: true
-                        }
-                    }
-                    ColumnLayout {
-                        spacing: 0
-                        Layout.fillWidth: true
-                        Label {
-                            text: titleOf(row)
-                            color: confirmed ? "#A1A1AA" : "#E4E4E7"
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-                        Label {
-                            text: {
-                                if (!row.canHide)
-                                    return "Cannot hide (keyboard or mouse)"
-                                var bits = []
-                                if (row.openDenied)
-                                    bits.push("Denied")
-                                if (confirmed)
-                                    bits.push("Hidden")
-                                if (row.clientBlocked)
-                                    bits.push("Client list")
-                                var prefix = bits.length ? bits.join(" · ") + "  " : ""
-                                return prefix + (row.instanceId || "")
+                            anchors.margins: 8
+                            spacing: 8
+                            Rectangle {
+                                width: 40
+                                height: 40
+                                radius: 3
+                                color: "#09090B"
+                                border.color: "#3F3F46"
+                                Image {
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    source: row.photo || ""
+                                    fillMode: Image.PreserveAspectFit
+                                    visible: !!(row.photo)
+                                    asynchronous: true
+                                    cache: true
+                                }
                             }
-                            color: confirmed ? "#71717A" : "#A1A1AA"
-                            font.pixelSize: 11
-                            elide: Text.ElideMiddle
-                            Layout.fillWidth: true
-                        }
-                    }
-                    Button {
-                        text: row.photo ? "Change image" : "Add image"
-                        onClicked: {
-                            _pickPhoto.targetId = row.instanceId
-                            _pickPhoto.open()
-                        }
-                    }
-                    Switch {
-                        id: hideSwitch
-                        enabled: _hh.installed && row.canHide
-                        checked: !!(row && row.session)
-                        onClicked: {
-                            _hh.setDeviceHidden(row.instanceId, hideSwitch.checked)
-                            hideSwitch.checked = Qt.binding(function() { return !!(row && row.session) })
+                            ColumnLayout {
+                                spacing: 0
+                                Layout.fillWidth: true
+                                Label {
+                                    text: titleOf(row)
+                                    color: confirmed ? "#A1A1AA" : "#E4E4E7"
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: {
+                                        if (!row.canHide)
+                                            return "Cannot hide (keyboard or mouse)"
+                                        var bits = []
+                                        if (row.openDenied)
+                                            bits.push("Denied")
+                                        if (confirmed)
+                                            bits.push("Hidden")
+                                        if (row.clientBlocked)
+                                            bits.push("Client list")
+                                        var prefix = bits.length ? bits.join(" · ") + "  " : ""
+                                        return prefix + (row.instanceId || "")
+                                    }
+                                    color: confirmed ? "#71717A" : "#A1A1AA"
+                                    font.pixelSize: 11
+                                    elide: Text.ElideMiddle
+                                    Layout.fillWidth: true
+                                }
+                            }
+                            Button {
+                                text: row.photo ? "Change image" : "Add image"
+                                onClicked: {
+                                    _pickPhoto.targetId = row.instanceId
+                                    _pickPhoto.open()
+                                }
+                            }
+                            Switch {
+                                id: hideSwitch
+                                enabled: _hh.installed && row.canHide
+                                checked: !!(row && row.session)
+                                onClicked: {
+                                    _hh.setDeviceHidden(row.instanceId, hideSwitch.checked)
+                                    hideSwitch.checked = Qt.binding(function() { return !!(row && row.session) })
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
 
-        Label {
-            visible: _hh.lastError.length > 0
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            color: "#FCA5A5"
-            font.pixelSize: 12
-            text: _hh.lastError
-        }
+            ColumnLayout {
+                SplitView.fillWidth: true
+                SplitView.fillHeight: true
+                SplitView.preferredHeight: 200
+                SplitView.minimumHeight: 120
+                spacing: 6
 
-        Label {
-            visible: _hh.deviceCount === 0
-            text: _hh.installed ? "No HID devices reported." : "Device list needs the HidHide driver."
-            color: "#A1A1AA"
-        }
-
-        Label {
-            text: "Programs that have been added to the Mask"
-            color: "#A1A1AA"
-            font.pixelSize: 11
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Switch {
-                id: inverseSwitch
-                enabled: _hh.installed
-                checked: _hh.inverseOn
-                text: "Inverse"
-                onClicked: {
-                    _hh.setInverse(inverseSwitch.checked)
-                    inverseSwitch.checked = Qt.binding(function() { return _hh.inverseOn })
+                Label {
+                    text: "Programs that have been added to the Mask"
+                    color: "#A1A1AA"
+                    font.pixelSize: 11
                 }
-            }
-        }
 
-        Label {
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            color: "#A1A1AA"
-            font.pixelSize: 12
-            text: "Inverse off: the list is an allow list. Inverse on: the list is a block list."
-        }
-
-        ListView {
-            id: _games
-            Layout.fillWidth: true
-            Layout.preferredHeight: 140
-            clip: true
-            spacing: 6
-            model: _hh.gameCount
-            delegate: Rectangle {
-                required property int index
-                width: ListView.view.width
-                height: 44
-                radius: 3
-                color: "#111113"
-                border.color: "#3F3F46"
-                property var row: _hh.gameAt(index)
                 RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    ColumnLayout {
-                        spacing: 0
-                        Layout.fillWidth: true
-                        Label {
-                            text: row.name
-                            color: "#E4E4E7"
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
+                    Layout.fillWidth: true
+                    Switch {
+                        id: inverseSwitch
+                        enabled: _hh.installed
+                        checked: _hh.inverseOn
+                        text: "Inverse"
+                        onClicked: {
+                            _hh.setInverse(inverseSwitch.checked)
+                            inverseSwitch.checked = Qt.binding(function() { return _hh.inverseOn })
                         }
-                        Label {
-                            text: row.path
-                            color: "#A1A1AA"
-                            font.pixelSize: 11
-                            elide: Text.ElideMiddle
-                            Layout.fillWidth: true
-                        }
-                    }
-                    Button {
-                        text: "Remove"
-                        onClicked: _hh.removeGame(row.path)
                     }
                 }
-            }
-        }
 
-        Label {
-            visible: _hh.gameCount === 0
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            color: "#A1A1AA"
-            font.pixelSize: 12
-            text: _hh.inverseOn
-                  ? "Add a program here to block it from the hidden sticks. Joystick Gremlin is not added to this list."
-                  : "Add a program here to let it see the hidden sticks. Joystick Gremlin is allowed during this session. After Exit, HidHide uses the list that was already in its Client."
+                Label {
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    color: "#A1A1AA"
+                    font.pixelSize: 12
+                    text: "Inverse off: the list is an allow list. Inverse on: the list is a block list."
+                }
+
+                ListView {
+                    id: _games
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 48
+                    clip: true
+                    spacing: 6
+                    boundsBehavior: Flickable.StopAtBounds
+                    model: _hh.gameCount
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    delegate: Rectangle {
+                        required property int index
+                        width: ListView.view.width
+                        height: 44
+                        radius: 3
+                        color: "#111113"
+                        border.color: "#3F3F46"
+                        property var row: _hh.gameAt(index)
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            ColumnLayout {
+                                spacing: 0
+                                Layout.fillWidth: true
+                                Label {
+                                    text: row.name
+                                    color: "#E4E4E7"
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: row.path
+                                    color: "#A1A1AA"
+                                    font.pixelSize: 11
+                                    elide: Text.ElideMiddle
+                                    Layout.fillWidth: true
+                                }
+                            }
+                            Button {
+                                text: "Remove"
+                                onClicked: _hh.removeGame(row.path)
+                            }
+                        }
+                    }
+                }
+
+                Label {
+                    visible: _hh.gameCount === 0
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    color: "#A1A1AA"
+                    font.pixelSize: 12
+                    text: _hh.inverseOn
+                          ? "Add a program here to block it from the hidden sticks. Joystick Gremlin is not added to this list."
+                          : "Add a program here to let it see the hidden sticks. Joystick Gremlin is allowed during this session. After Exit, HidHide uses the list that was already in its Client."
+                }
+            }
         }
 
         RowLayout {
