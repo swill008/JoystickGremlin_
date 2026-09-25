@@ -820,12 +820,19 @@ Item {
 
     function catalog() {
         tick
+        var rows = (face && face.chipRows) ? face.chipRows : []
         var seen = {}
         var items = []
-        function add(kind, hwId) {
+        var i
+        for (i = 0; i < rows.length; i++) {
+            var row = rows[i]
+            if (!row)
+                continue
+            var kind = row.kind || "btn"
+            var hwId = row.hwId
             var key = kind + ":" + hwId
             if (seen[key])
-                return
+                continue
             seen[key] = true
             var pid = placedId(kind, hwId)
             var lk = leafKind(kind)
@@ -836,31 +843,11 @@ Item {
                 key: key,
                 friendly: defaultFriendly(kind, hwId),
                 hwName: hwName,
-                dest: destOf(lk, hwId),
-                fullName: fullNameOf(kind, hwId),
+                dest: row.dest || destOf(lk, hwId),
+                fullName: row.dest || fullNameOf(kind, hwId),
                 placed: pid.length > 0,
                 placedId: pid
             })
-        }
-        var i
-        for (i = 1; i <= 29; i++)
-            add("btn", i)
-        add("hat", 1)
-        for (i = 1; i <= 4; i++)
-            add("axis", i)
-        function extras(map, kind) {
-            if (!map)
-                return
-            for (var k in map) {
-                var id = parseInt(k, 10)
-                if (id > 0)
-                    add(kind, id)
-            }
-        }
-        if (face) {
-            extras(face.destBtn, "btn")
-            extras(face.destAxis, "axis")
-            extras(face.destHat, "hat")
         }
         return items
     }
