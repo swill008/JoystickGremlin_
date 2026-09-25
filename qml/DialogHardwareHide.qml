@@ -110,7 +110,7 @@ Window {
                     spacing: 0
                     Label {
                         color: "#E4E4E7"
-                        text: _hh.installed ? "HidHide driver found" : "HidHide is not installed"
+                        text: _hh.installed ? "HiDHide driver found" : "HiDHide is not installed"
                     }
                     Label {
                         visible: _hh.driverVersion.length > 0
@@ -165,7 +165,7 @@ Window {
             Layout.fillWidth: true
             color: "#A1A1AA"
             font.pixelSize: 12
-            text: "HiDHide Enabled means HidHide enforces the device list and the program list. Off means HidHide is installed but HidHide is not hiding anything."
+            text: "HiDHide Enabled means HiDHide enforces the device list and the program list. Off means HiDHide is installed but HiDHide is not hiding anything."
         }
 
         Label {
@@ -174,7 +174,7 @@ Window {
             Layout.fillWidth: true
             color: "#A1A1AA"
             font.pixelSize: 12
-            text: "Install HidHide from the Nefarius releases page, then click Refresh. Gremlin will not download or bundle that installer."
+            text: "Install HiDHide from the Nefarius releases page, then click Refresh. Gremlin will not download or bundle that installer."
         }
 
         SplitView {
@@ -219,7 +219,7 @@ Window {
 
                 Label {
                     visible: _hh.deviceCount === 0
-                    text: _hh.installed ? "No HID devices reported." : "Device list needs the HidHide driver."
+                    text: _hh.installed ? "No HID devices reported." : "Device list needs the HiDHide driver."
                     color: "#A1A1AA"
                 }
 
@@ -403,7 +403,7 @@ Window {
                     font.pixelSize: 12
                     text: _hh.inverseOn
                           ? "Add a program here to block it from the hidden sticks. Joystick Gremlin is not added to this list."
-                          : "Add a program here to let it see the hidden sticks. Joystick Gremlin is allowed during this session. After Exit, HidHide uses the list that was already in its Client."
+                          : "Add a program here to let it see the hidden sticks. Joystick Gremlin is allowed during this session. After Exit, HiDHide uses the list that was already in its Client."
                 }
             }
         }
