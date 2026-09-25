@@ -192,12 +192,42 @@ Window {
         id: _inputDeviceItems
         model: _devices
         delegate: MenuItem {
+            id: _devItem
             required property string name
+            readonly property int _labelCap: 168
             text: name
             enabled: !_buttonMap.editing
             checkable: true
             checked: name === _buttonMap.targetName
             onTriggered: _buttonMap.openForDevice(name, "")
+            contentItem: Item {
+                implicitWidth: Math.min(_devText.implicitWidth, _devItem._labelCap)
+                implicitHeight: _devText.implicitHeight
+                clip: true
+                Text {
+                    id: _devText
+                    text: _devItem.text
+                    font: _devItem.font
+                    color: !_devItem.enabled ? "#71717A" : (_devItem.highlighted ? "#FFFFFF" : "#E4E4E7")
+                    y: (parent.height - height) / 2
+                    x: _overflow ? -_shift : 0
+                    property bool _overflow: implicitWidth > parent.width + 1
+                    property real _shift: 0
+                    SequentialAnimation on _shift {
+                        running: _devText._overflow && _fileMenu.visible
+                        loops: Animation.Infinite
+                        PauseAnimation { duration: 900 }
+                        NumberAnimation {
+                            from: 0
+                            to: Math.max(0, _devText.implicitWidth - _devText.parent.width)
+                            duration: Math.max(1800, (_devText.implicitWidth - _devText.parent.width) * 22)
+                            easing.type: Easing.Linear
+                        }
+                        PauseAnimation { duration: 900 }
+                        ScriptAction { script: _devText._shift = 0 }
+                    }
+                }
+            }
         }
         onObjectAdded: function(index, object) {
             _fileMenu.insertItem(4 + index, object)
