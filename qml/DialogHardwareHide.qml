@@ -111,7 +111,7 @@ Window {
                     id: cloakSwitch
                     enabled: _hh.installed
                     checked: _hh.cloakOn
-                    text: "Hide physical devices from games"
+                    text: "Hide Physical Devices"
                     onClicked: {
                         _hh.setCloak(cloakSwitch.checked)
                         cloakSwitch.checked = Qt.binding(function() { return _hh.cloakOn })
