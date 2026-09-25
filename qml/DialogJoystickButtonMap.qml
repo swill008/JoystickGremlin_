@@ -35,10 +35,12 @@ Window {
     }
 
     property string targetName: ""
+    property string targetGuid: ""
     property string initialPhoto: ""
     property string loadedDevice: ""
     property string pendingDevice: ""
     property string pendingPhoto: ""
+    property string pendingGuid: ""
     property bool startBlank: false
     property bool faceLive: false
     property int fileMenuW: 280
@@ -228,11 +230,12 @@ Window {
         model: _devices
         delegate: MenuItem {
             required property string name
+            required property string guid
             text: name
             enabled: !_buttonMap.editing
             checkable: true
             checked: name === _buttonMap.targetName
-            onTriggered: _buttonMap.openForDevice(name, "")
+            onTriggered: _buttonMap.openForDevice(name, "", guid)
         }
         onObjectAdded: function(index, object) {
             _fileMenu.insertItem(4 + index, object)
@@ -411,6 +414,8 @@ Window {
     }
 
     function loadLive() {
+        if (_hw.setDeviceGuid)
+            _hw.setDeviceGuid(targetGuid)
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
         if (!doc || !doc.nodes) {
@@ -666,15 +671,17 @@ Window {
         discardEdit()
         initialPhoto = pendingPhoto.length ? pendingPhoto : initialPhoto
         targetName = name
+        targetGuid = pendingGuid
         loadedDevice = name
         if (!loadLive())
             showBlank(initialPhoto)
         pendingDevice = ""
     }
 
-    function openForDevice(name, photo) {
+    function openForDevice(name, photo, guid) {
         var next = String(name || "")
         pendingPhoto = String(photo || "")
+        pendingGuid = String(guid || "")
         if (!next.length)
             return
         if (next === loadedDevice) {
