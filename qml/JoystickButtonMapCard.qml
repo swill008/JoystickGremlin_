@@ -50,6 +50,18 @@ Item {
         guid: _root.deviceGuid
     }
 
+    HardwareProfile { id: _inventory }
+
+    property var chipRows: []
+
+    function reloadChips() {
+        chipRows = _inventory.chips(deviceGuid) || []
+    }
+
+    onDeviceGuidChanged: reloadChips()
+    onLiveStampChanged: reloadChips()
+    Component.onCompleted: reloadChips()
+
     function hwAxis(id) {
         if (!_live) {
             return 0
@@ -77,6 +89,7 @@ Item {
         buttons: _buttons
         axes: _axes
         hats: _hats
+        chipRows: _root.chipRows
         editing: _root.editing
         editorNodes: _root.editorNodes
         photoOverride: _root.photoOverride
