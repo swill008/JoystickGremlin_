@@ -204,6 +204,51 @@ def _gremlin_exe() -> str:
     return str(Path(sys.executable).resolve())
 
 
+def _full_image_name(path: str) -> str:
+    """Dos path to the volume path HidHide compares. Existing volume paths pass through."""
+    text = str(path or "").strip().replace("/", "\\")
+    if text.startswith("\\\\?\\") and not text.startswith("\\\\?\\Volume{"):
+        text = text[4:]
+    if text.lower().startswith("\\device\\"):
+        return text
+    if not text or os.name != "nt":
+        return ""
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.GetVolumePathNameW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+    k32.GetVolumePathNameW.restype = wintypes.BOOL
+    k32.GetVolumeNameForVolumeMountPointW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+    k32.GetVolumeNameForVolumeMountPointW.restype = wintypes.BOOL
+    k32.QueryDosDeviceW.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+    k32.QueryDosDeviceW.restype = wintypes.DWORD
+    mount_buf = ctypes.create_unicode_buffer(32768)
+    if not k32.GetVolumePathNameW(text, mount_buf, len(mount_buf)):
+        _hh_log(f"volume path failed {text} err={ctypes.get_last_error()}")
+        return ""
+    mount = mount_buf.value
+    if not text.lower().startswith(mount.lower()):
+        _hh_log(f"volume mount {mount!r} does not prefix {text}")
+        return ""
+    vol_buf = ctypes.create_unicode_buffer(512)
+    if not k32.GetVolumeNameForVolumeMountPointW(mount, vol_buf, len(vol_buf)):
+        _hh_log(f"volume name failed {mount} err={ctypes.get_last_error()}")
+        return ""
+    volume = vol_buf.value
+    if not (volume.startswith("\\\\?\\") and volume.endswith("\\")):
+        _hh_log(f"unexpected volume name {volume!r}")
+        return ""
+    dev_buf = ctypes.create_unicode_buffer(1024)
+    if not k32.QueryDosDeviceW(volume[4:-1], dev_buf, len(dev_buf)):
+        _hh_log(f"dos device failed {volume} err={ctypes.get_last_error()}")
+        return ""
+    device = dev_buf.value.rstrip("\\")
+    rest = text[len(mount):].lstrip("\\")
+    image = device if not rest else f"{device}\\{rest}"
+    _hh_log(f"image {text} -> {image}")
+    return image
+
+
 def _open_control():
     if os.name != "nt":
         return None
@@ -1263,22 +1308,32 @@ class HidHideModel(QtCore.QObject):
         snapshot_if_needed()
         base = list(_snap_whitelist or [])
         gremlin = _gremlin_exe()
-        gremlin_key = gremlin.lower()
+        gremlin_image = _full_image_name(gremlin)
+        drop = set()
+        if self._inverse:
+            if gremlin:
+                drop.add(gremlin.lower())
+            if gremlin_image:
+                drop.add(gremlin_image.lower())
         wanted = []
         for row in self._games:
-            wanted.append(row["path"])
-        if not self._inverse and gremlin:
-            wanted.append(gremlin)
-        _hh_log(f"gremlin path={gremlin} inverse={self._inverse}")
+            image = _full_image_name(row["path"])
+            if image:
+                wanted.append(image)
+            else:
+                _hh_log(f"game path not converted {row['path']}")
+        if not self._inverse and gremlin_image:
+            wanted.append(gremlin_image)
+        elif not self._inverse and not gremlin_image:
+            _hh_log(f"gremlin path not converted {gremlin}")
         merged = []
         seen = set()
         for item in list(base) + wanted:
             key = item.lower()
-            if key in seen or not item:
-                continue
-            if self._inverse and key == gremlin_key:
+            if key in seen or not item or key in drop:
                 continue
             seen.add(key)
             merged.append(item)
+        _hh_log(f"whitelist count={len(merged)} inverse={self._inverse}")
         if set_whitelist(merged):
             _borrowed_whitelist = True
