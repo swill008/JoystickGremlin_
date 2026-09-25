@@ -1,0 +1,99 @@
+{
+  "kind": "control.hardware",
+  "device": " VKBsim Gladiator EVO OT L  ",
+  "space": "world",
+  "page": 32000,
+  "pageW": 32000,
+  "pageH": 18000,
+  "photoWell": 0.75,
+  "image": "qml/maps/vkbsim_gladiator_evo_ot_l/photo.jpg",
+  "imageWidth": 1348,
+  "imageHeight": 1380,
+  "photo": {
+    "scale": 1.0,
+    "offX": 0.0,
+    "offY": 0.0,
+    "rot": 0.0
+  },
+  "ui": {
+    "chipPopW": 280,
+    "chipPopH": 480,
+    "gridOn": false,
+    "snapOn": true,
+    "snapEntOn": true,
+    "gridSize": 8,
+    "viewPct": 1.778294352953249,
+    "panX": -108.14305510909674,
+    "panY": 62.911925808238834
+  },
+  "nodes": [
+    {
+      "id": "g_muh7ldkx726",
+      "kind": "stack",
+      "members": [
+        {
+          "hwId": 1,
+          "role": "m0",
+          "ox": 0,
+          "oy": -0.010000000000000009,
+          "friendly": "Button 1"
+        },
+        {
+          "hwId": 2,
+          "role": "m1",
+          "ox": 0,
+          "oy": 0.009999999999999953,
+          "friendly": "Button 2"
+        }
+      ],
+      "hotFx": 0.44749999999999995,
+      "hotFy": 0.35044444444444445,
+      "chipFx": 0.38225,
+      "chipFy": 0.3515555555555556,
+      "pin": "right",
+      "spines": [],
+      "curve": true,
+      "alignH": "left",
+      "color": "#18181B",
+      "border": "#3F3F46",
+      "textColor": "#E4E4E7",
+      "highlight": true,
+      "hlColor": "#14532D",
+      "hlBorder": "#22C55E",
+      "hlText": "#BBF7D0",
+      "fontSize": 10,
+      "label": "",
+      "chipSize": 18,
+      "chipShape": "round",
+      "chipFill": "filled",
+      "hotSize": 9,
+      "hotShape": "round",
+      "hotFill": "filled",
+      "from": {
+        "type": "chip",
+        "id": "g_muh7ldkx726",
+        "pin": "right"
+      },
+      "to": {
+        "type": "hot",
+        "id": "g_muh7ldkx726"
+      },
+      "leaders": [
+        {
+          "id": "g_muh7ldkx726_L0",
+          "from": {
+            "type": "chip",
+            "id": "g_muh7ldkx726",
+            "pin": "right"
+          },
+          "to": {
+            "type": "hot",
+            "id": "g_muh7ldkx726"
+          },
+          "spines": [],
+          "curve": true
+        }
+      ]
+    }
+  ]
+}
