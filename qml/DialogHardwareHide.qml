@@ -85,6 +85,14 @@ Window {
             }
         }
 
+        Label {
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            color: "#A1A1AA"
+            font.pixelSize: 12
+            text: "HiDHide Enabled means HidHide enforces the device list and the program list. Off means HidHide is installed but HidHide is not hiding anything."
+        }
+
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: 44
@@ -111,7 +119,7 @@ Window {
                     id: cloakSwitch
                     enabled: _hh.installed
                     checked: _hh.cloakOn
-                    text: "Hide Physical Devices"
+                    text: "HiDHide Enabled"
                     onClicked: {
                         _hh.setCloak(cloakSwitch.checked)
                         cloakSwitch.checked = Qt.binding(function() { return _hh.cloakOn })
