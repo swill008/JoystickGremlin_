@@ -84,16 +84,36 @@ ApplicationWindow {
 
     property string moduleFileLabel: ""
     property string moduleFileMessage: ""
+    property var moduleFileChoices: []
+    property bool _moduleFileQuiet: false
 
     function refreshModuleFileLabel() {
         if (!_moduleModel || !configTitleName.length || configDirection === "dest") {
             moduleFileLabel = ""
+            moduleFileChoices = []
             return
         }
         var guid = uiState ? uiState.currentDevice : ""
-        var slug = _moduleModel.moduleFileFor(guid, configTitleName)
+        var slug = String(_moduleModel.moduleFileFor(guid, configTitleName) || "")
         var saved = _moduleModel.moduleFileExists(guid, configTitleName)
+        var names = _moduleModel.moduleFileNames(guid, configTitleName) || []
+        var choices = []
+        var pick = 0
+        var i
         moduleFileLabel = slug + ".json" + (saved ? "" : " (not saved yet)")
+        for (i = 0; i < names.length; i++) {
+            var item = String(names[i] || "")
+            if (!item.length)
+                continue
+            if (item === slug)
+                pick = choices.length
+            choices.push(item + ".json")
+        }
+        _moduleFileQuiet = true
+        moduleFileChoices = choices
+        if (_moduleFilePick)
+            _moduleFilePick.currentIndex = pick
+        _moduleFileQuiet = false
     }
 
     function openConfigurationForCard(card) {
@@ -434,58 +454,27 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
                 font.pixelSize: 12
             }
+            ComboBox {
+                id: _moduleFilePick
+                Layout.fillWidth: true
+                model: moduleFileChoices
+                onActivated: function(index) {
+                    if (_moduleFileQuiet || !_moduleModel)
+                        return
+                    var label = String(currentText || "")
+                    var slug = label.replace(/\.json$/i, "")
+                    _moduleModel.bindModuleFile(uiState.currentDevice, configTitleName, slug)
+                    moduleFileMessage = ""
+                    refreshModuleFileLabel()
+                }
+            }
             Button {
-                text: "Load file"
+                text: "Browse for File"
                 Layout.fillWidth: true
                 onClicked: {
                     if (_moduleModel)
                         _moduleLoadDialog.currentFolder = _moduleModel.mapsFolderUrl()
                     _moduleLoadDialog.open()
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                TextField {
-                    id: _moduleRename
-                    Layout.fillWidth: true
-                    placeholderText: "New name"
-                    selectByMouse: true
-                }
-                Button {
-                    text: "Rename file"
-                    onClicked: {
-                        if (!_moduleModel)
-                            return
-                        moduleFileMessage = _moduleModel.renameModuleFile(
-                            uiState.currentDevice, configTitleName, _moduleRename.text)
-                        if (!moduleFileMessage.length)
-                            _moduleRename.text = ""
-                        refreshModuleFileLabel()
-                    }
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                TextField {
-                    id: _moduleCopy
-                    Layout.fillWidth: true
-                    placeholderText: "Copy name"
-                    selectByMouse: true
-                }
-                Button {
-                    text: "Duplicate"
-                    onClicked: {
-                        if (!_moduleModel || !_moduleCopy.text.trim().length) {
-                            moduleFileMessage = "Enter a file name."
-                            return
-                        }
-                        var slug = _moduleModel.saveModuleFileAs(
-                            uiState.currentDevice, configTitleName, _moduleCopy.text)
-                        moduleFileMessage = slug.length ? "" : "That file already exists."
-                        if (slug.length)
-                            _moduleCopy.text = ""
-                        refreshModuleFileLabel()
-                    }
                 }
             }
             Button {
@@ -511,7 +500,7 @@ ApplicationWindow {
 
     FileDialog {
         id: _moduleLoadDialog
-        title: "Load module file"
+        title: "Browse for file"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Module files (*.json)"]
         onAccepted: {
@@ -1059,8 +1048,6 @@ ApplicationWindow {
                 onClicked: {
                     refreshModuleFileLabel()
                     moduleFileMessage = ""
-                    _moduleRename.text = ""
-                    _moduleCopy.text = ""
                     _moduleFileDialog.open()
                 }
             }
