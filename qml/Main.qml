@@ -579,6 +579,12 @@ ApplicationWindow {
             title: qsTr("Help")
 
             MenuItem {
+                text: qsTr("Joystick Gremlin Help")
+                onTriggered: () => {
+                    Helpers.createComponent("DialogHelp.qml")
+                }
+            }
+            MenuItem {
                 text: qsTr("About")
                 onTriggered: () => {
                     Helpers.createComponent("DialogAbout.qml")
