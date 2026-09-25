@@ -429,7 +429,7 @@ Window {
         }
     }
 
-    SavePrompts {
+    DismissibleDialog {
         id: _saveGate
         onSaveChosen: {
             if (!_win.commitModule())
