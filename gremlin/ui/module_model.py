@@ -19,7 +19,15 @@ from gremlin import (
 from gremlin.signal import signal
 from gremlin.types import InputType, PropertyType
 from gremlin import keyboard as gremlin_keyboard
-from gremlin.ui.hardware_profile import HardwareProfile, _maps_dir, _slug
+from gremlin.ui.hardware_profile import (
+    HardwareProfile,
+    _maps_dir,
+    _slug,
+    bind_module_file,
+    module_file_choices,
+    resolve_module_slug,
+    save_module_file_as,
+)
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -250,7 +258,7 @@ def _show_stubs() -> bool:
 
 
 def _load_module_doc(device_name: str) -> dict:
-    path = _maps_dir() / f"{_slug(device_name)}.json"
+    path = _maps_dir() / f"{resolve_module_slug(device_name)}.json"
     if not path.is_file():
         return {}
     try:
@@ -347,7 +355,7 @@ def _claim_from_doc(doc: dict) -> dict:
 
 
 def module_exists(device_name: str) -> bool:
-    path = _maps_dir() / f"{_slug(device_name)}.json"
+    path = _maps_dir() / f"{resolve_module_slug(device_name)}.json"
     return path.is_file()
 
 
@@ -556,7 +564,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = _maps_dir() / f"{_slug(name)}.json"
+        path = _maps_dir() / f"{resolve_module_slug(name)}.json"
         doc: dict = {}
         if path.is_file():
             try:
@@ -596,7 +604,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = _maps_dir() / f"{_slug(name)}.json"
+        path = _maps_dir() / f"{resolve_module_slug(name)}.json"
         doc: dict = {}
         if path.is_file():
             try:
@@ -1058,6 +1066,29 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot()
     def notifyClaims(self) -> None:
         self._refresh_inplace()
+
+    @QtCore.Slot(str, str, result="QVariantList")
+    def moduleFileNames(self, guid: str, device_name: str) -> list:
+        return module_file_choices(device_name, guid)
+
+    @QtCore.Slot(str, str, result=str)
+    def moduleFileFor(self, guid: str, device_name: str) -> str:
+        return resolve_module_slug(device_name, guid)
+
+    @QtCore.Slot(str, str, str)
+    def bindModuleFile(self, guid: str, device_name: str, file_name: str) -> None:
+        if not bind_module_file(device_name, guid, file_name):
+            return
+        signal.configChanged.emit()
+        self._refresh_inplace()
+
+    @QtCore.Slot(str, str, str, result=str)
+    def saveModuleFileAs(self, guid: str, device_name: str, file_name: str) -> str:
+        slug = save_module_file_as(device_name, guid, file_name)
+        if slug:
+            signal.configChanged.emit()
+            self._refresh_inplace()
+        return slug
 
     def _on_joy(self, event: event_handler.Event) -> None:
         if event is None:
@@ -1661,7 +1692,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, str, result=bool)
     def saveClaim(self, device_name: str, direction: str) -> bool:
         name = device_name or self._device_name
-        path = _maps_dir() / f"{_slug(name)}.json"
+        path = _maps_dir() / f"{resolve_module_slug(name, self._guid)}.json"
         doc: dict = {}
         if path.is_file():
             try:
@@ -1695,11 +1726,11 @@ class DriverInputModel(QtCore.QAbstractListModel):
         doc.setdefault("pageH", 18000)
         doc.setdefault("photoWell", 0.75)
         doc.setdefault("nodes", [])
-        folder = _maps_dir() / _slug(name)
+        folder = _maps_dir() / resolve_module_slug(name, self._guid)
         if folder.is_dir():
             photos = sorted(p for p in folder.glob("photo.*") if p.is_file())
             if photos:
-                doc["image"] = f"qml/maps/{_slug(name)}/{photos[-1].name}"
+                doc["image"] = f"qml/maps/{resolve_module_slug(name, self._guid)}/{photos[-1].name}"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
         signal.configChanged.emit()
