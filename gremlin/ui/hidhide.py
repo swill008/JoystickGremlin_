@@ -430,7 +430,9 @@ def clear_session_hides() -> bool:
     if handle is None:
         return False
     try:
-        ok, _ = _ioctl(handle, IOCTL_CLR_SESSION_BLACKLIST, None, 0)
+        payload = _encode_multi_sz([])
+        _hh_log(f"clear session bytes={len(payload)} even={len(payload) % 2 == 0}")
+        ok, _ = _ioctl(handle, IOCTL_CLR_SESSION_BLACKLIST, payload, 0)
         if ok:
             _session_ids.clear()
         return ok
