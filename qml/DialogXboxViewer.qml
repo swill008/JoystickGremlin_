@@ -49,6 +49,7 @@ Window {
         id: _dynamicScroll
         anchors.fill: parent
         anchors.margins: 12
+        anchors.bottomMargin: 58
 
         Component.onCompleted: () => {
             _dynamicScroll.contentItem.boundsMovement = Flickable.StopAtBounds
@@ -93,5 +94,11 @@ Window {
             pairLabel: parent._pair
             width: parent.width
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
