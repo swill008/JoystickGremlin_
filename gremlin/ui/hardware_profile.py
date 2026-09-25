@@ -131,12 +131,25 @@ def _write_bindings(data: dict[str, str]) -> None:
     Configuration().set("global", "internal", "module-file-bindings", json.dumps(data))
 
 
+def _name_key(device_name: str) -> str:
+    slug = _plain_slug(device_name)
+    return f"name:{slug}" if slug else ""
+
+
 def resolve_module_slug(device_name: str, guid: str = "") -> str:
+    data = _binding_store()
     key = _norm_guid(guid) or _guid_for_name(device_name)
-    if key:
-        bound = _binding_store().get(key, "")
-        if bound:
-            return _plain_slug(bound) or _slug(device_name)
+    bound = data.get(key, "") if key else ""
+    name_key = _name_key(device_name)
+    if not bound and name_key:
+        bound = data.get(name_key, "")
+    if bound:
+        slug = _plain_slug(bound) or _slug(device_name)
+        if key and name_key and (data.get(key) != slug or data.get(name_key) != slug):
+            data[key] = slug
+            data[name_key] = slug
+            _write_bindings(data)
+        return slug
     return _slug(device_name)
 
 
@@ -156,6 +169,9 @@ def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
         return ""
     data = _binding_store()
     data[key] = slug
+    name_key = _name_key(device_name)
+    if name_key:
+        data[name_key] = slug
     _write_bindings(data)
     return slug
 
@@ -256,11 +272,17 @@ def rename_module_file(device_name: str, guid: str, file_name: str) -> str:
         return "That file already exists."
     src.rename(dest)
     data = _binding_store()
+    for stored, value in list(data.items()):
+        if _plain_slug(value) == old_slug:
+            data[stored] = new_slug
     for key in _users_of_slug(old_slug):
         data[key] = new_slug
     key = _norm_guid(guid) or _guid_for_name(device_name)
     if key:
         data[key] = new_slug
+    name_key = _name_key(device_name)
+    if name_key:
+        data[name_key] = new_slug
     _write_bindings(data)
     return ""
 
@@ -274,10 +296,11 @@ def delete_module_file(device_name: str, guid: str) -> str:
     path = _maps_dir() / f"{slug}.json"
     if path.is_file():
         path.unlink()
-    if key:
-        data = _binding_store()
-        data.pop(key, None)
-        _write_bindings(data)
+    data = _binding_store()
+    for stored, value in list(data.items()):
+        if _plain_slug(value) == slug or stored == key:
+            data.pop(stored, None)
+    _write_bindings(data)
     return ""
 
 
@@ -446,7 +469,7 @@ def chips_for_guid(guid: str) -> list[dict]:
     from gremlin.ui.module_model import _load_module_doc
 
     name = pairing._device_name(text)
-    doc = _load_module_doc(name) if name else {}
+    doc = _load_module_doc(name, text) if name else {}
     claim = doc.get("claim") if isinstance(doc, dict) and isinstance(doc.get("claim"), dict) else {}
     reported = _device_input_ids(text)
     stored = _profile_input_ids(text)
@@ -481,12 +504,13 @@ class HardwareProfile(QtCore.QObject):
         self._text = "{}"
         self._path = ""
         self._peek_photo = ""
+        self._device_guid = ""
 
     def _file_for(self, device_name: str) -> Path:
-        return _maps_dir() / f"{resolve_module_slug(device_name)}.json"
+        return _maps_dir() / f"{resolve_module_slug(device_name, self._device_guid)}.json"
 
     def _profile_dir(self, device_name: str) -> Path:
-        path = _maps_dir() / resolve_module_slug(device_name)
+        path = _maps_dir() / resolve_module_slug(device_name, self._device_guid)
         path.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -594,6 +618,10 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, result=str)
     def slugFor(self, device_name: str) -> str:
         return _slug(device_name)
+
+    @QtCore.Slot(str)
+    def setDeviceGuid(self, guid: str) -> None:
+        self._device_guid = str(guid or "")
 
     @QtCore.Slot(str, result=str)
     def load(self, device_name: str) -> str:
