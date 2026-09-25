@@ -376,9 +376,17 @@ def _hidhide_managed() -> bool:
 
 
 def _mark_managed() -> None:
+    _set_managed(True)
+
+
+def _clear_managed() -> None:
+    _set_managed(False)
+
+
+def _set_managed(on: bool) -> None:
     _ensure_options()
     try:
-        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_MANAGED, "yes")
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_MANAGED, "yes" if on else "")
     except Exception:
         pass
 
@@ -1561,7 +1569,7 @@ class HidHideModel(QtCore.QObject):
 
     @QtCore.Slot(bool, result=bool)
     def setInverse(self, on: bool) -> bool:
-        if not self._present:
+        if not self._present or not _hidhide_managed():
             return False
         if not set_inverse(bool(on)):
             self._last_error = _ioctl_error or "HiDHide driver call failed."
@@ -1612,21 +1620,35 @@ class HidHideModel(QtCore.QObject):
             return self._games[index]
         return {}
 
+    @QtCore.Property(bool, notify=changed)
+    def gremlinControl(self) -> bool:
+        return _hidhide_managed()
+
+    @QtCore.Slot(bool, result=bool)
+    def setGremlinControl(self, on: bool) -> bool:
+        if not self._present:
+            return False
+        if on:
+            _mark_managed()
+            apply_saved_list()
+        else:
+            _clear_managed()
+        self.reload()
+        return True
+
     @QtCore.Slot(bool, result=bool)
     def setCloak(self, on: bool) -> bool:
-        if not self._present:
+        if not self._present or not _hidhide_managed():
             return False
         if not set_active(bool(on)):
             return False
         _save_cloak(bool(on))
-        _mark_managed()
-        apply_saved_list()
         self.reload()
         return True
 
     @QtCore.Slot(str, bool, result=bool)
     def setDeviceHidden(self, instance_id: str, hidden: bool) -> bool:
-        if not self._present or not instance_id:
+        if not self._present or not instance_id or not _hidhide_managed():
             return False
         group_ids = [instance_id]
         for row in self._devices:
