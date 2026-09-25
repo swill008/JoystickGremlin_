@@ -23,6 +23,7 @@ _CFG_GROUP = "hidhide"
 _CFG_GAMES = "games"
 _CFG_PHOTOS = "photos"
 _CFG_LINKS = "module-links"
+_CFG_LIST_MODE = "list-mode"
 _CFG_WINDOW_W = "window-width"
 _CFG_WINDOW_H = "window-height"
 _DOWNLOAD = "https://github.com/nefarius/HidHide/releases"
@@ -116,6 +117,16 @@ def _ensure_options() -> None:
             PropertyType.String,
             "{}",
             "Hardware Hide device to input or output module.",
+            {},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_LIST_MODE,
+            PropertyType.String,
+            "",
+            "Hardware Hide program list mode: allow or block.",
             {},
             True,
         )
@@ -219,6 +230,39 @@ def _save_links(rows: dict[str, str]) -> None:
         )
     except Exception:
         pass
+
+
+def _saved_block_list() -> bool | None:
+    """True is Block list, False is Allow list, None if the user has not chosen."""
+    _ensure_options()
+    raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_LIST_MODE) or "").strip().lower()
+    if raw == "block":
+        return True
+    if raw == "allow":
+        return False
+    return None
+
+
+def _save_list_mode(block: bool) -> None:
+    _ensure_options()
+    try:
+        config.Configuration().set(
+            _CFG_SECTION, _CFG_GROUP, _CFG_LIST_MODE, "block" if block else "allow"
+        )
+    except Exception:
+        pass
+
+
+def _apply_saved_list_mode() -> bool:
+    """Write the saved Allow or Block choice. The first run keeps the driver's current mode."""
+    choice = _saved_block_list()
+    if choice is None:
+        choice = bool(get_inverse())
+        _save_list_mode(choice)
+    if bool(get_inverse()) != choice:
+        if not set_inverse(choice):
+            return bool(get_inverse())
+    return choice
 
 
 def _module_label(dev) -> str:
@@ -635,7 +679,7 @@ def snapshot_if_needed() -> None:
 
 
 def restore_borrowed() -> None:
-    """Put cloak, application list, device list, and inverse back."""
+    """Put cloak, application list, and device list back, then apply the saved list mode."""
     global _snap_active, _snap_whitelist, _snap_blacklist, _snap_inverse
     global _borrowed_active, _borrowed_whitelist, _borrowed_blacklist, _borrowed_inverse
     if not driver_present():
@@ -653,11 +697,10 @@ def restore_borrowed() -> None:
     except Exception:
         pass
     try:
-        if _borrowed_inverse and _snap_inverse is not None:
-            _hh_log(f"restore inverse={bool(_snap_inverse)}")
-            set_inverse(bool(_snap_inverse))
+        choice = _apply_saved_list_mode()
+        _hh_log(f"shutdown list mode block={choice}")
     except Exception:
-        _hh_log("restore inverse failed")
+        _hh_log("shutdown list mode failed")
     try:
         if _borrowed_active and _snap_active is not None:
             set_active(bool(_snap_active))
@@ -1388,6 +1431,7 @@ class HidHideModel(QtCore.QObject):
             self._last_error = _ioctl_error or "HiDHide driver call failed."
             self.reload()
             return False
+        _save_list_mode(bool(on))
         _borrowed_inverse = True
         self._inverse = bool(on)
         self._last_error = ""
@@ -1576,7 +1620,8 @@ def apply_saved_list() -> None:
         return
     _hh_log("apply saved list")
     snapshot_if_needed()
-    inverse = get_inverse()
+    inverse = _apply_saved_list_mode()
+    _hh_log(f"startup list mode block={inverse}")
     base = list(_snap_whitelist or [])
     gremlin = _gremlin_exe()
     gremlin_image = _full_image_name(gremlin)
