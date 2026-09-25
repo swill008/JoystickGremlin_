@@ -1517,15 +1517,17 @@ class AxisCalibration(QtCore.QAbstractListModel):
             self._state[index]["high"] = 0
             self.emit_update(index)
 
-    @QtCore.Slot(int)
-    def save(self, index: int) -> None:
+    @QtCore.Slot(int, result=bool)
+    def save(self, index: int) -> bool:
         """Saves the current calibration data to the configuration system.
 
         Args:
             index: index of the axis whose data to save
         """
         if self._device_uuid is None or self._device is None:
-            return
+            return False
+        if not (0 <= index < len(self._state)):
+            return False
 
         self._config.set_calibration(
             self._device_uuid,
@@ -1544,6 +1546,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
             self._device.axis_map[index].axis_index,
         )
         self.emit_update(index)
+        return True
 
     def _update_calibration(self, index: int) -> None:
         """Creates the calibration function based on the stored values.
