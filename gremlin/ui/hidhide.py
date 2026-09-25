@@ -198,9 +198,9 @@ def _file_url(path: Path) -> str:
 
 
 def _gremlin_exe() -> str:
-    if getattr(sys, "frozen", False):
-        return str(Path(sys.executable).resolve())
-    return str(Path(sys.argv[0]).resolve()) if sys.argv else sys.executable
+    # HidHide matches the running process image. Poetry is python.exe.
+    # A packaged build is the executable. Both are sys.executable.
+    return str(Path(sys.executable).resolve())
 
 
 def _open_control():
@@ -664,6 +664,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
         "enumOk": 0,
         "links": 0,
         "opened": 0,
+        "denied": 0,
         "rows": 0,
         "cmSize": 0,
         "cmList": 0,
@@ -736,7 +737,9 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             pid = parsed[1]
         usage_page = usage = 0
         product = vendor = ""
-        if handle != _INVALID and handle != -1:
+        denied = False
+        opened = bool(handle) and int(handle) not in (0, -1, _INVALID, 0xFFFFFFFF)
+        if opened:
             stats["opened"] += 1
             try:
                 attrs = HIDD_ATTRIBUTES()
@@ -759,9 +762,14 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
                     vendor = (manu.value or "").strip()
             finally:
                 k32.CloseHandle(handle)
+        else:
+            err = ctypes.get_last_error()
+            denied = err in (5, 32)
+            if denied:
+                stats["denied"] += 1
         description = _device_description(instance)
         gaming = _is_gaming(vid, pid, usage_page, usage)
-        if gaming_only and not gaming:
+        if gaming_only and not gaming and not denied:
             continue
         container = _group_key(instance, vid, pid)
         label = _display_name(vendor, product, description, "")
@@ -774,16 +782,25 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
                 "canHide": True,
                 "photo": "",
                 "gaming": False,
+                "openDenied": False,
+                "sawOpen": False,
             },
         )
         if instance not in group["instanceIds"]:
             group["instanceIds"].append(instance)
         group["gaming"] = group["gaming"] or gaming
+        if opened:
+            group["sawOpen"] = True
+            group["openDenied"] = False
+        elif denied and not group["sawOpen"]:
+            group["openDenied"] = True
         if _usable_name(label) and (
             _looks_like_instance(group["name"]) or len(_usable_name(label)) > len(group["name"])
         ):
             group["name"] = label
     out = list(groups.values())
+    for row in out:
+        row.pop("sawOpen", None)
     out.sort(key=lambda r: r["name"].lower())
     stats["rows"] = len(out)
     _WALK_STATS = dict(stats)
@@ -1239,6 +1256,7 @@ class HidHideModel(QtCore.QObject):
             wanted.append(row["path"])
         if not self._inverse and gremlin:
             wanted.append(gremlin)
+        _hh_log(f"gremlin path={gremlin} inverse={self._inverse}")
         merged = []
         seen = set()
         for item in list(base) + wanted:
