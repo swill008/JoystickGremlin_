@@ -20,6 +20,7 @@ Window {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.bottomMargin: 58
 
         DisplayLabel {
             text: "<b>Joystick Gremlin</b>"
@@ -42,5 +43,11 @@ Window {
         Layout.fillWidth: true
         Layout.alignment: Qt.AlignHCenter
         horizontalAlignment: Text.AlignHCenter
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
