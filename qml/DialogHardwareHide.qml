@@ -331,8 +331,9 @@ Window {
 
                 Label {
                     text: "Programs that have been added to the Mask"
-                    color: "#A1A1AA"
-                    font.pixelSize: 11
+                    color: "#E4E4E7"
+                    font.pixelSize: 16
+                    font.bold: true
                 }
 
                 RowLayout {
