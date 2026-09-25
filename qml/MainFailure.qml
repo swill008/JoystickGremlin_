@@ -18,6 +18,7 @@ ApplicationWindow {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 20
+        anchors.bottomMargin: 58
 
         Label {
             Layout.fillWidth: true
@@ -50,4 +51,10 @@ ApplicationWindow {
         }
     }
 
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+    }
 }
