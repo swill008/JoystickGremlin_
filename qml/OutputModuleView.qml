@@ -884,7 +884,7 @@ Item {
         }
     }
 
-    SavePrompts {
+    DismissibleDialog {
         id: _saveGate
         onSaveChosen: {
             saveView()
