@@ -26,13 +26,16 @@ Item {
         id: _ask
         modal: true
         title: "Unsaved changes"
-        anchors.centerIn: Overlay.overlay
+        parent: Overlay.overlay
+        width: 480
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
         standardButtons: Dialog.Save | Dialog.Discard | Dialog.Cancel
         closePolicy: Popup.NoAutoClose
         contentItem: Label {
             text: _gate.detail
             wrapMode: Text.WordWrap
-            width: 420
+            implicitWidth: 420
         }
         onAccepted: _gate.saveChosen()
         onDiscarded: _gate.discardChosen()
@@ -43,13 +46,16 @@ Item {
         id: _result
         property bool ok: true
         modal: true
-        anchors.centerIn: Overlay.overlay
+        parent: Overlay.overlay
+        width: 480
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
         standardButtons: Dialog.Ok
         onAccepted: _gate.acknowledged()
         contentItem: Label {
             id: _resultText
             wrapMode: Text.WordWrap
-            width: 420
+            implicitWidth: 420
         }
     }
 }
