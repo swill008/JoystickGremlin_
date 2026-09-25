@@ -217,10 +217,14 @@ def _close(handle) -> None:
         __import__("ctypes").windll.kernel32.CloseHandle(handle)
 
 
+_ioctl_error = ""
+
+
 def _ioctl(handle, code: int, inn: bytes | None = None, out_size: int = 0) -> tuple[bool, bytes]:
     import ctypes
     from ctypes import wintypes
 
+    global _ioctl_error
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
     k32.DeviceIoControl.restype = wintypes.BOOL
     k32.DeviceIoControl.argtypes = [
@@ -239,7 +243,7 @@ def _ioctl(handle, code: int, inn: bytes | None = None, out_size: int = 0) -> tu
     out_buf = ctypes.create_string_buffer(out_size) if out_size else None
     ok = k32.DeviceIoControl(
         handle,
-        ctypes.c_ulong(code),
+        int(code) & 0xFFFFFFFF,
         in_buf,
         in_len,
         out_buf,
@@ -247,6 +251,8 @@ def _ioctl(handle, code: int, inn: bytes | None = None, out_size: int = 0) -> tu
         ctypes.byref(returned),
         None,
     )
+    if not ok:
+        _ioctl_error = f"HidHide driver call failed ({ctypes.get_last_error()})."
     data = out_buf.raw[: returned.value] if out_buf else b""
     return bool(ok), data
 
@@ -403,7 +409,8 @@ def clear_session_hides() -> bool:
         return False
     try:
         ok, _ = _ioctl(handle, IOCTL_CLR_SESSION_BLACKLIST, None, 0)
-        _session_ids.clear()
+        if ok:
+            _session_ids.clear()
         return ok
     finally:
         _close(handle)
@@ -932,6 +939,8 @@ class HidHideModel(QtCore.QObject):
         self._devices: list[dict] = []
         self._games: list[dict] = []
         self._gaming_only = True
+        self._generation = 0
+        self._last_error = ""
         _ensure_options()
         self.reload()
 
@@ -940,7 +949,6 @@ class HidHideModel(QtCore.QObject):
         self._active = get_active() if self._present else False
         persistent = {i.upper() for i in get_blacklist()} if self._present else set()
         session = {i.upper() for i in _session_ids}
-        hidden = persistent | session
         self._devices = []
         try:
             rows = list_hid_devices(self._gaming_only)
@@ -951,10 +959,13 @@ class HidHideModel(QtCore.QObject):
         for row in _enrich_devices(rows):
             item = dict(row)
             ids = [str(x).upper() for x in (item.get("instanceIds") or [item.get("instanceId")]) if x]
-            item["hidden"] = any(i in hidden for i in ids)
+            item["session"] = any(i in session for i in ids)
+            item["clientBlocked"] = any(i in persistent for i in ids)
+            item["hidden"] = item["session"] or item["clientBlocked"]
             item["confirmed"] = bool(self._active and item["hidden"])
             self._devices.append(item)
         self._games = _load_games()
+        self._generation += 1
         self.changed.emit()
 
     @QtCore.Property(bool, notify=changed)
@@ -977,6 +988,14 @@ class HidHideModel(QtCore.QObject):
     def setGamingOnly(self, on: bool) -> None:
         self._gaming_only = bool(on)
         self.reload()
+
+    @QtCore.Property(int, notify=changed)
+    def generation(self) -> int:
+        return self._generation
+
+    @QtCore.Property(str, notify=changed)
+    def lastError(self) -> str:
+        return self._last_error
 
     @QtCore.Property(int, notify=changed)
     def deviceCount(self) -> int:
@@ -1029,11 +1048,16 @@ class HidHideModel(QtCore.QObject):
         if hidden:
             want.update(group_ids)
         if not clear_session_hides():
+            self._last_error = _ioctl_error or "HidHide driver call failed."
+            self.reload()
             return False
         if want and not add_session_hides(sorted(want)):
+            self._last_error = _ioctl_error or "HidHide driver call failed."
+            self.reload()
             return False
         _session_ids.clear()
         _session_ids.update(want)
+        self._last_error = ""
         if hidden and not get_active():
             global _borrowed_active
             if set_active(True):
