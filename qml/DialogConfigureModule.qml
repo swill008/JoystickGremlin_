@@ -54,6 +54,12 @@ Window {
         _moduleFileQuiet = false
     }
 
+    function reloadModuleControls() {
+        _driver.loadDevice(deviceGuid, deviceName)
+        var url = _hw.profilePhotoUrl(deviceName)
+        photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
+    }
+
     width: 980
     height: 640
     minimumWidth: 800
@@ -310,6 +316,7 @@ Window {
                     moduleModel.bindModuleFile(deviceGuid, deviceName, slug)
                     moduleFileMessage = ""
                     refreshModuleFileLabel()
+                    reloadModuleControls()
                 }
             }
             Button {
@@ -329,6 +336,8 @@ Window {
                         return
                     moduleFileMessage = moduleModel.deleteModuleFile(deviceGuid, deviceName)
                     refreshModuleFileLabel()
+                    if (!moduleFileMessage.length)
+                        reloadModuleControls()
                 }
             }
             Label {
@@ -354,6 +363,8 @@ Window {
                 src = src.toString()
             moduleFileMessage = moduleModel.loadModuleFile(deviceGuid, deviceName, src || "")
             refreshModuleFileLabel()
+            if (!moduleFileMessage.length)
+                reloadModuleControls()
         }
     }
 }
