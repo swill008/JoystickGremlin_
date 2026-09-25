@@ -15,6 +15,8 @@ Window {
     id: _win
     width: 720
     height: 640
+    minimumWidth: 640
+    minimumHeight: 480
     title: "Hardware Hide"
     color: Style.background
     Universal.theme: Style.theme
@@ -22,6 +24,25 @@ Window {
     HidHideModel {
         id: _hh
     }
+
+    Timer {
+        id: _sizeSave
+        interval: 400
+        repeat: false
+        onTriggered: _hh.saveWindowSize(_win.width, _win.height)
+    }
+
+    Component.onCompleted: {
+        var w = _hh.windowWidth
+        var h = _hh.windowHeight
+        if (w >= 640)
+            width = w
+        if (h >= 480)
+            height = h
+    }
+    onWidthChanged: if (visible) _sizeSave.restart()
+    onHeightChanged: if (visible) _sizeSave.restart()
+    onClosing: _hh.saveWindowSize(width, height)
 
     function titleOf(row) {
         var n = (row && row.name) ? String(row.name) : ""
