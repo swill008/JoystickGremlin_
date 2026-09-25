@@ -585,7 +585,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
         doc.setdefault("kind", "control.hardware")
         doc.setdefault("device", name)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        try:
+            path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+            written = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(written.get("view"), dict):
+            return False
         self.viewChanged.emit()
         return True
 
@@ -625,7 +631,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
         doc.setdefault("kind", "control.hardware")
         doc.setdefault("device", name)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        try:
+            path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+            written = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(written.get("catalog"), dict):
+            return False
         self.viewChanged.emit()
         return True
 
@@ -1366,6 +1378,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
 
     changed = QtCore.Signal()
     rowActivated = QtCore.Signal(int)
+    userEdited = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -1691,17 +1704,23 @@ class DriverInputModel(QtCore.QAbstractListModel):
     def setClaimed(self, index: int, claimed: bool) -> None:
         if not (0 <= index < len(self._rows)):
             return
+        if bool(self._rows[index]["claimed"]) == bool(claimed):
+            return
         self._rows[index]["claimed"] = bool(claimed)
         ix = self.index(index, 0)
         self.dataChanged.emit(ix, ix, [QtCore.Qt.ItemDataRole.UserRole + 4])
+        self.userEdited.emit()
 
     @QtCore.Slot(int, str)
     def setFriendly(self, index: int, name: str) -> None:
         if not (0 <= index < len(self._rows)):
             return
+        if str(self._rows[index].get("friendly") or "") == str(name or ""):
+            return
         self._rows[index]["friendly"] = name
         ix = self.index(index, 0)
         self.dataChanged.emit(ix, ix, [QtCore.Qt.ItemDataRole.UserRole + 5])
+        self.userEdited.emit()
 
     def _set_lit(self, index: int, lit: bool) -> None:
         if not (0 <= index < len(self._rows)):
@@ -1770,7 +1789,19 @@ class DriverInputModel(QtCore.QAbstractListModel):
             if photos:
                 doc["image"] = f"qml/maps/{resolve_module_slug(name, self._guid)}/{photos[-1].name}"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+        text = json.dumps(doc, indent=2) + "\n"
+        try:
+            path.write_text(text, encoding="utf-8")
+            written = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        got = written.get("claim") if isinstance(written.get("claim"), dict) else {}
+        if [int(n) for n in (got.get("buttons") or [])] != buttons:
+            return False
+        if [int(n) for n in (got.get("axes") or [])] != axes:
+            return False
+        if [int(n) for n in (got.get("hats") or [])] != hats:
+            return False
         bind_module_file(name, self._guid, resolve_module_slug(name, self._guid))
         signal.configChanged.emit()
         return True
