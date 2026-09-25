@@ -562,6 +562,8 @@ def register_config_options() -> None:
             cfg.set(osc_sec, osc_grp, name, cfg.value("global", "osc", name))
     # Status layout must be registered before purge_unused() or split/stacks vanish.
     gremlin.ui.module_model._ensure_display_options()
+    # Hardware Hide games must be registered before purge or the saved list is deleted.
+    gremlin.ui.hidhide._ensure_options()
 
 
 def configure_loggers() -> None:
