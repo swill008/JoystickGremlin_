@@ -98,64 +98,75 @@ Window {
 
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: driverRow.implicitHeight + 20
+            implicitHeight: driverBox.implicitHeight + 20
             radius: 3
             color: "#111113"
             border.color: "#3F3F46"
 
-            RowLayout {
-                id: driverRow
+            ColumnLayout {
+                id: driverBox
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.margins: 10
-                spacing: 10
-                Rectangle {
-                    width: 8
-                    height: 8
-                    radius: 4
-                    Layout.alignment: Qt.AlignVCenter
-                    color: _hh.installed ? "#22C55E" : "#A1A1AA"
-                }
-                ColumnLayout {
+                spacing: 8
+
+                RowLayout {
                     Layout.fillWidth: true
-                    spacing: 0
-                    Label {
-                        color: "#E4E4E7"
-                        text: _hh.installed ? "HiDHide driver found" : "HiDHide is not installed"
+                    spacing: 10
+                    Rectangle {
+                        width: 8
+                        height: 8
+                        radius: 4
+                        Layout.alignment: Qt.AlignVCenter
+                        color: _hh.installed ? "#22C55E" : "#A1A1AA"
                     }
-                    Label {
-                        visible: _hh.driverVersion.length > 0
-                        color: "#A1A1AA"
-                        font.pixelSize: 11
-                        text: _hh.driverVersion
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+                        Label {
+                            color: "#E4E4E7"
+                            text: _hh.installed ? "HiDHide driver found" : "HiDHide is not installed"
+                        }
+                        Label {
+                            visible: _hh.driverVersion.length > 0
+                            color: "#A1A1AA"
+                            font.pixelSize: 11
+                            text: _hh.driverVersion
+                        }
+                    }
+                    Switch {
+                        id: controlSwitch
+                        enabled: _hh.installed
+                        checked: _hh.gremlinControl
+                        text: "Gremlin control"
+                        onClicked: {
+                            _hh.setGremlinControl(controlSwitch.checked)
+                            controlSwitch.checked = Qt.binding(function() { return _hh.gremlinControl })
+                        }
                     }
                 }
-                Switch {
-                    id: controlSwitch
-                    enabled: _hh.installed
-                    checked: _hh.gremlinControl
-                    text: "Gremlin control"
-                    onClicked: {
-                        _hh.setGremlinControl(controlSwitch.checked)
-                        controlSwitch.checked = Qt.binding(function() { return _hh.gremlinControl })
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+                    Item { Layout.fillWidth: true }
+                    Switch {
+                        id: cloakSwitch
+                        enabled: _hh.installed && _hh.gremlinControl
+                        checked: _hh.cloakOn
+                        text: "HiDHide Enabled"
+                        onClicked: {
+                            _hh.setCloak(cloakSwitch.checked)
+                            cloakSwitch.checked = Qt.binding(function() { return _hh.cloakOn })
+                        }
                     }
-                }
-                Switch {
-                    id: cloakSwitch
-                    enabled: _hh.installed && _hh.gremlinControl
-                    checked: _hh.cloakOn
-                    text: "HiDHide Enabled"
-                    onClicked: {
-                        _hh.setCloak(cloakSwitch.checked)
-                        cloakSwitch.checked = Qt.binding(function() { return _hh.cloakOn })
+                    Switch {
+                        id: _gamingOnly
+                        checked: _hh.gamingOnly
+                        text: "Gaming devices only"
+                        onClicked: _hh.setGamingOnly(_gamingOnly.checked)
                     }
-                }
-                Switch {
-                    id: _gamingOnly
-                    checked: _hh.gamingOnly
-                    text: "Gaming devices only"
-                    onClicked: _hh.setGamingOnly(_gamingOnly.checked)
                 }
             }
         }
