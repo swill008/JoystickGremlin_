@@ -147,18 +147,17 @@ Window {
 
         RowLayout {
             Layout.fillWidth: true
+            spacing: 12
             Label {
                 Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                Layout.minimumWidth: 40
+                Layout.alignment: Qt.AlignTop
                 wrapMode: Text.WordWrap
                 color: "#A1A1AA"
                 font.pixelSize: 12
                 text: "HiDHide hides the selected controllers from other programs. This program does not install HiDHide. Click on Get HiDHide to download the program."
             }
-            ColumnLayout {
+            Column {
                 Layout.alignment: Qt.AlignTop
-                Layout.minimumWidth: _getHid.implicitWidth
                 spacing: 6
                 Button {
                     id: _getHid
@@ -167,7 +166,7 @@ Window {
                 }
                 Button {
                     text: "Test"
-                    Layout.fillWidth: true
+                    width: _getHid.implicitWidth
                     onClicked: _hh.openGameControllers()
                 }
             }
