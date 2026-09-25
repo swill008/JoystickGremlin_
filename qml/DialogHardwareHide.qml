@@ -135,7 +135,7 @@ Window {
         }
 
         Label {
-            text: "DEVICES  " + _hh.walkStatus
+            text: "DEVICES"
             color: "#A1A1AA"
             font.pixelSize: 11
             font.capitalization: Font.AllUppercase
@@ -216,7 +216,7 @@ Window {
 
         Label {
             visible: _hh.deviceCount === 0
-            text: _hh.installed ? ("No HID devices reported. " + _hh.walkStatus) : "Device list needs the HidHide driver."
+            text: _hh.installed ? "No HID devices reported." : "Device list needs the HidHide driver."
             color: "#A1A1AA"
         }
 
