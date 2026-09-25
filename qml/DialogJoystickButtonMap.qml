@@ -40,6 +40,40 @@ Window {
     property string pendingDevice: ""
     property string pendingPhoto: ""
     property bool startBlank: false
+    property int fileMenuW: 280
+
+    TextMetrics {
+        id: _menuMetric
+        font.pixelSize: 14
+    }
+
+    function growFileMenu() {
+        var labels = [
+            "Edit Mapping",
+            "Fit to photo frame",
+            "Choose background…",
+            "Export map…",
+            "Import map…",
+            "Reset layout",
+            "Clear image"
+        ]
+        var rows = []
+        try {
+            rows = _devices.listRows() || []
+        } catch (err) {
+            rows = []
+        }
+        var i
+        for (i = 0; i < rows.length; i++)
+            labels.push(String(rows[i].name || ""))
+        var max = 160
+        for (i = 0; i < labels.length; i++) {
+            _menuMetric.text = labels[i]
+            if (_menuMetric.advanceWidth > max)
+                max = _menuMetric.advanceWidth
+        }
+        fileMenuW = Math.ceil(max + 88)
+    }
     property string stockImage: {
         if (/evo l|ot l/i.test(targetName))
             return "qml/images/vkb_gladiator_evo_l.jpg"
@@ -201,6 +235,7 @@ Window {
         }
         onObjectAdded: function(index, object) {
             _fileMenu.insertItem(4 + index, object)
+            growFileMenu()
         }
         onObjectRemoved: function(index, object) {
             _fileMenu.removeItem(object)
@@ -684,6 +719,7 @@ Window {
         resItems = []
         if (_devices)
             _devices.reload()
+        growFileMenu()
         if (startBlank || !targetName.length) {
             targetName = ""
             loadedDevice = ""
@@ -1697,6 +1733,9 @@ Window {
             Menu {
                 id: _fileMenu
                 title: "File"
+                width: _buttonMap.fileMenuW
+                implicitWidth: _buttonMap.fileMenuW
+                onAboutToShow: _buttonMap.growFileMenu()
                 MenuItem {
                     text: "Edit Mapping"
                     enabled: !_buttonMap.editing
