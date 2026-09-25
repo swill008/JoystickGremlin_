@@ -39,6 +39,8 @@ IOCTL_GET_BLACKLIST = _ctl(2050)
 IOCTL_SET_BLACKLIST = _ctl(2051)
 IOCTL_GET_ACTIVE = _ctl(2052)
 IOCTL_SET_ACTIVE = _ctl(2053)
+IOCTL_GET_INVERSE = _ctl(2054)
+IOCTL_SET_INVERSE = _ctl(2055)
 IOCTL_ADD_SESSION_BLACKLIST = _ctl(2056)
 IOCTL_CLR_SESSION_BLACKLIST = _ctl(2057)
 
@@ -49,6 +51,8 @@ _IOCTL_NAMES = {
     IOCTL_SET_BLACKLIST: "SET_BLACKLIST",
     IOCTL_GET_ACTIVE: "GET_ACTIVE",
     IOCTL_SET_ACTIVE: "SET_ACTIVE",
+    IOCTL_GET_INVERSE: "GET_INVERSE",
+    IOCTL_SET_INVERSE: "SET_INVERSE",
     IOCTL_ADD_SESSION_BLACKLIST: "ADD_SESSION_BLACKLIST",
     IOCTL_CLR_SESSION_BLACKLIST: "CLR_SESSION_BLACKLIST",
 }
@@ -354,6 +358,30 @@ def set_active(on: bool) -> bool:
     return bool(get_active()) == bool(on)
 
 
+def get_inverse() -> bool:
+    handle = _open_control()
+    if handle is None:
+        return False
+    try:
+        ok, data = _ioctl(handle, IOCTL_GET_INVERSE, None, 1)
+        return ok and bool(data and data[0])
+    finally:
+        _close(handle)
+
+
+def set_inverse(on: bool) -> bool:
+    handle = _open_control()
+    if handle is None:
+        return False
+    try:
+        ok, _ = _ioctl(handle, IOCTL_SET_INVERSE, bytes([1 if on else 0]), 0)
+        if not ok:
+            return False
+    finally:
+        _close(handle)
+    return bool(get_inverse()) == bool(on)
+
+
 def get_blacklist() -> list[str]:
     return _get_multi(IOCTL_GET_BLACKLIST)
 
@@ -373,14 +401,16 @@ def set_whitelist(paths: list[str]) -> bool:
 _snap_active = None
 _snap_whitelist = None
 _snap_blacklist = None
+_snap_inverse = None
 _borrowed_active = False
 _borrowed_whitelist = False
 _borrowed_blacklist = False
+_borrowed_inverse = False
 _session_ids: set[str] = set()
 
 
 def snapshot_if_needed() -> None:
-    global _snap_active, _snap_whitelist, _snap_blacklist
+    global _snap_active, _snap_whitelist, _snap_blacklist, _snap_inverse
     if not driver_present():
         return
     if _snap_active is None:
@@ -390,12 +420,15 @@ def snapshot_if_needed() -> None:
     if _snap_blacklist is None:
         _snap_blacklist = get_blacklist()
         _hh_log(f"snapshot blacklist count={len(_snap_blacklist)} ids={list(_snap_blacklist)}")
+    if _snap_inverse is None:
+        _snap_inverse = get_inverse()
+        _hh_log(f"snapshot inverse={bool(_snap_inverse)}")
 
 
 def restore_borrowed() -> None:
-    """Put cloak, allow list, and device list back. Session calls are not used."""
-    global _snap_active, _snap_whitelist, _snap_blacklist
-    global _borrowed_active, _borrowed_whitelist, _borrowed_blacklist
+    """Put cloak, application list, device list, and inverse back."""
+    global _snap_active, _snap_whitelist, _snap_blacklist, _snap_inverse
+    global _borrowed_active, _borrowed_whitelist, _borrowed_blacklist, _borrowed_inverse
     if not driver_present():
         _session_ids.clear()
         return
@@ -411,6 +444,12 @@ def restore_borrowed() -> None:
     except Exception:
         pass
     try:
+        if _borrowed_inverse and _snap_inverse is not None:
+            _hh_log(f"restore inverse={bool(_snap_inverse)}")
+            set_inverse(bool(_snap_inverse))
+    except Exception:
+        _hh_log("restore inverse failed")
+    try:
         if _borrowed_active and _snap_active is not None:
             set_active(bool(_snap_active))
     except Exception:
@@ -418,6 +457,7 @@ def restore_borrowed() -> None:
     _borrowed_active = False
     _borrowed_whitelist = False
     _borrowed_blacklist = False
+    _borrowed_inverse = False
     _session_ids.clear()
 
 
@@ -972,12 +1012,14 @@ class HidHideModel(QtCore.QObject):
         self._gaming_only = True
         self._generation = 0
         self._last_error = ""
+        self._inverse = False
         _ensure_options()
         self.reload()
 
     def reload(self) -> None:
         self._present = driver_present()
         self._active = get_active() if self._present else False
+        self._inverse = get_inverse() if self._present else False
         persistent = {i.upper() for i in get_blacklist()} if self._present else set()
         self._devices = []
         try:
@@ -997,7 +1039,7 @@ class HidHideModel(QtCore.QObject):
         self._games = _load_games()
         self._generation += 1
         _hh_log(
-            f"reload present={self._present} cloak={self._active} "
+            f"reload present={self._present} cloak={self._active} inverse={self._inverse} "
             f"client={len(persistent)} rows={len(self._devices)}"
         )
         self.changed.emit()
@@ -1013,6 +1055,27 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Property(bool, notify=changed)
     def cloakOn(self) -> bool:
         return self._active
+
+    @QtCore.Property(bool, notify=changed)
+    def inverseOn(self) -> bool:
+        return self._inverse
+
+    @QtCore.Slot(bool, result=bool)
+    def setInverse(self, on: bool) -> bool:
+        global _borrowed_inverse
+        if not self._present:
+            return False
+        snapshot_if_needed()
+        if not set_inverse(bool(on)):
+            self._last_error = _ioctl_error or "HidHide driver call failed."
+            self.reload()
+            return False
+        _borrowed_inverse = True
+        self._inverse = bool(on)
+        self._last_error = ""
+        self._sync_whitelist()
+        self.changed.emit()
+        return True
 
     @QtCore.Property(bool, notify=changed)
     def gamingOnly(self) -> bool:
@@ -1169,14 +1232,20 @@ class HidHideModel(QtCore.QObject):
         global _borrowed_whitelist
         snapshot_if_needed()
         base = list(_snap_whitelist or [])
-        wanted = {_gremlin_exe()}
+        gremlin = _gremlin_exe()
+        gremlin_key = gremlin.lower()
+        wanted = []
         for row in self._games:
-            wanted.add(row["path"])
+            wanted.append(row["path"])
+        if not self._inverse and gremlin:
+            wanted.append(gremlin)
         merged = []
         seen = set()
-        for item in base + list(wanted):
+        for item in list(base) + wanted:
             key = item.lower()
             if key in seen or not item:
+                continue
+            if self._inverse and key == gremlin_key:
                 continue
             seen.add(key)
             merged.append(item)
