@@ -104,6 +104,7 @@ Window {
         id: _root
 
         anchors.fill: parent
+        anchors.bottomMargin: 58
 
         ScrollView {
             id: _deviceScroll
@@ -251,5 +252,11 @@ Window {
                 }
             }
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
