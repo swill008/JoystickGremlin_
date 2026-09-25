@@ -13,6 +13,7 @@ Item {
     property var buttons: null
     property var axes: null
     property var hats: null
+    property var chipRows: []
     property bool editing: false
     property var editorNodes: []
     property string photoOverride: ""
