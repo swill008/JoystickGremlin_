@@ -11,6 +11,11 @@ def test_restore_clamps_to_available_geometry() -> None:
     assert "availableGeometry" in text
     assert "QtCore.QMargins(11, 45, 11, 11)" in text
     assert "window.setGeometry(fitted)" in text
+    fit = text[text.find("def _fit_client") : text.find("def restore_window")]
+    assert "(avail.width() - frame_w) // 2" in fit
+    assert "(avail.height() - frame_h) // 2" in fit
+    assert "margins.top()" in fit
+    assert "saved.x()" not in fit
     # Maximized restore must not set a full-screen windowed rect first.
     restore = text[text.find("def restore_window") : text.find("def save_window")]
     assert "Visibility.Maximized" in restore
