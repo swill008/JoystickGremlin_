@@ -26,6 +26,7 @@ _CFG_LINKS = "module-links"
 _CFG_LIST_MODE = "list-mode"
 _CFG_WINDOW_W = "window-width"
 _CFG_WINDOW_H = "window-height"
+_CFG_SPLIT = "split-ratio"
 _DOWNLOAD = "https://github.com/nefarius/HidHide/releases"
 
 _DEVICE_TYPE = 32769
@@ -148,6 +149,16 @@ def _ensure_options() -> None:
             640,
             "Hardware Hide window height.",
             {"min": 360, "max": 8000},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_SPLIT,
+            PropertyType.Int,
+            600,
+            "Hardware Hide device list share of the splitter, in thousandths.",
+            {"min": 150, "max": 850},
             True,
         )
     except Exception:
@@ -1480,6 +1491,21 @@ class HidHideModel(QtCore.QObject):
         cfg = config.Configuration()
         cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW_W, max(480, min(8000, int(width))))
         cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW_H, max(360, min(8000, int(height))))
+
+    @QtCore.Property(int, constant=True)
+    def splitRatio(self) -> int:
+        _ensure_options()
+        try:
+            return max(150, min(850, int(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_SPLIT))))
+        except (TypeError, ValueError):
+            return 600
+
+    @QtCore.Slot(int)
+    def saveSplitRatio(self, ratio: int) -> None:
+        _ensure_options()
+        config.Configuration().set(
+            _CFG_SECTION, _CFG_GROUP, _CFG_SPLIT, max(150, min(850, int(ratio)))
+        )
 
     @QtCore.Property(str, constant=True)
     def downloadUrl(self) -> str:
