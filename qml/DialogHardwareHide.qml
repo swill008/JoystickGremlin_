@@ -152,10 +152,10 @@ Window {
                 wrapMode: Text.WordWrap
                 color: "#A1A1AA"
                 font.pixelSize: 12
-                text: "HidHide hides physical controllers from other programs so games only see vJoy and Xbox. Gremlin does not install HidHide. Hides last while Gremlin is running. On Exit we put HidHide back the way we found it."
+                text: "HiDHide hides the selected controllers from other programs. This program does not install HiDHide. Click on Get HiDHide to download the program."
             }
             Button {
-                text: "Get HidHide"
+                text: "Get HiDHide"
                 onClicked: _hh.openDownload()
             }
         }
