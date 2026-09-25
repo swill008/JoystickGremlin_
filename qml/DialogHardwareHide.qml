@@ -94,6 +94,7 @@ Window {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
+        anchors.bottomMargin: 58
         spacing: 10
 
         Rectangle {
@@ -505,5 +506,11 @@ Window {
                 onClicked: _win.close()
             }
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
