@@ -250,6 +250,11 @@ def _set_sizes(sizes: dict[str, tuple[int, int]]) -> None:
     _write_status(_CFG_SIZES, packed)
 
 
+def _plog(action: str, **parts: object) -> None:
+    detail = " ".join(f"{key}={value!r}" for key, value in parts.items())
+    print(f"Persist {action} {detail}", flush=True)
+
+
 def _clamp_size(w: int, h: int) -> tuple[int, int]:
     return (
         max(220, min(720, int(w))),
@@ -263,14 +268,33 @@ def _show_stubs() -> bool:
 
 
 def _load_module_doc(device_name: str, guid: str = "") -> dict:
-    path = _maps_dir() / f"{resolve_module_slug(device_name, guid)}.json"
+    slug = resolve_module_slug(device_name, guid)
+    path = _maps_dir() / f"{slug}.json"
     if not path.is_file():
+        _plog("load miss", name=device_name, guid=guid, slug=slug, path=str(path))
         return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as exc:
+        _plog("load bad", name=device_name, guid=guid, path=str(path), error=exc)
         return {}
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        _plog("load bad", name=device_name, guid=guid, path=str(path), error="not an object")
+        return {}
+    claim = data.get("claim") if isinstance(data.get("claim"), dict) else {}
+    _plog(
+        "load",
+        name=device_name,
+        guid=guid,
+        path=str(path),
+        buttons=len(claim.get("buttons") or []),
+        axes=len(claim.get("axes") or []),
+        hats=len(claim.get("hats") or []),
+        nodes=len(data.get("nodes") or []) if isinstance(data.get("nodes"), list) else 0,
+        view="view" in data,
+        catalog="catalog" in data,
+    )
+    return data
 
 
 _DEFAULT_CATALOG = {
@@ -585,14 +609,18 @@ class ModuleListModel(QtCore.QAbstractListModel):
         doc.setdefault("kind", "control.hardware")
         doc.setdefault("device", name)
         path.parent.mkdir(parents=True, exist_ok=True)
+        _plog("save view", name=name, path=str(path))
         try:
             path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
             written = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError) as exc:
+            _plog("save view failed", path=str(path), error=exc)
             return False
         if not isinstance(written.get("view"), dict):
+            _plog("save view mismatch", path=str(path))
             return False
         self.viewChanged.emit()
+        _plog("save view ok", path=str(path))
         return True
 
     @QtCore.Slot(str, result=str)
@@ -631,14 +659,18 @@ class ModuleListModel(QtCore.QAbstractListModel):
         doc.setdefault("kind", "control.hardware")
         doc.setdefault("device", name)
         path.parent.mkdir(parents=True, exist_ok=True)
+        _plog("save catalog", name=name, path=str(path))
         try:
             path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
             written = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError) as exc:
+            _plog("save catalog failed", path=str(path), error=exc)
             return False
         if not isinstance(written.get("catalog"), dict):
+            _plog("save catalog mismatch", path=str(path))
             return False
         self.viewChanged.emit()
+        _plog("save catalog ok", path=str(path))
         return True
 
     @QtCore.Slot(str)
@@ -1420,6 +1452,15 @@ class DriverInputModel(QtCore.QAbstractListModel):
             "hats": [],
             "friendly": {},
         }
+        _plog(
+            "open module",
+            name=device_name,
+            guid=guid,
+            buttons=claim.get("buttons"),
+            axes=claim.get("axes"),
+            hats=claim.get("hats"),
+            friendly=list((claim.get("friendly") or {})),
+        )
         info = None
         if guid:
             try:
@@ -1790,18 +1831,34 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 doc["image"] = f"qml/maps/{resolve_module_slug(name, self._guid)}/{photos[-1].name}"
         path.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(doc, indent=2) + "\n"
+        _plog(
+            "save claim",
+            name=name,
+            guid=self._guid,
+            direction=direction,
+            path=str(path),
+            buttons=buttons,
+            axes=axes,
+            hats=hats,
+            friendly=list(friendly),
+        )
         try:
             path.write_text(text, encoding="utf-8")
             written = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError) as exc:
+            _plog("save claim failed", path=str(path), error=exc)
             return False
         got = written.get("claim") if isinstance(written.get("claim"), dict) else {}
         if [int(n) for n in (got.get("buttons") or [])] != buttons:
+            _plog("save claim mismatch", path=str(path), field="buttons", wrote=buttons, read=got.get("buttons"))
             return False
         if [int(n) for n in (got.get("axes") or [])] != axes:
+            _plog("save claim mismatch", path=str(path), field="axes", wrote=axes, read=got.get("axes"))
             return False
         if [int(n) for n in (got.get("hats") or [])] != hats:
+            _plog("save claim mismatch", path=str(path), field="hats", wrote=hats, read=got.get("hats"))
             return False
         bind_module_file(name, self._guid, resolve_module_slug(name, self._guid))
         signal.configChanged.emit()
+        _plog("save claim ok", path=str(path), bytes=path.stat().st_size)
         return True
