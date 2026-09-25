@@ -22,6 +22,7 @@ _CFG_SECTION = "display"
 _CFG_GROUP = "hidhide"
 _CFG_GAMES = "games"
 _CFG_PHOTOS = "photos"
+_CFG_LINKS = "module-links"
 _CFG_WINDOW_W = "window-width"
 _CFG_WINDOW_H = "window-height"
 _DOWNLOAD = "https://github.com/nefarius/HidHide/releases"
@@ -106,6 +107,16 @@ def _ensure_options() -> None:
         cfg.register(
             _CFG_SECTION,
             _CFG_GROUP,
+            _CFG_LINKS,
+            PropertyType.String,
+            "{}",
+            "Hardware Hide device to input or output module.",
+            {},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
             _CFG_WINDOW_W,
             PropertyType.Int,
             720,
@@ -181,6 +192,63 @@ def _save_photos(rows: dict[str, str]) -> None:
         )
     except Exception:
         pass
+
+
+def _load_links() -> dict[str, str]:
+    _ensure_options()
+    raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_LINKS) or "{}")
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): str(v) for k, v in data.items() if k and v}
+
+
+def _save_links(rows: dict[str, str]) -> None:
+    _ensure_options()
+    try:
+        config.Configuration().set(
+            _CFG_SECTION, _CFG_GROUP, _CFG_LINKS, json.dumps(rows, ensure_ascii=True)
+        )
+    except Exception:
+        pass
+
+
+def _module_label(dev) -> str:
+    if getattr(dev, "is_virtual", False):
+        return f"vJoy {int(getattr(dev, 'vjoy_id', 0) or 0)}"
+    return str(getattr(dev, "name", "") or "")
+
+
+def _collection_index(instance: str) -> int | None:
+    import re
+    text = (instance or "").upper()
+    match = re.search(r"&([0-9A-F]{4})$", text)
+    if match:
+        return int(match.group(1), 16)
+    match = re.search(r"COL(\d+)", text)
+    if match:
+        return max(0, int(match.group(1)) - 1)
+    return None
+
+
+def _module_photo(hw, name: str) -> str:
+    if hw is None or not name:
+        return ""
+    try:
+        url = hw.profilePhotoUrl(name) or ""
+    except Exception:
+        url = ""
+    if url:
+        return url
+    if name.lower().startswith("vjoy"):
+        try:
+            return hw.profilePhotoUrl("vJoy") or ""
+        except Exception:
+            return ""
+    return ""
 
 
 def _vid_pid(instance: str) -> tuple[int | None, int | None]:
@@ -1113,6 +1181,7 @@ def _friendly_name(instance: str) -> str:
 
 def _enrich_devices(rows: list[dict]) -> list[dict]:
     photos = _load_photos()
+    links = _load_links()
     dill_devs = _dill_matches()
     hw = None
     try:
@@ -1120,34 +1189,83 @@ def _enrich_devices(rows: list[dict]) -> list[dict]:
         hw = HardwareProfile()
     except Exception:
         hw = None
+    physical = [dev for dev in dill_devs if not getattr(dev, "is_virtual", False)]
+    virtual = [dev for dev in dill_devs if getattr(dev, "is_virtual", False)]
+    by_vjoy = {}
+    for dev in virtual:
+        try:
+            by_vjoy[int(dev.vjoy_id)] = dev
+        except (TypeError, ValueError, AttributeError):
+            continue
+    known = {_module_label(dev) for dev in dill_devs if _module_label(dev)}
+    present = {str(row.get("instanceId") or "").upper() for row in rows}
+    used = {
+        name for key, name in links.items()
+        if str(key).upper() in present and name in known
+    }
+    changed = False
     for row in rows:
         instance = row["instanceId"]
         vid, pid = _vid_pid(instance)
         match = None
         if vid is not None and pid is not None:
-            for dev in dill_devs:
+            hits = []
+            for dev in physical:
                 try:
                     if int(dev.vendor_id) == vid and int(dev.product_id) == pid:
-                        match = dev
-                        break
+                        hits.append(dev)
                 except Exception:
                     continue
+            if len(hits) == 1:
+                match = hits[0]
         if match and match.name:
             row["name"] = _display_name("", "", row.get("name") or "", match.name)
         else:
             row["name"] = _display_name("", "", row.get("name") or "", "")
+        module = links.get(instance) or links.get(instance.upper(), "")
+        if module not in known:
+            module = ""
+            if match is not None:
+                module = _module_label(match)
+            elif _looks_vjoy(row):
+                index = _collection_index(instance)
+                dev = by_vjoy.get((index + 1) if index is not None else -1)
+                if dev is not None and _module_label(dev) not in used:
+                    module = _module_label(dev)
+                else:
+                    for candidate in sorted(by_vjoy):
+                        label = _module_label(by_vjoy[candidate])
+                        if label and label not in used:
+                            module = label
+                            break
+            if module:
+                links[instance] = module
+                used.add(module)
+                changed = True
+                _hh_log(f"module link {instance} -> {module}")
+        elif instance not in links:
+            links[instance] = module
+            changed = True
         photo = photos.get(instance) or photos.get(instance.upper(), "")
-        if photo:
-            row["photo"] = _file_url(Path(photo)) if not str(photo).startswith("file:") else photo
-        elif match and hw is not None:
-            try:
-                url = hw.profilePhotoUrl(match.name) or ""
-                row["photo"] = url
-            except Exception:
-                row["photo"] = ""
+        override = Path(photo) if photo and not str(photo).startswith("file:") else None
+        if override is not None and override.is_file():
+            row["photo"] = _file_url(override)
+            row["photoSource"] = "override"
+        elif photo and str(photo).startswith("file:"):
+            row["photo"] = photo
+            row["photoSource"] = "override"
         else:
-            row["photo"] = row.get("photo") or ""
+            row["photo"] = _module_photo(hw, module)
+            row["photoSource"] = "module" if row["photo"] else ""
+    if changed:
+        _save_links(links)
     return rows
+
+
+def _looks_vjoy(row: dict) -> bool:
+    name = str(row.get("name") or "").lower()
+    instance = str(row.get("instanceId") or "").upper()
+    return "vjoy" in name or "HIDCLASS" in instance
 
 @ta.QmlElement
 class HidHideModel(QtCore.QObject):
