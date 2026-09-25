@@ -356,6 +356,7 @@ Item {
     }
 
     function bindCard(card) {
+        _page.registerCard(card)
         card.hoverPeek = _page.hoverPeek
         card.pinActive = _page.pinSlug === card.slug
         card.onCardFocused.connect(function() {
@@ -368,7 +369,7 @@ Item {
         card.shiftToggled.connect(function() { _page.toggleSelect(card) })
         card.stackSelectedCards.connect(function() { _page.stackSelected(card.slug) })
         card.onOpenConfiguration.connect(function() { _page.openConfiguration(_page.pack(card)) })
-        card.onOpenButtonMap.connect(function() { _page.openButtonMap(_page.pack(card)) })
+        card.openButtonMap.connect(function() { _page.openButtonMap(_page.pack(card)) })
         card.openOutputView.connect(function() { _page.openOutputView(_page.pack(card)) })
         card.onConfigureModule.connect(function() { _page.configureModule(_page.pack(card)) })
         card.onPinControlDisplay.connect(function() { _page.pinControlDisplay(_page.pack(card)) })
@@ -403,7 +404,6 @@ Item {
                 model.unstackAll(card.slug)
         })
         card.Component.onDestruction.connect(function() { _page.unregisterCard(card) })
-        _page.registerCard(card)
     }
 
     function refreshCards() {
