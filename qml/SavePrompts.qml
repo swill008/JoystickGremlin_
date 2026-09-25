@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 
 Item {
     id: _gate
@@ -32,10 +33,13 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         standardButtons: Dialog.Save | Dialog.Discard | Dialog.Cancel
         closePolicy: Popup.NoAutoClose
-        contentItem: Label {
-            text: _gate.detail
-            wrapMode: Text.WordWrap
-            implicitWidth: 420
+        contentItem: ColumnLayout {
+            Label {
+                text: _gate.detail
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.preferredWidth: 420
+            }
         }
         onAccepted: _gate.saveChosen()
         onDiscarded: _gate.discardChosen()
@@ -52,10 +56,13 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         standardButtons: Dialog.Ok
         onAccepted: _gate.acknowledged()
-        contentItem: Label {
-            id: _resultText
-            wrapMode: Text.WordWrap
-            implicitWidth: 420
+        contentItem: ColumnLayout {
+            Label {
+                id: _resultText
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.preferredWidth: 420
+            }
         }
     }
 }
