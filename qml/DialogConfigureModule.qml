@@ -23,6 +23,7 @@ Window {
 
     property string moduleFileLabel: ""
     property string moduleFileMessage: ""
+    property string shownModulePath: ""
     property var moduleFileChoices: []
     property bool _moduleFileQuiet: false
 
@@ -57,6 +58,7 @@ Window {
     function reloadModuleControls() {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(deviceGuid)
+        shownModulePath = _hw.defaultPath(deviceName)
         _driver.loadDevice(deviceGuid, deviceName)
         var url = _hw.profilePhotoUrl(deviceName)
         photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
@@ -83,6 +85,7 @@ Window {
     Component.onCompleted: {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(deviceGuid)
+        shownModulePath = _hw.defaultPath(deviceName)
         _driver.loadDevice(deviceGuid, deviceName)
         _win.photoUrl = _hw.profilePhotoUrl(deviceName)
     }
@@ -112,6 +115,7 @@ Window {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 12
+        anchors.bottomMargin: 78
         spacing: 10
 
         Label {
@@ -370,5 +374,12 @@ Window {
             if (!moduleFileMessage.length)
                 reloadModuleControls()
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        moduleFile: shownModulePath
     }
 }
