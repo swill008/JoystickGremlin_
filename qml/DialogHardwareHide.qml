@@ -246,12 +246,9 @@ Window {
         }
 
         Label {
-            text: _hh.inverseOn
-                  ? "GAMES AND PROGRAMS BLOCKED FROM HIDDEN DEVICES"
-                  : "GAMES AND PROGRAMS THAT MAY SEE HIDDEN DEVICES"
+            text: "Programs that have been added to the Mask"
             color: "#A1A1AA"
             font.pixelSize: 11
-            font.capitalization: Font.AllUppercase
         }
 
         RowLayout {
