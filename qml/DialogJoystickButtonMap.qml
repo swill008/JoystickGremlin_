@@ -30,11 +30,17 @@ Window {
         if (!isDirty())
             return
         e.accepted = false
-        _leaveDlg.kind = "close"
-        _leaveDlg.open()
+        askLeave("close")
     }
 
+    property string leaveKind: ""
     property string targetName: ""
+
+    function askLeave(kind) {
+        leaveKind = kind
+        _saveGate.detail = "Editor changes are not saved. Leave without saving and this work will be lost."
+        _saveGate.ask()
+    }
     property string targetGuid: ""
     property string initialPhoto: ""
     property string loadedDevice: ""
@@ -497,7 +503,9 @@ Window {
         })
     }
 
-    function saveEdit() {
+    function saveEdit(report) {
+        if (report === undefined)
+            report = true
         var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
         var nodes = []
         if (ed && ed.nodes)
@@ -523,14 +531,16 @@ Window {
         var payload = JSON.stringify(doc)
         if (!_hw.save(targetName, payload)) {
             saveOk = false
-            _savedPop.open()
-            return
+            if (report)
+                _saveGate.announce(false, "The map was not written. It is still only on this screen.")
+            return false
         }
         var check = parseDoc(_hw.load(targetName))
         if (!check || !check.nodes) {
             saveOk = false
-            _savedPop.open()
-            return
+            if (report)
+                _saveGate.announce(false, "The map was written but could not be read back.")
+            return false
         }
         liveNodes = JSON.parse(JSON.stringify(nodes))
         liveImage = image
@@ -538,7 +548,9 @@ Window {
         applyImage(liveImage)
         hydrateOverlays(liveNodes)
         saveOk = true
-        _savedPop.open()
+        if (report)
+            _saveGate.announce(true, "Mapping saved.")
+        return true
     }
 
     function editorNodesNow() {
@@ -573,8 +585,7 @@ Window {
 
     function cancelEdit() {
         if (isDirty()) {
-            _leaveDlg.kind = "cancel"
-            _leaveDlg.open()
+            askLeave("cancel")
             return
         }
         discardEdit()
@@ -590,25 +601,22 @@ Window {
             Qt.quit()
             return
         }
-        _leaveDlg.kind = "appquit"
-        _leaveDlg.open()
+        askLeave("appquit")
     }
 
     function confirmLeaveSave() {
         saveEdit()
-        _leaveDlg.close()
         if (!saveOk)
             return
-        if (_leaveDlg.kind === "close") {
-            if (!editing) {
-                _allowClose = true
-                close()
-            }
-        } else if (_leaveDlg.kind === "switch") {
+        if (leaveKind === "close") {
+            editing = false
+            _allowClose = true
+            close()
+        } else if (leaveKind === "switch") {
             finishSwitch(pendingDevice)
-        } else if (_leaveDlg.kind === "blank") {
+        } else if (leaveKind === "blank") {
             clearToBlank()
-        } else if (_leaveDlg.kind === "appquit") {
+        } else if (leaveKind === "appquit") {
             _allowClose = true
             close()
             Qt.quit()
@@ -617,16 +625,15 @@ Window {
 
     function confirmLeaveDiscard() {
         discardEdit()
-        _leaveDlg.close()
-        if (_leaveDlg.kind === "switch")
+        if (leaveKind === "switch")
             finishSwitch(pendingDevice)
-        if (_leaveDlg.kind === "blank")
+        if (leaveKind === "blank")
             clearToBlank()
-        if (_leaveDlg.kind === "close" || _leaveDlg.kind === "appquit") {
+        if (leaveKind === "close" || leaveKind === "appquit") {
             _allowClose = true
             close()
         }
-        if (_leaveDlg.kind === "appquit")
+        if (leaveKind === "appquit")
             Qt.quit()
     }
 
@@ -672,11 +679,10 @@ Window {
     function openBlank() {
         if (editing && isDirty()) {
             pendingDevice = ""
-            _leaveDlg.kind = "blank"
             show()
             raise()
             requestActivate()
-            _leaveDlg.open()
+            askLeave("blank")
             return
         }
         clearToBlank()
@@ -715,11 +721,10 @@ Window {
         }
         if (editing && isDirty()) {
             pendingDevice = next
-            _leaveDlg.kind = "switch"
             show()
             raise()
             requestActivate()
-            _leaveDlg.open()
+            askLeave("switch")
             return
         }
         finishSwitch(next)
@@ -747,54 +752,11 @@ Window {
             showBlank(initialPhoto)
     }
 
-    Dialog {
-        id: _leaveDlg
-        property string kind: "cancel"
-        title: "Unsaved changes"
-        modal: true
-        anchors.centerIn: parent
-        width: 440
-        standardButtons: Dialog.NoButton
-        closePolicy: Popup.CloseOnEscape
-
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 12
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: "#FBBF24"
-                text: "Caution: you have unsaved editor changes. If you leave without Save, this work will be lost."
-            }
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: "#A1A1AA"
-                text: "Save writes the control.hardware profile and the live map. Discard restores the last saved map."
-            }
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: 8
-                Button {
-                    text: "Stay"
-                    onClicked: {
-                        _buttonMap.pendingDevice = ""
-                        _leaveDlg.close()
-                    }
-                }
-                Button {
-                    text: "Discard"
-                    onClicked: _buttonMap.confirmLeaveDiscard()
-                }
-                Button {
-                    text: "Save"
-                    highlighted: true
-                    onClicked: _buttonMap.confirmLeaveSave()
-                }
-            }
-        }
-
-        onRejected: close()
+    DismissibleDialog {
+        id: _saveGate
+        onSaveChosen: _buttonMap.confirmLeaveSave()
+        onDiscardChosen: _buttonMap.confirmLeaveDiscard()
+        onCancelled: _buttonMap.pendingDevice = ""
     }
 
     Dialog {
@@ -826,7 +788,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Mapping saved appears; click outside it or Esc to dismiss. If the write or re-read fails, a red Save failed warning appears. Click OK to dismiss it — clicking outside does not close it.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nFit to photo frame — once, if the saved layout is twice as large as the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExport map… — Save As a zip named after this hardware. Confirm the photo, then write.\nImport map… — pick a zip, confirm the device photo, then replace that device profile.\nExit — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Saved appears. Click outside it or Esc to dismiss. If the write or re-read fails, Save failed stays up until OK.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nFit to photo frame — once, if the saved layout is twice as large as the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExport map… — Save As a zip named after this hardware. Confirm the photo, then write.\nImport map… — pick a zip, confirm the device photo, then replace that device profile.\nExit — close the window. Unsaved work still warns."
                 },
                 {
                     h: "Edit menu",
@@ -1398,11 +1360,11 @@ Window {
     function openExport() {
         packError = ""
         if (editing) {
-            var before = saveOk
-            saveEdit()
-            _savedPop.close()
-            if (!saveOk)
+            saveEdit(false)
+            if (!saveOk) {
+                _saveGate.announce(false, "The map was not written. Export was not started.")
                 return
+            }
         }
         var hint = _hw.defaultExportUrl(targetName)
         _exportDialog.selectedFile = hint
@@ -1451,7 +1413,7 @@ Window {
         }
         packError = packKind === "import" ? ("Imported " + (info.device || packDevice)) : "Exported map"
         saveOk = true
-        _savedPop.open()
+        _saveGate.announce(true, packError)
     }
 
     FileDialog {
@@ -1539,42 +1501,6 @@ Window {
         defaultSuffix: "pdf"
         nameFilters: ["PDF (*.pdf)"]
         onAccepted: exportViewTo(selectedFile, "pdf")
-    }
-
-    Popup {
-        id: _savedPop
-        modal: true
-        dim: false
-        focus: true
-        padding: 16
-        closePolicy: _buttonMap.saveOk
-                     ? (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
-                     : Popup.NoAutoClose
-        parent: Overlay.overlay
-        x: Overlay.overlay ? Math.round((Overlay.overlay.width - width) / 2) : Math.round((_buttonMap.width - width) / 2)
-        y: Overlay.overlay ? Math.round((Overlay.overlay.height - height) / 2) : Math.round((_buttonMap.height - height) / 2)
-        background: Rectangle {
-            color: _buttonMap.saveOk ? "#18181B" : "#450A0A"
-            border.color: _buttonMap.saveOk ? "#3F3F46" : "#DC2626"
-            border.width: 1
-            radius: 4
-        }
-        contentItem: Column {
-            spacing: 12
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: _buttonMap.saveOk ? "Mapping saved" : "Save failed"
-                color: _buttonMap.saveOk ? "#E4E4E7" : "#FECACA"
-                font.pixelSize: 14
-                horizontalAlignment: Text.AlignHCenter
-            }
-            Button {
-                visible: !_buttonMap.saveOk
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "OK"
-                onClicked: _savedPop.close()
-            }
-        }
     }
 
     Popup {
