@@ -1443,13 +1443,12 @@ class HidHideModel(QtCore.QObject):
         if not set_active(bool(on)):
             return False
         _borrowed_active = True
-        self._active = bool(on)
-        self.changed.emit()
+        self.reload()
         return True
 
     @QtCore.Slot(str, bool, result=bool)
     def setDeviceHidden(self, instance_id: str, hidden: bool) -> bool:
-        global _borrowed_blacklist, _borrowed_active
+        global _borrowed_blacklist
         if not self._present or not instance_id:
             return False
         snapshot_if_needed()
@@ -1478,10 +1477,6 @@ class HidHideModel(QtCore.QObject):
             return False
         _borrowed_blacklist = True
         self._last_error = ""
-        if hidden and not get_active():
-            if set_active(True):
-                _borrowed_active = True
-                self._active = True
         self.reload()
         return True
 
