@@ -159,6 +159,16 @@ Item {
         meters = list
     }
 
+    property string savedView: ""
+
+    function rememberView() {
+        savedView = JSON.stringify(viewPayload())
+    }
+
+    function hasUnsaved() {
+        return savedView.length > 0 && JSON.stringify(viewPayload()) !== savedView
+    }
+
     function viewPayload() {
         return {
             "layout": (showPads && showMeters) ? "pads_meters_grid" : (showMeters ? "meters_grid" : "grid_only"),
@@ -214,13 +224,28 @@ Item {
         colorLive = v.colorLive || "#22C55E"
         colorMeter = v.colorMeter || "#3B82F6"
         colorPress = v.colorPress || "#22C55E"
+        rememberView()
     }
 
     function saveView() {
+        var ok = false
         if (moduleModel && deviceName)
-            moduleModel.saveViewConfig(deviceName, JSON.stringify(viewPayload()))
-        toastText = "Display Options Saved"
-        _savedToast.open()
+            ok = moduleModel.saveViewConfig(deviceName, JSON.stringify(viewPayload()))
+        if (ok) {
+            rememberView()
+            _saveGate.announce(true, "Display options were written to the module file.")
+        } else {
+            _saveGate.announce(false, "Display options were not written. They are still only on this screen.")
+        }
+    }
+
+    function requestClose() {
+        if (hasUnsaved()) {
+            _saveGate.detail = "Display options are not saved. Close this panel and they will be lost."
+            _saveGate.ask()
+            return
+        }
+        closePanel()
     }
 
     function resetView() {
@@ -533,7 +558,7 @@ Item {
                     Button {
                         text: "×"
                         implicitWidth: 28
-                        onClicked: _root.closePanel()
+                        onClicked: _root.requestClose()
                     }
                 }
 
@@ -856,6 +881,19 @@ Item {
                     Button { text: "Save with module"; highlighted: true; onClicked: saveView() }
                 }
             }
+        }
+    }
+
+    SavePrompts {
+        id: _saveGate
+        onSaveChosen: {
+            saveView()
+            if (!hasUnsaved())
+                closePanel()
+        }
+        onDiscardChosen: {
+            loadView()
+            closePanel()
         }
     }
 
