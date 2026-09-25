@@ -187,6 +187,25 @@ Window {
     ViewerDeviceModel { id: _devices }
     HardwareProfile { id: _hw }
 
+    Instantiator {
+        id: _inputDeviceItems
+        model: _devices
+        delegate: MenuItem {
+            required property string name
+            text: name
+            enabled: !_buttonMap.editing
+            checkable: true
+            checked: name === _buttonMap.targetName
+            onTriggered: _buttonMap.openForDevice(name, "")
+        }
+        onObjectAdded: function(index, object) {
+            _fileMenu.insertItem(4 + index, object)
+        }
+        onObjectRemoved: function(index, object) {
+            _fileMenu.removeItem(object)
+        }
+    }
+
     DeviceNames {
         id: _names
         onChanged: _buttonMap._nameTick++
@@ -1639,6 +1658,7 @@ Window {
         MenuBar {
             Layout.fillWidth: true
             Menu {
+                id: _fileMenu
                 title: "File"
                 MenuItem {
                     text: "Edit Mapping"
@@ -1648,22 +1668,6 @@ Window {
                 MenuItem { text: "Save"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
                 MenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
                 MenuSeparator {}
-                MenuItem {
-                    text: "Open EVO R map"
-                    enabled: !editing
-                    onTriggered: {
-                        targetName = "VKBsim Gladiator EVO R"
-                        loadLive()
-                    }
-                }
-                MenuItem {
-                    text: "Open EVO L map"
-                    enabled: !editing
-                    onTriggered: {
-                        targetName = "VKBsim Gladiator EVO L"
-                        loadLive()
-                    }
-                }
                 MenuSeparator {}
                 MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
                 MenuItem {
