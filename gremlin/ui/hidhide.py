@@ -338,9 +338,49 @@ def _file_url(path: Path) -> str:
 
 
 def _gremlin_exe() -> str:
-    # HidHide matches the running process image. Poetry is python.exe.
-    # A packaged build is the executable. Both are sys.executable.
+    # HidHide matches the process image, not the script. Ask Windows for this process.
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.GetModuleFileNameW.argtypes = [wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+        k32.GetModuleFileNameW.restype = wintypes.DWORD
+        buf = ctypes.create_unicode_buffer(32768)
+        if k32.GetModuleFileNameW(None, buf, len(buf)):
+            return buf.value
     return str(Path(sys.executable).resolve())
+
+
+def _nt_image_path(path: str) -> str:
+    """Same NT path HiDHide stores: GetFinalPathNameByHandleW(VOLUME_NAME_NT)."""
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.argtypes = [
+        wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p,
+        wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+    ]
+    k32.CreateFileW.restype = wintypes.HANDLE
+    k32.GetFinalPathNameByHandleW.argtypes = [
+        wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD,
+    ]
+    k32.GetFinalPathNameByHandleW.restype = wintypes.DWORD
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    k32.CloseHandle.restype = wintypes.BOOL
+    handle = k32.CreateFileW(path, 0x80, _SHARE, None, _OPEN_EXISTING, 0, None)
+    if not handle or int(handle) in (0, -1, _INVALID, 0xFFFFFFFF):
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(32768)
+        wrote = k32.GetFinalPathNameByHandleW(handle, buf, len(buf), 2)
+        if not wrote or wrote >= len(buf):
+            return ""
+        image = buf.value.strip()
+        if image.startswith("\\\\?\\"):
+            image = image[4:]
+        return image if image.lower().startswith("\\device\\") else ""
+    finally:
+        k32.CloseHandle(handle)
 
 
 def _full_image_name(path: str) -> str:
@@ -352,6 +392,10 @@ def _full_image_name(path: str) -> str:
         return text
     if not text or os.name != "nt":
         return ""
+    image = _nt_image_path(text)
+    if image:
+        _hh_log(f"image {text} -> {image}")
+        return image
     import ctypes
     from ctypes import wintypes
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -1025,6 +1069,12 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             continue
         container = _group_key(instance, vid, pid)
         label = _display_name(vendor, product, description, "")
+        if opened and (vendor or product):
+            _remember_name(instance, label)
+        elif denied:
+            cached = _cached_name(instance)
+            if cached:
+                label = cached
         group = groups.setdefault(
             container,
             {
@@ -1052,6 +1102,16 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             group["name"] = label
     out = list(groups.values())
     for row in out:
+        current = row.get("name") or ""
+        if current.lower() == "hid-compliant game controller":
+            for inst in row.get("instanceIds") or []:
+                cached = _cached_name(inst)
+                if cached:
+                    row["name"] = cached
+                    break
+        else:
+            for inst in row.get("instanceIds") or []:
+                _remember_name(inst, row["name"])
         row.pop("sawOpen", None)
     stats["rows"] = len(out)
     _WALK_STATS = dict(stats)
@@ -1194,6 +1254,18 @@ def _group_key(instance: str, vid: int | None = None, pid: int | None = None) ->
 def _looks_like_instance(text: str) -> bool:
     u = (text or "").strip().upper()
     return u.startswith("HID" + chr(92)) or u.startswith("USB" + chr(92))
+
+
+_name_cache: dict[str, str] = {}
+
+
+def _remember_name(instance: str, label: str) -> None:
+    if instance and _usable_name(label) and label.lower() != "hid-compliant game controller":
+        _name_cache[instance.upper()] = label
+
+
+def _cached_name(instance: str) -> str:
+    return _name_cache.get((instance or "").upper(), "")
 
 
 def _usable_name(text: str) -> str:
@@ -1436,7 +1508,7 @@ class HidHideModel(QtCore.QObject):
         self._inverse = bool(on)
         self._last_error = ""
         self._sync_whitelist()
-        self.changed.emit()
+        self.reload()
         return True
 
     @QtCore.Property(bool, notify=changed)
