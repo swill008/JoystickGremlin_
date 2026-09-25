@@ -244,10 +244,34 @@ Window {
         }
 
         Label {
-            text: "GAMES AND PROGRAMS THAT MAY SEE HIDDEN DEVICES"
+            text: _hh.inverseOn
+                  ? "GAMES AND PROGRAMS BLOCKED FROM HIDDEN DEVICES"
+                  : "GAMES AND PROGRAMS THAT MAY SEE HIDDEN DEVICES"
             color: "#A1A1AA"
             font.pixelSize: 11
             font.capitalization: Font.AllUppercase
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Switch {
+                id: inverseSwitch
+                enabled: _hh.installed
+                checked: _hh.inverseOn
+                text: "Inverse"
+                onClicked: {
+                    _hh.setInverse(inverseSwitch.checked)
+                    inverseSwitch.checked = Qt.binding(function() { return _hh.inverseOn })
+                }
+            }
+        }
+
+        Label {
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            color: "#A1A1AA"
+            font.pixelSize: 12
+            text: "Inverse off: the list is an allow list. Inverse on: the list is a block list."
         }
 
         ListView {
@@ -299,7 +323,9 @@ Window {
             Layout.fillWidth: true
             color: "#A1A1AA"
             font.pixelSize: 12
-            text: "Add each game exe that should still see the real controllers while Gremlin is running. After Exit, HidHide uses the lists that were already in its Client. Gremlin is allowed to see hidden devices during this session."
+            text: _hh.inverseOn
+                  ? "Add a program here to block it from the hidden sticks. Joystick Gremlin is not added to this list."
+                  : "Add a program here to let it see the hidden sticks. Joystick Gremlin is allowed during this session. After Exit, HidHide uses the list that was already in its Client."
         }
 
         RowLayout {
