@@ -26,6 +26,7 @@ _CFG_LINKS = "module-links"
 _CFG_LIST_MODE = "list-mode"
 _CFG_HIDDEN = "hidden-devices"
 _CFG_CLOAK = "cloak"
+_CFG_MANAGED = "managed"
 _CFG_WINDOW_W = "window-width"
 _CFG_WINDOW_H = "window-height"
 _CFG_SPLIT = "split-ratio"
@@ -150,6 +151,16 @@ def _ensure_options() -> None:
             PropertyType.String,
             "",
             "Hardware Hide enforcement: on or off.",
+            {},
+            True,
+        )
+        cfg.register(
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_MANAGED,
+            PropertyType.String,
+            "",
+            "Set after the user saves HiDHide Enabled. Empty means leave the driver alone.",
             {},
             True,
         )
@@ -359,12 +370,25 @@ def _save_cloak(on: bool) -> None:
         pass
 
 
+def _hidhide_managed() -> bool:
+    _ensure_options()
+    return str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_MANAGED) or "").strip().lower() == "yes"
+
+
+def _mark_managed() -> None:
+    _ensure_options()
+    try:
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, _CFG_MANAGED, "yes")
+    except Exception:
+        pass
+
+
 def _apply_saved_cloak() -> bool:
-    """Write the saved HiDHide Enabled switch. The first run keeps the driver's current switch."""
+    """Write HiDHide Enabled. The unset value is off, and it is not taken from the driver."""
     choice = _saved_cloak()
     if choice is None:
-        choice = bool(get_active())
-        _save_cloak(choice)
+        choice = False
+        _save_cloak(False)
     if bool(get_active()) != choice:
         set_active(choice)
     return choice
@@ -1436,6 +1460,8 @@ class HidHideModel(QtCore.QObject):
     def reload(self) -> None:
         self._present = driver_present()
         self._active = get_active() if self._present else False
+        if not _hidhide_managed():
+            self._active = False
         self._inverse = get_inverse() if self._present else False
         self._version = driver_version() if self._present else ""
         persistent = {i.upper() for i in get_blacklist()} if self._present else set()
@@ -1593,6 +1619,8 @@ class HidHideModel(QtCore.QObject):
         if not set_active(bool(on)):
             return False
         _save_cloak(bool(on))
+        _mark_managed()
+        apply_saved_list()
         self.reload()
         return True
 
@@ -1718,9 +1746,12 @@ class HidHideModel(QtCore.QObject):
 
 
 def apply_saved_list() -> None:
-    """Write Gremlin's saved HiDHide settings. Does not put an older client state back."""
+    """Write Gremlin's saved HiDHide settings after the user has saved HiDHide Enabled."""
     if not driver_present():
         _hh_log("apply skipped, driver not present")
+        return
+    if not _hidhide_managed():
+        _hh_log("apply skipped, HiDHide Enabled has not been saved")
         return
     _hh_log("apply saved list")
     inverse = _apply_saved_list_mode()
