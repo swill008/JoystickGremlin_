@@ -43,6 +43,7 @@ function createComponent(componentSpec, properties)
             if (_openWindows[componentSpec] === window) {
                 delete _openWindows[componentSpec]
             }
+            Qt.callLater(function() { window.destroy() })
         })
         _openWindows[componentSpec] = window
         window.show();

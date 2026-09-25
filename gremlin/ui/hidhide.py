@@ -1518,7 +1518,8 @@ class HidHideModel(QtCore.QObject):
             return False
         dest = _photo_dir() / f"{abs(hash(instance_id)) & 0xFFFFFFFF:08x}{src.suffix.lower() or '.jpg'}"
         try:
-            dest.write_bytes(src.read_bytes())
+            from gremlin.ui.hardware_profile import limit_image_file
+            limit_image_file(src, dest)
         except OSError:
             return False
         photos = _load_photos()

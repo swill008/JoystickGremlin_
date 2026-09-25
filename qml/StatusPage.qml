@@ -600,6 +600,7 @@ Item {
             visible: _page.dragPhoto && _page.dragPhoto.length
             asynchronous: true
             cache: true
+            sourceSize.width: 640
         }
 
         Label {
@@ -829,6 +830,7 @@ Item {
                 visible: _page.dragPhoto && _page.dragPhoto.length
                 asynchronous: true
                 cache: true
+                sourceSize.width: 640
             }
 
             Label {

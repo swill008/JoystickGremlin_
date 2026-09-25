@@ -271,6 +271,8 @@ Window {
                                     visible: !!(row.photo)
                                     asynchronous: true
                                     cache: true
+                                    sourceSize.width: 80
+                                    sourceSize.height: 80
                                 }
                             }
                             ColumnLayout {
