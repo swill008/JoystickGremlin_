@@ -34,6 +34,13 @@ Window {
         onTriggered: _hh.saveWindowSize(_win.width, _win.height)
     }
 
+    Timer {
+        id: _splitSave
+        interval: 400
+        repeat: false
+        onTriggered: _split.saveRatio()
+    }
+
     Component.onCompleted: {
         var w = _hh.windowWidth
         var h = _hh.windowHeight
@@ -44,7 +51,10 @@ Window {
     }
     onWidthChanged: if (visible) _sizeSave.restart()
     onHeightChanged: if (visible) _sizeSave.restart()
-    onClosing: _hh.saveWindowSize(width, height)
+    onClosing: {
+        _hh.saveWindowSize(width, height)
+        _split.saveRatio()
+    }
 
     function titleOf(row) {
         var n = (row && row.name) ? String(row.name) : ""
@@ -184,9 +194,15 @@ Window {
         }
 
         SplitView {
+            id: _split
             Layout.fillWidth: true
             Layout.fillHeight: true
             orientation: Qt.Vertical
+            function saveRatio() {
+                if (height < 80 || _devicesPane.height < 96)
+                    return
+                _hh.saveSplitRatio(Math.round(_devicesPane.height * 1000 / height))
+            }
             handle: Rectangle {
                 implicitWidth: 8
                 implicitHeight: 10
@@ -201,11 +217,13 @@ Window {
             }
 
             ColumnLayout {
+                id: _devicesPane
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                SplitView.preferredHeight: 300
+                SplitView.preferredHeight: Math.max(96, _hh.splitRatio)
                 SplitView.minimumHeight: 96
                 spacing: 6
+                onHeightChanged: if (_win.visible) _splitSave.restart()
 
                 Label {
                     text: "DEVICES"
@@ -325,7 +343,7 @@ Window {
             ColumnLayout {
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
-                SplitView.preferredHeight: 200
+                SplitView.preferredHeight: Math.max(120, 1000 - _hh.splitRatio)
                 SplitView.minimumHeight: 120
                 spacing: 6
 
