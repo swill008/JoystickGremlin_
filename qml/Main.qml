@@ -870,6 +870,16 @@ ApplicationWindow {
 
     onClosing: (close) => {
         _windowPlacement.save(_root)
+        if (_outputModuleView && _outputModuleView.hasUnsaved && _outputModuleView.hasUnsaved()) {
+            close.accepted = false
+            _outputModuleView.requestClose()
+            return
+        }
+        if (_deviceInputList && _deviceInputList.hasUnsaved && _deviceInputList.hasUnsaved()) {
+            close.accepted = false
+            _deviceInputList.requestClose()
+            return
+        }
         if (backend && backend.profileContainsUnsavedChanges) {
             _saveBeforeQuitDialog.open()
             close.accepted = false
