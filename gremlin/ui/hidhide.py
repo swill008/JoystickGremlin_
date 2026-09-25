@@ -372,31 +372,39 @@ def set_whitelist(paths: list[str]) -> bool:
 
 _snap_active = None
 _snap_whitelist = None
+_snap_blacklist = None
 _borrowed_active = False
 _borrowed_whitelist = False
+_borrowed_blacklist = False
 _session_ids: set[str] = set()
 
 
 def snapshot_if_needed() -> None:
-    global _snap_active, _snap_whitelist
+    global _snap_active, _snap_whitelist, _snap_blacklist
     if not driver_present():
         return
     if _snap_active is None:
         _snap_active = get_active()
     if _snap_whitelist is None:
         _snap_whitelist = get_whitelist()
+    if _snap_blacklist is None:
+        _snap_blacklist = get_blacklist()
+        _hh_log(f"snapshot blacklist count={len(_snap_blacklist)} ids={list(_snap_blacklist)}")
 
 
 def restore_borrowed() -> None:
-    """Undo cloak and whitelist we borrowed. Session hides die with the process."""
-    global _snap_active, _snap_whitelist, _borrowed_active, _borrowed_whitelist
+    """Put cloak, allow list, and device list back. Session calls are not used."""
+    global _snap_active, _snap_whitelist, _snap_blacklist
+    global _borrowed_active, _borrowed_whitelist, _borrowed_blacklist
     if not driver_present():
         _session_ids.clear()
         return
     try:
-        clear_session_hides()
+        if _borrowed_blacklist and _snap_blacklist is not None:
+            _hh_log(f"restore blacklist count={len(_snap_blacklist)}")
+            set_blacklist(list(_snap_blacklist))
     except Exception:
-        pass
+        _hh_log("restore blacklist failed")
     try:
         if _borrowed_whitelist and _snap_whitelist is not None:
             set_whitelist(list(_snap_whitelist))
@@ -409,6 +417,7 @@ def restore_borrowed() -> None:
         pass
     _borrowed_active = False
     _borrowed_whitelist = False
+    _borrowed_blacklist = False
     _session_ids.clear()
 
 
@@ -430,9 +439,7 @@ def clear_session_hides() -> bool:
     if handle is None:
         return False
     try:
-        payload = _encode_multi_sz([])
-        _hh_log(f"clear session bytes={len(payload)} even={len(payload) % 2 == 0}")
-        ok, _ = _ioctl(handle, IOCTL_CLR_SESSION_BLACKLIST, payload, 0)
+        ok, _ = _ioctl(handle, IOCTL_CLR_SESSION_BLACKLIST, None, 0)
         if ok:
             _session_ids.clear()
         return ok
@@ -972,7 +979,6 @@ class HidHideModel(QtCore.QObject):
         self._present = driver_present()
         self._active = get_active() if self._present else False
         persistent = {i.upper() for i in get_blacklist()} if self._present else set()
-        session = {i.upper() for i in _session_ids}
         self._devices = []
         try:
             rows = list_hid_devices(self._gaming_only)
@@ -983,16 +989,16 @@ class HidHideModel(QtCore.QObject):
         for row in _enrich_devices(rows):
             item = dict(row)
             ids = [str(x).upper() for x in (item.get("instanceIds") or [item.get("instanceId")]) if x]
-            item["session"] = any(i in session for i in ids)
-            item["clientBlocked"] = any(i in persistent for i in ids)
-            item["hidden"] = item["session"] or item["clientBlocked"]
+            item["session"] = any(i in persistent for i in ids)
+            item["clientBlocked"] = item["session"]
+            item["hidden"] = item["session"]
             item["confirmed"] = bool(self._active and item["hidden"])
             self._devices.append(item)
         self._games = _load_games()
         self._generation += 1
         _hh_log(
             f"reload present={self._present} cloak={self._active} "
-            f"client={len(persistent)} session={sorted(session)} rows={len(self._devices)}"
+            f"client={len(persistent)} rows={len(self._devices)}"
         )
         self.changed.emit()
 
@@ -1062,6 +1068,7 @@ class HidHideModel(QtCore.QObject):
 
     @QtCore.Slot(str, bool, result=bool)
     def setDeviceHidden(self, instance_id: str, hidden: bool) -> bool:
+        global _borrowed_blacklist, _borrowed_active
         if not self._present or not instance_id:
             return False
         snapshot_if_needed()
@@ -1072,26 +1079,25 @@ class HidHideModel(QtCore.QObject):
                 group_ids = [str(x) for x in ids if x]
                 break
         drop = {x.upper() for x in group_ids}
-        want = {i for i in _session_ids if i.upper() not in drop}
+        base = list(_snap_blacklist or [])
+        if _borrowed_blacklist:
+            base = get_blacklist()
+        kept = [i for i in base if i.upper() not in drop]
         if hidden:
-            want.update(group_ids)
-        _hh_log(f"set hidden={bool(hidden)} id={instance_id} group={group_ids} want={sorted(want)}")
-        if not clear_session_hides():
+            have = {i.upper() for i in kept}
+            for group_id in group_ids:
+                if group_id.upper() not in have:
+                    kept.append(group_id)
+                    have.add(group_id.upper())
+        _hh_log(f"set hidden={bool(hidden)} id={instance_id} group={group_ids} blacklist={kept}")
+        if not set_blacklist(kept):
             self._last_error = _ioctl_error or "HidHide driver call failed."
-            _hh_log(f"set failed on clear: {self._last_error}")
+            _hh_log(f"set blacklist failed: {self._last_error}")
             self.reload()
             return False
-        if want and not add_session_hides(sorted(want)):
-            self._last_error = _ioctl_error or "HidHide driver call failed."
-            _hh_log(f"set failed on add: {self._last_error}")
-            self.reload()
-            return False
-        _session_ids.clear()
-        _session_ids.update(want)
+        _borrowed_blacklist = True
         self._last_error = ""
-        _hh_log(f"set session now {sorted(_session_ids)}")
         if hidden and not get_active():
-            global _borrowed_active
             if set_active(True):
                 _borrowed_active = True
                 self._active = True
