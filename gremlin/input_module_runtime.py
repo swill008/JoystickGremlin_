@@ -114,7 +114,7 @@ class InputModuleRuntime(QtCore.QObject):
             if not name:
                 continue
             try:
-                doc = _load_module_doc(name)
+                doc = _load_module_doc(name, str(getattr(dev, "device_guid", "")))
             except Exception:
                 continue
             if not doc:
