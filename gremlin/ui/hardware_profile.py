@@ -56,9 +56,9 @@ def _maps_dir() -> Path:
 
 def _slug(device_name: str) -> str:
     raw = (device_name or "device").strip().lower()
-    if "gladiator" in raw and "ot" not in raw and ("evo r" in raw):
+    if "gladiator" in raw and ("evo r" in raw or "ot r" in raw):
         return "vkb_evo_r"
-    if "gladiator" in raw and "ot" not in raw and ("evo l" in raw):
+    if "gladiator" in raw and ("evo l" in raw or "ot l" in raw):
         return "vkb_evo_l"
     out = []
     for ch in raw:
