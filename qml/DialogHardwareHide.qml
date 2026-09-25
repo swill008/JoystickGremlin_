@@ -284,11 +284,13 @@ Window {
                         property int _gen: _hh.generation
                         property var row: _gen >= 0 ? _hh.deviceAt(index) : ({})
                         property bool confirmed: !!(row && row.confirmed)
-                        opacity: confirmed ? 0.55 : 1
+                        clip: true
                         RowLayout {
+                            z: 1
                             anchors.fill: parent
                             anchors.margins: 8
                             spacing: 8
+                            opacity: confirmed ? 0.55 : 1
                             Rectangle {
                                 width: 40
                                 height: 40
@@ -350,6 +352,29 @@ Window {
                                 onClicked: {
                                     _hh.setDeviceHidden(row.instanceId, hideSwitch.checked)
                                     hideSwitch.checked = Qt.binding(function() { return !!(row && row.session) })
+                                }
+                            }
+                        }
+                        Row {
+                            anchors.fill: parent
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 6
+                            visible: confirmed
+                            enabled: false
+                            z: 2
+                            spacing: 0
+                            Repeater {
+                                model: ["H", "I", "D", "D", "E", "N"]
+                                Text {
+                                    required property string modelData
+                                    text: modelData
+                                    width: (parent.width > 0 ? parent.width : 0) / 6
+                                    height: parent.height
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    font.bold: true
+                                    font.pixelSize: 22
+                                    color: "#F4F4F5"
                                 }
                             }
                         }
