@@ -372,6 +372,74 @@ def _set_multi(code: int, items: list[str]) -> bool:
         _close(handle)
 
 
+def driver_version() -> str:
+    """Installer version, then HidHide.sys file version if the registry key is absent."""
+    if os.name != "nt":
+        return ""
+    import winreg
+    for name in (
+        r"SOFTWARE\Classes\Installer\Dependencies\NSS.Drivers.HidHide.x64",
+        r"SOFTWARE\Classes\Installer\Dependencies\NSS.Drivers.HidHide.arm64",
+    ):
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE, name, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY
+            ) as key:
+                value, _ = winreg.QueryValueEx(key, "Version")
+        except OSError:
+            continue
+        text = str(value or "").strip()
+        if text:
+            return text
+    root = os.environ.get("SystemRoot", r"C:\Windows")
+    path = os.path.join(root, "System32", "drivers", "HidHide.sys")
+    if not os.path.isfile(path):
+        return ""
+    import ctypes
+    from ctypes import wintypes
+    ver = ctypes.WinDLL("version", use_last_error=True)
+    ver.GetFileVersionInfoSizeW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(wintypes.DWORD)]
+    ver.GetFileVersionInfoSizeW.restype = wintypes.DWORD
+    ver.GetFileVersionInfoW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p]
+    ver.GetFileVersionInfoW.restype = wintypes.BOOL
+    ver.VerQueryValueW.argtypes = [
+        ctypes.c_void_p, wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.UINT)
+    ]
+    ver.VerQueryValueW.restype = wintypes.BOOL
+    ignored = wintypes.DWORD(0)
+    size = ver.GetFileVersionInfoSizeW(path, ctypes.byref(ignored))
+    if not size:
+        return ""
+    buf = ctypes.create_string_buffer(size)
+    if not ver.GetFileVersionInfoW(path, 0, size, buf):
+        return ""
+
+    class VS_FIXEDFILEINFO(ctypes.Structure):
+        _fields_ = [
+            ("dwSignature", wintypes.DWORD),
+            ("dwStrucVersion", wintypes.DWORD),
+            ("dwFileVersionMS", wintypes.DWORD),
+            ("dwFileVersionLS", wintypes.DWORD),
+            ("dwProductVersionMS", wintypes.DWORD),
+            ("dwProductVersionLS", wintypes.DWORD),
+            ("dwFileFlagsMask", wintypes.DWORD),
+            ("dwFileFlags", wintypes.DWORD),
+            ("dwFileOS", wintypes.DWORD),
+            ("dwFileType", wintypes.DWORD),
+            ("dwFileSubtype", wintypes.DWORD),
+            ("dwFileDateMS", wintypes.DWORD),
+            ("dwFileDateLS", wintypes.DWORD),
+        ]
+
+    ptr = ctypes.c_void_p()
+    length = wintypes.UINT(0)
+    if not ver.VerQueryValueW(buf, "\\", ctypes.byref(ptr), ctypes.byref(length)):
+        return ""
+    info = ctypes.cast(ptr, ctypes.POINTER(VS_FIXEDFILEINFO)).contents
+    ms, ls = int(info.dwFileVersionMS), int(info.dwFileVersionLS)
+    return f"{ms >> 16}.{ms & 0xFFFF}.{ls >> 16}.{ls & 0xFFFF}"
+
+
 def driver_present() -> bool:
     handle = _open_control()
     if handle is None:
@@ -1075,6 +1143,7 @@ class HidHideModel(QtCore.QObject):
         self._generation = 0
         self._last_error = ""
         self._inverse = False
+        self._version = ""
         _ensure_options()
         self.reload()
 
@@ -1082,6 +1151,7 @@ class HidHideModel(QtCore.QObject):
         self._present = driver_present()
         self._active = get_active() if self._present else False
         self._inverse = get_inverse() if self._present else False
+        self._version = driver_version() if self._present else ""
         persistent = {i.upper() for i in get_blacklist()} if self._present else set()
         prior_index = {}
         for old in self._devices:
@@ -1114,7 +1184,7 @@ class HidHideModel(QtCore.QObject):
         self._games = _load_games()
         self._generation += 1
         _hh_log(
-            f"reload present={self._present} cloak={self._active} inverse={self._inverse} "
+            f"reload present={self._present} version={self._version} cloak={self._active} inverse={self._inverse} "
             f"client={len(persistent)} rows={len(self._devices)}"
         )
         self.changed.emit()
@@ -1122,6 +1192,10 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Property(bool, notify=changed)
     def installed(self) -> bool:
         return self._present
+
+    @QtCore.Property(str, notify=changed)
+    def driverVersion(self) -> str:
+        return self._version
 
     @QtCore.Property(str, constant=True)
     def downloadUrl(self) -> str:
