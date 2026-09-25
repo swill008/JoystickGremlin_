@@ -207,6 +207,30 @@ ApplicationWindow {
         return Helpers.windowOf("DialogJoystickButtonMap.qml")
     }
 
+    function openButtonMapForCard(card) {
+        var name = ""
+        var photo = ""
+        if (card) {
+            name = String(card.rawName || card.name || "")
+            photo = String(card.photo || "")
+        }
+        name = name.trim()
+        if (!name.length)
+            return
+        var existing = buttonMapWindow()
+        if (existing && existing.openForDevice) {
+            existing.openForDevice(name, photo)
+            existing.show()
+            existing.raise()
+            existing.requestActivate()
+            return
+        }
+        Helpers.createComponent("DialogJoystickButtonMap.qml", {
+            "targetName": name,
+            "initialPhoto": photo
+        })
+    }
+
     function buttonMapNeedsLeave() {
         var w = buttonMapWindow()
         if (!w)
@@ -854,6 +878,10 @@ ApplicationWindow {
             onOpenConfiguration: function(card) {
                 _statusLastCard = card
                 openConfigurationForCard(card)
+            }
+            onOpenButtonMap: function(card) {
+                _statusLastCard = card
+                openButtonMapForCard(card)
             }
             onOpenOutputView: function(card) {
                 _statusLastCard = card
