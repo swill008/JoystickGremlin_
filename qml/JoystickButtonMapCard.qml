@@ -15,8 +15,15 @@ Item {
     property var editorNodes: []
     property string photoOverride: ""
     readonly property var editorItem: _face.editorItem
-    readonly property real zoom: _face.zoom
+    property alias zoom: _face.zoom
+    property alias panX: _face.panX
+    property alias panY: _face.panY
+    readonly property alias viewPct: _face.viewPct
+    readonly property alias zoomFit: _face.zoomFit
+    readonly property alias zoomMin: _face.zoomMin
+    readonly property alias zoomMax: _face.zoomMax
     function resetView() { _face.resetView() }
+    function clampPan() { if (_face.clampPan) _face.clampPan() }
 
     property int axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
