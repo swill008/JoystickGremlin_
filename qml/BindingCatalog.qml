@@ -3,7 +3,6 @@
 // Device-Configuration-Macro Change — grouped bindings catalog.
 
 import QtQuick
-import QtQml
 import QtQuick.Controls
 import QtQuick.Controls.Universal
 import QtQuick.Layouts
@@ -22,8 +21,6 @@ Item {
     property string claimDeviceName: ""
     property bool isOutput: false
     property int editingHid: -1
-    property int editingSeq: -1
-    property int addMenuHid: -1
     property bool showPanel: false
     signal closePanel()
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
@@ -98,7 +95,7 @@ Item {
         function onDeviceChanged() {
             if (!uiState)
                 return
-            showHid(uiState.currentInputIndex, false)
+            showHid(uiState.currentInputIndex)
         }
     }
 
@@ -297,13 +294,38 @@ Item {
         colorEditor = v.colorEditor || "#0F2744"
         colorEditorBorder = v.colorEditorBorder || "#3B82F6"
         colorEditorAccent = v.colorEditorAccent || v.colorEditorBorder || "#3B82F6"
+        rememberCatalog()
+    }
+
+    property string savedCatalog: ""
+
+    function rememberCatalog() {
+        savedCatalog = JSON.stringify(catalogPayload())
+    }
+
+    function hasUnsaved() {
+        return savedCatalog.length > 0 && JSON.stringify(catalogPayload()) !== savedCatalog
     }
 
     function saveCatalog() {
+        var ok = false
         if (moduleModel && claimDeviceName.length)
-            moduleModel.saveCatalogConfig(claimDeviceName, JSON.stringify(catalogPayload()))
-        toastText = "Display Options Saved"
-        _savedToast.open()
+            ok = moduleModel.saveCatalogConfig(claimDeviceName, JSON.stringify(catalogPayload()))
+        if (ok) {
+            rememberCatalog()
+            _saveGate.announce(true, "Display options were written to the module file.")
+        } else {
+            _saveGate.announce(false, "Display options were not written. They are still only on this screen.")
+        }
+    }
+
+    function requestClose() {
+        if (hasUnsaved()) {
+            _saveGate.detail = "Display options are not saved. Close this panel and they will be lost."
+            _saveGate.ask()
+            return
+        }
+        closePanel()
     }
 
     function resetCatalog() {
@@ -321,18 +343,7 @@ Item {
         uiState.setCurrentInput(ident, hid)
     }
 
-    function rowOnScreen(row) {
-        if (row < 0 || !_list)
-            return false
-        var it = _list.itemAtIndex(row)
-        if (!it)
-            return false
-        var top = it.y
-        var bot = it.y + Math.min(it.height, Math.max(36, parentHeight))
-        return top >= _list.contentY - 2 && bot <= _list.contentY + _list.height + 2
-    }
-
-    function showHid(hid, follow) {
+    function showHid(hid) {
         if (hid < 0)
             return
         let row = _catalog.rowForDeviceIndex(hid)
@@ -340,48 +351,22 @@ Item {
             return
         if (_list.currentIndex !== row)
             _list.currentIndex = row
-        if (follow !== true)
-            return
         Qt.callLater(function() {
-            if (rowOnScreen(row))
-                return
             _list.positionViewAtIndex(row, ListView.Contain)
         })
     }
 
-    function reloadKeepScroll() {
-        var y = _list.contentY
-        var idx = _list.currentIndex
-        _catalog.reload()
-        Qt.callLater(function() {
-            var maxY = Math.max(0, _list.contentHeight - _list.height)
-            _list.contentY = Math.min(Math.max(0, y), maxY)
-            if (idx >= 0 && idx < _catalog.count)
-                _list.currentIndex = idx
-        })
-    }
-
-    function openEditor(hid, seq) {
+    function openEditor(hid) {
         if (hid < 0 || editorLocked)
             return
         selectHid(hid)
-        var want = (seq === undefined || seq === null) ? -1 : seq
-        if (_root.editingHid === hid && _root.editingSeq === want)
-            return
         _root.editingHid = hid
-        _root.editingSeq = want
-        Qt.callLater(function() {
-            if (_list.forceLayout)
-                _list.forceLayout()
-        })
+        showHid(hid)
     }
 
     function closeEditor() {
-        var hid = _root.editingHid
         _root.editingHid = -1
-        _root.editingSeq = -1
-        if (hid >= 0)
-            _catalog.refreshHid(hid)
+        _catalog.reload()
     }
 
     function rowX(total, align, left, right, pct) {
@@ -423,61 +408,13 @@ Item {
         return rowW(total, editorAlign, editorIndent, editorRight, editorWidthPct)
     }
 
-
-    Menu {
-        id: _addMenu
-        Instantiator {
-            model: _root.addMenuHid >= 0 ? _catalog.actionNames(_root.addMenuHid) : []
-            onObjectAdded: function(index, object) { _addMenu.insertItem(index, object) }
-            onObjectRemoved: function(index, object) { _addMenu.removeItem(object) }
-            delegate: MenuItem {
-                required property string modelData
-                text: modelData
-                onTriggered: _list.addActionOnRow(_root.addMenuHid, modelData)
-            }
-        }
-    }
-
-    Menu {
-        id: _childMenu
-        property int hid: -1
-        property int seq: -1
-
-        Menu {
-            id: _childAddMenu
-            title: "Add"
-            Instantiator {
-                model: _childMenu.hid >= 0 ? _catalog.actionNames(_childMenu.hid) : []
-                onObjectAdded: function(index, object) { _childAddMenu.insertItem(index, object) }
-                onObjectRemoved: function(index, object) { _childAddMenu.removeItem(object) }
-                delegate: MenuItem {
-                    required property string modelData
-                    text: modelData
-                    onTriggered: _list.addActionOnRow(_childMenu.hid, modelData)
-                }
-            }
-        }
-        MenuItem {
-            text: "Delete"
-            enabled: _childMenu.seq >= 0 && !_root.editorLocked
-            onTriggered: _list.deleteRow(_childMenu.hid, _childMenu.seq)
-        }
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Undo]
-        onActivated: if (_catalog.canUndo) _catalog.undo()
-    }
-    Shortcut {
-        sequences: [StandardKey.Redo]
-        onActivated: if (_catalog.canRedo) _catalog.redo()
-    }
-
     Connections {
         target: signal
-        function onSetInputIndex(index) { showHid(index, true) }
+        function onSetInputIndex(index) { showHid(index) }
         function onInputItemChanged(itemIndex) {
-            // Catalog model refreshHid owns this. Do not reset the list.
+            if (_root.editingHid >= 0)
+                return
+            _catalog.reload()
         }
     }
 
@@ -524,7 +461,7 @@ Item {
                 Layout.rightMargin: listPadding
                 scrollbarAlwaysVisible: true
                 spacing: rowSpacing
-                highlightFollowsCurrentItem: false
+                highlightFollowsCurrentItem: true
                 highlightMoveDuration: {
                     if (!_highlightSpeed)
                         return 150
@@ -536,7 +473,6 @@ Item {
                 }
                 model: _catalog
                 property int editingHid: _root.editingHid
-                property int editingSeq: _root.editingSeq
                 property bool catalogLocked: _root.editorLocked
                 property bool catalogIsOutput: _root.isOutput
                 property var live: _liveState
@@ -574,45 +510,15 @@ Item {
                 property color cEditorEdge: _root.colorEditorBorder
                 property color cEditorAccent: _root.colorEditorAccent
 
-                function addOnRow(hid, rowIndex, btn) {
+                function addOnRow(hid, rowIndex) {
                     currentIndex = rowIndex
                     _root.selectHid(hid)
-                    _root.addMenuHid = hid
-                    if (btn)
-                        _addMenu.popup(btn)
-                    else
-                        _addMenu.popup()
-                }
-                function addActionOnRow(hid, actionName) {
-                    _root.selectHid(hid)
-                    var seq = _catalog.addAction(hid, actionName)
-                    _root.editingHid = -1
-                    _root.editingSeq = -1
-                    Qt.callLater(function() {
-                        _root.editingHid = hid
-                        _root.editingSeq = seq
-                        if (_list.forceLayout)
-                            _list.forceLayout()
-                    })
-                }
-                function deleteRow(hid, seq) {
-                    if (hid < 0 || seq < 0 || _root.editorLocked)
-                        return
-                    var wasEdit = _root.editingHid === hid && _root.editingSeq === seq
-                    _catalog.removeSequence(hid, seq)
-                    if (wasEdit) {
-                        _root.editingHid = -1
-                        _root.editingSeq = -1
-                    }
-                }
-                function openChildMenu(hid, seq) {
-                    _childMenu.hid = hid
-                    _childMenu.seq = seq
-                    _root.addMenuHid = hid
-                    _childMenu.popup()
+                    _catalog.addSequence(hid)
+                    _root.editingHid = hid
+                    _root.showHid(hid)
                 }
                 function okRow() { _root.closeEditor() }
-                function openRow(hid, seq) { _root.openEditor(hid, seq) }
+                function openRow(hid) { _root.openEditor(hid) }
 
                 delegate: Item {
                     id: _row
@@ -627,13 +533,12 @@ Item {
                     required property int deviceIndex
                     required property int bindingCount
                     required property int indent
-                    required property int seqIndex
                     property var lv: ListView.view
                     readonly property bool isLeaf: rowKind === "leaf"
                     width: lv.width - 12
                     readonly property bool isGroup: rowKind === "group" || rowKind === "unmapped"
-                    readonly property bool expanded: isLeaf && deviceIndex === lv.editingHid && seqIndex === lv.editingSeq && deviceIndex >= 0
-                    readonly property bool hideLeaf: isLeaf && !lv.kidsOn
+                    readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
+                    readonly property bool hideLeaf: isLeaf && (deviceIndex === lv.editingHid || !lv.kidsOn)
                     height: hideLeaf ? 0 : ((isLeaf ? lv.childH : lv.parentH) + (expanded ? _editor.height + 8 : 0))
                     visible: !hideLeaf
 
@@ -682,27 +587,13 @@ Item {
 
                         MouseArea {
                             anchors.fill: parent
-                            anchors.rightMargin: expanded ? 220 : 64
+                            anchors.rightMargin: expanded ? 120 : 64
                             enabled: deviceIndex >= 0
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            onClicked: function(mouse) {
+                            onClicked: {
                                 lv.currentIndex = index
                                 lv.syncSelection()
-                                if (mouse.button === Qt.RightButton) {
-                                    if (rowKind === "leaf" && !lv.catalogLocked)
-                                        lv.openChildMenu(deviceIndex, seqIndex)
-                                    return
-                                }
                                 if (rowKind === "leaf")
-                                    lv.openRow(deviceIndex, seqIndex)
-                            }
-                            onDoubleClicked: function(mouse) {
-                                if (mouse.button !== Qt.LeftButton)
-                                    return
-                                if (rowKind !== "leaf")
-                                    return
-                                if (deviceIndex === lv.editingHid && seqIndex === lv.editingSeq)
-                                    lv.okRow()
+                                    lv.openRow(deviceIndex)
                             }
                         }
 
@@ -743,25 +634,7 @@ Item {
                                 implicitWidth: 56
                                 implicitHeight: 28
                                 z: 2
-                                onClicked: lv.addOnRow(deviceIndex, index, this)
-                            }
-                            Button {
-                                visible: expanded && !lv.catalogLocked
-                                text: "Undo"
-                                enabled: _catalog.canUndo
-                                implicitWidth: 56
-                                implicitHeight: 28
-                                z: 2
-                                onClicked: _catalog.undo()
-                            }
-                            Button {
-                                visible: expanded && !lv.catalogLocked
-                                text: "Redo"
-                                enabled: _catalog.canRedo
-                                implicitWidth: 56
-                                implicitHeight: 28
-                                z: 2
-                                onClicked: _catalog.redo()
+                                onClicked: lv.addOnRow(deviceIndex, index)
                             }
                             Button {
                                 visible: expanded && !lv.catalogLocked
@@ -778,16 +651,14 @@ Item {
                         id: _editor
                         active: expanded
                         visible: expanded
-                        x: _root.leafX(_row.width)
-                        y: lv.childH + lv.edGap
-                        width: _root.leafW(_row.width)
-                        height: expanded ? Math.max(80, item ? item.implicitHeight : 80) : 0
+                        x: _root.editorX(_row.width)
+                        y: lv.parentH + lv.edGap
+                        width: _root.editorW(_row.width)
+                        height: visible && item ? Math.max(80, item.implicitHeight) : 0
                         onLoaded: if (item) item.width = width
                         onWidthChanged: if (item) item.width = width
                         sourceComponent: InputConfiguration {
                             inlineMode: true
-                            compactMode: true
-                            sequenceIndex: _row.seqIndex
                             isOutput: lv.catalogIsOutput
                             editorFill: lv.cEditor
                             editorEdge: lv.cEditorEdge
@@ -848,7 +719,7 @@ Item {
                     Button {
                         text: "×"
                         implicitWidth: 28
-                        onClicked: _root.closePanel()
+                        onClicked: _root.requestClose()
                     }
                 }
 
@@ -1267,6 +1138,19 @@ Item {
                     Button { text: "Save with module"; highlighted: true; onClicked: saveCatalog() }
                 }
             }
+        }
+    }
+
+    SavePrompts {
+        id: _saveGate
+        onSaveChosen: {
+            saveCatalog()
+            if (!hasUnsaved())
+                closePanel()
+        }
+        onDiscardChosen: {
+            loadCatalog()
+            closePanel()
         }
     }
 
