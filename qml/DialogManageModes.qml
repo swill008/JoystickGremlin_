@@ -43,7 +43,7 @@ Window {
 
         anchors.fill: parent
         anchors.topMargin: 10
-        anchors.bottomMargin: 10
+        anchors.bottomMargin: 58
 
         JGListView  {
             Layout.fillWidth: true
@@ -146,5 +146,11 @@ Window {
                 onClicked: () => { modeHierarchy.deleteMode(name) }
             }
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
