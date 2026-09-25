@@ -108,12 +108,13 @@ Window {
                     text: _hh.installed ? "HidHide driver found" : "HidHide is not installed"
                 }
                 Switch {
+                    id: cloakSwitch
                     enabled: _hh.installed
                     checked: _hh.cloakOn
                     text: "Hide physical devices from games"
-                    onToggled: {
-                        if (!_hh.setCloak(checked))
-                            checked = _hh.cloakOn
+                    onClicked: {
+                        _hh.setCloak(cloakSwitch.checked)
+                        cloakSwitch.checked = Qt.binding(function() { return _hh.cloakOn })
                     }
                 }
                 Switch {
