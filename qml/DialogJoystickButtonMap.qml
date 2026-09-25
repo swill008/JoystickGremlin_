@@ -1726,6 +1726,7 @@ Window {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.bottomMargin: 78
         spacing: 0
 
         MenuBar {
@@ -3046,5 +3047,12 @@ Window {
                 }
             }
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        moduleFile: _hw.path
     }
 }
