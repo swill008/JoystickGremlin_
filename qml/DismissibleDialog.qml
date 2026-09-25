@@ -12,32 +12,77 @@ Popup {
 
     property string titleText: ""
     property string messageText: ""
+    property string detail: ""
     property string confirmText: "OK"
+    property string discardText: ""
     property string cancelText: ""
     property bool destructive: false
+    property bool holdOpen: false
 
     signal confirmed()
     signal cancelled()
+    signal discarded()
+    signal saveChosen()
+    signal discardChosen()
+    signal acknowledged()
+
+    property string _choice: ""
+    property string _mode: ""
+    property bool _resultOk: false
+
+    function ask(message) {
+        if (message !== undefined && message !== null && String(message).length)
+            detail = String(message)
+        _mode = "ask"
+        _resultOk = false
+        titleText = "Unsaved changes"
+        messageText = detail
+        confirmText = "Save"
+        discardText = "Discard"
+        cancelText = "Cancel"
+        destructive = false
+        holdOpen = true
+        open()
+    }
+
+    function announce(ok, message) {
+        _mode = "result"
+        _resultOk = !!ok
+        titleText = ok ? "Saved" : "Save failed"
+        messageText = message ? String(message) : ""
+        confirmText = "OK"
+        discardText = ""
+        cancelText = ""
+        destructive = !ok
+        holdOpen = !ok
+        open()
+    }
 
     parent: Overlay.overlay
     anchors.centerIn: parent
     modal: true
     focus: true
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    closePolicy: holdOpen ? Popup.NoAutoClose : (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
     padding: 16
 
     onClosed: {
-        if (!_accepted) {
-            cancelled()
+        var choice = _choice
+        var mode = _mode
+        var ok = _resultOk
+        _choice = ""
+        if (choice === "confirm" || choice === "save" || choice === "discard" || choice === "ack")
+            return
+        if (mode === "result") {
+            if (ok)
+                acknowledged()
+            return
         }
-        _accepted = false
+        cancelled()
     }
-
-    property bool _accepted: false
 
     background: Rectangle {
         color: Style.background
-        border.color: Style.accent
+        border.color: destructive ? "#DC2626" : Style.accent
         border.width: 1
         radius: 4
     }
@@ -51,6 +96,7 @@ Popup {
             font.pixelSize: 16
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
+            Layout.preferredWidth: 420
         }
 
         Label {
@@ -58,6 +104,7 @@ Popup {
             wrapMode: Text.WordWrap
             Layout.preferredWidth: 420
             Layout.fillWidth: true
+            visible: text.length > 0
         }
 
         RowLayout {
@@ -67,8 +114,19 @@ Popup {
             Button {
                 visible: _root.cancelText.length > 0
                 text: _root.cancelText
+                onClicked: _root.close()
+            }
+
+            Button {
+                visible: _root.discardText.length > 0
+                text: _root.discardText
                 onClicked: {
+                    _root._choice = "discard"
                     _root.close()
+                    Qt.callLater(function() {
+                        _root.discarded()
+                        _root.discardChosen()
+                    })
                 }
             }
 
@@ -76,9 +134,22 @@ Popup {
                 text: _root.confirmText
                 highlighted: !_root.destructive
                 onClicked: {
-                    _root._accepted = true
-                    _root.confirmed()
+                    var mode = _root._mode
+                    if (mode === "ask")
+                        _root._choice = "save"
+                    else if (mode === "result")
+                        _root._choice = "ack"
+                    else
+                        _root._choice = "confirm"
                     _root.close()
+                    Qt.callLater(function() {
+                        if (mode === "ask")
+                            _root.saveChosen()
+                        else if (mode === "result")
+                            _root.acknowledged()
+                        else
+                            _root.confirmed()
+                    })
                 }
             }
         }
