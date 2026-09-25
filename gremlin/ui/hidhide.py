@@ -61,7 +61,12 @@ _IOCTL_NAMES = {
 }
 
 
+_debug_log = False
+
+
 def _hh_log(message: str) -> None:
+    if not _debug_log:
+        return
     print(f"Hardware Hide {message}", flush=True)
 
 DEVPROP_TYPE_EMPTY = 0x00000000
@@ -1272,6 +1277,7 @@ class HidHideModel(QtCore.QObject):
     """System-wide HidHide panel. Persistent cloak, devices, and game list."""
 
     changed = QtCore.Signal()
+    debugChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -1531,6 +1537,16 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Slot()
     def refresh(self) -> None:
         self.reload()
+
+    @QtCore.Property(bool, notify=debugChanged)
+    def debugLog(self) -> bool:
+        return _debug_log
+
+    @QtCore.Slot(bool)
+    def setDebugLog(self, enabled: bool) -> None:
+        global _debug_log
+        _debug_log = bool(enabled)
+        self.debugChanged.emit()
 
     @QtCore.Slot()
     def openDownload(self) -> None:
