@@ -1304,36 +1304,46 @@ class HidHideModel(QtCore.QObject):
     def _sync_whitelist(self) -> None:
         if not self._present:
             return
-        global _borrowed_whitelist
-        snapshot_if_needed()
-        base = list(_snap_whitelist or [])
-        gremlin = _gremlin_exe()
-        gremlin_image = _full_image_name(gremlin)
-        drop = set()
-        if self._inverse:
-            if gremlin:
-                drop.add(gremlin.lower())
-            if gremlin_image:
-                drop.add(gremlin_image.lower())
-        wanted = []
-        for row in self._games:
-            image = _full_image_name(row["path"])
-            if image:
-                wanted.append(image)
-            else:
-                _hh_log(f"game path not converted {row['path']}")
-        if not self._inverse and gremlin_image:
-            wanted.append(gremlin_image)
-        elif not self._inverse and not gremlin_image:
-            _hh_log(f"gremlin path not converted {gremlin}")
-        merged = []
-        seen = set()
-        for item in list(base) + wanted:
-            key = item.lower()
-            if key in seen or not item or key in drop:
-                continue
-            seen.add(key)
-            merged.append(item)
-        _hh_log(f"whitelist count={len(merged)} inverse={self._inverse}")
-        if set_whitelist(merged):
-            _borrowed_whitelist = True
+        apply_saved_list()
+
+
+def apply_saved_list() -> None:
+    """Write the saved program list at startup. Does not wait for the dialog."""
+    if not driver_present():
+        _hh_log("apply skipped, driver not present")
+        return
+    _hh_log("apply saved list")
+    snapshot_if_needed()
+    inverse = get_inverse()
+    base = list(_snap_whitelist or [])
+    gremlin = _gremlin_exe()
+    gremlin_image = _full_image_name(gremlin)
+    drop = set()
+    if inverse:
+        if gremlin:
+            drop.add(gremlin.lower())
+        if gremlin_image:
+            drop.add(gremlin_image.lower())
+    wanted = []
+    for row in _load_games():
+        image = _full_image_name(row["path"])
+        if image:
+            wanted.append(image)
+        else:
+            _hh_log(f"game path not converted {row['path']}")
+    if not inverse and gremlin_image:
+        wanted.append(gremlin_image)
+    elif not inverse and not gremlin_image:
+        _hh_log(f"gremlin path not converted {gremlin}")
+    merged = []
+    seen = set()
+    for item in list(base) + wanted:
+        key = item.lower()
+        if key in seen or not item or key in drop:
+            continue
+        seen.add(key)
+        merged.append(item)
+    global _borrowed_whitelist
+    _hh_log(f"whitelist count={len(merged)} inverse={inverse}")
+    if set_whitelist(merged):
+        _borrowed_whitelist = True
