@@ -136,6 +136,32 @@ def _name_key(device_name: str) -> str:
     return f"name:{slug}" if slug else ""
 
 
+_guid_file_cache: dict[str, str] = {}
+
+
+def _slug_bound_to_guid(guid: str) -> str:
+    """The module file that last saved this stick, if the choice was wiped."""
+    key = _norm_guid(guid)
+    if not key:
+        return ""
+    if key in _guid_file_cache:
+        return _guid_file_cache[key]
+    found: list[Path] = []
+    for path in _maps_dir().glob("*.json"):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict) and _norm_guid(data.get("boundGuidLocal")) == key:
+            found.append(path)
+    slug = ""
+    if found:
+        found.sort(key=lambda item: item.stat().st_mtime, reverse=True)
+        slug = found[0].stem
+    _guid_file_cache[key] = slug
+    return slug
+
+
 def resolve_module_slug(device_name: str, guid: str = "") -> str:
     data = _binding_store()
     key = _norm_guid(guid) or _guid_for_name(device_name)
@@ -143,6 +169,18 @@ def resolve_module_slug(device_name: str, guid: str = "") -> str:
     name_key = _name_key(device_name)
     if not bound and name_key:
         bound = data.get(name_key, "")
+    if not bound and key:
+        bound = _slug_bound_to_guid(key)
+        if bound:
+            data[key] = _plain_slug(bound)
+            if name_key:
+                data[name_key] = data[key]
+            _write_bindings(data)
+            print(
+                f"Persist bind recovered name={device_name!r} guid={guid!r} slug={data[key]!r}",
+                flush=True,
+            )
+            bound = data[key]
     if bound:
         slug = _plain_slug(bound) or _slug(device_name)
         if key and name_key and (data.get(key) != slug or data.get(name_key) != slug):
@@ -173,6 +211,7 @@ def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
     if name_key:
         data[name_key] = slug
     _write_bindings(data)
+    _guid_file_cache.pop(key, None)
     print(f"Persist bind file name={device_name!r} guid={guid!r} slug={slug!r}", flush=True)
     return slug
 
@@ -778,7 +817,7 @@ class HardwareProfile(QtCore.QObject):
         except OSError:
             dest = folder / f"photo_{src.stem}{ext}"
             self._copy_file(src, dest)
-        rel = f"qml/maps/{_slug(name)}/{dest.name}"
+        rel = f"qml/maps/{folder.name}/{dest.name}"
         path = self._file_for(name)
         doc: dict = {}
         if path.is_file():
