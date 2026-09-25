@@ -310,7 +310,7 @@ Window {
         value: 0
     }
 
-    SavePrompts { id: _saveGate }
+    DismissibleDialog { id: _saveGate }
 
     DebugFileLine {
         anchors.left: parent.left
