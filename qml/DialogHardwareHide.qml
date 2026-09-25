@@ -355,28 +355,15 @@ Window {
                                 }
                             }
                         }
-                        Row {
+                        Text {
                             anchors.centerIn: parent
-                            width: parent.width / 3
-                            height: parent.height
                             visible: confirmed
                             enabled: false
                             z: 2
-                            spacing: 0
-                            Repeater {
-                                model: ["H", "I", "D", "D", "E", "N"]
-                                Text {
-                                    required property string modelData
-                                    text: modelData
-                                    width: (parent.width > 0 ? parent.width : 0) / 6
-                                    height: parent.height
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    font.bold: true
-                                    font.pixelSize: 22
-                                    color: "#F4F4F5"
-                                }
-                            }
+                            text: "HIDDEN"
+                            font.bold: true
+                            font.pixelSize: 22
+                            color: "#F4F4F5"
                         }
                     }
                 }
