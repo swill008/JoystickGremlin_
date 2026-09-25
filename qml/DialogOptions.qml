@@ -32,6 +32,7 @@ Window {
         id: _root
 
         anchors.fill: parent
+        anchors.bottomMargin: 58
 
         // Shows the list of all option sections.
         JGListView {
@@ -53,5 +54,11 @@ Window {
             Layout.fillHeight: true
             Layout.fillWidth: true
         }
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
