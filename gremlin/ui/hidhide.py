@@ -408,7 +408,7 @@ def _ioctl(handle, code: int, inn: bytes | None = None, out_size: int = 0) -> tu
         None,
     )
     if not ok:
-        _ioctl_error = f"HidHide driver call failed ({ctypes.get_last_error()})."
+        _ioctl_error = f"HiDHide driver call failed ({ctypes.get_last_error()})."
     name = _IOCTL_NAMES.get(int(code) & 0xFFFFFFFF, "OTHER")
     _hh_log(
         f"ioctl {name} code=0x{int(code) & 0xFFFFFFFF:08X} in={in_len} out={out_size} "
@@ -1379,7 +1379,7 @@ class HidHideModel(QtCore.QObject):
             return False
         snapshot_if_needed()
         if not set_inverse(bool(on)):
-            self._last_error = _ioctl_error or "HidHide driver call failed."
+            self._last_error = _ioctl_error or "HiDHide driver call failed."
             self.reload()
             return False
         _borrowed_inverse = True
@@ -1466,7 +1466,7 @@ class HidHideModel(QtCore.QObject):
                     have.add(group_id.upper())
         _hh_log(f"set hidden={bool(hidden)} id={instance_id} group={group_ids} blacklist={kept}")
         if not set_blacklist(kept):
-            self._last_error = _ioctl_error or "HidHide driver call failed."
+            self._last_error = _ioctl_error or "HiDHide driver call failed."
             _hh_log(f"set blacklist failed: {self._last_error}")
             self.reload()
             return False
