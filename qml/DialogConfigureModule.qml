@@ -55,6 +55,8 @@ Window {
     }
 
     function reloadModuleControls() {
+        if (_hw.setDeviceGuid)
+            _hw.setDeviceGuid(deviceGuid)
         _driver.loadDevice(deviceGuid, deviceName)
         var url = _hw.profilePhotoUrl(deviceName)
         photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
@@ -79,6 +81,8 @@ Window {
     DriverInputModel { id: _driver }
 
     Component.onCompleted: {
+        if (_hw.setDeviceGuid)
+            _hw.setDeviceGuid(deviceGuid)
         _driver.loadDevice(deviceGuid, deviceName)
         _win.photoUrl = _hw.profilePhotoUrl(deviceName)
     }
