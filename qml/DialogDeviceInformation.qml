@@ -21,6 +21,7 @@ Window {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.bottomMargin: 58
 
         RowLayout {
             Layout.preferredHeight: 50
@@ -161,5 +162,11 @@ Window {
 
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+    }
+
+    DebugFileLine {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
     }
 }
