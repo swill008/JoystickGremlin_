@@ -290,21 +290,17 @@ ApplicationWindow {
 
     function quitGremlin() {
         if (backend && backend.profileContainsUnsavedChanges) {
-            _saveBeforeQuitDialog.open()
+            _saveBeforeQuitDialog.ask()
         } else {
             deactivateThenQuit()
         }
     }
 
     function showSaveResult(ok, path) {
-        if (ok) {
-            _saveResultDialog.titleText = "Profile saved"
-            _saveResultDialog.messageText = "The profile has been saved.\n" + path
-        } else {
-            _saveResultDialog.titleText = "Save failed"
-            _saveResultDialog.messageText = "The profile was not written to disk."
-        }
-        _saveResultDialog.open()
+        if (ok)
+            _saveResultDialog.announce(true, "The profile has been saved.\n" + path)
+        else
+            _saveResultDialog.announce(false, "The profile was not written to disk.")
     }
 
     ColorInformation {
@@ -324,41 +320,25 @@ ApplicationWindow {
         buttons: MessageDialog.Ok
     }
 
-    MessageDialog {
+    DismissibleDialog {
         id: _saveBeforeQuitDialog
 
-        title: "Save Changes?"
-        modality: Qt.ApplicationModal
-        buttons: MessageDialog.Save | MessageDialog.Discard | MessageDialog.Cancel
+        detail: "There are unsaved changes in the current profile. Save them before quitting, or they will be lost."
 
-        text: "There are unsaved changes in the current profile, do you want " +
-              "to save them before quitting?"
-
-        onButtonClicked: (button, role) => {
-            switch (button) {
-                case MessageDialog.Save:
-                    if (!backend) {
-                        break
-                    }
-                    var fpath = backend.profilePath()
-                    if(fpath === "") {
-                        _saveProfileFileDialog.quitAfterSave = true
-                        _saveProfileFileDialog.open()
-                    } else {
-                        if (backend.saveProfile(fpath)) {
-                            deactivateThenQuit()
-                        } else {
-                            showSaveResult(false, fpath)
-                        }
-                    }
-                    break
-                case MessageDialog.Discard:
-                    deactivateThenQuit()
-                    break
-                case MessageDialog.Cancel:
-                    break
+        onSaveChosen: {
+            if (!backend)
+                return
+            var fpath = backend.profilePath()
+            if (fpath === "") {
+                _saveProfileFileDialog.quitAfterSave = true
+                _saveProfileFileDialog.open()
+            } else if (backend.saveProfile(fpath)) {
+                deactivateThenQuit()
+            } else {
+                showSaveResult(false, fpath)
             }
         }
+        onDiscardChosen: deactivateThenQuit()
     }
 
     DismissibleDialog {
@@ -881,7 +861,7 @@ ApplicationWindow {
             return
         }
         if (backend && backend.profileContainsUnsavedChanges) {
-            _saveBeforeQuitDialog.open()
+            _saveBeforeQuitDialog.ask()
             close.accepted = false
             return
         }
