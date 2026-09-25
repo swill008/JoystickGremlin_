@@ -154,9 +154,18 @@ Window {
                 font.pixelSize: 12
                 text: "HiDHide hides the selected controllers from other programs. This program does not install HiDHide. Click on Get HiDHide to download the program."
             }
-            Button {
-                text: "Get HiDHide"
-                onClicked: _hh.openDownload()
+            ColumnLayout {
+                spacing: 6
+                Button {
+                    text: "Get HiDHide"
+                    Layout.fillWidth: true
+                    onClicked: _hh.openDownload()
+                }
+                Button {
+                    text: "Test"
+                    Layout.fillWidth: true
+                    onClicked: _hh.openGameControllers()
+                }
             }
         }
 
