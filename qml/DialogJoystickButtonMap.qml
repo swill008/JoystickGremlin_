@@ -1693,6 +1693,7 @@ Window {
                 }
                 MenuItem { text: "Save"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
                 MenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
+                MenuSeparator {}
                 MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
                 MenuItem {
                     text: "Fit to photo frame"
