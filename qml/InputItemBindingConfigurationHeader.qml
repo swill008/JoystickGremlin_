@@ -14,7 +14,7 @@ Item {
 
     property InputItemBindingModel inputBinding
     property InputItemModel inputItemModel
-    property bool compactMode: false
+    property bool hideControlSetup: false
     property MouseArea dragHandleArea: _dragArea
 
     implicitHeight: _layout.implicitHeight
@@ -34,7 +34,6 @@ Item {
             IconButton {
                 id: _handle
 
-                visible: !_root.compactMode
                 font.pixelSize: 24
                 horizontalPadding: -5
                 text: bsi.icons.verticalDrag
@@ -53,7 +52,6 @@ Item {
             JGTextField {
                 id: _description
 
-                visible: !_root.compactMode
                 Layout.fillWidth: true
 
                 placeholderText: "Description"
@@ -68,6 +66,7 @@ Item {
             InputBehavior {
                 id: _behavior
 
+                visible: !_root.hideControlSetup
                 inputBinding: _root.inputBinding
             }
 
@@ -99,7 +98,6 @@ Item {
             }
 
             IconButton {
-                visible: !_root.compactMode
                 text: bsi.icons.remove
                 font.pixelSize: 24
 
@@ -113,7 +111,8 @@ Item {
         Loader {
             id: _behaviorAxisButton
 
-            active: _root.inputBinding.behavior == "button" &&
+            active: !_root.hideControlSetup &&
+                _root.inputBinding.behavior == "button" &&
                 _root.inputBinding.inputType == "axis"
             visible: active
 
@@ -161,7 +160,8 @@ Item {
 
         // UI for a hat behaving like a button.
         Loader {
-            active: _root.inputBinding.behavior == "button" &&
+            active: !_root.hideControlSetup &&
+                _root.inputBinding.behavior == "button" &&
                 _root.inputBinding.inputType == "hat"
             visible: active
 
