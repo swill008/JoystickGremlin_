@@ -18,9 +18,6 @@ Item {
     property ActionModel parentAction
     property string containerName
     property int itemSpacing : 10
-    property bool compactMode: false
-    property var inputItemModel
-    property var inputBinding
 
     implicitHeight: _content.height
 
@@ -212,14 +209,11 @@ Item {
 
             IconButton {
                 id: _removeButton
-                visible: !_root.compactMode
 
                 text: bsi.icons.remove
 
                 onClicked: {
-                    if (_root.compactMode && _root.inputItemModel && _root.inputBinding) {
-                        _root.inputItemModel.deleteActionSequnce(_root.inputBinding)
-                    } else if (parentAction && _root.action) {
+                    if (parentAction && _root.action) {
                         parentAction.removeAction(_root.action.sequenceIndex)
                     }
                 }
@@ -254,6 +248,61 @@ Item {
             height: _root.action && _root.action.lastInContainer ? 15 : 0
             Layout.fillWidth: true
         }
+    }
+
+    Component {
+        id: _addItem
+        MenuItem {
+            property string actionName: ""
+            text: actionName
+            onTriggered: {
+                if (_root.parentAction)
+                    _root.parentAction.appendAction(actionName, _root.containerName || "children")
+            }
+        }
+    }
+
+    Menu {
+        id: _actionMenu
+
+        Menu {
+            id: _addMenu
+            title: "Add"
+        }
+        MenuItem {
+            text: "Delete"
+            enabled: !!(_root.parentAction && _root.action)
+            onTriggered: {
+                if (_root.parentAction && _root.action)
+                    _root.parentAction.removeAction(_root.action.sequenceIndex)
+            }
+        }
+
+        onAboutToShow: {
+            while (_addMenu.count > 0) {
+                var old = _addMenu.takeItem(0)
+                if (old)
+                    old.destroy()
+            }
+            var names = (_root.parentAction && _root.parentAction.compatibleActions)
+                    ? _root.parentAction.compatibleActions : []
+            for (var i = 0; i < names.length; i++) {
+                var item = _addItem.createObject(_addMenu, { "actionName": names[i] })
+                if (item)
+                    _addMenu.addItem(item)
+            }
+            _addMenu.enabled = names.length > 0
+        }
+    }
+
+    MouseArea {
+        x: _content.x + _header.x
+        y: _content.y + _header.y
+        width: _header.width
+        height: _header.height
+        z: 4
+        acceptedButtons: Qt.RightButton
+        onClicked: _actionMenu.popup()
     }
 
     MouseArea {
