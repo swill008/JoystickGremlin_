@@ -153,12 +153,7 @@ def resolve_module_slug(device_name: str, guid: str = "") -> str:
     if not bound and name_key:
         bound = data.get(name_key, "")
     if bound:
-        slug = _plain_slug(bound) or _slug(device_name)
-        if key and name_key and (data.get(key) != slug or data.get(name_key) != slug):
-            data[key] = slug
-            data[name_key] = slug
-            _write_bindings(data)
-        return slug
+        return _plain_slug(bound) or _slug(device_name)
     return _slug(device_name)
 
 
@@ -452,11 +447,23 @@ class HardwareProfile(QtCore.QObject):
         self._peek_photo = ""
         self._device_guid = ""
 
+    def _guid_for_this_device(self, device_name: str) -> str:
+        # The object remembers one device. Do not use that id for a different name.
+        guid = _norm_guid(self._device_guid)
+        if not guid:
+            return ""
+        owned = _norm_guid(_guid_for_name(device_name))
+        if not owned or owned != guid:
+            return ""
+        return str(self._device_guid)
+
     def _file_for(self, device_name: str) -> Path:
-        return _maps_dir() / f"{resolve_module_slug(device_name, self._device_guid)}.json"
+        slug = resolve_module_slug(device_name, self._guid_for_this_device(device_name))
+        return _maps_dir() / f"{slug}.json"
 
     def _profile_dir(self, device_name: str) -> Path:
-        path = _maps_dir() / resolve_module_slug(device_name, self._device_guid)
+        slug = resolve_module_slug(device_name, self._guid_for_this_device(device_name))
+        path = _maps_dir() / slug
         path.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -506,11 +513,6 @@ class HardwareProfile(QtCore.QObject):
                 if cand == _stock_photo() and "vkb_gladiator_rig" not in s and name != cand.name:
                     continue
                 return cand
-        for folder in _maps_dir().iterdir() if _maps_dir().is_dir() else []:
-            if folder.is_dir():
-                hit = folder / name
-                if hit.is_file():
-                    return hit
         stock = _stock_photo()
         if "vkb_gladiator_rig" in s and stock.is_file():
             return stock
