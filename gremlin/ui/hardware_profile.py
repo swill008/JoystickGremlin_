@@ -705,8 +705,10 @@ class HardwareProfile(QtCore.QObject):
         if ext not in _IMAGE_EXT:
             ext = ".jpg"
         name = device_name or self._device_name
+        slug = _slug(name)
         self._into_library(src)
-        folder = self._profile_dir(name)
+        folder = _maps_dir() / slug
+        folder.mkdir(parents=True, exist_ok=True)
         dest = folder / f"photo{ext}"
         for old in folder.glob("photo.*"):
             if old.resolve() != dest.resolve():
@@ -719,21 +721,18 @@ class HardwareProfile(QtCore.QObject):
         except OSError:
             dest = folder / f"photo_{src.stem}{ext}"
             self._copy_file(src, dest)
-        rel = f"qml/maps/{folder.name}/{dest.name}"
-        path = self._file_for(name)
-        doc: dict = {}
+        rel = f"qml/maps/{slug}/{dest.name}"
+        # Record the picture on this device's own file only. A shared module
+        # binding must not change every other card.
+        path = _maps_dir() / f"{slug}.json"
         if path.is_file():
             try:
                 loaded = json.loads(path.read_text(encoding="utf-8"))
-                if isinstance(loaded, dict):
-                    doc = loaded
             except (OSError, json.JSONDecodeError):
-                doc = {}
-        doc["kind"] = "control.hardware"
-        doc["device"] = name
-        doc["image"] = rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+                loaded = None
+            if isinstance(loaded, dict):
+                loaded["image"] = rel
+                path.write_text(json.dumps(loaded, indent=2) + "\n", encoding="utf-8")
         persist_log(f"Persist photo name={name!r} guid={self._device_guid!r} path={path} image={rel!r}")
         self._path = str(path)
         self.pathChanged.emit()
@@ -744,7 +743,7 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, result=bool)
     def clearImage(self, device_name: str) -> bool:
         name = device_name or self._device_name
-        folder = self._profile_dir(name)
+        folder = _maps_dir() / _slug(name)
         for p in folder.glob("photo.*"):
             try:
                 p.unlink()
@@ -780,8 +779,8 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def profilePhotoUrl(self, device_name: str) -> str:
-        folder = self._profile_dir(device_name)
-        for p in sorted(folder.glob("photo.*")):
+        own = _maps_dir() / _slug(device_name)
+        for p in sorted(own.glob("photo.*")):
             if p.is_file():
                 return p.as_uri() + f"?t={int(p.stat().st_mtime_ns)}"
         text = self.load(device_name)
@@ -794,7 +793,14 @@ class HardwareProfile(QtCore.QObject):
             # Never reuse the EVO R grip shot for a different module.
             if found == _stock_photo() and _slug(device_name) != "vkb_evo_r":
                 return ""
-            return found.as_uri() + f"?t={int(found.stat().st_mtime_ns)}"
+            try:
+                # A picture saved for another device lives in that device's folder.
+                if found.resolve().parent != own.resolve():
+                    found = None
+            except OSError:
+                found = None
+            if found is not None:
+                return found.as_uri() + f"?t={int(found.stat().st_mtime_ns)}"
         if _slug(device_name) == "vkb_evo_r":
             stock = _stock_photo()
             return stock.as_uri() if stock.is_file() else ""
