@@ -16,6 +16,7 @@ Item {
     property InputItemModel inputItemModel
     property int inputIndex
     property bool isOutput: false
+    property bool holdModel: false
     property bool inlineMode: false
     property bool hideControlSetup: false
     property bool catalogSequence: false
@@ -57,7 +58,7 @@ Item {
     }
 
     Component.onCompleted: {
-        if (!backend || !uiState)
+        if (holdModel || !backend || !uiState)
             return
         _root.inputItemModel = backend.getInputItem(
             uiState.currentInput,
@@ -69,9 +70,8 @@ Item {
         target: uiState
 
         function onInputChanged() {
-            if (!backend || !uiState) {
+            if (_root.holdModel || !backend || !uiState)
                 return
-            }
             _root.inputItemModel = backend.getInputItem(
                 uiState.currentInput,
                 uiState.currentInputIndex
@@ -83,9 +83,8 @@ Item {
         target: signal
 
         function onReloadCurrentInputItem() {
-            if (!backend || !uiState) {
+            if (_root.holdModel || !backend || !uiState)
                 return
-            }
             _root.inputItemModel = backend.getInputItem(
                 uiState.currentInput,
                 uiState.currentInputIndex
