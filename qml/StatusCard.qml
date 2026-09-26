@@ -185,6 +185,7 @@ Rectangle {
 
     MouseArea {
         id: _grab
+        z: 5
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         // Do not drag this item. It lives in a Flow; moving it there
@@ -192,6 +193,7 @@ Rectangle {
         preventStealing: true
         property bool didDrag: false
         property bool shiftHeld: false
+        property int pressButton: Qt.LeftButton
         property real pressX: 0
         property real pressY: 0
         property real lastSx: 0
@@ -201,20 +203,20 @@ Rectangle {
         onPressed: function(mouse) {
             didDrag = false
             shiftHeld = (mouse.modifiers & Qt.ShiftModifier) !== 0
+            pressButton = mouse.button
             pressX = mouse.x
             pressY = mouse.y
-            if (mouse.button === Qt.LeftButton && !shiftHeld)
-                _card.lifting = true
         }
         onPositionChanged: function(mouse) {
-            if (!pressed)
-                return
-            if (shiftHeld)
+            if (!pressed || pressButton !== Qt.LeftButton || shiftHeld)
                 return
             if (!didDrag) {
                 if (Math.abs(mouse.x - pressX) < 10 && Math.abs(mouse.y - pressY) < 10)
                     return
                 didDrag = true
+                // Lift only after the pointer moves. Lifting on the press
+                // freezes the pane and cancels the click.
+                _card.lifting = true
                 _card.dragStarted()
             }
             var s = _grab.mapToItem(null, mouse.x, mouse.y)
@@ -224,27 +226,39 @@ Rectangle {
         }
         onReleased: function(mouse) {
             var dragged = didDrag
+            var button = mouse.button
             var sx = lastSx
             var sy = lastSy
+            var px = mouse.x
+            var py = mouse.y
+            var shift = shiftHeld || ((mouse.modifiers & Qt.ShiftModifier) !== 0)
+            didDrag = false
             _card.lifting = false
-            if (!dragged)
+            if (dragged) {
+                Qt.callLater(function() {
+                    _card.dropAt(sx, sy)
+                })
                 return
-            Qt.callLater(function() {
-                _card.dropAt(sx, sy)
-            })
-        }
-        onClicked: function(mouse) {
-            if (didDrag)
+            }
+            if (button === Qt.RightButton) {
+                // Open after this release. Opening during the release makes
+                // Qt treat it as a click outside and close the menu at once.
+                Qt.callLater(function() {
+                    _menu.popup(_grab, px, py)
+                })
                 return
-            if (mouse.button === Qt.RightButton)
-                _menu.popup(_grab, mouse.x, mouse.y)
-            else if (shiftHeld || (mouse.modifiers & Qt.ShiftModifier))
+            }
+            if (shift)
                 _card.shiftToggled()
             else
                 _card.cardFocused()
         }
-        onDoubleClicked: {
-            if (!didDrag)
+        onCanceled: function() {
+            didDrag = false
+            _card.lifting = false
+        }
+        onDoubleClicked: function(mouse) {
+            if (mouse.button === Qt.LeftButton && !didDrag)
                 _card.openConfiguration()
         }
     }
@@ -305,6 +319,7 @@ Rectangle {
         anchors.bottomMargin: 16
         cursorShape: Qt.SizeHorCursor
         onPressed: function() { _card.resizing = true; _card.lifting = false }
+        onCanceled: function() { _card.resizing = false }
         onPositionChanged: function(mouse) {
             if (pressed)
                 _card.width = _card._clampW(_card.width + mouse.x - width / 2)
@@ -324,6 +339,7 @@ Rectangle {
         anchors.rightMargin: 16
         cursorShape: Qt.SizeVerCursor
         onPressed: function() { _card.resizing = true; _card.lifting = false }
+        onCanceled: function() { _card.resizing = false }
         onPositionChanged: function(mouse) {
             if (pressed)
                 _card.height = _card._clampH(_card.height + mouse.y - height / 2)
@@ -342,6 +358,7 @@ Rectangle {
         anchors.bottom: parent.bottom
         cursorShape: Qt.SizeFDiagCursor
         onPressed: function() { _card.resizing = true; _card.lifting = false }
+        onCanceled: function() { _card.resizing = false }
         onPositionChanged: function(mouse) {
             if (pressed) {
                 _card.width = _card._clampW(_card.width + mouse.x - width / 2)
@@ -375,6 +392,7 @@ Rectangle {
 
     Menu {
         id: _menu
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         MenuItem {
             text: direction === "dest" ? "Output View" : "Open Configuration"
