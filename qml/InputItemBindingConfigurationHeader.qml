@@ -149,11 +149,11 @@ Item {
                     stepSize: 0.1
                     decimals: 3
 
-                    onFirstValueChanged: () => {
-                        _root.inputBinding.virtualButton.lowerLimit = firstValue
+                    onFirstEdited: (value) => {
+                        _root.inputBinding.virtualButton.lowerLimit = value
                     }
-                    onSecondValueChanged: () => {
-                        _root.inputBinding.virtualButton.upperLimit = secondValue
+                    onSecondEdited: (value) => {
+                        _root.inputBinding.virtualButton.upperLimit = value
                     }
                 }
                 Label {
