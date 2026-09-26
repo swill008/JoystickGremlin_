@@ -142,10 +142,10 @@ Item {
 
             CheckBox {
                 text: "Symmetric"
-
-                checked: _root.action.isSymmetric
-
-                onToggled: () => { _root.action.isSymmetric = checked }
+                property bool shown: _root.action.isSymmetric
+                onShownChanged: if (!pressed) checked = shown
+                Component.onCompleted: checked = shown
+                onClicked: _root.action.isSymmetric = checked
             }
         }
 
@@ -304,8 +304,8 @@ Item {
                 stepSize: 0.05
                 decimals: 3
 
-                onFirstValueChanged: () => { deadzone.low = firstValue }
-                onSecondValueChanged: () => { deadzone.centerLow = secondValue }
+                onFirstEdited: (value) => { deadzone.low = value }
+                onSecondEdited: (value) => { deadzone.centerLow = value }
             }
 
             // Upper half axis.
@@ -319,8 +319,8 @@ Item {
                 stepSize: 0.05
                 decimals: 3
 
-                onFirstValueChanged: () => { deadzone.centerHigh = firstValue }
-                onSecondValueChanged: () => { deadzone.high = secondValue }
+                onFirstEdited: (value) => { deadzone.centerHigh = value }
+                onSecondEdited: (value) => { deadzone.high = value }
             }
         }
     }
