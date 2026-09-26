@@ -17,7 +17,7 @@ Window {
     height: 640
     minimumWidth: 640
     minimumHeight: 480
-    title: "Hardware Hide"
+    title: "HiDHide"
     color: Style.background
     Universal.theme: Style.theme
 
@@ -188,7 +188,7 @@ Window {
         }
 
         Label {
-            text: "Hardware Hide"
+            text: "HiDHide"
             color: "#E4E4E7"
             font.pixelSize: 16
             font.bold: true
@@ -490,15 +490,6 @@ Window {
             Button {
                 text: "Refresh"
                 onClicked: _hh.refresh()
-            }
-            Switch {
-                id: debugSwitch
-                checked: _hh.debugLog
-                text: "Debug log"
-                onClicked: {
-                    _hh.setDebugLog(debugSwitch.checked)
-                    debugSwitch.checked = Qt.binding(function() { return _hh.debugLog })
-                }
             }
             Item { Layout.fillWidth: true }
             Button {
