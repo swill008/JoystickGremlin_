@@ -28,6 +28,7 @@ Item {
                 text: "Button mode"
             }
             RadioButton {
+                autoExclusive: false
                 text: "4 way"
                 checked: _root.action.buttonCount == 4
 
@@ -36,6 +37,7 @@ Item {
                 }
             }
             RadioButton {
+                autoExclusive: false
                 text: "8 way"
                 checked: _root.action.buttonCount == 8
 
