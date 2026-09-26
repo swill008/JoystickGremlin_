@@ -1193,7 +1193,6 @@ ApplicationWindow {
                 claimDeviceName: configTitleName
                 isOutput: _root.configDirection === "dest"
                 showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel
-                onAdvancedRequested: (hid) => { openActionEditor(hid) }
                 onClosePanel: {
                     if (_root.configDirection === "dest")
                         _root.outputViewPanel = false
