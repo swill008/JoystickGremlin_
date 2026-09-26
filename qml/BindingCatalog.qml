@@ -21,6 +21,7 @@ Item {
     property string claimDeviceName: ""
     property bool isOutput: false
     property int editingHid: -1
+    property int controlHid: -1
     property int revealOnceRow: -1
     property int revealTries: 0
     property bool showPanel: false
@@ -501,6 +502,12 @@ Item {
         _savedToast.open()
     }
 
+    function toggleControl(hid) {
+        if (hid < 0)
+            return
+        _root.controlHid = _root.controlHid === hid ? -1 : hid
+    }
+
     function selectHid(hid) {
         if (!uiState || !device || hid < 0)
             return
@@ -936,8 +943,15 @@ Item {
                     width: lv.width - 12
                     readonly property bool isGroup: rowKind === "group" || rowKind === "unmapped"
                     readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
+                    readonly property bool controlOpen: isGroup && (kind === "axis" || kind === "hat") && deviceIndex === _root.controlHid && deviceIndex >= 0
+                    onControlOpenChanged: {
+                        if (controlOpen)
+                            _band.openControl()
+                    }
+                    readonly property int bandH: controlOpen ? _band.implicitHeight : 0
+                    readonly property int bodyH: isLeaf ? lv.childH : lv.parentH + bandH
                     readonly property bool hideLeaf: isLeaf && (deviceIndex === lv.editingHid || !lv.kidsOn)
-                    height: hideLeaf ? 0 : (topGap + (isLeaf ? lv.childH : lv.parentH) + (expanded ? _editor.height + 8 : 0) + bottomGap)
+                    height: hideLeaf ? 0 : (topGap + bodyH + (expanded ? _editor.height + 8 : 0) + bottomGap)
                     visible: !hideLeaf
 
                     readonly property bool selected: index === lv.currentIndex || expanded
@@ -953,7 +967,7 @@ Item {
                         x: _root.groupX(_row.width)
                         y: index > 0 ? _root.groupBetween : 0
                         width: Math.max(0, _root.groupW(_row.width))
-                        height: gPadT + lv.parentH + (expanded ? _editor.height + 8 : 0) + (shownKids * (_root.groupInside + lv.childH)) + gPadB
+                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (expanded ? _editor.height + 8 : 0) + (shownKids * (_root.groupInside + lv.childH)) + gPadB
                         radius: _root.groupRadius
                         color: _root.colorGroup
                     }
@@ -963,7 +977,7 @@ Item {
                         y: topGap
                         x: boxX + (isLeaf ? _root.leafX(boxW) : _root.parentX(boxW))
                         width: isLeaf ? _root.leafW(boxW) : _root.parentW(boxW)
-                        height: isLeaf ? lv.childH : lv.parentH
+                        height: isLeaf ? lv.childH : bodyH
                         radius: isLeaf ? _root.childRadius : lv.rowRad
                         border.width: selected ? 2 : 1
                         border.color: selected ? lv.cSelBorder : lv.cBorder
@@ -981,8 +995,7 @@ Item {
                             visible: lv.barsOn && axisRow && rowKind === "group"
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            anchors.margins: 1
+                            y: lv.parentH - height - 1
                             height: 5
                             color: lv.cBorder
                             Rectangle {
@@ -1004,11 +1017,16 @@ Item {
                                 lv.syncSelection()
                                 if (rowKind === "leaf")
                                     lv.openRow(deviceIndex)
+                                else if (kind === "axis" || kind === "hat")
+                                    _root.toggleControl(deviceIndex)
                             }
                         }
 
                         RowLayout {
-                            anchors.fill: parent
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            height: isLeaf ? parent.height : lv.parentH
                             anchors.leftMargin: isLeaf
                                 ? _root.padEdge(_root.childPadShape, _root.childPad, _root.childPadLeft)
                                 : _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadLeft)
@@ -1065,6 +1083,126 @@ Item {
                                 onClicked: lv.okRow()
                             }
                         }
+
+                        ColumnLayout {
+                            id: _band
+                            visible: controlOpen
+                            z: 3
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.topMargin: lv.parentH
+                            anchors.leftMargin: _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadLeft)
+                            anchors.rightMargin: _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadRight)
+                            anchors.bottomMargin: 8
+                            spacing: 4
+
+                            property string behaviorText: kind
+                            property var controlVb: null
+
+                            function refreshControl() {
+                                if (!_row.controlOpen)
+                                    return
+                                behaviorText = lv.catalogModel.controlBehavior(deviceIndex)
+                                controlVb = lv.catalogModel.controlVirtualButton(deviceIndex)
+                            }
+
+                            function openControl() {
+                                lv.catalogModel.prepareControl(deviceIndex)
+                                refreshControl()
+                            }
+
+                            Component.onCompleted: {
+                                if (_row.controlOpen)
+                                    openControl()
+                            }
+
+                            Connections {
+                                target: lv.catalogModel
+                                function onControlChanged() { _band.refreshControl() }
+                            }
+
+                            RowLayout {
+                                spacing: 12
+                                Label {
+                                    text: "Treat as"
+                                    color: lv.cMuted
+                                    font.pixelSize: lv.pFont
+                                }
+                                RadioButton {
+                                    text: "Button"
+                                    font.pixelSize: lv.pFont
+                                    checked: _band.behaviorText === "button"
+                                    onClicked: lv.catalogModel.setControlBehavior(deviceIndex, "button")
+                                }
+                                RadioButton {
+                                    text: kind === "hat" ? "Hat" : "Axis"
+                                    font.pixelSize: lv.pFont
+                                    checked: _band.behaviorText === kind
+                                    onClicked: lv.catalogModel.setControlBehavior(deviceIndex, kind)
+                                }
+                            }
+
+                            RowLayout {
+                                visible: kind === "axis" && _band.behaviorText === "button" && _band.controlVb
+                                spacing: 8
+                                Label {
+                                    text: "Activate between"
+                                    color: lv.cText
+                                    font.pixelSize: lv.sFont
+                                }
+                                NumericalRangeSlider {
+                                    Layout.fillWidth: true
+                                    from: -1.0
+                                    to: 1.0
+                                    firstValue: _band.controlVb ? _band.controlVb.lowerLimit : -0.5
+                                    secondValue: _band.controlVb ? _band.controlVb.upperLimit : 0.5
+                                    stepSize: 0.05
+                                    decimals: 2
+                                    onFirstValueChanged: {
+                                        if (_band.controlVb)
+                                            _band.controlVb.lowerLimit = firstValue
+                                    }
+                                    onSecondValueChanged: {
+                                        if (_band.controlVb)
+                                            _band.controlVb.upperLimit = secondValue
+                                    }
+                                }
+                                Label {
+                                    text: "when entered from"
+                                    color: lv.cText
+                                    font.pixelSize: lv.sFont
+                                }
+                                ComboBox {
+                                    model: ["Anywhere", "Above", "Below"]
+                                    font.pixelSize: lv.sFont
+                                    Component.onCompleted: {
+                                        if (_band.controlVb)
+                                            currentIndex = find(_band.controlVb.direction, Qt.MatchFixedString)
+                                    }
+                                    onActivated: {
+                                        if (_band.controlVb)
+                                            _band.controlVb.direction = currentText
+                                    }
+                                }
+                            }
+
+                            RowLayout {
+                                visible: kind === "hat" && _band.behaviorText === "button" && _band.controlVb
+                                spacing: 8
+                                Label {
+                                    text: "Activate on"
+                                    color: lv.cText
+                                    font.pixelSize: lv.sFont
+                                }
+                                Loader {
+                                    active: parent.visible
+                                    sourceComponent: HatDirectionSelector {
+                                        virtualButton: _band.controlVb
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     Loader {
@@ -1072,7 +1210,7 @@ Item {
                         active: expanded
                         visible: expanded
                         x: boxX + _root.editorX(boxW)
-                        y: topGap + lv.parentH + lv.edGap
+                        y: topGap + bodyH + lv.edGap
                         width: _root.editorW(boxW)
                         height: visible && item ? Math.max(80, item.implicitHeight) : 0
                         onLoaded: if (item) item.width = width
@@ -1083,6 +1221,7 @@ Item {
                         }
                         sourceComponent: InputConfiguration {
                             inlineMode: true
+                            hideControlSetup: true
                             isOutput: lv.catalogIsOutput
                             editorFill: lv.cEditor
                             editorEdge: lv.cEditorEdge
