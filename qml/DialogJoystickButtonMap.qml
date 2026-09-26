@@ -1225,6 +1225,28 @@ Window {
         applyPhotoToEditor()
     }
 
+    function deferSelected() {
+        Qt.callLater(applySelected)
+    }
+
+    function deferReservoir() {
+        Qt.callLater(refreshReservoir)
+    }
+
+    function deferFace() {
+        Qt.callLater(function() {
+            applyGridToEditor()
+            refreshReservoir()
+        })
+    }
+
+    function deferHistory() {
+        Qt.callLater(function() {
+            applySelected()
+            refreshReservoir()
+        })
+    }
+
 
     function fitToPhotoFrame() {
         if (fittedThisEdit)
@@ -2059,27 +2081,17 @@ Window {
                         editing: _buttonMap.editing
                         editorNodes: _buttonMap.editing ? _buttonMap.workNodes : _buttonMap.liveNodes
                         photoOverride: _buttonMap.photoOverride
-                        onChipRowsChanged: Qt.callLater(_buttonMap.refreshReservoir)
+                        onChipRowsChanged: _buttonMap.deferReservoir()
                         Connections {
                             target: _card.editorItem
-                            function onSelectedChanged() { Qt.callLater(_buttonMap.applySelected) }
+                            function onSelectedChanged() { _buttonMap.deferSelected() }
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
                             function onOverlayImportRequested() { _overlayDialog.open() }
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }
                             function onDrawToolChanged() { _buttonMap.resTick++ }
-                            function onHistoryChanged() {
-                                Qt.callLater(function() {
-                                    _buttonMap.applySelected()
-                                    _buttonMap.refreshReservoir()
-                                })
-                            }
-                            function onNodesChanged() {
-                                Qt.callLater(function() {
-                                    _buttonMap.applySelected()
-                                    _buttonMap.refreshReservoir()
-                                })
-                            }
+                            function onHistoryChanged() { _buttonMap.deferHistory() }
+                            function onNodesChanged() { _buttonMap.deferHistory() }
                         }
                         Component.onCompleted: _cardLoader.item = _card
                     }
@@ -2113,10 +2125,7 @@ Window {
                             _hasTarget.hit = true
                             _cardLoader.item = item
                             _buttonMap.faceLive = true
-                            Qt.callLater(function() {
-                                _buttonMap.applyGridToEditor()
-                                _buttonMap.refreshReservoir()
-                            })
+                            _buttonMap.deferFace()
                         }
                     }
                 }
@@ -2145,10 +2154,7 @@ Window {
                         _hasTarget.hit = true
                         _cardLoader.item = item
                         _buttonMap.faceLive = true
-                        Qt.callLater(function() {
-                            _buttonMap.applyGridToEditor()
-                            _buttonMap.refreshReservoir()
-                        })
+                        _buttonMap.deferFace()
                     }
                 }
 
