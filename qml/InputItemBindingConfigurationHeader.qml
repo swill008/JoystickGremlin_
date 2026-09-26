@@ -15,6 +15,7 @@ Item {
     property InputItemBindingModel inputBinding
     property InputItemModel inputItemModel
     property bool hideControlSetup: false
+    property bool catalogSequence: false
     property MouseArea dragHandleArea: _dragArea
 
     implicitHeight: _layout.implicitHeight
@@ -33,6 +34,8 @@ Item {
 
             IconButton {
                 id: _handle
+
+                visible: !_root.catalogSequence
 
                 font.pixelSize: 24
                 horizontalPadding: -5
@@ -98,6 +101,7 @@ Item {
             }
 
             IconButton {
+                visible: !_root.catalogSequence
                 text: bsi.icons.remove
                 font.pixelSize: 24
 
