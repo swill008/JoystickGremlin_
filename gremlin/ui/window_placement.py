@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import json
+
 from PySide6 import QtCore, QtGui
 
 from gremlin.config import Configuration
@@ -21,8 +23,7 @@ KEY_H = "window-height"
 KEY_MAX = "window-maximized"
 KEY_MENU_W = "button-map-menu-width"
 KEY_MENU_H = "button-map-menu-height"
-KEY_OUTPUT_PANEL = "output-display-panel"
-KEY_CATALOG_PANEL = "configuration-display-panel"
+KEY_DISPLAY_PANELS = "display-panels"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
@@ -40,8 +41,7 @@ def _ensure() -> Configuration:
         (KEY_MAX, PropertyType.Bool, False),
         (KEY_MENU_W, PropertyType.Int, DEFAULT_MENU_W),
         (KEY_MENU_H, PropertyType.Int, DEFAULT_MENU_H),
-        (KEY_OUTPUT_PANEL, PropertyType.Bool, True),
-        (KEY_CATALOG_PANEL, PropertyType.Bool, True),
+        (KEY_DISPLAY_PANELS, PropertyType.String, "{}"),
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
@@ -57,6 +57,42 @@ def _ensure() -> Configuration:
             False,
         )
     return cfg
+
+
+def _panel_key(kind: str, device_id: str) -> str:
+    return f"{kind}|{device_id.strip().lower()}"
+
+
+def _panel_map(cfg: Configuration) -> dict[str, bool]:
+    raw = cfg.value(SECTION, GROUP, KEY_DISPLAY_PANELS) or "{}"
+    try:
+        data = json.loads(str(raw))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(key): bool(value) for key, value in data.items()}
+
+
+def display_panel_open(kind: str, device_id: str) -> bool:
+    device = device_id.strip()
+    if not device:
+        return True
+    saved = _panel_map(_ensure())
+    key = _panel_key(kind, device)
+    if key not in saved:
+        return True
+    return saved[key]
+
+
+def set_display_panel_open(kind: str, device_id: str, open_panel: bool) -> None:
+    device = device_id.strip()
+    if not device:
+        return
+    cfg = _ensure()
+    saved = _panel_map(cfg)
+    saved[_panel_key(kind, device)] = bool(open_panel)
+    cfg.set(SECTION, GROUP, KEY_DISPLAY_PANELS, json.dumps(saved, sort_keys=True))
 
 
 def _available_screens() -> list[QtGui.QScreen]:
@@ -160,18 +196,10 @@ class WindowPlacement(QtCore.QObject):
         cfg.set(SECTION, GROUP, KEY_MENU_W, max(180, min(900, int(width))))
         cfg.set(SECTION, GROUP, KEY_MENU_H, max(160, min(1000, int(height))))
 
-    @QtCore.Slot(result=bool)
-    def outputPanelOpen(self) -> bool:
-        return bool(_ensure().value(SECTION, GROUP, KEY_OUTPUT_PANEL))
+    @QtCore.Slot(str, str, result=bool)
+    def displayPanelOpen(self, kind: str, device_id: str) -> bool:
+        return display_panel_open(kind, device_id)
 
-    @QtCore.Slot(bool)
-    def setOutputPanelOpen(self, open_panel: bool) -> None:
-        _ensure().set(SECTION, GROUP, KEY_OUTPUT_PANEL, bool(open_panel))
-
-    @QtCore.Slot(result=bool)
-    def catalogPanelOpen(self) -> bool:
-        return bool(_ensure().value(SECTION, GROUP, KEY_CATALOG_PANEL))
-
-    @QtCore.Slot(bool)
-    def setCatalogPanelOpen(self, open_panel: bool) -> None:
-        _ensure().set(SECTION, GROUP, KEY_CATALOG_PANEL, bool(open_panel))
+    @QtCore.Slot(str, str, bool)
+    def setDisplayPanelOpen(self, kind: str, device_id: str, open_panel: bool) -> None:
+        set_display_panel_open(kind, device_id, open_panel)
