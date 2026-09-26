@@ -681,7 +681,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     @QtCore.Slot(int, str)
     def setControlBehavior(self, device_index: int, behavior: str) -> None:
         """Set Treat as on every sequence of this control."""
-        from gremlin.ui.profile import InputItemBindingModel
+        from gremlin.ui.profile import InputItemModel
 
         text = str(behavior or "").strip().lower()
         if text not in ("button", "axis", "hat"):
@@ -695,19 +695,20 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 self.controlChanged.emit()
                 return
             item.add_item_binding()
+        want = int(device_index)
+        host = InputItemModel(item, want, self)
         changed = False
-        for binding in list(item.action_sequences):
-            model = InputItemBindingModel(binding, self)
-            try:
+        try:
+            for row in range(host.rowCount()):
+                model = host.data(host.index(row, 0))
                 if model.behavior != text:
                     model.behavior = text
                     changed = True
-            finally:
-                model.setParent(None)
-                model.deleteLater()
-        if changed:
-            signal.inputItemChanged.emit(int(device_index))
-            signal.reloadCurrentInputItem.emit()
+            if changed:
+                signal.inputItemChanged.emit(want)
+                signal.reloadCurrentInputItem.emit()
+        finally:
+            host.deleteLater()
         self._remember_virtual(item)
         self.controlChanged.emit()
 
