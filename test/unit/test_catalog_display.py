@@ -206,6 +206,7 @@ def test_inline_editor_colors_are_properties() -> None:
     qml = _QML.read_text(encoding="utf-8")
     assert "openAdvancedPane" in qml
     assert 'text: "Add Action"' in qml
+    assert 'text: "Close pane after OK"' in qml
     assert "editorPadTop:" in qml
     assert 'text: "Show accent bar"' in qml
 
