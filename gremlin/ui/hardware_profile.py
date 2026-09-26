@@ -22,6 +22,14 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 _IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
 
+# Off unless someone is tracing a save. Same idea as the HiDHide log switch.
+_persist_log = False
+
+
+def persist_log(message: str) -> None:
+    if _persist_log:
+        print(message, flush=True)
+
 
 def _photo_pose(raw) -> dict:
     src = raw if isinstance(raw, dict) else {}
@@ -174,42 +182,8 @@ def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
     if name_key:
         data[name_key] = slug
     _write_bindings(data)
-    print(f"Persist bind file name={device_name!r} guid={guid!r} slug={slug!r}", flush=True)
+    persist_log(f"Persist bind file name={device_name!r} guid={guid!r} slug={slug!r}")
     return slug
-
-
-def save_module_file_as(device_name: str, guid: str, file_name: str) -> str:
-    slug = _plain_slug(file_name)
-    if not slug:
-        return ""
-    src = _maps_dir() / f"{resolve_module_slug(device_name, guid)}.json"
-    dest = _maps_dir() / f"{slug}.json"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if dest.exists() and (not src.is_file() or src.resolve() != dest.resolve()):
-        return ""
-    if src.is_file() and src.resolve() != dest.resolve():
-        shutil.copy2(src, dest)
-    elif not dest.is_file():
-        dest.write_text(
-            json.dumps(
-                {
-                    "kind": "control.hardware",
-                    "device": device_name,
-                    "claim": {
-                        "buttons": [],
-                        "axes": [],
-                        "hats": [],
-                        "keys": [],
-                        "friendly": {},
-                    },
-                    "nodes": [],
-                },
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-    return bind_module_file(device_name, guid, slug)
 
 
 def module_file_exists(device_name: str, guid: str = "") -> bool:
@@ -257,36 +231,6 @@ def load_module_file(device_name: str, guid: str, source_url: str) -> str:
             return ""
         shutil.copy2(src, dest)
     return bind_module_file(device_name, guid, slug)
-
-
-def rename_module_file(device_name: str, guid: str, file_name: str) -> str:
-    new_slug = _plain_slug(file_name)
-    old_slug = resolve_module_slug(device_name, guid)
-    if not new_slug:
-        return "Enter a file name."
-    if new_slug == old_slug:
-        return ""
-    src = _maps_dir() / f"{old_slug}.json"
-    dest = _maps_dir() / f"{new_slug}.json"
-    if not src.is_file():
-        return "This file has not been saved yet."
-    if dest.exists():
-        return "That file already exists."
-    src.rename(dest)
-    data = _binding_store()
-    for stored, value in list(data.items()):
-        if _plain_slug(value) == old_slug:
-            data[stored] = new_slug
-    for key in _users_of_slug(old_slug):
-        data[key] = new_slug
-    key = _norm_guid(guid) or _guid_for_name(device_name)
-    if key:
-        data[key] = new_slug
-    name_key = _name_key(device_name)
-    if name_key:
-        data[name_key] = new_slug
-    _write_bindings(data)
-    return ""
 
 
 def delete_module_file(device_name: str, guid: str) -> str:
@@ -573,8 +517,8 @@ class HardwareProfile(QtCore.QObject):
         return None
 
     def _pack_assets(self, device_name: str, payload: dict) -> dict:
-        slug = _slug(device_name)
         folder = self._profile_dir(device_name)
+        slug = folder.name
         image = str(payload.get("image") or "")
         src = self._resolve_existing(image) or _stock_photo()
         ext = src.suffix.lower() if src and src.suffix.lower() in _IMAGE_EXT else ".jpg"
@@ -617,10 +561,6 @@ class HardwareProfile(QtCore.QObject):
     def chips(self, guid: str):
         return chips_for_guid(guid)
 
-    @QtCore.Slot(str, result=str)
-    def slugFor(self, device_name: str) -> str:
-        return _slug(device_name)
-
     @QtCore.Slot(str)
     def setDeviceGuid(self, guid: str) -> None:
         self._device_guid = str(guid or "")
@@ -635,9 +575,8 @@ class HardwareProfile(QtCore.QObject):
             self._text = path.read_text(encoding="utf-8")
         else:
             self._text = ""
-        print(
-            f"Persist map load name={name!r} guid={self._device_guid!r} path={path} bytes={len(self._text)}",
-            flush=True,
+        persist_log(
+            f"Persist map load name={name!r} guid={self._device_guid!r} path={path} bytes={len(self._text)}"
         )
         self.documentChanged.emit()
         return self._text
@@ -679,12 +618,11 @@ class HardwareProfile(QtCore.QObject):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         kept = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
-        print(
+        persist_log(
             f"Persist map save name={name!r} guid={self._device_guid!r} path={path} "
             f"nodes={len(payload.get('nodes') or [])} "
             f"claimButtons={len(kept.get('buttons') or [])} "
-            f"claimAxes={len(kept.get('axes') or [])}",
-            flush=True,
+            f"claimAxes={len(kept.get('axes') or [])}"
         )
         self._path = str(path)
         self._text = path.read_text(encoding="utf-8")
@@ -713,7 +651,7 @@ class HardwareProfile(QtCore.QObject):
         payload["ui"] = incoming.get("ui", payload.get("ui") or {})
         payload.pop("worldRev", None)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        print(f"Persist map ui name={name!r} guid={self._device_guid!r} path={path}", flush=True)
+        persist_log(f"Persist map ui name={name!r} guid={self._device_guid!r} path={path}")
         self._path = str(path)
         self._text = path.read_text(encoding="utf-8")
         self.pathChanged.emit()
@@ -736,7 +674,7 @@ class HardwareProfile(QtCore.QObject):
             n += 1
         self._copy_file(src, dest)
         self.imageChanged.emit()
-        return f"qml/maps/{_slug(device_name)}/{dest.name}"
+        return f"qml/maps/{self._profile_dir(device_name).name}/{dest.name}"
 
     def _local_image(self, source_url: str) -> Path | None:
         raw = str(source_url or "").strip().split("?")[0].split("#")[0]
@@ -794,7 +732,7 @@ class HardwareProfile(QtCore.QObject):
         doc["image"] = rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
-        print(f"Persist photo name={name!r} guid={self._device_guid!r} path={path} image={rel!r}", flush=True)
+        persist_log(f"Persist photo name={name!r} guid={self._device_guid!r} path={path} image={rel!r}")
         self._path = str(path)
         self.pathChanged.emit()
         self.documentChanged.emit()
@@ -837,31 +775,6 @@ class HardwareProfile(QtCore.QObject):
         if s.startswith("file:") or s.startswith("qrc:"):
             return s
         return ""
-
-    @QtCore.Slot(str, result=str)
-    def toRelative(self, url_or_path: str) -> str:
-        s = (url_or_path or "").strip().replace("\\", "/")
-        if not s or "vkb_gladiator_rig" in s:
-            return "qml/images/vkb_gladiator_rig.jpg"
-        if s.startswith("qml/maps/") or s.startswith("qml/images/"):
-            return s
-        try:
-            src = to_local_path(url_or_path)
-        except Exception:
-            src = Path(s)
-        name = src.name
-        parent = src.parent.name
-        if parent and (src.parent.parent / parent).exists() and parent not in ("maps", "images", "overlays", "library"):
-            return f"qml/maps/{parent}/{name}"
-        if name and name.startswith("photo"):
-            return f"qml/maps/{name}"
-        if "/overlays/" in s.replace("\\", "/"):
-            return f"qml/maps/overlays/{name}"
-        if "/library/" in s.replace("\\", "/"):
-            return f"qml/maps/library/{name}"
-        if "qml/maps/" in s:
-            return "qml/maps/" + s.split("qml/maps/")[-1]
-        return s
 
     @QtCore.Slot(str, result=str)
     def profilePhotoUrl(self, device_name: str) -> str:
@@ -987,7 +900,7 @@ class HardwareProfile(QtCore.QObject):
             return json.dumps({"ok": False, "error": "Profile JSON is not valid."})
         payload = self._pack_assets(name, payload)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        print(f"Persist export rewrite name={name!r} guid={self._device_guid!r} path={path}", flush=True)
+        persist_log(f"Persist export rewrite name={name!r} guid={self._device_guid!r} path={path}")
         packed = json.loads(json.dumps(payload))
         packed.pop("boundGuidLocal", None)
         files = []
