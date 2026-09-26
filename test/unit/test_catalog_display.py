@@ -48,6 +48,10 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "highlightFollowsCurrentItem: false" in qml
     assert "def refreshOpenRow" in py
     assert "def noteOpenRow" in py
+    assert "def setControlBehavior" in py
+    assert "function toggleControl(hid)" in qml
+    assert 'text: "Treat as"' in qml
+    assert "hideControlSetup: true" in qml
     assert "_hold_reload" not in py
     assert "setHoldReload" not in qml
     assert "signal.inputItemChanged.connect(self.reload)" not in py
