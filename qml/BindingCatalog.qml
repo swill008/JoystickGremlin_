@@ -31,6 +31,7 @@ Item {
     property int paneSeq: -1
     property string paneName: ""
     property string paneSummary: ""
+    property int paneWidth: 560
     property bool closeAfterOk: false
     property bool paneChoiceReady: false
     property var panePending: null
@@ -170,6 +171,9 @@ Item {
 
     Component.onCompleted: {
         closeAfterOk = _panePlacement.closePaneAfterOk()
+        var saved = _panePlacement.actionPaneWidth()
+        if (saved >= 420)
+            paneWidth = saved
         paneChoiceReady = true
         if (uiState)
             _catalog.setMode(uiState.currentMode)
@@ -714,6 +718,14 @@ Item {
         return rowW(total, groupAlign, groupLeft, groupRight, groupWidthPct)
     }
 
+    function clampPane(width) {
+        var reserved = 400
+        if (showPanel)
+            reserved += 360
+        var maxW = Math.max(420, _root.width - reserved)
+        return Math.max(420, Math.min(maxW, Math.round(width)))
+    }
+
     function openAdvancedPane(hid) {
         requestPane(hid, -1)
     }
@@ -1221,8 +1233,39 @@ Item {
 
         Rectangle {
             visible: _root.paneHid >= 0
-            Layout.preferredWidth: 560
+            Layout.preferredWidth: 6
+            Layout.fillHeight: true
+            color: _paneGrip.pressed || _paneGrip.containsMouse ? "#3B82F6" : "#3F3F46"
+
+            MouseArea {
+                id: _paneGrip
+                anchors.fill: parent
+                anchors.leftMargin: -3
+                anchors.rightMargin: -3
+                hoverEnabled: true
+                cursorShape: Qt.SplitHCursor
+                preventStealing: true
+                property real originX: 0
+                property int originW: 560
+                onPressed: (mouse) => {
+                    originX = mapToItem(_root, mouse.x, mouse.y).x
+                    originW = _root.paneWidth
+                }
+                onPositionChanged: (mouse) => {
+                    if (!pressed)
+                        return
+                    var x = mapToItem(_root, mouse.x, mouse.y).x
+                    _root.paneWidth = _root.clampPane(originW - (x - originX))
+                }
+                onReleased: _panePlacement.setActionPaneWidth(_root.paneWidth)
+            }
+        }
+
+        Rectangle {
+            visible: _root.paneHid >= 0
+            Layout.preferredWidth: _root.paneWidth
             Layout.minimumWidth: 420
+            Layout.maximumWidth: _root.clampPane(_root.paneWidth)
             Layout.fillHeight: true
             color: "#18181B"
             border.color: "#3F3F46"
