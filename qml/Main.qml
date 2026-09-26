@@ -35,9 +35,11 @@ ApplicationWindow {
         }
         _windowPlacement.restore(_root)
         catalogPanel = _windowPlacement.catalogPanelOpen()
+        outputViewPanel = _windowPlacement.outputPanelOpen()
     }
 
     onCatalogPanelChanged: _windowPlacement.setCatalogPanelOpen(catalogPanel)
+    onOutputViewPanelChanged: _windowPlacement.setOutputPanelOpen(outputViewPanel)
 
     Universal.theme: Style.theme
     color: Style.background
@@ -45,7 +47,7 @@ ApplicationWindow {
     property string pinSlug: ""
     property string configTitleName: ""
     property string configDirection: ""
-    property bool outputViewPanel: false
+    property bool outputViewPanel: true
     property bool catalogPanel: false
 
     function refreshDestBound() {
@@ -98,7 +100,6 @@ ApplicationWindow {
     }
 
     function openOutputViewForCard(card) {
-        outputViewPanel = true
         openConfigurationForCard(card)
     }
 
@@ -186,7 +187,6 @@ ApplicationWindow {
             return
         configTitleName = ""
         configDirection = ""
-        outputViewPanel = false
         uiState.setCurrentRoom("status")
         uiState.setCurrentTab("physical")
         if (_scriptButton)
@@ -1129,8 +1129,13 @@ ApplicationWindow {
                 moduleModel: _moduleModel
                 claimDeviceName: configTitleName
                 isOutput: _root.configDirection === "dest"
-                showPanel: _root.catalogPanel
-                onClosePanel: _root.catalogPanel = false
+                showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel
+                onClosePanel: {
+                    if (_root.configDirection === "dest")
+                        _root.outputViewPanel = false
+                    else
+                        _root.catalogPanel = false
+                }
             }
 
             LogicalDevice {
