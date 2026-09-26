@@ -27,15 +27,29 @@ def test_main_has_catalog_display_button() -> None:
     assert "configDirection === \"dest\"" in dest_btn or 'visible: configDirection === "dest"' in text
 
 
-def test_editor_edits_do_not_reset_the_list() -> None:
+def test_assignment_summary_counts_destinations() -> None:
+    src = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
+    start = src.index("def assignment_summary")
+    end = src.index("def leaves_for_item")
+    ns: dict = {}
+    exec(src[start:end], ns)
+    text, dest = ns["assignment_summary"](
+        [
+            ("map-to-vjoy", "Map to vJoy", "vJoy 3 · Button 9"),
+            ("map-to-vjoy", "Map to vJoy", "vJoy 3 · Button 10"),
+        ]
+    )
+    assert text == "2 assignments — vJoy 3 · Button 9, vJoy 3 · Button 10"
+    assert dest == "vJoy 3 · Button 9, vJoy 3 · Button 10"
     qml = _QML.read_text(encoding="utf-8")
     py = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
-    assert "function revealRow(row)" in qml
-    assert "setHoldReload(true)" in qml
-    assert "refreshOpenRow" in qml
+    assert "function armReveal(row)" in qml
+    assert "noteOpenRow(itemIndex)" in qml
     assert "highlightFollowsCurrentItem: false" in qml
     assert "def refreshOpenRow" in py
-    assert "if self._hold_reload" in py
+    assert "def noteOpenRow" in py
+    assert "_hold_reload" not in py
+    assert "setHoldReload" not in qml
     assert "signal.inputItemChanged.connect(self.reload)" not in py
     assert "def assignment_summary" in py
     text = _QML.read_text(encoding="utf-8")
