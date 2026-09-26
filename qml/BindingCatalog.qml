@@ -21,6 +21,8 @@ Item {
     property string claimDeviceName: ""
     property bool isOutput: false
     property int editingHid: -1
+    property int revealOnceRow: -1
+    property int revealTries: 0
     property bool showPanel: false
     signal closePanel()
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
@@ -508,6 +510,37 @@ Item {
         uiState.setCurrentInput(ident, hid)
     }
 
+    function bumpReveal() {
+        if (revealOnceRow >= 0)
+            _revealTimer.restart()
+    }
+
+    function armReveal(row) {
+        if (row < 0)
+            return
+        revealOnceRow = row
+        revealTries = 0
+        _revealTimer.restart()
+    }
+
+    Timer {
+        id: _revealTimer
+        interval: 0
+        onTriggered: {
+            var row = revealOnceRow
+            var item = row >= 0 ? _list.itemAtIndex(row) : null
+            var editorOpen = item && _root.editingHid >= 0
+            var editorLaidOut = item && item.height >= parentHeight + 80
+            if (editorOpen && !editorLaidOut && revealTries < 8) {
+                revealTries += 1
+                _revealTimer.restart()
+                return
+            }
+            revealOnceRow = -1
+            revealRow(row)
+        }
+    }
+
     function revealRow(row) {
         if (row < 0)
             return
@@ -552,11 +585,10 @@ Item {
         if (_root.editingHid >= 0 && _root.editingHid !== hid)
             _catalog.refreshOpenRow(_root.editingHid)
         var opening = _root.editingHid !== hid
-        _catalog.setHoldReload(true)
         _root.editingHid = hid
         selectHid(hid)
         if (opening)
-            revealRow(_catalog.rowForDeviceIndex(hid))
+            armReveal(_catalog.rowForDeviceIndex(hid))
     }
 
     function closeEditor() {
@@ -564,7 +596,6 @@ Item {
         var reset = false
         if (hid >= 0)
             reset = _catalog.refreshOpenRow(hid)
-        _catalog.setHoldReload(false)
         _root.editingHid = -1
         if (reset)
             revealRow(_catalog.rowForDeviceIndex(hid))
@@ -622,7 +653,7 @@ Item {
         function onSetInputIndex(index) { showHid(index) }
         function onInputItemChanged(itemIndex) {
             if (_root.editingHid >= 0) {
-                _catalog.refreshOpenRow(_root.editingHid)
+                _catalog.noteOpenRow(itemIndex)
                 return
             }
             _catalog.reload()
@@ -845,13 +876,12 @@ Item {
                     if (_root.editingHid >= 0 && _root.editingHid !== hid)
                         _catalog.refreshOpenRow(_root.editingHid)
                     var opening = _root.editingHid !== hid
-                    _catalog.setHoldReload(true)
                     _root.editingHid = hid
                     currentIndex = rowIndex
                     _root.selectHid(hid)
                     _catalog.addSequence(hid)
                     if (opening)
-                        _root.revealRow(rowIndex)
+                        _root.armReveal(rowIndex)
                 }
                 function okRow() { _root.closeEditor() }
                 function openRow(hid) { _root.openEditor(hid) }
@@ -1047,6 +1077,10 @@ Item {
                         height: visible && item ? Math.max(80, item.implicitHeight) : 0
                         onLoaded: if (item) item.width = width
                         onWidthChanged: if (item) item.width = width
+                        onHeightChanged: {
+                            if (expanded && _root.revealOnceRow === index)
+                                _root.bumpReveal()
+                        }
                         sourceComponent: InputConfiguration {
                             inlineMode: true
                             isOutput: lv.catalogIsOutput
