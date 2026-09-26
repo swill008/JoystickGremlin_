@@ -26,6 +26,8 @@ class Signal(QtCore.QObject):
 
     inputItemChanged = QtCore.Signal(int)
 
+    advancedEditorChanged = QtCore.Signal(bool)
+
     setInputIndex = QtCore.Signal(int)
 
     modesChanged = QtCore.Signal()
