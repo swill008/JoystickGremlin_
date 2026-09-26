@@ -537,7 +537,7 @@ Item {
             var row = revealOnceRow
             var item = row >= 0 ? _list.itemAtIndex(row) : null
             var editorOpen = item && _root.editingHid >= 0
-            var editorLaidOut = item && item.height >= parentHeight + 80
+            var editorLaidOut = !item || !item.hostsEditor || item.height >= parentHeight + 80
             if (editorOpen && !editorLaidOut && revealTries < 8) {
                 revealTries += 1
                 _revealTimer.restart()
@@ -849,6 +849,7 @@ Item {
                 property int parentH: _root.parentHeight
                 property int childH: _root.childHeight
                 property bool kidsOn: _root.showChildren
+                property int openEditorH: 0
                 property bool barsOn: _root.showLiveBars
                 property bool ledsOn: _root.showLeds
                 property bool summaryOn: _root.showSummary
@@ -910,7 +911,7 @@ Item {
                     readonly property bool isLeaf: rowKind === "leaf"
                     readonly property bool groupStart: rowKind === "group" || rowKind === "unmapped"
                     readonly property int kidCount: groupStart ? lv.catalogModel.leafRun(index) : 0
-                    readonly property int shownKids: (expanded || !lv.kidsOn) ? 0 : kidCount
+                    readonly property int shownKids: lv.kidsOn ? kidCount : 0
                     readonly property int gPadT: groupStart ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadTop) : 0
                     readonly property int gPadB: groupStart ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadBottom) : 0
                     readonly property int gPadL: (groupStart || isLeaf) ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadLeft) : 0
@@ -950,8 +951,9 @@ Item {
                     }
                     readonly property int bandH: controlOpen ? _band.implicitHeight : 0
                     readonly property int bodyH: isLeaf ? lv.childH : lv.parentH + bandH
-                    readonly property bool hideLeaf: isLeaf && (deviceIndex === lv.editingHid || !lv.kidsOn)
-                    height: hideLeaf ? 0 : (topGap + bodyH + (expanded ? _editor.height + 8 : 0) + bottomGap)
+                    readonly property bool hideLeaf: isLeaf && !lv.kidsOn
+                    readonly property bool hostsEditor: deviceIndex === lv.editingHid && deviceIndex >= 0 && ((isLeaf && endOfCard && lv.kidsOn) || (groupStart && shownKids === 0))
+                    height: hideLeaf ? 0 : (topGap + bodyH + (hostsEditor ? _editor.height + 8 : 0) + bottomGap)
                     visible: !hideLeaf
 
                     readonly property bool selected: index === lv.currentIndex || expanded
@@ -967,7 +969,7 @@ Item {
                         x: _root.groupX(_row.width)
                         y: index > 0 ? _root.groupBetween : 0
                         width: Math.max(0, _root.groupW(_row.width))
-                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (expanded ? _editor.height + 8 : 0) + (shownKids * (_root.groupInside + lv.childH)) + gPadB
+                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (shownKids * (_root.groupInside + lv.childH)) + (expanded ? lv.openEditorH + 8 : 0) + gPadB
                         radius: _root.groupRadius
                         color: _root.colorGroup
                     }
@@ -1207,8 +1209,8 @@ Item {
 
                     Loader {
                         id: _editor
-                        active: expanded
-                        visible: expanded
+                        active: hostsEditor
+                        visible: hostsEditor
                         x: boxX + _root.editorX(boxW)
                         y: topGap + bodyH + lv.edGap
                         width: _root.editorW(boxW)
@@ -1216,7 +1218,9 @@ Item {
                         onLoaded: if (item) item.width = width
                         onWidthChanged: if (item) item.width = width
                         onHeightChanged: {
-                            if (expanded && _root.revealOnceRow === index)
+                            if (hostsEditor)
+                                lv.openEditorH = height
+                            if (hostsEditor && _root.revealOnceRow >= 0)
                                 _root.bumpReveal()
                         }
                         sourceComponent: InputConfiguration {
