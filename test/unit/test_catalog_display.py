@@ -212,3 +212,6 @@ def test_photo_lookup_does_not_copy_another_device() -> None:
     assert "_write_bindings" not in body
     assert "for folder in _maps_dir().iterdir()" not in text
     assert "def _guid_for_this_device" in text
+    copy = text[text.find("def copyImage"): text.find("def clearImage")]
+    assert "folder = _maps_dir() / slug" in copy
+    assert "self._file_for(name)" not in copy
