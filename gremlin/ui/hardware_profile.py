@@ -88,6 +88,17 @@ def _norm_guid(value: object) -> str:
     return str(value or "").upper().replace("{", "").replace("}", "").replace("-", "")
 
 
+def guid_for_module(device_name: str, guid: str) -> str:
+    """Use guid only when it belongs to device_name. A stale id must not select another module."""
+    given = _norm_guid(guid)
+    if not given:
+        return ""
+    owned = _guid_for_name(device_name)
+    if owned and owned != given:
+        return ""
+    return str(guid)
+
+
 def _guid_for_name(device_name: str) -> str:
     wanted = (device_name or "").strip().lower()
     if not wanted:
