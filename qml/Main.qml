@@ -242,6 +242,22 @@ ApplicationWindow {
         })
     }
 
+    function fileNameOf(path) {
+        var text = String(path || "")
+        var cut = Math.max(text.lastIndexOf("/"), text.lastIndexOf("\\"))
+        return cut >= 0 ? text.slice(cut + 1) : text
+    }
+
+    function openButtonMapForFocus() {
+        var card = _statusLastCard
+        if ((!card || !(card.rawName || card.name)) && _moduleModel)
+            card = _moduleModel.focusedCardMap()
+        if (card && (card.rawName || card.name))
+            openButtonMapForCard(card)
+        else
+            openBlankButtonMap()
+    }
+
     function openBlankButtonMap() {
         var existing = buttonMapWindow()
         if (existing && existing.openBlank) {
@@ -422,12 +438,14 @@ ApplicationWindow {
         Menu {
             title: qsTr("File")
 
-            MenuItem {
+            Action {
                 text: qsTr("New Profile")
+                shortcut: "Ctrl+N"
                 onTriggered: () => { requestNewProfile() }
             }
-            MenuItem {
+            Action {
                 text: qsTr("Load Profile")
+                shortcut: "Ctrl+O"
                 onTriggered: () => { _loadProfileFileDialog.open() }
             }
             AutoSizingMenu {
@@ -436,7 +454,10 @@ ApplicationWindow {
                 Repeater {
                     model: backend ? backend.recentProfiles : []
                     delegate: MenuItem {
-                        text: modelData
+                        text: fileNameOf(modelData)
+                        ToolTip.visible: hovered
+                        ToolTip.text: modelData
+                        ToolTip.delay: 400
                         onTriggered: () => {
                             if (backend) {
                                 backend.loadProfile(modelData)
@@ -445,8 +466,9 @@ ApplicationWindow {
                     }
                 }
             }
-            MenuItem {
+            Action {
                 text: qsTr("Save Profile")
+                shortcut: "Ctrl+S"
                 onTriggered: () => { saveCurrentProfile() }
             }
             MenuItem {
@@ -477,7 +499,7 @@ ApplicationWindow {
             MenuSeparator {}
             MenuItem {
                 text: qsTr("Button Map")
-                onTriggered: () => { Helpers.toggleComponent("DialogJoystickButtonMap.qml") }
+                onTriggered: () => { openButtonMapForFocus() }
             }
             MenuItem {
                 text: qsTr("Device Viewer")
@@ -485,10 +507,10 @@ ApplicationWindow {
             }
             MenuSeparator {}
             Menu {
-                title: qsTr("Home split")
-                MenuItem { text: qsTr("None"); onTriggered: _moduleModel.setSplitMode("none") }
-                MenuItem { text: qsTr("Vertical — input | output"); onTriggered: _moduleModel.setSplitMode("vertical") }
-                MenuItem { text: qsTr("Horizontal — input / output"); onTriggered: _moduleModel.setSplitMode("horizontal") }
+                title: qsTr("Home layout")
+                MenuItem { text: qsTr("Single list"); onTriggered: _moduleModel.setSplitMode("none") }
+                MenuItem { text: qsTr("Side by side"); onTriggered: _moduleModel.setSplitMode("vertical") }
+                MenuItem { text: qsTr("Stacked"); onTriggered: _moduleModel.setSplitMode("horizontal") }
             }
             MenuItem {
                 text: qsTr("Hidden devices…")
@@ -524,34 +546,20 @@ ApplicationWindow {
                 }
             }
             MenuItem {
-                text: qsTr("vJoy Pairing-Viewer")
+                text: qsTr("vJoy Viewer")
                 onTriggered: () => {
                     Helpers.toggleComponent("DialogInputViewer.qml")
                 }
             }
             MenuItem {
-                text: qsTr("Xbox Pairing-Viewer")
+                text: qsTr("Xbox Viewer")
                 onTriggered: () => {
                     Helpers.toggleComponent("DialogXboxViewer.qml")
                 }
             }
             MenuItem {
-                text: qsTr("Joystick Button Map")
-                onTriggered: () => {
-                    var card = _statusLastCard
-                    if ((!card || !(card.rawName || card.name)) && _moduleModel)
-                        card = _moduleModel.focusedCardMap()
-                    if (card && (card.rawName || card.name))
-                        openButtonMapForCard(card)
-                    else
-                        openBlankButtonMap()
-                }
-            }
-            MenuItem {
-                text: qsTr("Device Viewer")
-                onTriggered: () => {
-                    Helpers.toggleComponent("DialogDeviceViewer.qml")
-                }
+                text: qsTr("Button Map")
+                onTriggered: () => { openButtonMapForFocus() }
             }
             MenuItem {
                 text: qsTr("Calibration")
@@ -596,7 +604,7 @@ ApplicationWindow {
             }
             MenuSeparator {}
             MenuItem {
-                text: qsTr("Hardware Hide")
+                text: qsTr("HiDHide")
                 onTriggered: () => {
                     Helpers.createComponent("DialogHardwareHide.qml")
                 }
@@ -661,8 +669,8 @@ ApplicationWindow {
 
             JGToolButton {
                 text: "\uF3F2"
-                tooltip: qsTr("Toggle vJoy Pairing-Viewer")
-                caption: "vJoy Pairing"
+                tooltip: qsTr("Toggle vJoy Viewer")
+                caption: "vJoy Viewer"
 
                 onClicked: () => {
                     Helpers.toggleComponent("DialogInputViewer.qml")
@@ -671,8 +679,8 @@ ApplicationWindow {
 
             JGToolButton {
                 text: "\uF2D4"
-                tooltip: qsTr("Toggle Xbox Pairing-Viewer")
-                caption: "Xbox Pairing"
+                tooltip: qsTr("Toggle Xbox Viewer")
+                caption: "Xbox Viewer"
 
                 onClicked: () => {
                     Helpers.toggleComponent("DialogXboxViewer.qml")
@@ -681,12 +689,10 @@ ApplicationWindow {
 
             JGToolButton {
                 text: "\uF5E7"
-                tooltip: qsTr("Toggle Joystick Button Map")
+                tooltip: qsTr("Open Button Map")
                 caption: "Button Map"
 
-                onClicked: () => {
-                    Helpers.toggleComponent("DialogJoystickButtonMap.qml")
-                }
+                onClicked: () => { openButtonMapForFocus() }
             }
 
             JGToolButton {
