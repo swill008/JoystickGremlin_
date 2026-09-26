@@ -192,20 +192,14 @@ class ControlPoint(QtCore.QObject):
 
     @QtCore.Property(QtCore.QPointF, notify=changed)
     def center(self) -> QtCore.QPointF:
-        if self._center is None:
-            return QtCore.QPointF()
         return self._center
 
     @QtCore.Property(QtCore.QPointF, notify=changed)
     def handleLeft(self) -> QtCore.QPointF:
-        if self._handle_left is None:
-            return QtCore.QPointF()
         return self._handle_left
 
     @QtCore.Property(QtCore.QPointF, notify=changed)
     def handleRight(self) -> QtCore.QPointF:
-        if self._handle_right is None:
-            return QtCore.QPointF()
         return self._handle_right
 
     @QtCore.Property(bool, notify=changed)
