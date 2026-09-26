@@ -50,6 +50,30 @@ Item {
     property int nameColW: 180
     property int childNameColW: 160
     property int rowInnerPad: 10
+    property string listPadShape: "sides"
+    property int listPad: 8
+    property int listPadTop: 0
+    property int listPadRight: 8
+    property int listPadBottom: 0
+    property int listPadLeft: 8
+    property string parentPadShape: "sides"
+    property int parentPad: 10
+    property int parentPadTop: 0
+    property int parentPadRight: 8
+    property int parentPadBottom: 0
+    property int parentPadLeft: 10
+    property string childPadShape: "sides"
+    property int childPad: 10
+    property int childPadTop: 0
+    property int childPadRight: 8
+    property int childPadBottom: 0
+    property int childPadLeft: 10
+    property int childRadius: 3
+    property string editorPadShape: "box"
+    property int editorPadTop: 10
+    property int editorPadRight: 10
+    property int editorPadBottom: 10
+    property int editorPadLeft: 10
     property int editorIndent: 12
     property string editorAlign: "left"
     property int editorRight: 0
@@ -140,7 +164,7 @@ Item {
 
     function catalogPayload() {
         return {
-            listPadding: listPadding,
+            listPadding: padEdge(listPadShape, listPad, listPadLeft),
             rowSpacing: rowSpacing,
             parentHeight: parentHeight,
             childHeight: childHeight,
@@ -163,7 +187,31 @@ Item {
             rowRadius: rowRadius,
             nameColW: nameColW,
             childNameColW: childNameColW,
-            rowInnerPad: rowInnerPad,
+            rowInnerPad: padEdge(parentPadShape, parentPad, parentPadLeft),
+            listPadShape: listPadShape,
+            listPad: listPad,
+            listPadTop: listPadTop,
+            listPadRight: listPadRight,
+            listPadBottom: listPadBottom,
+            listPadLeft: listPadLeft,
+            parentPadShape: parentPadShape,
+            parentPad: parentPad,
+            parentPadTop: parentPadTop,
+            parentPadRight: parentPadRight,
+            parentPadBottom: parentPadBottom,
+            parentPadLeft: parentPadLeft,
+            childPadShape: childPadShape,
+            childPad: childPad,
+            childPadTop: childPadTop,
+            childPadRight: childPadRight,
+            childPadBottom: childPadBottom,
+            childPadLeft: childPadLeft,
+            childRadius: childRadius,
+            editorPadShape: editorPadShape,
+            editorPadTop: editorPadTop,
+            editorPadRight: editorPadRight,
+            editorPadBottom: editorPadBottom,
+            editorPadLeft: editorPadLeft,
             editorIndent: editorIndent,
             editorAlign: editorAlign,
             editorRight: editorRight,
@@ -213,6 +261,30 @@ Item {
         nameColW = 180
         childNameColW = 160
         rowInnerPad = 10
+        listPadShape = "sides"
+        listPad = 8
+        listPadTop = 0
+        listPadRight = 8
+        listPadBottom = 0
+        listPadLeft = 8
+        parentPadShape = "sides"
+        parentPad = 10
+        parentPadTop = 0
+        parentPadRight = 8
+        parentPadBottom = 0
+        parentPadLeft = 10
+        childPadShape = "sides"
+        childPad = 10
+        childPadTop = 0
+        childPadRight = 8
+        childPadBottom = 0
+        childPadLeft = 10
+        childRadius = 3
+        editorPadShape = "box"
+        editorPadTop = 10
+        editorPadRight = 10
+        editorPadBottom = 10
+        editorPadLeft = 10
         editorIndent = 12
         editorAlign = "left"
         editorRight = 0
@@ -239,6 +311,14 @@ Item {
     function numVal(v, d) {
         var n = Number(v)
         return (v === undefined || v === null || v === "" || isNaN(n)) ? d : n
+    }
+
+    function padEdge(shape, size, side) {
+        return shape === "box" ? size : side
+    }
+
+    function edgeOr(v, fallback) {
+        return v === undefined || v === null || v === "" ? fallback : numVal(v, fallback)
     }
 
     function loadCatalog() {
@@ -273,6 +353,34 @@ Item {
         nameColW = numVal(v.nameColW, 180)
         childNameColW = numVal(v.childNameColW, 160)
         rowInnerPad = numVal(v.rowInnerPad, 10)
+        var listLegacy = numVal(v.listPadding, 8)
+        listPadShape = v.listPadShape || "sides"
+        listPad = numVal(v.listPad, listLegacy)
+        listPadLeft = edgeOr(v.listPadLeft, listLegacy)
+        listPadRight = edgeOr(v.listPadRight, listLegacy)
+        listPadTop = edgeOr(v.listPadTop, 0)
+        listPadBottom = edgeOr(v.listPadBottom, 0)
+        var inner = rowInnerPad
+        parentPadShape = v.parentPadShape || "sides"
+        parentPad = numVal(v.parentPad, inner)
+        parentPadLeft = edgeOr(v.parentPadLeft, inner)
+        parentPadRight = edgeOr(v.parentPadRight, 8)
+        parentPadTop = edgeOr(v.parentPadTop, 0)
+        parentPadBottom = edgeOr(v.parentPadBottom, 0)
+        childPadShape = v.childPadShape || parentPadShape
+        childPad = edgeOr(v.childPad, parentPad)
+        childPadLeft = edgeOr(v.childPadLeft, parentPadLeft)
+        childPadRight = edgeOr(v.childPadRight, parentPadRight)
+        childPadTop = edgeOr(v.childPadTop, parentPadTop)
+        childPadBottom = edgeOr(v.childPadBottom, parentPadBottom)
+        childRadius = edgeOr(v.childRadius, rowRadius)
+        var ed = numVal(v.editorPad, 10)
+        editorPadShape = v.editorPadShape || "box"
+        editorPad = ed
+        editorPadTop = edgeOr(v.editorPadTop, ed)
+        editorPadRight = edgeOr(v.editorPadRight, ed)
+        editorPadBottom = edgeOr(v.editorPadBottom, ed)
+        editorPadLeft = edgeOr(v.editorPadLeft, ed)
         editorIndent = numVal(v.editorIndent, 12)
         editorAlign = v.editorAlign || "left"
         editorRight = numVal(v.editorRight, 0)
@@ -418,6 +526,124 @@ Item {
         }
     }
 
+    component SectionHead: Rectangle {
+        property string title: ""
+        Layout.fillWidth: true
+        height: 26
+        color: "#27272A"
+        Label {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 8
+            text: title
+            color: "#E4E4E7"
+            font.pixelSize: 11
+            font.bold: true
+        }
+    }
+
+    component AlignFields: ColumnLayout {
+        property string align: "left"
+        property int left: 0
+        property int right: 0
+        property int widthPct: 100
+        signal edited(string align, int left, int right, int widthPct)
+        Layout.fillWidth: true
+        spacing: 4
+
+        RowLayout {
+            Label { text: "Align"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+            ComboBox {
+                Layout.fillWidth: true
+                model: ["left", "center", "right"]
+                currentIndex: align === "center" ? 1 : (align === "right" ? 2 : 0)
+                onActivated: edited(currentText, left, right, widthPct)
+            }
+        }
+        RowLayout {
+            visible: align !== "center"
+            Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
+            SpinBox { from: 0; to: 800; stepSize: 8; value: left; onValueModified: edited(align, value, right, widthPct) }
+        }
+        RowLayout {
+            visible: align !== "center"
+            Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
+            SpinBox { from: 0; to: 800; stepSize: 8; value: right; onValueModified: edited(align, left, value, widthPct) }
+        }
+        RowLayout {
+            visible: align === "center"
+            Label { text: "Width %"; color: "#E4E4E7"; Layout.fillWidth: true }
+            SpinBox { from: 20; to: 100; value: widthPct; onValueModified: edited(align, left, right, value) }
+        }
+    }
+
+    component PadFields: ColumnLayout {
+        property string shape: "box"
+        property int size: 8
+        property int padTop: 0
+        property int padRight: 8
+        property int padBottom: 0
+        property int padLeft: 8
+        signal edited(string shape, int size, int padTop, int padRight, int padBottom, int padLeft)
+        Layout.fillWidth: true
+        spacing: 4
+
+        RowLayout {
+            Label { text: "Shape"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
+            ComboBox {
+                Layout.fillWidth: true
+                model: ["Box", "Sides"]
+                currentIndex: shape === "sides" ? 1 : 0
+                onActivated: {
+                    if (currentText === "Box")
+                        edited("box", size, size, size, size, size)
+                    else
+                        edited("sides", size, size, size, size, size)
+                }
+            }
+        }
+        RowLayout {
+            visible: shape !== "sides"
+            Label { text: "Size"; color: "#E4E4E7"; Layout.fillWidth: true }
+            SpinBox { from: 0; to: 48; value: size; onValueModified: edited("box", value, value, value, value, value) }
+        }
+        RowLayout {
+            visible: shape === "sides"
+            Label { text: "Top"; color: "#E4E4E7"; Layout.fillWidth: true }
+            SpinBox { from: 0; to: 48; value: padTop; onValueModified: edited("sides", size, value, padRight, padBottom, padLeft) }
+        }
+        RowLayout {
+            visible: shape === "sides"
+            Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
+            SpinBox { from: 0; to: 48; value: padRight; onValueModified: edited("sides", size, padTop, value, padBottom, padLeft) }
+        }
+        RowLayout {
+            visible: shape === "sides"
+            Label { text: "Bottom"; color: "#E4E4E7"; Layout.fillWidth: true }
+            SpinBox { from: 0; to: 48; value: padBottom; onValueModified: edited("sides", size, padTop, padRight, value, padLeft) }
+        }
+        RowLayout {
+            visible: shape === "sides"
+            Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
+            SpinBox { from: 0; to: 48; value: padLeft; onValueModified: edited("sides", size, padTop, padRight, padBottom, value) }
+        }
+    }
+
+    component ColorPick: RowLayout {
+        property string label: ""
+        property color swatch: "#111111"
+        property string target: ""
+        Layout.fillWidth: true
+        Label { text: label; color: "#E4E4E7"; Layout.preferredWidth: 110 }
+        Button {
+            Layout.fillWidth: true
+            text: "Choose…"
+            onClicked: { _colorTarget = target; _colorDlg.selectedColor = swatch; _colorDlg.open() }
+            background: Rectangle { color: swatch; border.color: "#3F3F46"; border.width: 1; radius: 3 }
+            contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -429,8 +655,8 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: listPadding
-                Layout.rightMargin: listPadding
+                Layout.leftMargin: padEdge(listPadShape, listPad, listPadLeft)
+                Layout.rightMargin: padEdge(listPadShape, listPad, listPadRight)
                 Layout.topMargin: 8
                 Label { text: "Type"; color: colorMuted }
                 ComboBox {
@@ -457,8 +683,10 @@ Item {
                 id: _list
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.leftMargin: listPadding
-                Layout.rightMargin: listPadding
+                Layout.leftMargin: padEdge(listPadShape, listPad, listPadLeft)
+                Layout.rightMargin: padEdge(listPadShape, listPad, listPadRight)
+                Layout.topMargin: padEdge(listPadShape, listPad, listPadTop)
+                Layout.bottomMargin: padEdge(listPadShape, listPad, listPadBottom)
                 scrollbarAlwaysVisible: true
                 spacing: rowSpacing
                 highlightFollowsCurrentItem: true
@@ -554,7 +782,7 @@ Item {
                         x: isLeaf ? _root.leafX(_row.width) : _root.parentX(_row.width)
                         width: isLeaf ? _root.leafW(_row.width) : _root.parentW(_row.width)
                         height: isLeaf ? lv.childH : lv.parentH
-                        radius: lv.rowRad
+                        radius: isLeaf ? _root.childRadius : lv.rowRad
                         border.width: selected ? 2 : 1
                         border.color: selected ? lv.cSelBorder : lv.cBorder
                         color: {
@@ -599,8 +827,18 @@ Item {
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: lv.innerPad
-                            anchors.rightMargin: 8
+                            anchors.leftMargin: isLeaf
+                                ? _root.padEdge(_root.childPadShape, _root.childPad, _root.childPadLeft)
+                                : _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadLeft)
+                            anchors.rightMargin: isLeaf
+                                ? _root.padEdge(_root.childPadShape, _root.childPad, _root.childPadRight)
+                                : _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadRight)
+                            anchors.topMargin: isLeaf
+                                ? _root.padEdge(_root.childPadShape, _root.childPad, _root.childPadTop)
+                                : _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadTop)
+                            anchors.bottomMargin: isLeaf
+                                ? _root.padEdge(_root.childPadShape, _root.childPad, _root.childPadBottom)
+                                : _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadBottom)
                             spacing: 8
 
                             Rectangle {
@@ -667,7 +905,11 @@ Item {
                             editorBorderW: lv.edBorderW
                             editorAccentW: lv.edAccentW
                             showAccent: lv.edAccentOn
-                            editorPad: lv.edPad
+                            editorPad: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadLeft)
+                            editorPadTop: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadTop)
+                            editorPadRight: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadRight)
+                            editorPadBottom: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadBottom)
+                            editorPadLeft: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadLeft)
                         }
                     }
                 }
@@ -734,220 +976,175 @@ Item {
                         ColumnLayout {
                             spacing: 4
                             Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "ROWS"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
+                            SectionHead { title: "LIST" }
                             RowLayout {
-                                Label { text: "Parent height"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 36; to: 80; value: parentHeight; onValueModified: parentHeight = value }
-                            }
-                            RowLayout {
-                                Label { text: "Child height"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 24; to: 60; value: childHeight; onValueModified: childHeight = value }
-                            }
-                            RowLayout {
-                                Label { text: "Spacing"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                Label { text: "Gap"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 SpinBox { from: 0; to: 16; value: rowSpacing; onValueModified: rowSpacing = value }
                             }
-                            RowLayout {
-                                Label { text: "List padding"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 32; value: listPadding; onValueModified: listPadding = value }
-                            }
-                            RowLayout {
-                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 16; value: rowRadius; onValueModified: rowRadius = value }
-                            }
-                            RowLayout {
-                                Label { text: "Inner pad"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 32; value: rowInnerPad; onValueModified: rowInnerPad = value }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            PadFields {
+                                shape: listPadShape
+                                size: listPad
+                                padTop: listPadTop
+                                padRight: listPadRight
+                                padBottom: listPadBottom
+                                padLeft: listPadLeft
+                                onEdited: function(shape, size, padTop, padRight, padBottom, padLeft) {
+                                    listPadShape = shape
+                                    listPad = size
+                                    listPadTop = padTop
+                                    listPadRight = padRight
+                                    listPadBottom = padBottom
+                                    listPadLeft = padLeft
+                                }
                             }
                             CheckBox { text: "Show child rows"; checked: showChildren; onToggled: showChildren = checked }
                             CheckBox { text: "Show live bars"; checked: showLiveBars; onToggled: showLiveBars = checked }
                             CheckBox { text: "Show LED dots"; checked: showLeds; onToggled: showLeds = checked }
                             CheckBox { text: "Show summary"; checked: showSummary; onToggled: showSummary = checked }
-                        }
-
-                        ColumnLayout {
-                            spacing: 4
-                            Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "PARENT ALIGNMENT"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
-                            RowLayout {
-                                Label { text: "Align"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
-                                ComboBox {
-                                    Layout.fillWidth: true
-                                    model: ["left", "center", "right"]
-                                    currentIndex: parentAlign === "center" ? 1 : (parentAlign === "right" ? 2 : 0)
-                                    onActivated: parentAlign = currentText
-                                }
-                            }
-                            RowLayout {
-                                visible: parentAlign !== "center"
-                                Label { text: "Left inset"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 800; stepSize: 8; value: parentLeft; onValueModified: parentLeft = value }
-                            }
-                            RowLayout {
-                                visible: parentAlign !== "center"
-                                Label { text: "Right inset"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 800; stepSize: 8; value: parentRight; onValueModified: parentRight = value }
-                            }
-                            RowLayout {
-                                visible: parentAlign === "center"
-                                Label { text: "Width %"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 20; to: 100; value: parentWidthPct; onValueModified: parentWidthPct = value }
-                            }
-                        }
-
-                        ColumnLayout {
-                            spacing: 4
-                            Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "CHILD ALIGNMENT"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
-                            RowLayout {
-                                Label { text: "Align"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
-                                ComboBox {
-                                    Layout.fillWidth: true
-                                    model: ["left", "center", "right"]
-                                    currentIndex: childAlign === "center" ? 1 : (childAlign === "right" ? 2 : 0)
-                                    onActivated: childAlign = currentText
-                                }
-                            }
-                            RowLayout {
-                                visible: childAlign !== "center"
-                                Label { text: "Left inset"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 800; stepSize: 8; value: childLeft; onValueModified: childLeft = value }
-                            }
-                            RowLayout {
-                                visible: childAlign !== "center"
-                                Label { text: "Right inset"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 800; stepSize: 8; value: childRight; onValueModified: childRight = value }
-                            }
-                            RowLayout {
-                                visible: childAlign === "center"
-                                Label { text: "Width %"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 20; to: 100; value: childWidthPct; onValueModified: childWidthPct = value }
-                            }
-                        }
-
-                        ColumnLayout {
-                            spacing: 4
-                            Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "TEXT"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
-                            RowLayout {
-                                Label { text: "Parent size"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 10; to: 22; value: parentFont; onValueModified: parentFont = value }
-                            }
-                            RowLayout {
-                                Label { text: "Child size"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 9; to: 20; value: childFont; onValueModified: childFont = value }
-                            }
                             RowLayout {
                                 Label { text: "Summary size"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 SpinBox { from: 9; to: 20; value: summaryFont; onValueModified: summaryFont = value }
                             }
-                            RowLayout {
-                                Label { text: "Parent name col"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 80; to: 360; stepSize: 10; value: nameColW; onValueModified: nameColW = value }
-                            }
-                            RowLayout {
-                                Label { text: "Child name col"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 80; to: 360; stepSize: 10; value: childNameColW; onValueModified: childNameColW = value }
-                            }
-                            CheckBox { text: "Bold parent names"; checked: parentBold; onToggled: parentBold = checked }
                         }
 
                         ColumnLayout {
                             spacing: 4
                             Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "EDITOR"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
+                            SectionHead { title: "PARENT ROW" }
+                            RowLayout {
+                                Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 36; to: 80; value: parentHeight; onValueModified: parentHeight = value }
+                            }
+                            RowLayout {
+                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 16; value: rowRadius; onValueModified: rowRadius = value }
+                            }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            PadFields {
+                                shape: parentPadShape
+                                size: parentPad
+                                padTop: parentPadTop
+                                padRight: parentPadRight
+                                padBottom: parentPadBottom
+                                padLeft: parentPadLeft
+                                onEdited: function(shape, size, padTop, padRight, padBottom, padLeft) {
+                                    parentPadShape = shape
+                                    parentPad = size
+                                    parentPadTop = padTop
+                                    parentPadRight = padRight
+                                    parentPadBottom = padBottom
+                                    parentPadLeft = padLeft
+                                }
+                            }
+                            AlignFields {
+                                align: parentAlign
+                                left: parentLeft
+                                right: parentRight
+                                widthPct: parentWidthPct
+                                onEdited: function(align, left, right, widthPct) {
+                                    parentAlign = align
+                                    parentLeft = left
+                                    parentRight = right
+                                    parentWidthPct = widthPct
                                 }
                             }
                             RowLayout {
-                                Label { text: "Align"; color: "#E4E4E7"; Layout.preferredWidth: 70 }
-                                ComboBox {
-                                    Layout.fillWidth: true
-                                    model: ["left", "center", "right"]
-                                    currentIndex: editorAlign === "center" ? 1 : (editorAlign === "right" ? 2 : 0)
-                                    onActivated: editorAlign = currentText
+                                Label { text: "Text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 10; to: 22; value: parentFont; onValueModified: parentFont = value }
+                            }
+                            CheckBox { text: "Bold names"; checked: parentBold; onToggled: parentBold = checked }
+                            RowLayout {
+                                Label { text: "Name column"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 80; to: 360; stepSize: 10; value: nameColW; onValueModified: nameColW = value }
+                            }
+                            ColorPick { label: "Color"; swatch: colorParent; target: "parent" }
+                        }
+
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            SectionHead { title: "CHILD ROW" }
+                            RowLayout {
+                                Label { text: "Height"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 24; to: 60; value: childHeight; onValueModified: childHeight = value }
+                            }
+                            RowLayout {
+                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 16; value: childRadius; onValueModified: childRadius = value }
+                            }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            PadFields {
+                                shape: childPadShape
+                                size: childPad
+                                padTop: childPadTop
+                                padRight: childPadRight
+                                padBottom: childPadBottom
+                                padLeft: childPadLeft
+                                onEdited: function(shape, size, padTop, padRight, padBottom, padLeft) {
+                                    childPadShape = shape
+                                    childPad = size
+                                    childPadTop = padTop
+                                    childPadRight = padRight
+                                    childPadBottom = padBottom
+                                    childPadLeft = padLeft
+                                }
+                            }
+                            AlignFields {
+                                align: childAlign
+                                left: childLeft
+                                right: childRight
+                                widthPct: childWidthPct
+                                onEdited: function(align, left, right, widthPct) {
+                                    childAlign = align
+                                    childLeft = left
+                                    childRight = right
+                                    childWidthPct = widthPct
                                 }
                             }
                             RowLayout {
-                                visible: editorAlign !== "center"
-                                Label { text: "Left inset"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 800; stepSize: 8; value: editorIndent; onValueModified: editorIndent = value }
+                                Label { text: "Text size"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 9; to: 20; value: childFont; onValueModified: childFont = value }
                             }
                             RowLayout {
-                                visible: editorAlign !== "center"
-                                Label { text: "Right inset"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 800; stepSize: 8; value: editorRight; onValueModified: editorRight = value }
+                                Label { text: "Name column"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 80; to: 360; stepSize: 10; value: childNameColW; onValueModified: childNameColW = value }
                             }
-                            RowLayout {
-                                visible: editorAlign === "center"
-                                Label { text: "Width %"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 20; to: 100; value: editorWidthPct; onValueModified: editorWidthPct = value }
+                            ColorPick { label: "Color"; swatch: colorChild; target: "child" }
+                        }
+
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            SectionHead { title: "EDITOR" }
+                            AlignFields {
+                                align: editorAlign
+                                left: editorIndent
+                                right: editorRight
+                                widthPct: editorWidthPct
+                                onEdited: function(align, left, right, widthPct) {
+                                    editorAlign = align
+                                    editorIndent = left
+                                    editorRight = right
+                                    editorWidthPct = widthPct
+                                }
                             }
-                            RowLayout {
-                                Label { text: "Inner pad"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 32; value: editorPad; onValueModified: editorPad = value }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            PadFields {
+                                shape: editorPadShape
+                                size: editorPad
+                                padTop: editorPadTop
+                                padRight: editorPadRight
+                                padBottom: editorPadBottom
+                                padLeft: editorPadLeft
+                                onEdited: function(shape, size, padTop, padRight, padBottom, padLeft) {
+                                    editorPadShape = shape
+                                    editorPad = size
+                                    editorPadTop = padTop
+                                    editorPadRight = padRight
+                                    editorPadBottom = padBottom
+                                    editorPadLeft = padLeft
+                                }
                             }
                             RowLayout {
                                 Label { text: "Gap below row"; color: "#E4E4E7"; Layout.fillWidth: true }
@@ -966,169 +1163,23 @@ Item {
                                 SpinBox { from: 0; to: 12; value: editorAccentW; onValueModified: editorAccentW = value }
                             }
                             CheckBox { text: "Show accent bar"; checked: showEditorAccent; onToggled: showEditorAccent = checked }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Fill"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "editor"; _colorDlg.selectedColor = colorEditor; _colorDlg.open() }
-                                    background: Rectangle { color: colorEditor; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Edge"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "editorBorder"; _colorDlg.selectedColor = colorEditorBorder; _colorDlg.open() }
-                                    background: Rectangle { color: colorEditorBorder; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Accent"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "editorAccent"; _colorDlg.selectedColor = colorEditorAccent; _colorDlg.open() }
-                                    background: Rectangle { color: colorEditorAccent; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
+                            ColorPick { label: "Fill"; swatch: colorEditor; target: "editor" }
+                            ColorPick { label: "Edge"; swatch: colorEditorBorder; target: "editorBorder" }
+                            ColorPick { label: "Accent"; swatch: colorEditorAccent; target: "editorAccent" }
                         }
 
                         ColumnLayout {
                             spacing: 4
                             Layout.fillWidth: true
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 26
-                                color: "#27272A"
-                                Label {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    text: "COLORS"
-                                    color: "#E4E4E7"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Parent row"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "parent"; _colorDlg.selectedColor = colorParent; _colorDlg.open() }
-                                    background: Rectangle { color: colorParent; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Child row"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "child"; _colorDlg.selectedColor = colorChild; _colorDlg.open() }
-                                    background: Rectangle { color: colorChild; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Selected fill"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "selected"; _colorDlg.selectedColor = colorSelected; _colorDlg.open() }
-                                    background: Rectangle { color: colorSelected; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Text"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "text"; _colorDlg.selectedColor = colorText; _colorDlg.open() }
-                                    background: Rectangle { color: colorText; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Muted text"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "muted"; _colorDlg.selectedColor = colorMuted; _colorDlg.open() }
-                                    background: Rectangle { color: colorMuted; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Live bar"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "live"; _colorDlg.selectedColor = colorLive; _colorDlg.open() }
-                                    background: Rectangle { color: colorLive; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Border"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "border"; _colorDlg.selectedColor = colorBorder; _colorDlg.open() }
-                                    background: Rectangle { color: colorBorder; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Select border"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "selectBorder"; _colorDlg.selectedColor = colorSelectBorder; _colorDlg.open() }
-                                    background: Rectangle { color: colorSelectBorder; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Editor fill"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "editor"; _colorDlg.selectedColor = colorEditor; _colorDlg.open() }
-                                    background: Rectangle { color: colorEditor; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: "Editor edge"; color: "#E4E4E7"; Layout.preferredWidth: 110 }
-                                Button {
-                                    Layout.fillWidth: true
-                                    text: "Choose…"
-                                    onClicked: { _colorTarget = "editorBorder"; _colorDlg.selectedColor = colorEditorBorder; _colorDlg.open() }
-                                    background: Rectangle { color: colorEditorBorder; border.color: "#3F3F46"; border.width: 1; radius: 3 }
-                                    contentItem: Label { text: parent.text; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                }
-                            }
+                            SectionHead { title: "COLORS" }
+                            ColorPick { label: "Selected fill"; swatch: colorSelected; target: "selected" }
+                            ColorPick { label: "Text"; swatch: colorText; target: "text" }
+                            ColorPick { label: "Muted text"; swatch: colorMuted; target: "muted" }
+                            ColorPick { label: "Live bar"; swatch: colorLive; target: "live" }
+                            ColorPick { label: "Border"; swatch: colorBorder; target: "border" }
+                            ColorPick { label: "Select border"; swatch: colorSelectBorder; target: "selectBorder" }
                         }
+
                     }
                 }
 
