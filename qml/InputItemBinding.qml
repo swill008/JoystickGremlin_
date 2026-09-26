@@ -66,7 +66,9 @@ Item {
             Layout.fillWidth: true
             Layout.rightMargin: 20
 
-            action: _root.inputBinding.rootAction
+            action: _root.inputBinding ? _root.inputBinding.rootAction : null
+            inputBinding: _root.inputBinding
+            inputItemModel: _root.inputItemModel
         }
 
         HorizontalDivider {
