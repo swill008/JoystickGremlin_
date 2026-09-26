@@ -27,7 +27,17 @@ def test_main_has_catalog_display_button() -> None:
     assert "configDirection === \"dest\"" in dest_btn or 'visible: configDirection === "dest"' in text
 
 
-def test_panel_matches_omv_chrome() -> None:
+def test_editor_edits_do_not_reset_the_list() -> None:
+    qml = _QML.read_text(encoding="utf-8")
+    py = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
+    assert "function revealRow(row)" in qml
+    assert "setHoldReload(true)" in qml
+    assert "refreshOpenRow" in qml
+    assert "highlightFollowsCurrentItem: false" in qml
+    assert "def refreshOpenRow" in py
+    assert "if self._hold_reload" in py
+    assert "signal.inputItemChanged.connect(self.reload)" not in py
+    assert "def assignment_summary" in py
     text = _QML.read_text(encoding="utf-8")
     assert 'text: "Configuration — Display"' in text
     assert "Layout.preferredWidth: 360" in text
