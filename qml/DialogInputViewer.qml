@@ -21,7 +21,7 @@ Window {
     color: Style.background
     Universal.theme: Style.theme
 
-    title: "vJoy Pairing-Viewer"
+    title: "vJoy Viewer"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
