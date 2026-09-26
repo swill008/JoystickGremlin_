@@ -48,6 +48,7 @@ Item {
 
             // Radio buttons to select the desired mapping mode.
             RadioButton {
+                autoExclusive: false
                 id: _mode_button
 
                 text: "Button"
@@ -58,6 +59,7 @@ Item {
             }
 
             RadioButton {
+                autoExclusive: false
                 id: _mode_motion
 
                 Layout.fillWidth: true
@@ -186,6 +188,8 @@ Item {
                 }
 
                 RadioButton {
+                    autoExclusive: false
+                autoExclusive: false
                     text: "X Axis"
 
                     checked: _root.action.direction === 90
@@ -193,6 +197,8 @@ Item {
                 }
 
                 RadioButton {
+                    autoExclusive: false
+                autoExclusive: false
                     text: "Y Axis"
 
                     checked: _root.action.direction === 0
