@@ -18,7 +18,7 @@ Item {
 
     property InputItemBindingModel inputBinding
     property InputItemModel inputItemModel
-    property bool compactMode: false
+    property bool hideControlSetup: false
     property InputItemBindingConfigurationHeader headerWidget: _header
 
     implicitHeight: _content.height
@@ -49,10 +49,10 @@ Item {
             Layout.fillWidth: true
             Layout.leftMargin: 5
             Layout.rightMargin: 20
-            compactMode: _root.compactMode
 
             inputBinding: _root.inputBinding
             inputItemModel: _root.inputItemModel
+            hideControlSetup: _root.hideControlSetup
         }
 
         // +--------------------------------------------------------------------
@@ -65,13 +65,9 @@ Item {
             Layout.rightMargin: 20
 
             action: _root.inputBinding.rootAction
-            compactMode: _root.compactMode
-            inputItemModel: _root.inputItemModel
-            inputBinding: _root.inputBinding
         }
 
         HorizontalDivider {
-            visible: !_root.compactMode
             Layout.fillWidth: true
             Layout.leftMargin: 5
             Layout.rightMargin: 20
