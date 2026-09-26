@@ -21,7 +21,7 @@ Window {
     color: Style.background
     Universal.theme: Style.theme
 
-    title: "Xbox Pairing-Viewer"
+    title: "Xbox Viewer"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
