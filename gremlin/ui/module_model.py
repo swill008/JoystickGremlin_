@@ -25,6 +25,7 @@ from gremlin.ui.hardware_profile import (
     _slug,
     bind_module_file,
     delete_module_file,
+    guid_for_module,
     load_module_file,
     maps_folder_url,
     module_file_choices,
@@ -574,7 +575,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=str)
     def viewConfigJson(self, device_name: str, guid: str) -> str:
-        doc = _load_module_doc(device_name, guid) if device_name else {}
+        doc = _load_module_doc(device_name, guid_for_module(device_name, guid)) if device_name else {}
         view = dict(_DEFAULT_VIEW)
         raw = (doc or {}).get("view")
         if isinstance(raw, dict):
@@ -592,7 +593,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = _maps_dir() / f"{resolve_module_slug(name, guid)}.json"
+        path = _maps_dir() / f"{resolve_module_slug(name, guid_for_module(name, guid))}.json"
         doc: dict = {}
         if path.is_file():
             try:
@@ -624,7 +625,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=str)
     def catalogConfigJson(self, device_name: str, guid: str) -> str:
-        doc = _load_module_doc(device_name, guid) if device_name else {}
+        doc = _load_module_doc(device_name, guid_for_module(device_name, guid)) if device_name else {}
         catalog = dict(_DEFAULT_CATALOG)
         raw = (doc or {}).get("catalog")
         if isinstance(raw, dict):
@@ -642,7 +643,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = _maps_dir() / f"{resolve_module_slug(name, guid)}.json"
+        path = _maps_dir() / f"{resolve_module_slug(name, guid_for_module(name, guid))}.json"
         doc: dict = {}
         if path.is_file():
             try:
