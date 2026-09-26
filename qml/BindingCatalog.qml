@@ -21,7 +21,7 @@ Item {
     property string claimDeviceName: ""
     property bool isOutput: false
     property int editingHid: -1
-    property int controlHid: -1
+    property int editingSeq: -1
     property int revealOnceRow: -1
     property int revealTries: 0
     property bool showPanel: false
@@ -502,10 +502,19 @@ Item {
         _savedToast.open()
     }
 
-    function toggleControl(hid) {
-        if (hid < 0)
+    function openSequence(hid, seq, row) {
+        if (hid < 0 || seq < 0 || editorLocked)
             return
-        _root.controlHid = _root.controlHid === hid ? -1 : hid
+        if (_root.editingHid === hid && _root.editingSeq === seq) {
+            closeEditor()
+            return
+        }
+        if (_root.editingHid >= 0)
+            _catalog.refreshOpenRow(_root.editingHid)
+        _root.editingSeq = seq
+        _root.editingHid = hid
+        selectHid(hid)
+        armReveal(row)
     }
 
     function selectHid(hid) {
@@ -604,6 +613,7 @@ Item {
         if (hid >= 0)
             reset = _catalog.refreshOpenRow(hid)
         _root.editingHid = -1
+        _root.editingSeq = -1
         if (reset)
             revealRow(_catalog.rowForDeviceIndex(hid))
     }
@@ -881,18 +891,18 @@ Item {
                 property color cEditorAccent: _root.colorEditorAccent
 
                 function addOnRow(hid, rowIndex) {
-                    if (_root.editingHid >= 0 && _root.editingHid !== hid)
-                        _catalog.refreshOpenRow(_root.editingHid)
-                    var opening = _root.editingHid !== hid
-                    _root.editingHid = hid
+                    _root.editingHid = -1
+                    _root.editingSeq = -1
+                    var seq = _catalog.addSequence(hid)
+                    if (seq < 0)
+                        return
                     currentIndex = rowIndex
                     _root.selectHid(hid)
-                    _catalog.addSequence(hid)
-                    if (opening)
-                        _root.armReveal(rowIndex)
+                    _root.editingSeq = seq
+                    _root.editingHid = hid
+                    _root.armReveal(rowIndex)
                 }
-                function okRow() { _root.closeEditor() }
-                function openRow(hid) { _root.openEditor(hid) }
+                function openRow(hid, seq, row) { _root.openSequence(hid, seq, row) }
 
                 delegate: Item {
                     id: _row
@@ -907,6 +917,7 @@ Item {
                     required property int deviceIndex
                     required property int bindingCount
                     required property int indent
+                    required property int sequenceIndex
                     property var lv: ListView.view
                     readonly property bool isLeaf: rowKind === "leaf"
                     readonly property bool groupStart: rowKind === "group" || rowKind === "unmapped"
@@ -944,15 +955,9 @@ Item {
                     width: lv.width - 12
                     readonly property bool isGroup: rowKind === "group" || rowKind === "unmapped"
                     readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
-                    readonly property bool controlOpen: isGroup && (kind === "axis" || kind === "hat") && deviceIndex === _root.controlHid && deviceIndex >= 0
-                    onControlOpenChanged: {
-                        if (controlOpen)
-                            _band.openControl()
-                    }
-                    readonly property int bandH: controlOpen ? _band.implicitHeight : 0
-                    readonly property int bodyH: isLeaf ? lv.childH : lv.parentH + bandH
+                    readonly property int bodyH: isLeaf ? lv.childH : lv.parentH
                     readonly property bool hideLeaf: isLeaf && !lv.kidsOn
-                    readonly property bool hostsEditor: deviceIndex === lv.editingHid && deviceIndex >= 0 && ((isLeaf && endOfCard && lv.kidsOn) || (groupStart && shownKids === 0))
+                    readonly property bool hostsEditor: isLeaf && sequenceIndex >= 0 && deviceIndex === lv.editingHid && sequenceIndex === _root.editingSeq
                     height: hideLeaf ? 0 : (topGap + bodyH + (hostsEditor ? _editor.height + 8 : 0) + bottomGap)
                     visible: !hideLeaf
 
@@ -1012,15 +1017,13 @@ Item {
 
                         MouseArea {
                             anchors.fill: parent
-                            anchors.rightMargin: expanded ? 120 : 64
+                            anchors.rightMargin: 64
                             enabled: deviceIndex >= 0
                             onClicked: {
                                 lv.currentIndex = index
                                 lv.syncSelection()
                                 if (rowKind === "leaf")
-                                    lv.openRow(deviceIndex)
-                                else if (kind === "axis" || kind === "hat")
-                                    _root.toggleControl(deviceIndex)
+                                    lv.openRow(deviceIndex, sequenceIndex, index)
                             }
                         }
 
@@ -1077,168 +1080,70 @@ Item {
                                 onClicked: lv.addOnRow(deviceIndex, index)
                             }
                             Button {
-                                visible: expanded && !lv.catalogLocked
-                                text: "OK"
-                                implicitWidth: 56
+                                visible: hostsEditor && !lv.catalogLocked
+                                text: "Delete"
+                                implicitWidth: 70
                                 implicitHeight: 28
                                 z: 2
-                                onClicked: lv.okRow()
-                            }
-                        }
-
-                        ColumnLayout {
-                            id: _band
-                            visible: controlOpen
-                            z: 3
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.topMargin: lv.parentH
-                            anchors.leftMargin: _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadLeft)
-                            anchors.rightMargin: _root.padEdge(_root.parentPadShape, _root.parentPad, _root.parentPadRight)
-                            anchors.bottomMargin: 8
-                            spacing: 4
-
-                            property string behaviorText
-                            property var controlVb
-
-                            function refreshControl() {
-                                if (!_row.controlOpen)
-                                    return
-                                behaviorText = lv.catalogModel.controlBehavior(deviceIndex)
-                                controlVb = lv.catalogModel.controlVirtualButton(deviceIndex)
-                            }
-
-                            function openControl() {
-                                lv.catalogModel.prepareControl(deviceIndex)
-                                refreshControl()
-                            }
-
-                            Component.onCompleted: {
-                                if (_row.controlOpen)
-                                    openControl()
-                            }
-
-                            Connections {
-                                target: lv.catalogModel
-                                function onControlChanged() { _band.refreshControl() }
-                            }
-
-                            RowLayout {
-                                spacing: 12
-                                Label {
-                                    text: "Treat as"
-                                    color: lv.cMuted
-                                    font.pixelSize: lv.pFont
-                                }
-                                RadioButton {
-                                    text: "Button"
-                                    font.pixelSize: lv.pFont
-                                    checked: _band.behaviorText === "button"
-                                    onClicked: lv.catalogModel.setControlBehavior(deviceIndex, "button")
-                                }
-                                RadioButton {
-                                    text: kind === "hat" ? "Hat" : "Axis"
-                                    font.pixelSize: lv.pFont
-                                    checked: _band.behaviorText === kind
-                                    onClicked: lv.catalogModel.setControlBehavior(deviceIndex, kind)
-                                }
-                            }
-
-                            RowLayout {
-                                visible: kind === "axis" && _band.behaviorText === "button" && _band.controlVb
-                                spacing: 8
-                                Label {
-                                    text: "Activate between"
-                                    color: lv.cText
-                                    font.pixelSize: lv.sFont
-                                }
-                                NumericalRangeSlider {
-                                    Layout.fillWidth: true
-                                    from: -1.0
-                                    to: 1.0
-                                    firstValue: _band.controlVb ? _band.controlVb.lowerLimit : -0.5
-                                    secondValue: _band.controlVb ? _band.controlVb.upperLimit : 0.5
-                                    stepSize: 0.05
-                                    decimals: 2
-                                    onFirstValueChanged: {
-                                        if (_band.controlVb)
-                                            _band.controlVb.lowerLimit = firstValue
-                                    }
-                                    onSecondValueChanged: {
-                                        if (_band.controlVb)
-                                            _band.controlVb.upperLimit = secondValue
-                                    }
-                                }
-                                Label {
-                                    text: "when entered from"
-                                    color: lv.cText
-                                    font.pixelSize: lv.sFont
-                                }
-                                ComboBox {
-                                    model: ["Anywhere", "Above", "Below"]
-                                    font.pixelSize: lv.sFont
-                                    Component.onCompleted: {
-                                        if (_band.controlVb)
-                                            currentIndex = find(_band.controlVb.direction, Qt.MatchFixedString)
-                                    }
-                                    onActivated: {
-                                        if (_band.controlVb)
-                                            _band.controlVb.direction = currentText
-                                    }
-                                }
-                            }
-
-                            RowLayout {
-                                visible: kind === "hat" && _band.behaviorText === "button" && _band.controlVb
-                                spacing: 8
-                                Label {
-                                    text: "Activate on"
-                                    color: lv.cText
-                                    font.pixelSize: lv.sFont
-                                }
-                                Loader {
-                                    active: parent.visible
-                                    sourceComponent: HatDirectionSelector {
-                                        virtualButton: _band.controlVb
-                                    }
+                                onClicked: {
+                                    var hid = deviceIndex
+                                    var seq = sequenceIndex
+                                    _root.editingHid = -1
+                                    _root.editingSeq = -1
+                                    lv.catalogModel.removeSequence(hid, seq)
                                 }
                             }
                         }
                     }
 
-                    Loader {
+                    Item {
                         id: _editor
-                        active: hostsEditor
                         visible: hostsEditor
+                        clip: true
                         x: boxX + _root.editorX(boxW)
                         y: topGap + bodyH + lv.edGap
                         width: _root.editorW(boxW)
-                        height: visible && item ? Math.max(80, item.implicitHeight) : 0
-                        onLoaded: if (item) item.width = width
-                        onWidthChanged: if (item) item.width = width
+                        height: hostsEditor ? Math.min(440, Math.max(80, _seqLoader.item ? _seqLoader.item.implicitHeight : 80)) : 0
                         onHeightChanged: {
-                            if (hostsEditor)
+                            if (hostsEditor) {
                                 lv.openEditorH = height
-                            if (hostsEditor && _root.revealOnceRow >= 0)
-                                _root.bumpReveal()
+                                if (_root.revealOnceRow >= 0)
+                                    _root.bumpReveal()
+                            }
                         }
-                        sourceComponent: InputConfiguration {
-                            inlineMode: true
-                            hideControlSetup: true
-                            isOutput: lv.catalogIsOutput
-                            editorFill: lv.cEditor
-                            editorEdge: lv.cEditorEdge
-                            editorAccent: lv.cEditorAccent
-                            editorRadius: lv.edRad
-                            editorBorderW: lv.edBorderW
-                            editorAccentW: lv.edAccentW
-                            showAccent: lv.edAccentOn
-                            editorPad: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadLeft)
-                            editorPadTop: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadTop)
-                            editorPadRight: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadRight)
-                            editorPadBottom: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadBottom)
-                            editorPadLeft: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadLeft)
+                        Flickable {
+                            anchors.fill: parent
+                            contentWidth: width
+                            contentHeight: _seqLoader.item ? _seqLoader.item.implicitHeight : 0
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            Loader {
+                                id: _seqLoader
+                                active: hostsEditor
+                                width: parent.width
+                                onLoaded: if (item) item.width = width
+                                onWidthChanged: if (item) item.width = width
+                                sourceComponent: InputConfiguration {
+                                    inlineMode: true
+                                    onlySequence: _row.sequenceIndex
+                                    catalogSequence: true
+                                    hideControlSetup: false
+                                    isOutput: lv.catalogIsOutput
+                                    editorFill: lv.cChild
+                                    editorEdge: lv.cBorder
+                                    editorAccent: lv.cBorder
+                                    editorRadius: lv.edRad
+                                    editorBorderW: 1
+                                    editorAccentW: 0
+                                    showAccent: false
+                                    editorPad: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadLeft)
+                                    editorPadTop: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadTop)
+                                    editorPadRight: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadRight)
+                                    editorPadBottom: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadBottom)
+                                    editorPadLeft: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadLeft)
+                                }
+                            }
                         }
                     }
                 }
