@@ -142,6 +142,17 @@ def collect_leaves(action) -> list[tuple[str, str, str]]:
     return [(tag, label, dest)]
 
 
+def assignment_summary(shown: list[tuple[str, str, str]]) -> tuple[str, str]:
+    summary = ", ".join(dest for _t, _l, dest in shown)
+    text = (
+        f"{len(shown)} assignment"
+        + ("s" if len(shown) != 1 else "")
+        + " — "
+        + summary
+    )
+    return text, summary
+
+
 def leaves_for_item(item) -> list[tuple[str, str, str]]:
     out: list[tuple[str, str, str]] = []
     if item is None:
@@ -183,8 +194,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._dest_filter = "all"
         self._rows: list[dict] = []
         self._dest_choices: list[str] = ["All devices"]
+        self._hold_reload = False
         signal.profileChanged.connect(self.reload)
-        signal.inputItemChanged.connect(self.reload)
         signal.configChanged.connect(self.reload)
         self._claimed.countChanged.connect(self.reload)
 
@@ -251,6 +262,16 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot()
     def reload(self) -> None:
+        if self._hold_reload:
+            return
+        self._rebuild()
+
+    @QtCore.Slot(bool)
+    def setHoldReload(self, hold: bool) -> None:
+        """While the action editor is open, do not tear the list down."""
+        self._hold_reload = bool(hold)
+
+    def _rebuild(self) -> None:
         self.beginResetModel()
         self._rows = []
         dests: list[str] = []
@@ -311,17 +332,14 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 continue
             if not shown:
                 continue
-            summary = ", ".join(dest for _t, _l, dest in shown)
+            summary, dests_text = assignment_summary(shown)
             self._rows.append(
                 {
                     "rowKind": "group",
                     "name": name,
-                    "summary": f"{len(shown)} assignment"
-                    + ("s" if len(shown) != 1 else "")
-                    + " — "
-                    + summary,
+                    "summary": summary,
                     "typeLabel": "",
-                    "destLabel": summary,
+                    "destLabel": dests_text,
                     "kind": kind,
                     "hwId": hw,
                     "deviceIndex": didx,
@@ -407,6 +425,106 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             return False
         nxt = row + 1
         return nxt >= len(self._rows) or self._rows[nxt]["rowKind"] != "leaf"
+
+    def _shown_for_device(self, device_index: int):
+        want = int(device_index)
+        n = self._claimed.rowCount()
+        for i in range(n):
+            if int(self._claimed.deviceIndexAt(i)) != want:
+                continue
+            kind = self._claimed.kindAt(i)
+            hw = self._claimed.hwIdAt(i)
+            name = self._claimed.nameAt(i)
+            item = self._claimed._input_item(
+                {"kind": kind, "hwId": hw, "deviceIndex": want, "name": name}
+            )
+            shown = [
+                leaf for leaf in leaves_for_item(item) if self._leaf_ok(leaf[0], leaf[2])
+            ]
+            return name, kind, hw, want, shown
+        return None
+
+    def _emit_row(self, row: int) -> None:
+        idx = self.index(row, 0)
+        self.dataChanged.emit(idx, idx, list(self.roles.keys()))
+
+    def _leaf_row(self, name, kind, hw, didx, lab, dest) -> dict:
+        return {
+            "rowKind": "leaf",
+            "name": name,
+            "summary": dest,
+            "typeLabel": lab,
+            "destLabel": dest,
+            "kind": kind,
+            "hwId": hw,
+            "deviceIndex": didx,
+            "bindingCount": 1,
+            "indent": 1,
+        }
+
+    def _replace_leaves(self, row: int, name, kind, hw, didx, shown) -> None:
+        existing = self.leafRun(row)
+        fresh = [self._leaf_row(name, kind, hw, didx, lab, dest) for _tag, lab, dest in shown]
+        if existing == len(fresh):
+            for offset, leaf in enumerate(fresh):
+                self._rows[row + 1 + offset] = leaf
+            if existing:
+                top = self.index(row + 1, 0)
+                bottom = self.index(row + existing, 0)
+                self.dataChanged.emit(top, bottom, list(self.roles.keys()))
+            return
+        if existing:
+            self.beginRemoveRows(QtCore.QModelIndex(), row + 1, row + existing)
+            del self._rows[row + 1 : row + 1 + existing]
+            self.endRemoveRows()
+        if fresh:
+            self.beginInsertRows(QtCore.QModelIndex(), row + 1, row + len(fresh))
+            self._rows[row + 1 : row + 1] = fresh
+            self.endInsertRows()
+        self.countChanged.emit()
+
+    @QtCore.Slot(int, result=bool)
+    def refreshOpenRow(self, device_index: int) -> bool:
+        """Update one control without resetting the list.
+
+        Returns True when the row had to move between mapped and unmapped,
+        which rebuilds the list.
+        """
+        found = self._shown_for_device(device_index)
+        if found is None:
+            return False
+        name, kind, hw, didx, shown = found
+        row = self.rowForDeviceIndex(didx)
+        if row < 0:
+            self._rebuild()
+            return True
+        current = self._rows[row]
+        kind_now = current["rowKind"]
+        if kind_now == "unmapped" and not shown:
+            return False
+        if kind_now != "group" or not shown:
+            self._rebuild()
+            return True
+        text, summary = assignment_summary(shown)
+        same = (
+            current.get("summary") == text
+            and int(current.get("bindingCount") or 0) == len(shown)
+            and self.leafRun(row) == len(shown)
+        )
+        if same:
+            for offset, (_tag, lab, dest) in enumerate(shown):
+                leaf = self._rows[row + 1 + offset]
+                if leaf.get("typeLabel") != lab or leaf.get("destLabel") != dest:
+                    same = False
+                    break
+        if same:
+            return False
+        current["summary"] = text
+        current["destLabel"] = summary
+        current["bindingCount"] = len(shown)
+        self._emit_row(row)
+        self._replace_leaves(row, name, kind, hw, didx, shown)
+        return False
 
     @QtCore.Slot(int, result=int)
     def rowForDeviceIndex(self, device_index: int) -> int:
