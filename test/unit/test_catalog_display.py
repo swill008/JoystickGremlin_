@@ -36,7 +36,10 @@ def test_panel_matches_omv_chrome() -> None:
     assert "id: _savedToast" in text
     assert "interval: 2000" in text
     assert "CloseOnPressOutside" in text
-    assert 'title: "LIST"' in text
+    assert 'title: "GROUP"' in text
+    assert 'text: "Between"' in text
+    assert 'text: "Inside"' in text
+    assert "def leafRun" in Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
     assert 'title: "PARENT ROW"' in text
     assert 'title: "CHILD ROW"' in text
     assert 'title: "COLORS"' in text
@@ -118,8 +121,8 @@ def test_leaf_geometry_left_center_right() -> None:
     assert "function parentX(total)" in text
     assert "function parentW(total)" in text
     assert "function rowX(total, align, left, right, pct)" in text
-    assert "parentX(_row.width)" in text
-    assert "parentW(_row.width)" in text
+    assert "parentX(boxW)" in text
+    assert "parentW(boxW)" in text
 
 
 def test_parent_geometry_defaults_full_width() -> None:
