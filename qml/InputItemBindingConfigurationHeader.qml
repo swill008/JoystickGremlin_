@@ -20,6 +20,19 @@ Item {
 
     implicitHeight: _layout.implicitHeight
 
+    function placeGhost(mouseX, mouseY) {
+        if (!_ghostImage.source || !Overlay.overlay)
+            return
+        var scene = _grip.mapToItem(Overlay.overlay, mouseX, mouseY)
+        _ghost.x = scene.x - _ghost.hotX
+        _ghost.y = scene.y - _ghost.hotY
+    }
+
+    function hideGhost() {
+        _ghost.visible = false
+        _ghostImage.source = ""
+    }
+
     ColumnLayout {
         id: _layout
 
@@ -50,26 +63,51 @@ Item {
                     cursorShape: Qt.OpenHandCursor
                     property real startY: 0
                     property bool held: false
+                    property real lastX: 0
+                    property real lastY: 0
 
                     onPressed: (mouse) => {
                         startY = mouse.y
+                        lastX = mouse.x
+                        lastY = mouse.y
                         held = false
                         var pos = mapToItem(_root, mouse.x, mouse.y)
                         _payload.x = pos.x
                         _payload.y = pos.y
+                        _ghost.hotX = pos.x
+                        _ghost.hotY = pos.y
+                        _root.grabToImage((result) => {
+                            if (!_grip.pressed)
+                                return
+                            _ghost.width = _root.width
+                            _ghost.height = _root.height
+                            _ghostImage.source = result.url
+                            _ghost.visible = true
+                            _root.placeGhost(_grip.lastX, _grip.lastY)
+                        })
                     }
                     onPositionChanged: (mouse) => {
                         if (!pressed)
                             return
+                        lastX = mouse.x
+                        lastY = mouse.y
                         var pos = mapToItem(_root, mouse.x, mouse.y)
                         _payload.x = pos.x
                         _payload.y = pos.y
                         var ready = _root.inputBinding && _root.inputBinding.rootAction
                         if (!held && ready && Math.abs(mouse.y - startY) >= 6)
                             held = true
+                        if (_ghost.visible)
+                            _root.placeGhost(mouse.x, mouse.y)
                     }
-                    onReleased: held = false
-                    onCanceled: held = false
+                    onReleased: {
+                        held = false
+                        _root.hideGhost()
+                    }
+                    onCanceled: {
+                        held = false
+                        _root.hideGhost()
+                    }
                 }
             }
 
@@ -207,6 +245,32 @@ Item {
                     virtualButton: _root.inputBinding.virtualButton
                 }
             }
+        }
+    }
+
+    Item {
+        id: _ghost
+
+        parent: Overlay.overlay
+        visible: false
+        z: 10000
+        opacity: 0.92
+        property real hotX: 0
+        property real hotY: 0
+
+        Image {
+            id: _ghostImage
+
+            anchors.fill: parent
+            fillMode: Image.Stretch
+            cache: false
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            border.width: 1
+            border.color: "#3B82F6"
         }
     }
 
