@@ -35,7 +35,7 @@ Item {
         }
 
         Repeater {
-            model: _root.action.getActions("children")
+            model: _root.action ? _root.action.getActions("children") : []
 
             delegate: ActionNode {
                 action: modelData
