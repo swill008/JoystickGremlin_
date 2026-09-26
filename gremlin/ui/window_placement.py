@@ -22,7 +22,7 @@ KEY_MAX = "window-maximized"
 KEY_MENU_W = "button-map-menu-width"
 KEY_MENU_H = "button-map-menu-height"
 KEY_OUTPUT_PANEL = "output-display-panel"
-KEY_CATALOG_PANEL = "catalog-display-panel"
+KEY_CATALOG_PANEL = "configuration-display-panel"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
@@ -41,7 +41,7 @@ def _ensure() -> Configuration:
         (KEY_MENU_W, PropertyType.Int, DEFAULT_MENU_W),
         (KEY_MENU_H, PropertyType.Int, DEFAULT_MENU_H),
         (KEY_OUTPUT_PANEL, PropertyType.Bool, True),
-        (KEY_CATALOG_PANEL, PropertyType.Bool, False),
+        (KEY_CATALOG_PANEL, PropertyType.Bool, True),
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
