@@ -34,7 +34,7 @@ SECTION_DISPLAY_NAMES = {
     "osc": "OSC Connection",
     "display": "Display",
     "control-display": "Control Display",
-    "automap": "Auto Map",
+    "automap": "Auto Mapper",
 }
 
 
