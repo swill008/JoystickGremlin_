@@ -19,27 +19,6 @@ Item {
     property MouseArea dragHandleArea: _grip
 
     implicitHeight: _layout.implicitHeight
-    property bool sequenceDrag: _grip.drag.active
-
-    onSequenceDragChanged: {
-        if (sequenceDrag)
-            return
-        _grip.held = false
-        hideGhost()
-    }
-
-    function placeGhost(mouseX, mouseY) {
-        if (!_ghostImage.source || !Overlay.overlay)
-            return
-        var scene = _grip.mapToItem(Overlay.overlay, mouseX, mouseY)
-        _ghost.x = scene.x - _ghost.hotX
-        _ghost.y = scene.y - _ghost.hotY
-    }
-
-    function hideGhost() {
-        _ghost.visible = false
-        _ghostImage.source = ""
-    }
 
     ColumnLayout {
         id: _layout
@@ -71,55 +50,12 @@ Item {
                     cursorShape: Qt.OpenHandCursor
                     drag.target: _payload
                     drag.axis: Drag.XAndYAxis
-                    drag.threshold: 0
-                    property real startY: 0
-                    property bool held: false
-                    property real lastX: 0
-                    property real lastY: 0
+                    drag.threshold: 4
 
                     onPressed: (mouse) => {
-                        startY = mouse.y
-                        lastX = mouse.x
-                        lastY = mouse.y
-                        held = false
                         var pos = mapToItem(_root, mouse.x, mouse.y)
                         _payload.x = pos.x
                         _payload.y = pos.y
-                        _ghost.hotX = pos.x
-                        _ghost.hotY = pos.y
-                        _root.grabToImage((result) => {
-                            if (!_grip.pressed && !_grip.held)
-                                return
-                            _ghost.width = _root.width
-                            _ghost.height = _root.height
-                            _ghostImage.source = result.url
-                            _ghost.visible = true
-                            _root.placeGhost(_grip.lastX, _grip.lastY)
-                        })
-                    }
-                    onPositionChanged: (mouse) => {
-                        if (!pressed)
-                            return
-                        lastX = mouse.x
-                        lastY = mouse.y
-                        var pos = mapToItem(_root, mouse.x, mouse.y)
-                        _payload.x = pos.x
-                        _payload.y = pos.y
-                        var ready = _root.inputBinding && _root.inputBinding.rootAction
-                        if (!held && ready && Math.abs(mouse.y - startY) >= 6)
-                            held = true
-                        if (_ghost.visible)
-                            _root.placeGhost(mouse.x, mouse.y)
-                    }
-                    onReleased: {
-                        if (_grip.drag.active)
-                            return
-                        held = false
-                        _root.hideGhost()
-                    }
-                    onCanceled: {
-                        held = false
-                        _root.hideGhost()
                     }
                 }
             }
@@ -262,39 +198,12 @@ Item {
     }
 
     Item {
-        id: _ghost
-
-        parent: Overlay.overlay
-        visible: false
-        z: 10000
-        opacity: 0.92
-        property real hotX: 0
-        property real hotY: 0
-
-        Image {
-            id: _ghostImage
-
-            anchors.fill: parent
-            fillMode: Image.Stretch
-            cache: false
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            color: "transparent"
-            border.width: 1
-            border.color: "#3B82F6"
-        }
-    }
-
-    Item {
         id: _payload
 
         width: 1
         height: 1
-        z: 20
 
-        Drag.active: _grip.held
+        Drag.active: _grip.drag.active && _root.inputBinding && _root.inputBinding.rootAction
         Drag.dragType: Drag.Automatic
         Drag.supportedActions: Qt.MoveAction
         Drag.proposedAction: Qt.MoveAction
