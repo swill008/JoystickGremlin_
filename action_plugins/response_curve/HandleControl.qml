@@ -97,8 +97,8 @@ Rectangle {
 
             visible: modelData.hasLeft
 
-            x: ((modelData.handleLeft.x - modelData.center.x) / 2.0) * _vis.size
-            y: -((modelData.handleLeft.y - modelData.center.y) / 2.0) * _vis.size
+            x: modelData.hasLeft ? ((modelData.handleLeft.x - modelData.center.x) / 2.0) * _vis.size : 0
+            y: modelData.hasLeft ? -((modelData.handleLeft.y - modelData.center.y) / 2.0) * _vis.size : 0
 
             width: offset * 2
             height: offset * 2
@@ -128,8 +128,8 @@ Rectangle {
 
             visible: modelData.hasRight
 
-            x: ((modelData.handleRight.x - modelData.center.x) / 2.0) * _vis.size
-            y: -((modelData.handleRight.y - modelData.center.y) / 2.0) * _vis.size
+            x: modelData.hasRight ? ((modelData.handleRight.x - modelData.center.x) / 2.0) * _vis.size : 0
+            y: modelData.hasRight ? -((modelData.handleRight.y - modelData.center.y) / 2.0) * _vis.size : 0
 
             width: offset * 2
             height: offset * 2
