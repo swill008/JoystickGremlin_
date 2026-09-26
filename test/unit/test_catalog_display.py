@@ -48,10 +48,10 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "highlightFollowsCurrentItem: false" in qml
     assert "def refreshOpenRow" in py
     assert "def noteOpenRow" in py
-    assert "def setControlBehavior" in py
-    assert "function toggleControl(hid)" in qml
-    assert 'text: "Treat as"' in qml
-    assert "hideControlSetup: true" in qml
+    assert "def sequences_for_item" in py
+    assert "function openSequence(hid, seq, row)" in qml
+    assert "onlySequence:" in qml
+    assert "catalogSequence: true" in qml
     assert "_hold_reload" not in py
     assert "setHoldReload" not in qml
     assert "signal.inputItemChanged.connect(self.reload)" not in py
@@ -202,9 +202,9 @@ def test_inline_editor_colors_are_properties() -> None:
     assert "property color editorEdge" in text
     assert "color: editorFill" in text
     qml = _QML.read_text(encoding="utf-8")
-    assert "editorFill: lv.cEditor" in qml
-    assert "editorEdge: lv.cEditorEdge" in qml
-    assert "editorAccent: lv.cEditorAccent" in qml
+    assert "editorFill: lv.cChild" in qml
+    assert "editorEdge: lv.cBorder" in qml
+    assert "showAccent: false" in qml
     assert "editorPadTop:" in qml
     assert 'text: "Show accent bar"' in qml
 
