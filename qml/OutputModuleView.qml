@@ -196,7 +196,7 @@ Item {
         if (!moduleModel || !deviceName)
             return
         try {
-            var v = JSON.parse(moduleModel.viewConfigJson(deviceName))
+            var v = JSON.parse(moduleModel.viewConfigJson(deviceName, guid))
         } catch (e) {
             return
         }
@@ -230,7 +230,7 @@ Item {
     function saveView() {
         var ok = false
         if (moduleModel && deviceName)
-            ok = moduleModel.saveViewConfig(deviceName, JSON.stringify(viewPayload()))
+            ok = moduleModel.saveViewConfig(deviceName, guid, JSON.stringify(viewPayload()))
         if (ok) {
             rememberView()
             _saveGate.announce(true, "Display options were written to the module file.")
