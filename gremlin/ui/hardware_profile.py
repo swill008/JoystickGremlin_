@@ -156,6 +156,35 @@ def _name_key(device_name: str) -> str:
     return f"name:{slug}" if slug else ""
 
 
+def module_json_path(device_name: str, guid: str = "") -> Path:
+    """The module file for this device.
+
+    A binding may be used only when that file belongs to this device. A vJoy
+    save must not write another vJoy's module file.
+    """
+    own = _slug(device_name)
+    own_path = _maps_dir() / f"{own}.json"
+    slug = resolve_module_slug(device_name, guid_for_module(device_name, guid))
+    if not slug or slug == own:
+        return own_path
+    bound = _maps_dir() / f"{slug}.json"
+    if not bound.is_file():
+        return bound
+    try:
+        doc = json.loads(bound.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return own_path
+    if not isinstance(doc, dict):
+        return own_path
+    named = str(doc.get("device") or "").strip().lower()
+    this = str(device_name or "").strip().lower()
+    if named and named == this:
+        return bound
+    if _norm_guid(guid) and _norm_guid(doc.get("boundGuidLocal")) == _norm_guid(guid):
+        return bound
+    return own_path
+
+
 def resolve_module_slug(device_name: str, guid: str = "") -> str:
     data = _binding_store()
     key = _norm_guid(guid) or _guid_for_name(device_name)
