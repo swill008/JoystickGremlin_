@@ -18,6 +18,8 @@ Item {
     property bool isOutput: false
     property bool inlineMode: false
     property bool hideControlSetup: false
+    property bool catalogSequence: false
+    property int onlySequence: -1
     property color editorFill: "#0F2744"
     property color editorEdge: "#3B82F6"
     property color editorAccent: "#3B82F6"
@@ -110,7 +112,7 @@ Item {
 
         Repeater {
             id: _inlineRepeater
-            model: _root.inlineMode ? _root.inputItemModel : null
+            model: _root.inlineMode && _root.onlySequence < 0 ? _root.inputItemModel : null
 
             delegate: InputItemBinding {
                 Layout.fillWidth: true
@@ -118,6 +120,21 @@ Item {
                 inputBinding: modelData
                 inputItemModel: _root.inputItemModel
                 hideControlSetup: _root.hideControlSetup
+                catalogSequence: _root.catalogSequence
+            }
+        }
+
+        Loader {
+            Layout.fillWidth: true
+            active: _root.inlineMode && _root.onlySequence >= 0 && _root.inputItemModel
+                    && _root.onlySequence < _root.inputItemModel.rowCount()
+            sourceComponent: InputItemBinding {
+                width: _content.width
+                enabled: !editorLocked
+                inputItemModel: _root.inputItemModel
+                inputBinding: _root.inputItemModel.data(_root.inputItemModel.index(_root.onlySequence, 0))
+                hideControlSetup: _root.hideControlSetup
+                catalogSequence: _root.catalogSequence
             }
         }
 
