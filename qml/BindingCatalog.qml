@@ -171,6 +171,9 @@ Item {
     Component.onCompleted: {
         closeAfterOk = _panePlacement.closePaneAfterOk()
         paneChoiceReady = true
+        if (uiState)
+            _catalog.setMode(uiState.currentMode)
+        loadCatalog()
     }
 
     Connections {
@@ -190,12 +193,6 @@ Item {
                 return
             showHid(uiState.currentInputIndex)
         }
-    }
-
-    Component.onCompleted: {
-        if (uiState)
-            _catalog.setMode(uiState.currentMode)
-        loadCatalog()
     }
 
     onClaimDeviceNameChanged: Qt.callLater(loadCatalog)
