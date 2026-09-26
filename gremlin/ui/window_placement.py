@@ -19,12 +19,15 @@ KEY_Y = "window-y"
 KEY_W = "window-width"
 KEY_H = "window-height"
 KEY_MAX = "window-maximized"
-KEY_CATALOG_PANEL = "catalog-display-options-open"
+KEY_MENU_W = "button-map-menu-width"
+KEY_MENU_H = "button-map-menu-height"
+KEY_OUTPUT_PANEL = "output-display-panel"
+KEY_CATALOG_PANEL = "catalog-display-panel"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
-MIN_W = 900
-MIN_H = 600
+DEFAULT_MENU_W = 240
+DEFAULT_MENU_H = 560
 
 
 def _ensure() -> Configuration:
@@ -35,6 +38,9 @@ def _ensure() -> Configuration:
         (KEY_W, PropertyType.Int, DEFAULT_W),
         (KEY_H, PropertyType.Int, DEFAULT_H),
         (KEY_MAX, PropertyType.Bool, False),
+        (KEY_MENU_W, PropertyType.Int, DEFAULT_MENU_W),
+        (KEY_MENU_H, PropertyType.Int, DEFAULT_MENU_H),
+        (KEY_OUTPUT_PANEL, PropertyType.Bool, True),
         (KEY_CATALOG_PANEL, PropertyType.Bool, False),
     )
     for name, data_type, initial in specs:
@@ -81,38 +87,13 @@ def _target_screen(saved: QtCore.QRect) -> QtGui.QScreen | None:
     return _screen_at(QtGui.QCursor.pos())
 
 
-def _frame_margins(window: QtGui.QWindow | None) -> QtCore.QMargins:
-    if window is not None:
-        margins = window.frameMargins()
-        if margins.top() > 0 or margins.left() > 0:
-            return margins
-    return QtCore.QMargins(11, 45, 11, 11)
-
-
-def _fit_client(
-    saved: QtCore.QRect, screen: QtGui.QScreen, window: QtGui.QWindow | None
-) -> QtCore.QRect:
-    """Center the outer frame on the work area.
-
-    availableGeometry already excludes the taskbar. setGeometry is the client
-    rect; the native title bar sits above it (frame margin). The QML menu bar
-    is inside the client height, so it is part of the box being centered.
-    """
+def _centered(size: QtCore.QSize, screen: QtGui.QScreen) -> QtCore.QRect:
     avail = screen.availableGeometry()
-    margins = _frame_margins(window)
-    slack = 2
-    max_w = max(MIN_W, avail.width() - margins.left() - margins.right() - slack)
-    max_h = max(MIN_H, avail.height() - margins.top() - margins.bottom() - slack)
-    width = min(max(int(saved.width() or DEFAULT_W), MIN_W), max_w)
-    height = min(max(int(saved.height() or DEFAULT_H), MIN_H), max_h)
-    frame_w = width + margins.left() + margins.right()
-    frame_h = height + margins.top() + margins.bottom()
-    frame_x = avail.x() + max(0, (avail.width() - frame_w) // 2)
-    frame_y = avail.y() + max(0, (avail.height() - frame_h) // 2)
-    # Client origin is inset from the frame so the title bar stays on screen.
-    x = frame_x + margins.left()
-    y = frame_y + margins.top()
-    return QtCore.QRect(int(x), int(y), int(width), int(height))
+    width = min(max(size.width(), 900), avail.width())
+    height = min(max(size.height(), 600), avail.height())
+    x = avail.x() + max(0, (avail.width() - width) // 2)
+    y = avail.y() + max(0, (avail.height() - height) // 2)
+    return QtCore.QRect(x, y, width, height)
 
 
 def restore_window(window: QtGui.QWindow) -> None:
@@ -126,12 +107,11 @@ def restore_window(window: QtGui.QWindow) -> None:
     screen = _target_screen(saved)
     if screen is None:
         return
-    if cfg.value(SECTION, GROUP, KEY_MAX):
-        window.setVisibility(QtGui.QWindow.Visibility.Maximized)
-        return
-    fitted = _fit_client(saved, screen, window)
+    fitted = _centered(saved.size(), screen)
     window.setVisibility(QtGui.QWindow.Visibility.Windowed)
     window.setGeometry(fitted)
+    if cfg.value(SECTION, GROUP, KEY_MAX):
+        window.setVisibility(QtGui.QWindow.Visibility.Maximized)
 
 
 def save_window(window: QtGui.QWindow) -> None:
@@ -164,10 +144,34 @@ class WindowPlacement(QtCore.QObject):
             return
         save_window(window)
 
+    @QtCore.Slot(result=int)
+    def buttonMapMenuWidth(self) -> int:
+        cfg = _ensure()
+        return int(cfg.value(SECTION, GROUP, KEY_MENU_W) or DEFAULT_MENU_W)
+
+    @QtCore.Slot(result=int)
+    def buttonMapMenuHeight(self) -> int:
+        cfg = _ensure()
+        return int(cfg.value(SECTION, GROUP, KEY_MENU_H) or DEFAULT_MENU_H)
+
+    @QtCore.Slot(int, int)
+    def saveButtonMapMenuSize(self, width: int, height: int) -> None:
+        cfg = _ensure()
+        cfg.set(SECTION, GROUP, KEY_MENU_W, max(180, min(900, int(width))))
+        cfg.set(SECTION, GROUP, KEY_MENU_H, max(160, min(1000, int(height))))
+
+    @QtCore.Slot(result=bool)
+    def outputPanelOpen(self) -> bool:
+        return bool(_ensure().value(SECTION, GROUP, KEY_OUTPUT_PANEL))
+
+    @QtCore.Slot(bool)
+    def setOutputPanelOpen(self, open_panel: bool) -> None:
+        _ensure().set(SECTION, GROUP, KEY_OUTPUT_PANEL, bool(open_panel))
+
     @QtCore.Slot(result=bool)
     def catalogPanelOpen(self) -> bool:
         return bool(_ensure().value(SECTION, GROUP, KEY_CATALOG_PANEL))
 
     @QtCore.Slot(bool)
-    def setCatalogPanelOpen(self, open_: bool) -> None:
-        _ensure().set(SECTION, GROUP, KEY_CATALOG_PANEL, bool(open_))
+    def setCatalogPanelOpen(self, open_panel: bool) -> None:
+        _ensure().set(SECTION, GROUP, KEY_CATALOG_PANEL, bool(open_panel))
