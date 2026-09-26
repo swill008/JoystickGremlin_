@@ -560,8 +560,9 @@ class InputItemBindingModel(QtCore.QObject):
         ]
 
     def _check_user_feedback(self, index: int) -> None:
-        # Only perform updates for matchin items.
-        if self.parent().enumeration_index != index:
+        # Only perform updates for matching items that still have a parent.
+        parent = self.parent()
+        if parent is None or parent.enumeration_index != index:
             return
 
         # Rate limit updates on user feedback.
