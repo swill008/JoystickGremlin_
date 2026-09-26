@@ -38,6 +38,7 @@ from gremlin.signal import (
     signal,
 )
 from gremlin.ui.device import InputIdentifier
+from gremlin.ui.hardware_profile import persist_log
 from gremlin.ui.profile import InputItemModel
 from gremlin.ui.script import ScriptListModel
 from gremlin.ui.util import to_local_path
@@ -422,14 +423,14 @@ class Backend(QtCore.QObject):
             self.profile.fpath = path
             self.profile.to_xml(self.profile.fpath)
             if not os.path.isfile(str(self.profile.fpath)):
-                print(f"Persist profile save failed path={path!r} reason='file missing after write'", flush=True)
+                persist_log(f"Persist profile save failed path={path!r} reason='file missing after write'")
                 return False
             self.config.set("global", "internal", "last-profile", str(path))
             self.windowTitleChanged.emit()
-            print(f"Persist profile save ok path={path}", flush=True)
+            persist_log(f"Persist profile save ok path={path}")
             return True
         except Exception:
-            print(f"Persist profile save failed path={qml_url!r}", flush=True)
+            persist_log(f"Persist profile save failed path={qml_url!r}")
             logging.getLogger("system").exception("Failed to save profile")
             return False
 
@@ -482,7 +483,7 @@ class Backend(QtCore.QObject):
                 sys.path = list(set(sys.path))
                 sys.path.insert(0, profile_folder)
             self.profile = new_profile
-            print(f"Persist profile load path={fpath}", flush=True)
+            persist_log(f"Persist profile load path={fpath}")
             if profile_was_converted:
                 self.profile.to_xml(fpath)
         except (KeyError, TypeError) as e:
