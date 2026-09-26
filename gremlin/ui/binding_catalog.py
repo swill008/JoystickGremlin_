@@ -161,7 +161,24 @@ def sequences_for_item(item) -> list[tuple[int, str, str]]:
     return out
 
 
-def assignment_summary(shown: list[tuple[str, str, str]]) -> tuple[str, str]:
+def sequence_is_simple(item, index: int) -> bool:
+    """True when the sequence is empty or one plain map, with no container."""
+    sequences = getattr(item, "action_sequences", None) or []
+    if not (0 <= int(index) < len(sequences)):
+        return True
+    root = getattr(sequences[int(index)], "root_action", None)
+    kids = _action_children(root) if root is not None else []
+    if len(kids) == 0:
+        return True
+    if len(kids) != 1:
+        return False
+    tag = str(getattr(kids[0], "tag", "") or "")
+    if tag not in ("map-to-vjoy", "map-to-keyboard", "map-to-mouse"):
+        return False
+    return not _action_children(kids[0])
+
+
+def assignment_summary(shown: list[tuple]) -> tuple[str, str]:
     summary = ", ".join(dest for _t, _l, dest in shown)
     text = (
         f"{len(shown)} assignment"
@@ -200,6 +217,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 9: QtCore.QByteArray(b"bindingCount"),
         QtCore.Qt.ItemDataRole.UserRole + 10: QtCore.QByteArray(b"indent"),
         QtCore.Qt.ItemDataRole.UserRole + 11: QtCore.QByteArray(b"sequenceIndex"),
+        QtCore.Qt.ItemDataRole.UserRole + 12: QtCore.QByteArray(b"simple"),
     }
 
     guidChanged = QtCore.Signal()
@@ -342,6 +360,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                         "bindingCount": 0,
                         "indent": 0,
                         "sequenceIndex": -1,
+                        "simple": True,
                     }
                 )
                 continue
@@ -383,6 +402,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                     "bindingCount": len(shown),
                     "indent": 0,
                     "sequenceIndex": -1,
+                    "simple": True,
                 }
             )
             mapped += 1
@@ -400,6 +420,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                         "bindingCount": 1,
                         "indent": 1,
                         "sequenceIndex": seq_index,
+                        "simple": sequence_is_simple(item, seq_index),
                     }
                 )
         if unmapped:
@@ -416,6 +437,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                     "bindingCount": len(unmapped),
                     "indent": 0,
                     "sequenceIndex": -1,
+                    "simple": True,
                 }
             )
             self._rows.extend(unmapped)
@@ -486,7 +508,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         idx = self.index(row, 0)
         self.dataChanged.emit(idx, idx, list(self.roles.keys()))
 
-    def _leaf_row(self, name, kind, hw, didx, seq_index, lab, dest) -> dict:
+    def _leaf_row(self, name, kind, hw, didx, seq_index, lab, dest, simple: bool) -> dict:
         return {
             "rowKind": "leaf",
             "name": name,
@@ -499,12 +521,26 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             "bindingCount": 1,
             "indent": 1,
             "sequenceIndex": int(seq_index),
+            "simple": bool(simple),
         }
 
     def _replace_leaves(self, row: int, name, kind, hw, didx, shown) -> None:
         existing = self.leafRun(row)
+        item = None
+        found_item = self._input_item_for(didx, False)
+        if found_item is not None:
+            item = found_item
         fresh = [
-            self._leaf_row(name, kind, hw, didx, seq_index, lab, dest)
+            self._leaf_row(
+                name,
+                kind,
+                hw,
+                didx,
+                seq_index,
+                lab,
+                dest,
+                sequence_is_simple(item, seq_index),
+            )
             for seq_index, lab, dest in shown
         ]
         if existing == len(fresh):
@@ -613,6 +649,118 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             if fallback < 0:
                 fallback = i
         return fallback
+
+    def _input_item_for(self, device_index: int, create: bool):
+        want = int(device_index)
+        if want < 0:
+            return None
+        profile = shared_state.current_profile
+        dev = getattr(self._claimed, "_device", None)
+        if profile is None or dev is None:
+            return None
+        mode = str(getattr(self._claimed, "_mode", None) or "Default")
+        n = self._claimed.rowCount()
+        for i in range(n):
+            if int(self._claimed.deviceIndexAt(i)) != want:
+                continue
+            return profile.get_input_item(
+                dev.device_guid.uuid,
+                _kind_to_type(self._claimed.kindAt(i)),
+                int(self._claimed.hwIdAt(i)),
+                mode,
+                create_if_missing=create,
+            )
+        return None
+
+    @QtCore.Slot(result=list)
+    def vjoyDevices(self) -> list:
+        """Output vJoy devices for the quick editor. Each entry is id|name."""
+        from gremlin.device_initialization import output_vjoy_devices
+
+        rows = []
+        for dev in output_vjoy_devices():
+            rows.append(f"{int(dev.vjoy_id)}|{dev.name}")
+        return rows
+
+    def _apply_simple_map(self, action, vjoy_id: int, button_id: int, press: bool, release: bool) -> None:
+        from gremlin.types import ActionActivationMode, InputType
+
+        action.vjoy_device_id = int(vjoy_id)
+        action.vjoy_input_id = max(1, int(button_id))
+        action.vjoy_input_type = InputType.JoystickButton
+        if press and release:
+            action.activation_mode = ActionActivationMode.Both
+        elif press:
+            action.activation_mode = ActionActivationMode.Press
+        elif release:
+            action.activation_mode = ActionActivationMode.Release
+        else:
+            action.activation_mode = ActionActivationMode.Deactivated
+
+    @QtCore.Slot(int, int, int, int, bool, bool, result=int)
+    def writeSimpleMap(
+        self,
+        device_index: int,
+        sequence_index: int,
+        vjoy_id: int,
+        button_id: int,
+        press: bool,
+        release: bool,
+    ) -> int:
+        """Add or update one plain Map to vJoy button on this control.
+
+        sequence_index below zero adds a new sequence. Actions stay in the profile.
+        """
+        from action_plugins.map_to_vjoy import MapToVjoyData
+        from gremlin.types import InputType
+
+        want = int(device_index)
+        item = self._input_item_for(want, True)
+        if item is None:
+            return -1
+        seq = int(sequence_index)
+        if seq < 0:
+            item.add_item_binding()
+            seq = len(item.action_sequences) - 1
+        sequences = item.action_sequences
+        if seq >= len(sequences):
+            return -1
+        if not sequence_is_simple(item, seq):
+            return -1
+        root = sequences[seq].root_action
+        kids = _action_children(root)
+        if len(kids) == 1 and str(getattr(kids[0], "tag", "") or "") != "map-to-vjoy":
+            return -1
+        if len(kids) == 1:
+            self._apply_simple_map(kids[0], vjoy_id, button_id, press, release)
+        else:
+            action = MapToVjoyData(InputType.JoystickButton)
+            self._apply_simple_map(action, vjoy_id, button_id, press, release)
+            root.insert_action(action, "children")
+        signal.inputItemChanged.emit(want)
+        signal.reloadCurrentInputItem.emit()
+        return seq
+
+    @QtCore.Slot(int, int, result=str)
+    def simpleMap(self, device_index: int, sequence_index: int) -> str:
+        """id|button|press|release for a plain vJoy map, or empty."""
+        from gremlin.types import ActionActivationMode
+
+        item = self._input_item_for(int(device_index), False)
+        seq = int(sequence_index)
+        if item is None or not sequence_is_simple(item, seq):
+            return ""
+        sequences = getattr(item, "action_sequences", None) or []
+        if not (0 <= seq < len(sequences)):
+            return ""
+        kids = _action_children(sequences[seq].root_action)
+        if len(kids) != 1 or str(getattr(kids[0], "tag", "") or "") != "map-to-vjoy":
+            return ""
+        action = kids[0]
+        mode = action.activation_mode
+        press = mode in (ActionActivationMode.Press, ActionActivationMode.Both)
+        release = mode in (ActionActivationMode.Release, ActionActivationMode.Both)
+        return f"{int(action.vjoy_device_id)}|{int(action.vjoy_input_id)}|{int(press)}|{int(release)}"
 
     @QtCore.Slot(int, result=int)
     def addSequence(self, device_index: int) -> int:
