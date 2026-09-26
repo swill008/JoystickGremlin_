@@ -40,13 +40,13 @@ Window {
         id: _list
         anchors.fill: parent
         anchors.margins: 12
-        anchors.bottomMargin: 58
+        anchors.bottomMargin: 108
         model: hiddenRows
         delegate: RowLayout {
             width: ListView.view.width
             Label { text: modelData; Layout.fillWidth: true; color: Style.foreground }
             Button {
-                text: "Show"
+                text: "Unhide"
                 onClicked: {
                     if (moduleModel)
                         moduleModel.unignoreSlug(modelData)
@@ -61,6 +61,20 @@ Window {
         visible: _list.count === 0
         text: "No hidden devices."
         color: "#A1A1AA"
+    }
+
+    Button {
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 12
+        anchors.bottomMargin: 66
+        text: "Unhide all"
+        enabled: _list.count > 0
+        onClicked: {
+            if (moduleModel)
+                moduleModel.unignoreAll()
+            refreshHidden()
+        }
     }
 
     DebugFileLine {
