@@ -381,7 +381,7 @@ Rectangle {
             onTriggered: direction === "dest" ? _card.openOutputView() : _card.openConfiguration()
         }
         MenuItem {
-            text: "Button mapper"
+            text: "Button Map"
             onTriggered: _card.openButtonMap()
         }
         MenuItem {
@@ -394,14 +394,17 @@ Rectangle {
             text: pinActive ? "Unpin Control Display" : "Pin Control Display"
             onTriggered: _card.pinControlDisplay()
         }
-        MenuItem { text: "Auto Map"; onTriggered: _card.autoMap() }
+        MenuItem { text: "Auto Mapper"; onTriggered: _card.autoMap() }
         MenuItem {
             visible: direction !== "dest"
             height: visible ? implicitHeight : 0
             text: "Device Viewer"
             onTriggered: _card.openDeviceViewer()
         }
-        MenuItem { text: "Pairing-Viewer"; onTriggered: _card.openPairing() }
+        MenuItem {
+            text: (bus === "XInput" || tab === "xbox" || slug === "xbox") ? "Xbox Viewer" : "vJoy Viewer"
+            onTriggered: _card.openPairing()
+        }
         MenuItem {
             visible: direction !== "dest"
             height: visible ? implicitHeight : 0
@@ -435,8 +438,9 @@ Rectangle {
         }
         MenuSeparator {}
         MenuItem { text: "Reset size"; onTriggered: _card.resetSize() }
-        MenuItem { text: "Clear all settings"; onTriggered: _card.clearSettings() }
         MenuSeparator {}
-        MenuItem { text: "Ignore device"; onTriggered: _card.ignoreDevice() }
+        MenuItem { text: "Hide device"; onTriggered: _card.ignoreDevice() }
+        MenuSeparator {}
+        MenuItem { text: "Clear module settings"; onTriggered: _card.clearSettings() }
     }
 }
