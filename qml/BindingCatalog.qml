@@ -1140,8 +1140,12 @@ Item {
                             onClicked: {
                                 lv.currentIndex = index
                                 lv.syncSelection()
+                                if (deviceIndex < 0)
+                                    return
                                 if (rowKind === "leaf")
                                     _root.requestPane(deviceIndex, sequenceIndex)
+                                else if (rowKind === "group" || rowKind === "unmapped")
+                                    _root.requestPane(deviceIndex, -1)
                             }
                         }
 
