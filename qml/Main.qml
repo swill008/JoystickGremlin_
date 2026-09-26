@@ -284,15 +284,17 @@ ApplicationWindow {
 
     function openActionEditor(hid) {
         var name = _deviceInputList ? _deviceInputList.claimDeviceName : ""
+        var single = hid >= 0
         var existing = Helpers.windowOf("DialogActionEditor.qml")
         if (existing && existing.openFor) {
-            existing.openFor(name, _deviceModel, hid)
+            existing.openFor(name, _deviceModel, hid, single)
             return
         }
         Helpers.createComponent("DialogActionEditor.qml", {
             "deviceName": name,
             "device": _deviceModel,
-            "startHid": hid
+            "startHid": hid,
+            "singleControl": single
         })
     }
 
