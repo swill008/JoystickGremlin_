@@ -48,7 +48,7 @@ ApplicationWindow {
     property string configTitleName: ""
     property string configDirection: ""
     property bool outputViewPanel: true
-    property bool catalogPanel: false
+    property bool catalogPanel: true
 
     function refreshDestBound() {
         if (_destBound)
