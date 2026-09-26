@@ -307,8 +307,8 @@ Item {
     }
 
     Component.onCompleted: { loadView(); rebuild() }
-    onGuidChanged: Qt.callLater(rebuild)
-    onDeviceNameChanged: { loadView(); Qt.callLater(rebuild) }
+    onGuidChanged: Qt.callLater(function() { loadView(); rebuild() })
+    onDeviceNameChanged: Qt.callLater(function() { loadView(); rebuild() })
 
     component CrossPad: Rectangle {
         id: pad
