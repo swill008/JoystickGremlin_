@@ -703,31 +703,51 @@ class InputItemModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, str)
     def dropAction(self, source: str, target: str, method: str) -> None:
-        """Handles dropping an action tree element
+        """Move one action sequence before or after another on this control.
 
         Args:
-            source: identifier of the tree being dropped
-            target: identifier of the location on which the source is dropped
-            method: type of drop action to perform
+            source: root action id of the sequence being dragged
+            target: root action id of the sequence dropped on
+            method: "before" places the source above the target, anything else
+                places it below
         """
-        # Force a UI refresh without performing any model changes if both
-        # source and target item are identical, i.e. an invalid drag&drop
-        if source == target:
-            self.bindingsChanged.emit()
+        if not source or not target or source == target:
+            return
+        try:
+            source_id = uuid.UUID(source)
+            target_id = uuid.UUID(target)
+        except ValueError:
             return
 
-        source_id = uuid.UUID(source)
-        target_id = uuid.UUID(target)
-        source_entry = None
-        for idx, entry in enumerate(self._input_item.action_sequences):
-            if entry.root_action.id == source_id:
-                source_entry = self._input_item.action_sequences.pop(idx)
-        if source_entry is not None:
-            for idx, entry in enumerate(self._input_item.action_sequences):
-                if entry.root_action.id == target_id:
-                    self._input_item.action_sequences.insert(idx + 1, source_entry)
+        sequences = self._input_item.action_sequences
+        src = -1
+        dst = -1
+        for index, entry in enumerate(sequences):
+            root = entry.root_action
+            if root is None:
+                continue
+            if root.id == source_id:
+                src = index
+            if root.id == target_id:
+                dst = index
+        if src < 0 or dst < 0 or src == dst:
+            return
 
-        self.bindingsChanged.emit()
+        if method == "before":
+            final = dst if src > dst else dst - 1
+        else:
+            final = dst if src < dst else dst + 1
+        if final == src or not 0 <= final < len(sequences):
+            return
+
+        destination = final + 1 if src < final else final
+        if not self.beginMoveRows(
+            QtCore.QModelIndex(), src, src, QtCore.QModelIndex(), destination
+        ):
+            return
+        entry = sequences.pop(src)
+        sequences.insert(final, entry)
+        self.endMoveRows()
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._input_item.action_sequences)
