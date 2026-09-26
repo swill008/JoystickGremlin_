@@ -57,9 +57,6 @@ Item {
                         var pos = mapToItem(_root, mouse.x, mouse.y)
                         _payload.x = pos.x
                         _payload.y = pos.y
-                        _root.grabToImage((result) => {
-                            _payload.Drag.imageSource = result.url
-                        })
                     }
                     onPositionChanged: (mouse) => {
                         if (!pressed)
