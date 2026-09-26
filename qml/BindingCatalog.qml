@@ -22,10 +22,14 @@ Item {
     property bool isOutput: false
     property int editingHid: -1
     property int editingSeq: -1
+    property int quickHid: -1
+    property int quickSeq: -1
+    property bool advancedOpen: false
     property int revealOnceRow: -1
     property int revealTries: 0
     property bool showPanel: false
     signal closePanel()
+    signal advancedRequested(int hid)
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
     readonly property bool runtimeActive: !!(backend && backend.gremlinActive)
 
@@ -669,11 +673,18 @@ Item {
         target: signal
         function onSetInputIndex(index) { showHid(index) }
         function onInputItemChanged(itemIndex) {
+            if (_root.advancedOpen)
+                return
             if (_root.editingHid >= 0) {
                 _catalog.noteOpenRow(itemIndex)
                 return
             }
             _catalog.reload()
+        }
+        function onAdvancedEditorChanged(open) {
+            _root.advancedOpen = open
+            if (!open)
+                _catalog.reload()
         }
     }
 
@@ -859,7 +870,20 @@ Item {
                 property int parentH: _root.parentHeight
                 property int childH: _root.childHeight
                 property bool kidsOn: _root.showChildren
-                property int openEditorH: 0
+                property int quickHid: _root.quickHid
+                property int quickSeq: _root.quickSeq
+                function closeQuick() {
+                    _root.quickHid = -1
+                    _root.quickSeq = -1
+                }
+                function openQuick(hid, seq) {
+                    _root.quickSeq = seq
+                    _root.quickHid = hid
+                }
+                function openAdvanced(hid) {
+                    closeQuick()
+                    _root.advancedRequested(hid)
+                }
                 property bool barsOn: _root.showLiveBars
                 property bool ledsOn: _root.showLeds
                 property bool summaryOn: _root.showSummary
@@ -891,16 +915,9 @@ Item {
                 property color cEditorAccent: _root.colorEditorAccent
 
                 function addOnRow(hid, rowIndex) {
-                    _root.editingHid = -1
-                    _root.editingSeq = -1
-                    var seq = _catalog.addSequence(hid)
-                    if (seq < 0)
-                        return
                     currentIndex = rowIndex
                     _root.selectHid(hid)
-                    _root.editingSeq = seq
-                    _root.editingHid = hid
-                    _root.armReveal(rowIndex)
+                    openQuick(hid, -1)
                 }
                 function openRow(hid, seq, row) { _root.openSequence(hid, seq, row) }
 
@@ -918,6 +935,7 @@ Item {
                     required property int bindingCount
                     required property int indent
                     required property int sequenceIndex
+                    required property bool simple
                     property var lv: ListView.view
                     readonly property bool isLeaf: rowKind === "leaf"
                     readonly property bool groupStart: rowKind === "group" || rowKind === "unmapped"
@@ -957,8 +975,8 @@ Item {
                     readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
                     readonly property int bodyH: isLeaf ? lv.childH : lv.parentH
                     readonly property bool hideLeaf: isLeaf && !lv.kidsOn
-                    readonly property bool hostsEditor: isLeaf && sequenceIndex >= 0 && deviceIndex === lv.editingHid && sequenceIndex === _root.editingSeq
-                    height: hideLeaf ? 0 : (topGap + bodyH + (hostsEditor ? _editor.height + 8 : 0) + bottomGap)
+                    readonly property bool hostsQuick: deviceIndex === lv.quickHid && deviceIndex >= 0 && ((isLeaf && lv.quickSeq >= 0 && sequenceIndex === lv.quickSeq) || (lv.quickSeq < 0 && ((isLeaf && endOfCard) || (groupStart && shownKids === 0))))
+                    height: hideLeaf ? 0 : (topGap + bodyH + (hostsQuick ? _quick.implicitHeight + 8 : 0) + bottomGap)
                     visible: !hideLeaf
 
                     readonly property bool selected: index === lv.currentIndex || expanded
@@ -974,7 +992,7 @@ Item {
                         x: _root.groupX(_row.width)
                         y: index > 0 ? _root.groupBetween : 0
                         width: Math.max(0, _root.groupW(_row.width))
-                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (shownKids * (_root.groupInside + lv.childH)) + (expanded ? lv.openEditorH + 8 : 0) + gPadB
+                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (shownKids * (_root.groupInside + lv.childH)) + (deviceIndex === lv.quickHid ? 56 : 0) + gPadB
                         radius: _root.groupRadius
                         color: _root.colorGroup
                     }
@@ -1022,8 +1040,12 @@ Item {
                             onClicked: {
                                 lv.currentIndex = index
                                 lv.syncSelection()
-                                if (rowKind === "leaf")
-                                    lv.openRow(deviceIndex, sequenceIndex, index)
+                                if (rowKind === "leaf" && simple) {
+                                    if (lv.quickHid === deviceIndex && lv.quickSeq === sequenceIndex)
+                                        lv.closeQuick()
+                                    else
+                                        lv.openQuick(deviceIndex, sequenceIndex)
+                                }
                             }
                         }
 
@@ -1080,70 +1102,115 @@ Item {
                                 onClicked: lv.addOnRow(deviceIndex, index)
                             }
                             Button {
-                                visible: hostsEditor && !lv.catalogLocked
+                                visible: isLeaf && !lv.catalogLocked
                                 text: "Delete"
                                 implicitWidth: 70
                                 implicitHeight: 28
                                 z: 2
                                 onClicked: {
-                                    var hid = deviceIndex
-                                    var seq = sequenceIndex
-                                    _root.editingHid = -1
-                                    _root.editingSeq = -1
-                                    lv.catalogModel.removeSequence(hid, seq)
+                                    lv.closeQuick()
+                                    lv.catalogModel.removeSequence(deviceIndex, sequenceIndex)
                                 }
+                            }
+                            Button {
+                                visible: (isLeaf && !simple || rowKind === "group") && !lv.catalogLocked
+                                text: "Advanced"
+                                implicitWidth: 88
+                                implicitHeight: 28
+                                z: 2
+                                onClicked: lv.openAdvanced(deviceIndex)
                             }
                         }
                     }
 
-                    Item {
-                        id: _editor
-                        visible: hostsEditor
-                        clip: true
-                        x: boxX + _root.editorX(boxW)
-                        y: topGap + bodyH + lv.edGap
-                        width: _root.editorW(boxW)
-                        height: hostsEditor ? Math.min(440, Math.max(80, _seqLoader.item ? _seqLoader.item.implicitHeight : 80)) : 0
-                        onHeightChanged: {
-                            if (hostsEditor) {
-                                lv.openEditorH = height
-                                if (_root.revealOnceRow >= 0)
-                                    _root.bumpReveal()
-                            }
+                    RowLayout {
+                        id: _quick
+                        visible: hostsQuick
+                        x: boxX + (isLeaf ? _root.leafX(boxW) : _root.parentX(boxW))
+                        y: topGap + bodyH + 4
+                        width: isLeaf ? _root.leafW(boxW) : _root.parentW(boxW)
+                        height: visible ? implicitHeight : 0
+                        spacing: 8
+
+                        property int vjoyId: 1
+                        property int buttonId: 1
+                        property bool pressOn: true
+                        property bool releaseOn: true
+
+                        function loadChoices() {
+                            var rows = lv.catalogModel.vjoyDevices()
+                            _vjoy.model = rows
+                            if (rows.length)
+                                _vjoy.currentIndex = 0
                         }
-                        Flickable {
-                            anchors.fill: parent
-                            contentWidth: width
-                            contentHeight: _seqLoader.item ? _seqLoader.item.implicitHeight : 0
-                            clip: true
-                            boundsBehavior: Flickable.StopAtBounds
-                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                            Loader {
-                                id: _seqLoader
-                                active: hostsEditor
-                                width: parent.width
-                                onLoaded: if (item) item.width = width
-                                onWidthChanged: if (item) item.width = width
-                                sourceComponent: InputConfiguration {
-                                    inlineMode: true
-                                    onlySequence: _row.sequenceIndex
-                                    catalogSequence: true
-                                    hideControlSetup: false
-                                    isOutput: lv.catalogIsOutput
-                                    editorFill: lv.cChild
-                                    editorEdge: lv.cBorder
-                                    editorAccent: lv.cBorder
-                                    editorRadius: lv.edRad
-                                    editorBorderW: 1
-                                    editorAccentW: 0
-                                    showAccent: false
-                                    editorPad: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadLeft)
-                                    editorPadTop: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadTop)
-                                    editorPadRight: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadRight)
-                                    editorPadBottom: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadBottom)
-                                    editorPadLeft: _root.padEdge(_root.editorPadShape, _root.editorPad, _root.editorPadLeft)
+
+                        function loadExisting() {
+                            loadChoices()
+                            if (lv.quickSeq < 0)
+                                return
+                            var packed = lv.catalogModel.simpleMap(deviceIndex, lv.quickSeq)
+                            if (!packed)
+                                return
+                            var parts = packed.split("|")
+                            vjoyId = parseInt(parts[0])
+                            buttonId = parseInt(parts[1])
+                            pressOn = parts[2] === "1"
+                            releaseOn = parts[3] === "1"
+                            _button.value = buttonId
+                            for (var i = 0; i < _vjoy.count; i++) {
+                                if (parseInt(String(_vjoy.textAt(i)).split("|")[0]) === vjoyId) {
+                                    _vjoy.currentIndex = i
+                                    break
                                 }
                             }
+                        }
+
+                        Component.onCompleted: if (visible) loadExisting()
+                        onVisibleChanged: if (visible) loadExisting()
+
+                        ComboBox {
+                            id: _vjoy
+                            Layout.preferredWidth: 180
+                            font.pixelSize: lv.sFont
+                            displayText: currentText ? String(currentText).split("|").slice(1).join("|") : "vJoy"
+                        }
+                        Label { text: "Button"; color: lv.cMuted; font.pixelSize: lv.sFont }
+                        SpinBox {
+                            id: _button
+                            from: 1
+                            to: 128
+                            editable: true
+                        }
+                        CheckBox {
+                            text: "Press"
+                            font.pixelSize: lv.sFont
+                            checked: _quick.pressOn
+                            onToggled: _quick.pressOn = checked
+                        }
+                        CheckBox {
+                            text: "Release"
+                            font.pixelSize: lv.sFont
+                            checked: _quick.releaseOn
+                            onToggled: _quick.releaseOn = checked
+                        }
+                        Button {
+                            text: lv.quickSeq < 0 ? "Add" : "Done"
+                            implicitWidth: 64
+                            onClicked: {
+                                var hid = deviceIndex
+                                var seqIndex = lv.quickSeq
+                                var picked = _vjoy.currentText ? String(_vjoy.currentText).split("|")[0] : "1"
+                                var button = _button.value
+                                var press = _quick.pressOn
+                                var release = _quick.releaseOn
+                                lv.closeQuick()
+                                lv.catalogModel.writeSimpleMap(hid, seqIndex, parseInt(picked), button, press, release)
+                            }
+                        }
+                        Button {
+                            text: "Cancel"
+                            implicitWidth: 72
+                            onClicked: lv.closeQuick()
                         }
                     }
                 }
