@@ -13,10 +13,14 @@ _MM = Path(__file__).resolve().parents[2] / "gremlin/ui/module_model.py"
 def test_main_has_catalog_display_button() -> None:
     text = _MAIN.read_text(encoding="utf-8")
     assert "property bool catalogPanel: false" in text
+    assert "property bool outputViewPanel: true" in text
+    assert "outputViewPanel = _windowPlacement.outputPanelOpen()" in text
+    assert "onOutputViewPanelChanged: _windowPlacement.setOutputPanelOpen(outputViewPanel)" in text
     assert 'text: catalogPanel ? "Hide Display Options" : "Edit Display Options"' in text
-    assert "showPanel: _root.catalogPanel" in text
-    assert "onClosePanel: _root.catalogPanel = false" in text
-    assert "catalogPanel = false" in text
+    assert "showPanel: _root.outputViewPanel" in text
+    assert 'showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel' in text
+    assert "onClosePanel: _root.outputViewPanel = false" in text
+    assert "_root.catalogPanel = false" in text
     dest_btn = text[text.find("outputViewPanel ?") : text.find("catalogPanel ?")]
     assert "configDirection === \"dest\"" in dest_btn or 'visible: configDirection === "dest"' in text
 
