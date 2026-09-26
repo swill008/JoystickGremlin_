@@ -76,10 +76,14 @@ Item {
             item.value = toInt(_root.value)
 
             item.valueChanged.connect(() => {
-                if (!_root._internalUpdate) {
-                    _root.value = toFloat(item.value)
-                    _root.valueModified(_root.value)
-                }
+                if (_root._internalUpdate)
+                    return
+                var next = toFloat(item.value)
+                // Same number means the inner box echoed the bound value.
+                // Assigning here would remove the caller's binding.
+                if (Math.abs(next - _root.value) < (0.5 / decimalFactor))
+                    return
+                _root.valueModified(next)
             })
         }
     }
