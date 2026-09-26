@@ -53,6 +53,7 @@ Item {
                 text: "Single/Double tap:"
             }
             RadioButton {
+                autoExclusive: false
                 text: "exclusive"
                 checked: _root.action.activateOn == "exclusive"
 
@@ -61,6 +62,7 @@ Item {
                 }
             }
             RadioButton {
+                autoExclusive: false
                 text: "combined"
                 checked: _root.action.activateOn == "combined"
 
