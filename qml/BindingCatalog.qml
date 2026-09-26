@@ -508,6 +508,31 @@ Item {
         uiState.setCurrentInput(ident, hid)
     }
 
+    function revealRow(row) {
+        if (row < 0)
+            return
+        Qt.callLater(function() {
+            if (row >= _list.count)
+                return
+            var item = _list.itemAtIndex(row)
+            if (!item) {
+                _list.positionViewAtIndex(row, ListView.Contain)
+                return
+            }
+            var top = item.y - _list.contentY
+            var viewH = _list.height
+            if (viewH <= 0)
+                return
+            if (item.height >= viewH) {
+                if (top < -1 || top > 1)
+                    _list.positionViewAtIndex(row, ListView.Beginning)
+                return
+            }
+            if (top < 0 || top + item.height > viewH)
+                _list.positionViewAtIndex(row, ListView.Contain)
+        })
+    }
+
     function showHid(hid) {
         if (hid < 0)
             return
@@ -516,22 +541,33 @@ Item {
             return
         if (_list.currentIndex !== row)
             _list.currentIndex = row
-        Qt.callLater(function() {
-            _list.positionViewAtIndex(row, ListView.Contain)
-        })
+        if (_root.editingHid === hid)
+            return
+        revealRow(row)
     }
 
     function openEditor(hid) {
         if (hid < 0 || editorLocked)
             return
-        selectHid(hid)
+        if (_root.editingHid >= 0 && _root.editingHid !== hid)
+            _catalog.refreshOpenRow(_root.editingHid)
+        var opening = _root.editingHid !== hid
+        _catalog.setHoldReload(true)
         _root.editingHid = hid
-        showHid(hid)
+        selectHid(hid)
+        if (opening)
+            revealRow(_catalog.rowForDeviceIndex(hid))
     }
 
     function closeEditor() {
+        var hid = _root.editingHid
+        var reset = false
+        if (hid >= 0)
+            reset = _catalog.refreshOpenRow(hid)
+        _catalog.setHoldReload(false)
         _root.editingHid = -1
-        _catalog.reload()
+        if (reset)
+            revealRow(_catalog.rowForDeviceIndex(hid))
     }
 
     function rowX(total, align, left, right, pct) {
@@ -585,8 +621,10 @@ Item {
         target: signal
         function onSetInputIndex(index) { showHid(index) }
         function onInputItemChanged(itemIndex) {
-            if (_root.editingHid >= 0)
+            if (_root.editingHid >= 0) {
+                _catalog.refreshOpenRow(_root.editingHid)
                 return
+            }
             _catalog.reload()
         }
     }
@@ -754,7 +792,7 @@ Item {
                 Layout.bottomMargin: padEdge(listPadShape, listPad, listPadBottom)
                 scrollbarAlwaysVisible: true
                 spacing: 0
-                highlightFollowsCurrentItem: true
+                highlightFollowsCurrentItem: false
                 highlightMoveDuration: {
                     if (!_highlightSpeed)
                         return 150
@@ -804,11 +842,16 @@ Item {
                 property color cEditorAccent: _root.colorEditorAccent
 
                 function addOnRow(hid, rowIndex) {
+                    if (_root.editingHid >= 0 && _root.editingHid !== hid)
+                        _catalog.refreshOpenRow(_root.editingHid)
+                    var opening = _root.editingHid !== hid
+                    _catalog.setHoldReload(true)
+                    _root.editingHid = hid
                     currentIndex = rowIndex
                     _root.selectHid(hid)
                     _catalog.addSequence(hid)
-                    _root.editingHid = hid
-                    _root.showHid(hid)
+                    if (opening)
+                        _root.revealRow(rowIndex)
                 }
                 function okRow() { _root.closeEditor() }
                 function openRow(hid) { _root.openEditor(hid) }
