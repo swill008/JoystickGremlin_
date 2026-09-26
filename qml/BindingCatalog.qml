@@ -544,10 +544,10 @@ Item {
 
     component AlignFields: ColumnLayout {
         property string align: "left"
-        property int left: 0
-        property int right: 0
+        property int fromLeft: 0
+        property int fromRight: 0
         property int widthPct: 100
-        signal edited(string align, int left, int right, int widthPct)
+        signal edited(string align, int fromLeft, int fromRight, int widthPct)
         Layout.fillWidth: true
         spacing: 4
 
@@ -557,23 +557,23 @@ Item {
                 Layout.fillWidth: true
                 model: ["left", "center", "right"]
                 currentIndex: align === "center" ? 1 : (align === "right" ? 2 : 0)
-                onActivated: edited(currentText, left, right, widthPct)
+                onActivated: edited(currentText, fromLeft, fromRight, widthPct)
             }
         }
         RowLayout {
             visible: align !== "center"
             Label { text: "Left"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 0; to: 800; stepSize: 8; value: left; onValueModified: edited(align, value, right, widthPct) }
+            SpinBox { from: 0; to: 800; stepSize: 8; value: fromLeft; onValueModified: edited(align, value, fromRight, widthPct) }
         }
         RowLayout {
             visible: align !== "center"
             Label { text: "Right"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 0; to: 800; stepSize: 8; value: right; onValueModified: edited(align, left, value, widthPct) }
+            SpinBox { from: 0; to: 800; stepSize: 8; value: fromRight; onValueModified: edited(align, fromLeft, value, widthPct) }
         }
         RowLayout {
             visible: align === "center"
             Label { text: "Width %"; color: "#E4E4E7"; Layout.fillWidth: true }
-            SpinBox { from: 20; to: 100; value: widthPct; onValueModified: edited(align, left, right, value) }
+            SpinBox { from: 20; to: 100; value: widthPct; onValueModified: edited(align, fromLeft, fromRight, value) }
         }
     }
 
@@ -1039,8 +1039,8 @@ Item {
                             }
                             AlignFields {
                                 align: parentAlign
-                                left: parentLeft
-                                right: parentRight
+                                fromLeft: parentLeft
+                                fromRight: parentRight
                                 widthPct: parentWidthPct
                                 onEdited: function(align, left, right, widthPct) {
                                     parentAlign = align
@@ -1092,8 +1092,8 @@ Item {
                             }
                             AlignFields {
                                 align: childAlign
-                                left: childLeft
-                                right: childRight
+                                fromLeft: childLeft
+                                fromRight: childRight
                                 widthPct: childWidthPct
                                 onEdited: function(align, left, right, widthPct) {
                                     childAlign = align
@@ -1119,8 +1119,8 @@ Item {
                             SectionHead { title: "EDITOR" }
                             AlignFields {
                                 align: editorAlign
-                                left: editorIndent
-                                right: editorRight
+                                fromLeft: editorIndent
+                                fromRight: editorRight
                                 widthPct: editorWidthPct
                                 onEdited: function(align, left, right, widthPct) {
                                     editorAlign = align
