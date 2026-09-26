@@ -30,6 +30,7 @@ from gremlin.ui.hardware_profile import (
     maps_folder_url,
     module_file_choices,
     module_file_exists,
+    module_json_path,
     persist_log,
     resolve_module_slug,
 )
@@ -575,9 +576,19 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=str)
     def viewConfigJson(self, device_name: str, guid: str) -> str:
-        doc = _load_module_doc(device_name, guid_for_module(device_name, guid)) if device_name else {}
+        doc: dict = {}
+        if device_name:
+            path = module_json_path(device_name, guid)
+            if path.is_file():
+                try:
+                    loaded = json.loads(path.read_text(encoding="utf-8"))
+                    if isinstance(loaded, dict):
+                        doc = loaded
+                except (OSError, json.JSONDecodeError):
+                    doc = {}
         view = dict(_DEFAULT_VIEW)
-        raw = (doc or {}).get("view")
+        view["meters"] = list(_DEFAULT_VIEW["meters"])
+        raw = doc.get("view")
         if isinstance(raw, dict):
             view.update(raw)
         return json.dumps(view)
@@ -593,7 +604,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = _maps_dir() / f"{resolve_module_slug(name, guid_for_module(name, guid))}.json"
+        path = module_json_path(name, guid)
         doc: dict = {}
         if path.is_file():
             try:
@@ -601,6 +612,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             except (OSError, json.JSONDecodeError):
                 doc = {}
         view = dict(_DEFAULT_VIEW)
+        view["meters"] = list(_DEFAULT_VIEW["meters"])
         raw = doc.get("view")
         if isinstance(raw, dict):
             view.update(raw)
