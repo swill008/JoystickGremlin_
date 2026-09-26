@@ -33,6 +33,7 @@ from gremlin.error import GremlinError
 from gremlin.input_cache import DeviceDatabase
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import InputItem
+from gremlin.ui.hardware_profile import persist_log
 from gremlin.signal import signal
 from gremlin.types import (
     InputType,
@@ -1525,10 +1526,10 @@ class AxisCalibration(QtCore.QAbstractListModel):
             index: index of the axis whose data to save
         """
         if self._device_uuid is None or self._device is None:
-            print(f"Persist calibration skipped index={index} reason='no device'", flush=True)
+            persist_log(f"Persist calibration skipped index={index} reason='no device'")
             return False
         if not (0 <= index < len(self._state)):
-            print(f"Persist calibration skipped index={index} reason='bad index'", flush=True)
+            persist_log(f"Persist calibration skipped index={index} reason='bad index'")
             return False
 
         self._config.set_calibration(
@@ -1548,9 +1549,8 @@ class AxisCalibration(QtCore.QAbstractListModel):
             self._device.axis_map[index].axis_index,
         )
         self.emit_update(index)
-        print(
-            f"Persist calibration ok guid={self._device_uuid} axis={self._device.axis_map[index].axis_index}",
-            flush=True,
+        persist_log(
+            f"Persist calibration ok guid={self._device_uuid} axis={self._device.axis_map[index].axis_index}"
         )
         return True
 
