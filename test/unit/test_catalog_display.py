@@ -36,19 +36,19 @@ def test_panel_matches_omv_chrome() -> None:
     assert "id: _savedToast" in text
     assert "interval: 2000" in text
     assert "CloseOnPressOutside" in text
-    assert 'text: "ROWS"' in text
-    assert 'text: "PARENT ALIGNMENT"' in text
-    assert 'text: "CHILD ALIGNMENT"' in text
-    assert 'text: "TEXT"' in text
-    assert 'text: "COLORS"' in text
-    assert 'text: "EDITOR"' in text
+    assert 'title: "LIST"' in text
+    assert 'title: "PARENT ROW"' in text
+    assert 'title: "CHILD ROW"' in text
+    assert 'title: "COLORS"' in text
+    assert 'title: "EDITOR"' in text
     assert 'text: "Show accent bar"' in text
     assert 'text: "Gap below row"' in text
     assert "function editorX(total)" in text
     assert "function editorW(total)" in text
     assert 'text: "Show LED dots"' in text
-    assert 'text: "Left inset"' in text
-    assert 'text: "Right inset"' in text
+    assert 'text: "Left"' in text
+    assert 'text: "Right"' in text
+    assert 'model: ["Box", "Sides"]' in text
     assert 'model: ["left", "center", "right"]' in text
     assert "ColorDialog" in text
     assert "signal closePanel()" in text
@@ -174,7 +174,7 @@ def test_inline_editor_colors_are_properties() -> None:
     assert "editorFill: lv.cEditor" in qml
     assert "editorEdge: lv.cEditorEdge" in qml
     assert "editorAccent: lv.cEditorAccent" in qml
-    assert "editorPad: lv.edPad" in qml
+    assert "editorPadTop:" in qml
     assert 'text: "Show accent bar"' in qml
 
 
