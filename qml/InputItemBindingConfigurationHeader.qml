@@ -16,7 +16,7 @@ Item {
     property InputItemModel inputItemModel
     property bool hideControlSetup: false
     property bool catalogSequence: false
-    property MouseArea dragHandleArea: _dragArea
+    property MouseArea dragHandleArea: _grip
 
     implicitHeight: _layout.implicitHeight
 
@@ -41,14 +41,38 @@ Item {
                 horizontalPadding: -5
                 text: bsi.icons.verticalDrag
 
-                // Drag handle mouse interaction area.
                 MouseArea {
-                    id: _dragArea
+                    id: _grip
 
                     anchors.fill: parent
+                    preventStealing: true
+                    hoverEnabled: true
+                    cursorShape: Qt.OpenHandCursor
+                    property real startY: 0
+                    property bool held: false
 
-                    drag.target: _handle
-                    drag.axis: Drag.YAxis
+                    onPressed: (mouse) => {
+                        startY = mouse.y
+                        held = false
+                        var pos = mapToItem(_root, mouse.x, mouse.y)
+                        _payload.x = pos.x
+                        _payload.y = pos.y
+                        _root.grabToImage((result) => {
+                            _payload.Drag.imageSource = result.url
+                        })
+                    }
+                    onPositionChanged: (mouse) => {
+                        if (!pressed)
+                            return
+                        var pos = mapToItem(_root, mouse.x, mouse.y)
+                        _payload.x = pos.x
+                        _payload.y = pos.y
+                        var ready = _root.inputBinding && _root.inputBinding.rootAction
+                        if (!held && ready && Math.abs(mouse.y - startY) >= 6)
+                            held = true
+                    }
+                    onReleased: held = false
+                    onCanceled: held = false
                 }
             }
 
@@ -186,6 +210,25 @@ Item {
                     virtualButton: _root.inputBinding.virtualButton
                 }
             }
+        }
+    }
+
+    Item {
+        id: _payload
+
+        width: 1
+        height: 1
+        z: 20
+
+        Drag.active: _grip.held
+        Drag.dragType: Drag.Automatic
+        Drag.supportedActions: Qt.MoveAction
+        Drag.proposedAction: Qt.MoveAction
+        Drag.hotSpot.x: 0
+        Drag.hotSpot.y: 0
+        Drag.mimeData: {
+            "application/x-gremlin-sequence": (_root.inputBinding && _root.inputBinding.rootAction)
+                ? _root.inputBinding.rootAction.id : ""
         }
     }
 }
