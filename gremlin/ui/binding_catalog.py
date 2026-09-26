@@ -186,6 +186,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     deviceNameChanged = QtCore.Signal()
     countChanged = QtCore.Signal()
     filtersChanged = QtCore.Signal()
+    controlChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -194,6 +195,8 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._dest_filter = "all"
         self._rows: list[dict] = []
         self._dest_choices: list[str] = ["All devices"]
+        self._control_item = None
+        self._control_vb = None
         signal.profileChanged.connect(self.reload)
         signal.configChanged.connect(self.reload)
         self._claimed.countChanged.connect(self.reload)
@@ -592,6 +595,128 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             signal.reloadCurrentInputItem.emit()
             return True
         return False
+
+    def _lookup_control(self, device_index: int, create: bool):
+        want = int(device_index)
+        profile = shared_state.current_profile
+        dev = getattr(self._claimed, "_device", None)
+        if profile is None or dev is None or want < 0:
+            return None, ""
+        mode = str(getattr(self._claimed, "_mode", None) or "Default")
+        n = self._claimed.rowCount()
+        for i in range(n):
+            if int(self._claimed.deviceIndexAt(i)) != want:
+                continue
+            kind = str(self._claimed.kindAt(i) or "")
+            hw = int(self._claimed.hwIdAt(i))
+            item = profile.get_input_item(
+                dev.device_guid.uuid,
+                _kind_to_type(kind),
+                hw,
+                mode,
+                create_if_missing=create,
+            )
+            return item, kind
+        return None, ""
+
+    def _remember_virtual(self, item) -> None:
+        from gremlin.ui.profile import VirtualButtonModel
+
+        old = self._control_vb
+        self._control_item = item
+        self._control_vb = None
+        if item is not None and getattr(item, "action_sequences", None):
+            button = item.action_sequences[0].virtual_button
+            if button is not None:
+                model = VirtualButtonModel(button, self)
+                model.lowerLimitChanged.connect(self._mirror_virtual)
+                model.upperLimitChanged.connect(self._mirror_virtual)
+                model.directionChanged.connect(self._mirror_virtual)
+                model.hatDirectionChanged.connect(self._mirror_virtual)
+                self._control_vb = model
+        if old is not None and old is not self._control_vb:
+            old.deleteLater()
+
+    def _mirror_virtual(self) -> None:
+        item = self._control_item
+        sequences = getattr(item, "action_sequences", None) or []
+        if len(sequences) < 2:
+            return
+        source = sequences[0].virtual_button
+        if source is None:
+            return
+        for binding in sequences[1:]:
+            other = binding.virtual_button
+            if other is None or type(other) is not type(source):
+                continue
+            if hasattr(source, "lower_limit"):
+                other.lower_limit = source.lower_limit
+                other.upper_limit = source.upper_limit
+                other.direction = source.direction
+            if hasattr(source, "directions"):
+                other.directions = list(source.directions)
+
+    @QtCore.Slot(int, result=str)
+    def controlBehavior(self, device_index: int) -> str:
+        """How this control is treated. One value for the whole parent row."""
+        from gremlin.types import InputType
+
+        item, kind = self._lookup_control(device_index, False)
+        if not kind:
+            return "button"
+        sequences = getattr(item, "action_sequences", None) or []
+        if not sequences:
+            return kind
+        behavior = sequences[0].behavior
+        if behavior == InputType.Keyboard:
+            return "button"
+        return InputType.to_string(behavior)
+
+    @QtCore.Slot(int)
+    def prepareControl(self, device_index: int) -> None:
+        item, _kind = self._lookup_control(device_index, False)
+        self._remember_virtual(item)
+        self.controlChanged.emit()
+
+    @QtCore.Slot(int, str)
+    def setControlBehavior(self, device_index: int, behavior: str) -> None:
+        """Set Treat as on every sequence of this control."""
+        from gremlin.ui.profile import InputItemBindingModel
+
+        text = str(behavior or "").strip().lower()
+        if text not in ("button", "axis", "hat"):
+            return
+        item, kind = self._lookup_control(device_index, True)
+        if item is None:
+            return
+        if not item.action_sequences:
+            if text == kind:
+                self._remember_virtual(item)
+                self.controlChanged.emit()
+                return
+            item.add_item_binding()
+        changed = False
+        for binding in list(item.action_sequences):
+            model = InputItemBindingModel(binding, self)
+            try:
+                if model.behavior != text:
+                    model.behavior = text
+                    changed = True
+            finally:
+                model.setParent(None)
+                model.deleteLater()
+        if changed:
+            signal.inputItemChanged.emit(int(device_index))
+            signal.reloadCurrentInputItem.emit()
+        self._remember_virtual(item)
+        self.controlChanged.emit()
+
+    @QtCore.Slot(int, result=QtCore.QObject)
+    def controlVirtualButton(self, device_index: int):
+        item, _kind = self._lookup_control(device_index, False)
+        if item is not self._control_item:
+            self._remember_virtual(item)
+        return self._control_vb
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     deviceName = QtCore.Property(
