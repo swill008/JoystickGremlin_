@@ -19,6 +19,7 @@ Item {
     property InputItemBindingModel inputBinding
     property InputItemModel inputItemModel
     property bool hideControlSetup: false
+    property bool catalogSequence: false
     property InputItemBindingConfigurationHeader headerWidget: _header
 
     implicitHeight: _content.height
@@ -53,6 +54,7 @@ Item {
             inputBinding: _root.inputBinding
             inputItemModel: _root.inputItemModel
             hideControlSetup: _root.hideControlSetup
+            catalogSequence: _root.catalogSequence
         }
 
         // +--------------------------------------------------------------------
