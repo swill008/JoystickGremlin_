@@ -29,7 +29,7 @@ Item {
             // The ordering is important, swapping it will result in the
             // wrong item being displayed.
             validTypes: [action.actionBehavior]
-            logicalInputType: inputBinding.behavior
+            logicalInputType: inputBinding ? inputBinding.behavior : ""
             logicalInputIdentifier: _root.action.logicalInputIdentifier
 
             onLogicalInputIdentifierChanged: {
