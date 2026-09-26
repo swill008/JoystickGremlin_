@@ -788,7 +788,7 @@ Window {
                 },
                 {
                     h: "File",
-                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Saved appears. Click outside it or Esc to dismiss. If the write or re-read fails, Save failed stays up until OK.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nFit to photo frame — once, if the saved layout is twice as large as the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExport map… — Save As a zip named after this hardware. Confirm the photo, then write.\nImport map… — pick a zip, confirm the device photo, then replace that device profile.\nExit — close the window. Unsaved work still warns."
+                    b: "Edit Mapping — start the editor.\nSave — write the profile and live map. The editor stays open. After a verified write, Saved appears. Click outside it or Esc to dismiss. If the write or re-read fails, Save failed stays up until OK.\nCancel — leave without writing.\nReset layout — send every chip back to the reservoir. Inputs still illuminate.\nFit to photo frame — once, if the saved layout is twice as large as the photo. Then Save.\nChoose background… — pick a photo under the map.\nClear image — restore the stock rig photo.\nExport map… — Save As a zip named after this hardware. Confirm the photo, then write.\nImport map… — pick a zip, confirm the device photo, then replace that device profile.\nClose — close the window. Unsaved work still warns."
                 },
                 {
                     h: "Edit menu",
@@ -796,7 +796,7 @@ Window {
                 },
                 {
                     h: "View, zoom, pan",
-                    b: "View is the camera. Scroll wheel zooms about the pointer, 50%–400%. View 100% frames the photo well. View 50% is the full 32000 page. Middle-button drag pans. Before Edit Mapping, left-drag also pans. View → Reset view returns View 100% and centered. Camera zoom and pan are stored in ui.\nPhoto size is the poster, not the camera. Photo → Adjust photo… has live sliders for size, offset, and rotate. Photo → Move photo lets you drag the picture. Photo → Fit well sets size to 1. Photo → Reset photo centers it and clears rotate. Pose is stored in the profile photo block and comes back on load.\nView → Grid → Show grid — the full world page. Step is world counts (200 suits 32000). Snap to grid / entities as before. Alt skips snap."
+                    b: "View is the camera. Scroll wheel zooms about the pointer, 50%–400%. View 100% frames the photo well. View 50% is the full 32000 page. Middle-button drag pans. Before Edit Mapping, left-drag also pans. View → Reset view returns View 100% and centered. Camera zoom and pan are stored in ui.\nPhoto size is the poster, not the camera. Photo → Adjust photo… has live sliders for size, offset, and rotate. Size 100% sets the poster size to 1. Photo → Move photo lets you drag the picture. Photo → Reset photo centers it and clears rotate. Pose is stored in the profile photo block and comes back on load.\nView → Grid → Show grid — the full world page. Step is world counts (200 suits 32000). Snap to grid / entities as before. Alt skips snap."
                 },
                 {
                     h: "Reservoir",
@@ -1665,7 +1665,7 @@ Window {
             }
             RowLayout {
                 Layout.fillWidth: true
-                Button { text: "Fit well"; onClicked: _buttonMap.fitPhotoWell() }
+                Button { text: "Size 100%"; onClicked: _buttonMap.fitPhotoWell() }
                 Button { text: "Reset photo"; onClicked: _buttonMap.resetPhoto() }
                 Item { Layout.fillWidth: true }
                 Button { text: "Close"; onClicked: _photoAdj.close() }
@@ -1693,8 +1693,6 @@ Window {
                 }
                 MenuItem { text: "Save"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
                 MenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
-                MenuSeparator {}
-                MenuSeparator {}
                 MenuItem { text: "Reset layout"; enabled: editing; onTriggered: _resetDlg.open() }
                 MenuItem {
                     text: "Fit to photo frame"
@@ -1735,7 +1733,7 @@ Window {
                 }
                 MenuSeparator {}
                 MenuItem {
-                    text: "Exit"
+                    text: "Close"
                     onTriggered: _buttonMap.close()
                 }
             }
@@ -1888,11 +1886,6 @@ Window {
                     onTriggered: _photoAdj.open()
                 }
                 MenuSeparator {}
-                MenuItem {
-                    text: "Fit well"
-                    enabled: editing
-                    onTriggered: _buttonMap.fitPhotoWell()
-                }
                 MenuItem {
                     text: "Reset photo"
                     enabled: editing
