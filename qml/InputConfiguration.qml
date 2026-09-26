@@ -17,8 +17,6 @@ Item {
     property int inputIndex
     property bool isOutput: false
     property bool inlineMode: false
-    property bool compactMode: false
-    property int sequenceIndex: -1
     property color editorFill: "#0F2744"
     property color editorEdge: "#3B82F6"
     property color editorAccent: "#3B82F6"
@@ -27,10 +25,14 @@ Item {
     property int editorAccentW: 3
     property bool showAccent: true
     property int editorPad: 10
+    property int editorPadTop: 10
+    property int editorPadRight: 10
+    property int editorPadBottom: 10
+    property int editorPadLeft: 10
     readonly property bool editorLocked: backend && backend.gremlinActive && !isOutput
     enabled: true
     opacity: editorLocked ? 0.55 : 1.0
-    implicitHeight: inlineMode ? Math.max(80, _content.implicitHeight) + editorPad * 2 : 200
+    implicitHeight: inlineMode ? Math.max(80, _content.implicitHeight) + editorPadTop + editorPadBottom : 200
 
     Rectangle {
         visible: inlineMode
@@ -51,7 +53,7 @@ Item {
         color: editorAccent
     }
 
-    function loadModel() {
+    Component.onCompleted: {
         if (!backend || !uiState)
             return
         _root.inputItemModel = backend.getInputItem(
@@ -59,9 +61,6 @@ Item {
             uiState.currentInputIndex
         )
     }
-
-    Component.onCompleted: loadModel()
-    onSequenceIndexChanged: loadModel()
 
     Connections {
         target: uiState
@@ -103,32 +102,20 @@ Item {
         id: _content
 
         anchors.fill: inlineMode ? undefined : parent
-        x: inlineMode ? editorPad : 0
-        y: inlineMode ? editorPad : 0
-        width: parent.width - (inlineMode ? editorPad * 2 : 0)
+        x: inlineMode ? editorPadLeft : 0
+        y: inlineMode ? editorPadTop : 0
+        width: parent.width - (inlineMode ? editorPadLeft + editorPadRight : 0)
         spacing: 8
 
         Repeater {
             id: _inlineRepeater
             model: _root.inlineMode ? _root.inputItemModel : null
 
-            delegate: Item {
-                id: _inlineWrap
-                required property int index
-                required property var modelData
+            delegate: InputItemBinding {
                 Layout.fillWidth: true
-                visible: _root.sequenceIndex < 0 || index === _root.sequenceIndex
-                implicitHeight: visible ? _inlineBind.implicitHeight : 0
-                height: implicitHeight
-
-                InputItemBinding {
-                    id: _inlineBind
-                    width: parent.width
-                    enabled: !editorLocked
-                    compactMode: _root.compactMode
-                    inputBinding: _inlineWrap.modelData
-                    inputItemModel: _root.inputItemModel
-                }
+                enabled: !editorLocked
+                inputBinding: modelData
+                inputItemModel: _root.inputItemModel
             }
         }
 
