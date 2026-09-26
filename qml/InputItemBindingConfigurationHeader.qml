@@ -19,16 +19,23 @@ Item {
     property MouseArea dragHandleArea: _grip
 
     implicitHeight: _layout.implicitHeight
+    property bool sequenceDrag: _grip.drag.active
+    property int ghostToken: 0
+
+    onSequenceDragChanged: {
+        if (!sequenceDrag)
+            hideGhost()
+    }
 
     function syncGhost() {
-        if (!_ghost.visible || !Overlay.overlay)
+        if (!_ghost.visible)
             return
-        var scene = _payload.mapToItem(Overlay.overlay, 0, 0)
-        _ghost.x = scene.x - _ghost.hotX
-        _ghost.y = scene.y - _ghost.hotY
+        _ghost.x = _payload.x - _ghost.hotX
+        _ghost.y = _payload.y - _ghost.hotY
     }
 
     function hideGhost() {
+        ghostToken += 1
         _ghost.visible = false
         _ghostImage.source = ""
     }
@@ -66,13 +73,16 @@ Item {
                     drag.threshold: 0
 
                     onPressed: (mouse) => {
-                        var pos = mapToItem(_root, mouse.x, mouse.y)
-                        _payload.x = pos.x
-                        _payload.y = pos.y
-                        _ghost.hotX = pos.x
-                        _ghost.hotY = pos.y
+                        var cursor = mapToItem(Overlay.overlay, mouse.x, mouse.y)
+                        _payload.x = cursor.x
+                        _payload.y = cursor.y
+                        var local = mapToItem(_root, mouse.x, mouse.y)
+                        _ghost.hotX = local.x
+                        _ghost.hotY = local.y
+                        _root.ghostToken += 1
+                        var token = _root.ghostToken
                         _root.grabToImage((result) => {
-                            if (!_grip.pressed)
+                            if (token !== _root.ghostToken)
                                 return
                             _ghost.width = _root.width
                             _ghost.height = _root.height
@@ -81,7 +91,10 @@ Item {
                             _root.syncGhost()
                         })
                     }
-                    onReleased: _root.hideGhost()
+                    onReleased: {
+                        if (!_grip.drag.active)
+                            _root.hideGhost()
+                    }
                     onCanceled: _root.hideGhost()
                 }
             }
@@ -252,6 +265,7 @@ Item {
     Item {
         id: _payload
 
+        parent: Overlay.overlay
         width: 1
         height: 1
         z: 20
