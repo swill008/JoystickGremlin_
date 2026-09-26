@@ -15,6 +15,15 @@ def test_show_pads_checkbox_and_off_is_zero() -> None:
     assert "showPads !== false" in text
 
 
+def test_view_reloads_after_both_name_and_guid_change() -> None:
+    text = _QML.read_text(encoding="utf-8")
+    assert "onDeviceNameChanged: { loadView();" not in text
+    assert "onGuidChanged: Qt.callLater(function() { loadView(); rebuild() })" in text
+    assert "onDeviceNameChanged: Qt.callLater(function() { loadView(); rebuild() })" in text
+    model = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/module_model.py").read_text(encoding="utf-8")
+    assert "guid_for_module(name, guid)" in model
+
+
 def test_save_toast_click_off_or_two_seconds() -> None:
     text = _QML.read_text(encoding="utf-8")
     assert "id: _savedToast" in text
