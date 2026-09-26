@@ -52,10 +52,24 @@ Item {
                 }
             }
 
+            InputBehavior {
+                id: _behavior
+
+                visible: !_root.hideControlSetup
+                inputBinding: _root.inputBinding
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+            }
+
             JGTextField {
                 id: _description
 
-                Layout.fillWidth: true
+                Layout.preferredWidth: 160
+                Layout.minimumWidth: 110
+                Layout.maximumWidth: 200
 
                 placeholderText: "Description"
                 text: _root.inputBinding.rootAction ?
@@ -64,13 +78,6 @@ Item {
                 onTextEdited: () => {
                     _root.inputBinding.rootAction.actionLabel = text
                 }
-            }
-
-            InputBehavior {
-                id: _behavior
-
-                visible: !_root.hideControlSetup
-                inputBinding: _root.inputBinding
             }
 
             ActionSelector {
