@@ -4,10 +4,14 @@
 
 from __future__ import annotations
 
+import uuid
+import xml.etree.ElementTree as ElementTree
+
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import common, shared_state
+from gremlin.profile import InputItem, InputItemBinding
 from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui.module_inputs import ModuleClaimedInputModel, _kind_to_type
@@ -26,6 +30,116 @@ _WRAPPERS = {
     "description",
     "reference",
 }
+
+def _remap_ids(node: ElementTree.Element, id_map: dict[uuid.UUID, uuid.UUID]) -> None:
+    for entry in node.iter():
+        if "id" in entry.attrib:
+            try:
+                old = uuid.UUID(entry.attrib["id"])
+            except ValueError:
+                old = None
+            if old in id_map:
+                entry.attrib["id"] = str(id_map[old])
+        text = (entry.text or "").strip()
+        if not text:
+            continue
+        try:
+            old = uuid.UUID(text)
+        except ValueError:
+            continue
+        if old in id_map:
+            entry.text = str(id_map[old])
+
+
+def _clone_action(action, library, id_map: dict[uuid.UUID, uuid.UUID]):
+    """Copy one action tree into the library under new ids."""
+    if action is None:
+        return None
+    if action.id in id_map:
+        return library.get_action(id_map[action.id])
+    for child in list(action.get_actions()[0] or []):
+        _clone_action(child, library, id_map)
+    xml = action.to_xml()
+    if xml is None:
+        return None
+    new_id = uuid.uuid4()
+    id_map[action.id] = new_id
+    _remap_ids(xml, id_map)
+    copy = type(action)(action.behavior_type)
+    copy.from_xml(xml, library)
+    library.add_action(copy)
+    return copy
+
+
+def _clone_binding(binding: InputItemBinding, shadow: InputItem) -> InputItemBinding:
+    id_map: dict[uuid.UUID, uuid.UUID] = {}
+    _clone_action(binding.root_action, shadow.library, id_map)
+    node = binding.to_xml()
+    _remap_ids(node, id_map)
+    copy = InputItemBinding(shadow)
+    copy.from_xml(node)
+    shadow.action_sequences.append(copy)
+    return copy
+
+
+def _shadow_item(source: InputItem) -> InputItem:
+    shadow = InputItem(source.library)
+    shadow.device_id = source.device_id
+    shadow.input_type = source.input_type
+    shadow.input_id = source.input_id
+    shadow.mode = source.mode
+    return shadow
+
+
+def _drop_shadow(shadow: InputItem | None) -> None:
+    """Delete a draft tree that was never written onto the real control."""
+    if shadow is None or not shadow.action_sequences:
+        return
+    root = shadow.action_sequences[0].root_action
+    shadow.action_sequences.clear()
+    if root is not None:
+        shadow.library.remove_unused(root)
+
+
+def _fingerprint(binding: InputItemBinding) -> str:
+    chunks: list[str] = []
+
+    def walk(action) -> None:
+        if action is None:
+            return
+        node = action.to_xml()
+        if node is not None:
+            chunks.append(ElementTree.tostring(node, encoding="unicode"))
+        else:
+            kids = action.get_actions()[0] or []
+            chunks.append(f"{getattr(action, 'tag', '')}:{len(kids)}")
+        for child in action.get_actions()[0] or []:
+            walk(child)
+
+    walk(binding.root_action)
+    node = binding.to_xml()
+    if node is not None:
+        chunks.append(ElementTree.tostring(node, encoding="unicode"))
+    return "\n".join(chunks)
+
+
+def _attach_binding(real: InputItem, shadow: InputItem, sequence_index: int) -> int:
+    """Move the draft binding onto the real control. Returns its index."""
+    binding = shadow.action_sequences[0]
+    binding.input_item = real
+    if sequence_index < 0:
+        real.action_sequences.append(binding)
+        return len(real.action_sequences) - 1
+    old = real.action_sequences[sequence_index]
+    real.action_sequences[sequence_index] = binding
+    if (
+        old is not binding
+        and old.root_action is not None
+        and old.root_action is not binding.root_action
+    ):
+        real.library.remove_unused(old.root_action)
+    return sequence_index
+
 
 _TYPE_LABELS = {
     "map-to-vjoy": "Map to vJoy",
@@ -224,6 +338,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
     deviceNameChanged = QtCore.Signal()
     countChanged = QtCore.Signal()
     filtersChanged = QtCore.Signal()
+    paneModelChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -235,6 +350,12 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         signal.profileChanged.connect(self.reload)
         signal.configChanged.connect(self.reload)
         self._claimed.countChanged.connect(self.reload)
+        self._pane_model = None
+        self._pane_shadow: InputItem | None = None
+        self._pane_real: InputItem | None = None
+        self._pane_seq = -1
+        self._pane_hid = -1
+        self._pane_base = ""
 
     def _get_guid(self) -> str:
         return self._claimed.guid
@@ -856,6 +977,137 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             signal.reloadCurrentInputItem.emit()
             return True
         return False
+
+    def _control_spec(self, device_index: int):
+        want = int(device_index)
+        profile = shared_state.current_profile
+        dev = getattr(self._claimed, "_device", None)
+        if profile is None or dev is None or want < 0:
+            return None
+        mode = str(getattr(self._claimed, "_mode", None) or "Default")
+        for i in range(self._claimed.rowCount()):
+            if int(self._claimed.deviceIndexAt(i)) != want:
+                continue
+            kind = _kind_to_type(self._claimed.kindAt(i))
+            hw = int(self._claimed.hwIdAt(i))
+            item = profile.get_input_item(
+                dev.device_guid.uuid,
+                kind,
+                hw,
+                mode,
+                create_if_missing=False,
+            )
+            return profile, dev.device_guid.uuid, kind, hw, mode, item
+        return None
+
+    def _binding(self) -> InputItemBinding | None:
+        shadow = self._pane_shadow
+        if shadow is None or not shadow.action_sequences:
+            return None
+        return shadow.action_sequences[0]
+
+    def _clear_pane_model(self) -> None:
+        model = self._pane_model
+        self._pane_model = None
+        self.paneModelChanged.emit()
+        if model is not None:
+            model.deleteLater()
+
+    def _retarget_draft(self, real: InputItem, index: int) -> None:
+        """Keep editing a copy of the child that OK just wrote."""
+        draft = _shadow_item(real)
+        _clone_binding(real.action_sequences[index], draft)
+        self._pane_shadow = draft
+        self._pane_real = real
+        self._pane_seq = index
+        self._pane_base = _fingerprint(draft.action_sequences[0])
+        from gremlin.ui.profile import InputItemModel
+
+        old = self._pane_model
+        self._pane_model = InputItemModel(draft, self._pane_hid, self)
+        self.paneModelChanged.emit()
+        if old is not None:
+            old.deleteLater()
+
+    @QtCore.Slot(int, int)
+    def beginPane(self, device_index: int, sequence_index: int) -> None:
+        """Open a draft for one new child, or for the child at sequence_index."""
+        self.endPane()
+        spec = self._control_spec(int(device_index))
+        if spec is None:
+            return
+        profile, guid, kind, hw, mode, real = spec
+        seq = int(sequence_index)
+        if seq >= 0 and (real is None or seq >= len(real.action_sequences)):
+            return
+        shadow = InputItem(profile.library)
+        shadow.device_id = guid
+        shadow.input_type = kind
+        shadow.input_id = hw
+        shadow.mode = mode
+        if seq < 0:
+            shadow.add_item_binding()
+        else:
+            _clone_binding(real.action_sequences[seq], shadow)
+        from gremlin.ui.profile import InputItemModel
+
+        self._pane_real = real
+        self._pane_shadow = shadow
+        self._pane_seq = seq
+        self._pane_hid = int(device_index)
+        self._pane_base = _fingerprint(shadow.action_sequences[0])
+        self._pane_model = InputItemModel(shadow, int(device_index), self)
+        self.paneModelChanged.emit()
+
+    @QtCore.Slot(result=bool)
+    def paneDirty(self) -> bool:
+        binding = self._binding()
+        if binding is None:
+            return False
+        return _fingerprint(binding) != self._pane_base
+
+    @QtCore.Slot(result=int)
+    def commitPane(self) -> int:
+        """Write the draft onto the real control. Returns the child index."""
+        binding = self._binding()
+        if binding is None or not self.paneDirty():
+            return self._pane_seq
+        real = self._pane_real
+        if real is None:
+            spec = self._control_spec(self._pane_hid)
+            if spec is None:
+                return -1
+            profile, guid, kind, hw, mode, _item = spec
+            real = profile.get_input_item(guid, kind, hw, mode, create_if_missing=True)
+            self._pane_real = real
+        if real is None:
+            return -1
+        index = _attach_binding(real, self._pane_shadow, self._pane_seq)
+        self._retarget_draft(real, index)
+        signal.inputItemChanged.emit(self._pane_hid)
+        return index
+
+    @QtCore.Slot()
+    def discardPane(self) -> None:
+        """Drop the open draft. A child already written by OK stays."""
+        _drop_shadow(self._pane_shadow)
+        self._pane_shadow = None
+        self._pane_base = ""
+
+    @QtCore.Slot()
+    def endPane(self) -> None:
+        """Close the draft. An uncommitted draft is deleted. An OK'd child stays."""
+        _drop_shadow(self._pane_shadow)
+        self._pane_shadow = None
+        self._pane_real = None
+        self._pane_seq = -1
+        self._pane_hid = -1
+        self._pane_base = ""
+        self._clear_pane_model()
+
+    @QtCore.Property(QtCore.QObject, notify=paneModelChanged)
+    def paneModel(self):
+        return self._pane_model
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     deviceName = QtCore.Property(
