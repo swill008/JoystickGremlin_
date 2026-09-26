@@ -28,6 +28,20 @@ Item {
 
     property int listPadding: 8
     property int rowSpacing: 4
+    property int groupBetween: 4
+    property int groupInside: 4
+    property string groupAlign: "left"
+    property int groupLeft: 0
+    property int groupRight: 0
+    property int groupWidthPct: 100
+    property string groupPadShape: "box"
+    property int groupPad: 0
+    property int groupPadTop: 0
+    property int groupPadRight: 0
+    property int groupPadBottom: 0
+    property int groupPadLeft: 0
+    property int groupRadius: 0
+    property string colorGroup: "#00000000"
     property int parentHeight: 50
     property int childHeight: 36
     property string parentAlign: "left"
@@ -158,6 +172,7 @@ Item {
             else if (_colorTarget === "editor") colorEditor = c
             else if (_colorTarget === "editorBorder") colorEditorBorder = c
             else if (_colorTarget === "editorAccent") colorEditorAccent = c
+            else if (_colorTarget === "group") colorGroup = c
             else colorParent = c
         }
     }
@@ -165,7 +180,21 @@ Item {
     function catalogPayload() {
         return {
             listPadding: padEdge(listPadShape, listPad, listPadLeft),
-            rowSpacing: rowSpacing,
+            rowSpacing: groupBetween,
+            groupBetween: groupBetween,
+            groupInside: groupInside,
+            groupAlign: groupAlign,
+            groupLeft: groupLeft,
+            groupRight: groupRight,
+            groupWidthPct: groupWidthPct,
+            groupPadShape: groupPadShape,
+            groupPad: groupPad,
+            groupPadTop: groupPadTop,
+            groupPadRight: groupPadRight,
+            groupPadBottom: groupPadBottom,
+            groupPadLeft: groupPadLeft,
+            groupRadius: groupRadius,
+            colorGroup: colorGroup,
             parentHeight: parentHeight,
             childHeight: childHeight,
             parentAlign: parentAlign,
@@ -239,6 +268,20 @@ Item {
     function applyDefaults() {
         listPadding = 8
         rowSpacing = 4
+        groupBetween = 4
+        groupInside = 4
+        groupAlign = "left"
+        groupLeft = 0
+        groupRight = 0
+        groupWidthPct = 100
+        groupPadShape = "box"
+        groupPad = 0
+        groupPadTop = 0
+        groupPadRight = 0
+        groupPadBottom = 0
+        groupPadLeft = 0
+        groupRadius = 0
+        colorGroup = "#00000000"
         parentHeight = 50
         childHeight = 36
         parentAlign = "left"
@@ -331,6 +374,20 @@ Item {
         }
         listPadding = numVal(v.listPadding, 8)
         rowSpacing = numVal(v.rowSpacing, 4)
+        groupBetween = edgeOr(v.groupBetween, rowSpacing)
+        groupInside = edgeOr(v.groupInside, rowSpacing)
+        groupAlign = v.groupAlign || "left"
+        groupLeft = edgeOr(v.groupLeft, 0)
+        groupRight = edgeOr(v.groupRight, 0)
+        groupWidthPct = edgeOr(v.groupWidthPct, 100)
+        groupPadShape = v.groupPadShape || "box"
+        groupPad = edgeOr(v.groupPad, 0)
+        groupPadTop = edgeOr(v.groupPadTop, 0)
+        groupPadRight = edgeOr(v.groupPadRight, 0)
+        groupPadBottom = edgeOr(v.groupPadBottom, 0)
+        groupPadLeft = edgeOr(v.groupPadLeft, 0)
+        groupRadius = edgeOr(v.groupRadius, 0)
+        colorGroup = v.colorGroup || "#00000000"
         parentHeight = numVal(v.parentHeight, 50)
         childHeight = numVal(v.childHeight, 36)
         parentAlign = v.parentAlign || "left"
@@ -516,6 +573,14 @@ Item {
         return rowW(total, editorAlign, editorIndent, editorRight, editorWidthPct)
     }
 
+    function groupX(total) {
+        return rowX(total, groupAlign, groupLeft, groupRight, groupWidthPct)
+    }
+
+    function groupW(total) {
+        return rowW(total, groupAlign, groupLeft, groupRight, groupWidthPct)
+    }
+
     Connections {
         target: signal
         function onSetInputIndex(index) { showHid(index) }
@@ -688,7 +753,7 @@ Item {
                 Layout.topMargin: padEdge(listPadShape, listPad, listPadTop)
                 Layout.bottomMargin: padEdge(listPadShape, listPad, listPadBottom)
                 scrollbarAlwaysVisible: true
-                spacing: rowSpacing
+                spacing: 0
                 highlightFollowsCurrentItem: true
                 highlightMoveDuration: {
                     if (!_highlightSpeed)
@@ -763,11 +828,43 @@ Item {
                     required property int indent
                     property var lv: ListView.view
                     readonly property bool isLeaf: rowKind === "leaf"
+                    readonly property bool groupStart: rowKind === "group" || rowKind === "unmapped"
+                    readonly property int kidCount: groupStart ? lv.catalogModel.leafRun(index) : 0
+                    readonly property int shownKids: (expanded || !lv.kidsOn) ? 0 : kidCount
+                    readonly property int gPadT: groupStart ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadTop) : 0
+                    readonly property int gPadB: groupStart ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadBottom) : 0
+                    readonly property int gPadL: (groupStart || isLeaf) ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadLeft) : 0
+                    readonly property int gPadR: (groupStart || isLeaf) ? _root.padEdge(_root.groupPadShape, _root.groupPad, _root.groupPadRight) : 0
+                    readonly property int topGap: {
+                        if (hideLeaf)
+                            return 0
+                        if (isLeaf)
+                            return _root.groupInside
+                        if (index > 0)
+                            return _root.groupBetween + gPadT
+                        return gPadT
+                    }
+                    readonly property bool endOfCard: isLeaf && lv.catalogModel.lastLeaf(index)
+                    readonly property int bottomGap: {
+                        if (hideLeaf)
+                            return 0
+                        if (groupStart && shownKids === 0)
+                            return gPadB
+                        if (endOfCard)
+                            return gPadB
+                        return 0
+                    }
+                    readonly property int boxX: (groupStart || isLeaf) ? _root.groupX(width) + gPadL : 0
+                    readonly property int boxW: {
+                        if (!(groupStart || isLeaf))
+                            return width
+                        return Math.max(40, _root.groupW(width) - gPadL - gPadR)
+                    }
                     width: lv.width - 12
                     readonly property bool isGroup: rowKind === "group" || rowKind === "unmapped"
                     readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
                     readonly property bool hideLeaf: isLeaf && (deviceIndex === lv.editingHid || !lv.kidsOn)
-                    height: hideLeaf ? 0 : ((isLeaf ? lv.childH : lv.parentH) + (expanded ? _editor.height + 8 : 0))
+                    height: hideLeaf ? 0 : (topGap + (isLeaf ? lv.childH : lv.parentH) + (expanded ? _editor.height + 8 : 0) + bottomGap)
                     visible: !hideLeaf
 
                     readonly property bool selected: index === lv.currentIndex || expanded
@@ -778,9 +875,21 @@ Item {
                     readonly property bool axisRow: kind === "axis"
 
                     Rectangle {
+                        visible: groupStart && _root.colorGroup !== "#00000000" && _root.colorGroup !== "transparent"
+                        z: -1
+                        x: _root.groupX(_row.width)
+                        y: index > 0 ? _root.groupBetween : 0
+                        width: Math.max(0, _root.groupW(_row.width))
+                        height: gPadT + lv.parentH + (expanded ? _editor.height + 8 : 0) + (shownKids * (_root.groupInside + lv.childH)) + gPadB
+                        radius: _root.groupRadius
+                        color: _root.colorGroup
+                    }
+
+                    Rectangle {
                         id: _header
-                        x: isLeaf ? _root.leafX(_row.width) : _root.parentX(_row.width)
-                        width: isLeaf ? _root.leafW(_row.width) : _root.parentW(_row.width)
+                        y: topGap
+                        x: boxX + (isLeaf ? _root.leafX(boxW) : _root.parentX(boxW))
+                        width: isLeaf ? _root.leafW(boxW) : _root.parentW(boxW)
                         height: isLeaf ? lv.childH : lv.parentH
                         radius: isLeaf ? _root.childRadius : lv.rowRad
                         border.width: selected ? 2 : 1
@@ -889,9 +998,9 @@ Item {
                         id: _editor
                         active: expanded
                         visible: expanded
-                        x: _root.editorX(_row.width)
-                        y: lv.parentH + lv.edGap
-                        width: _root.editorW(_row.width)
+                        x: boxX + _root.editorX(boxW)
+                        y: topGap + lv.parentH + lv.edGap
+                        width: _root.editorW(boxW)
                         height: visible && item ? Math.max(80, item.implicitHeight) : 0
                         onLoaded: if (item) item.width = width
                         onWidthChanged: if (item) item.width = width
@@ -978,8 +1087,8 @@ Item {
                             Layout.fillWidth: true
                             SectionHead { title: "LIST" }
                             RowLayout {
-                                Label { text: "Gap"; color: "#E4E4E7"; Layout.fillWidth: true }
-                                SpinBox { from: 0; to: 16; value: rowSpacing; onValueModified: rowSpacing = value }
+                                Label { text: "Between"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 48; value: groupBetween; onValueModified: groupBetween = value }
                             }
                             Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
                             PadFields {
@@ -1006,6 +1115,50 @@ Item {
                                 Label { text: "Summary size"; color: "#E4E4E7"; Layout.fillWidth: true }
                                 SpinBox { from: 9; to: 20; value: summaryFont; onValueModified: summaryFont = value }
                             }
+                        }
+
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            SectionHead { title: "GROUP" }
+                            RowLayout {
+                                Label { text: "Inside"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 48; value: groupInside; onValueModified: groupInside = value }
+                            }
+                            Label { text: "Padding"; color: "#A1A1AA"; font.pixelSize: 11 }
+                            PadFields {
+                                shape: groupPadShape
+                                size: groupPad
+                                padTop: groupPadTop
+                                padRight: groupPadRight
+                                padBottom: groupPadBottom
+                                padLeft: groupPadLeft
+                                onEdited: function(shape, size, padTop, padRight, padBottom, padLeft) {
+                                    groupPadShape = shape
+                                    groupPad = size
+                                    groupPadTop = padTop
+                                    groupPadRight = padRight
+                                    groupPadBottom = padBottom
+                                    groupPadLeft = padLeft
+                                }
+                            }
+                            AlignFields {
+                                align: groupAlign
+                                fromLeft: groupLeft
+                                fromRight: groupRight
+                                widthPct: groupWidthPct
+                                onEdited: function(align, fromLeft, fromRight, widthPct) {
+                                    groupAlign = align
+                                    groupLeft = fromLeft
+                                    groupRight = fromRight
+                                    groupWidthPct = widthPct
+                                }
+                            }
+                            RowLayout {
+                                Label { text: "Corner radius"; color: "#E4E4E7"; Layout.fillWidth: true }
+                                SpinBox { from: 0; to: 16; value: groupRadius; onValueModified: groupRadius = value }
+                            }
+                            ColorPick { label: "Color"; swatch: colorGroup; target: "group" }
                         }
 
                         ColumnLayout {
