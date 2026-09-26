@@ -20,22 +20,23 @@ Item {
 
     implicitHeight: _layout.implicitHeight
     property bool sequenceDrag: _grip.drag.active
-    property int ghostToken: 0
 
     onSequenceDragChanged: {
-        if (!sequenceDrag)
-            hideGhost()
+        if (sequenceDrag)
+            return
+        _grip.held = false
+        hideGhost()
     }
 
-    function syncGhost() {
-        if (!_ghost.visible)
+    function placeGhost(mouseX, mouseY) {
+        if (!_ghostImage.source || !Overlay.overlay)
             return
-        _ghost.x = _payload.x - _ghost.hotX
-        _ghost.y = _payload.y - _ghost.hotY
+        var scene = _grip.mapToItem(Overlay.overlay, mouseX, mouseY)
+        _ghost.x = scene.x - _ghost.hotX
+        _ghost.y = scene.y - _ghost.hotY
     }
 
     function hideGhost() {
-        ghostToken += 1
         _ghost.visible = false
         _ghostImage.source = ""
     }
@@ -71,31 +72,55 @@ Item {
                     drag.target: _payload
                     drag.axis: Drag.XAndYAxis
                     drag.threshold: 0
+                    property real startY: 0
+                    property bool held: false
+                    property real lastX: 0
+                    property real lastY: 0
 
                     onPressed: (mouse) => {
-                        var cursor = mapToItem(Overlay.overlay, mouse.x, mouse.y)
-                        _payload.x = cursor.x
-                        _payload.y = cursor.y
-                        var local = mapToItem(_root, mouse.x, mouse.y)
-                        _ghost.hotX = local.x
-                        _ghost.hotY = local.y
-                        _root.ghostToken += 1
-                        var token = _root.ghostToken
+                        startY = mouse.y
+                        lastX = mouse.x
+                        lastY = mouse.y
+                        held = false
+                        var pos = mapToItem(_root, mouse.x, mouse.y)
+                        _payload.x = pos.x
+                        _payload.y = pos.y
+                        _ghost.hotX = pos.x
+                        _ghost.hotY = pos.y
                         _root.grabToImage((result) => {
-                            if (token !== _root.ghostToken)
+                            if (!_grip.pressed && !_grip.held)
                                 return
                             _ghost.width = _root.width
                             _ghost.height = _root.height
                             _ghostImage.source = result.url
                             _ghost.visible = true
-                            _root.syncGhost()
+                            _root.placeGhost(_grip.lastX, _grip.lastY)
                         })
                     }
-                    onReleased: {
-                        if (!_grip.drag.active)
-                            _root.hideGhost()
+                    onPositionChanged: (mouse) => {
+                        if (!pressed)
+                            return
+                        lastX = mouse.x
+                        lastY = mouse.y
+                        var pos = mapToItem(_root, mouse.x, mouse.y)
+                        _payload.x = pos.x
+                        _payload.y = pos.y
+                        var ready = _root.inputBinding && _root.inputBinding.rootAction
+                        if (!held && ready && Math.abs(mouse.y - startY) >= 6)
+                            held = true
+                        if (_ghost.visible)
+                            _root.placeGhost(mouse.x, mouse.y)
                     }
-                    onCanceled: _root.hideGhost()
+                    onReleased: {
+                        if (_grip.drag.active)
+                            return
+                        held = false
+                        _root.hideGhost()
+                    }
+                    onCanceled: {
+                        held = false
+                        _root.hideGhost()
+                    }
                 }
             }
 
@@ -265,15 +290,11 @@ Item {
     Item {
         id: _payload
 
-        parent: Overlay.overlay
         width: 1
         height: 1
         z: 20
 
-        onXChanged: _root.syncGhost()
-        onYChanged: _root.syncGhost()
-
-        Drag.active: _grip.drag.active && _root.inputBinding && _root.inputBinding.rootAction
+        Drag.active: _grip.held
         Drag.dragType: Drag.Automatic
         Drag.supportedActions: Qt.MoveAction
         Drag.proposedAction: Qt.MoveAction
