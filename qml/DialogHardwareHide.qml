@@ -25,8 +25,6 @@ Window {
         id: _hh
     }
 
-    ButtonGroup { id: listMode }
-
     Timer {
         id: _sizeSave
         interval: 400
@@ -135,12 +133,11 @@ Window {
                 Switch {
                     id: controlSwitch
                     enabled: _hh.installed
-                    checked: _hh.gremlinControl
+                    property bool shown: _hh.gremlinControl
+                    onShownChanged: if (!pressed) checked = shown
+                    Component.onCompleted: checked = shown
                     text: "Gremlin control"
-                    onClicked: {
-                        _hh.setGremlinControl(controlSwitch.checked)
-                        controlSwitch.checked = Qt.binding(function() { return _hh.gremlinControl })
-                    }
+                    onClicked: _hh.setGremlinControl(checked)
                 }
                 Button {
                     text: "Get HiDHide"
@@ -166,18 +163,19 @@ Window {
                 Switch {
                     id: cloakSwitch
                     enabled: _hh.installed && _hh.gremlinControl
-                    checked: _hh.cloakOn
+                    property bool shown: _hh.cloakOn
+                    onShownChanged: if (!pressed) checked = shown
+                    Component.onCompleted: checked = shown
                     text: "HiDHide Enabled"
-                    onClicked: {
-                        _hh.setCloak(cloakSwitch.checked)
-                        cloakSwitch.checked = Qt.binding(function() { return _hh.cloakOn })
-                    }
+                    onClicked: _hh.setCloak(checked)
                 }
                 Switch {
                     id: _gamingOnly
-                    checked: _hh.gamingOnly
+                    property bool shown: _hh.gamingOnly
+                    onShownChanged: if (!pressed) checked = shown
+                    Component.onCompleted: checked = shown
                     text: "Gaming devices only"
-                    onClicked: _hh.setGamingOnly(_gamingOnly.checked)
+                    onClicked: _hh.setGamingOnly(checked)
                 }
                 Button {
                     text: "Test"
@@ -349,11 +347,10 @@ Window {
                             Switch {
                                 id: hideSwitch
                                 enabled: _hh.installed && _hh.gremlinControl && row.canHide
-                                checked: !!(row && row.session)
-                                onClicked: {
-                                    _hh.setDeviceHidden(row.instanceId, hideSwitch.checked)
-                                    hideSwitch.checked = Qt.binding(function() { return !!(row && row.session) })
-                                }
+                                property bool shown: !!(row && row.session)
+                                onShownChanged: if (!pressed) checked = shown
+                                Component.onCompleted: checked = shown
+                                onClicked: _hh.setDeviceHidden(row.instanceId, checked)
                             }
                         }
                         Text {
@@ -389,27 +386,19 @@ Window {
                     spacing: 16
                     RadioButton {
                         id: allowList
+                        autoExclusive: false
                         text: "Allow list"
                         enabled: _hh.installed && _hh.gremlinControl
                         checked: !_hh.inverseOn
-                        ButtonGroup.group: listMode
-                        onClicked: {
-                            _hh.setInverse(false)
-                            allowList.checked = Qt.binding(function() { return !_hh.inverseOn })
-                            blockList.checked = Qt.binding(function() { return _hh.inverseOn })
-                        }
+                        onClicked: _hh.setInverse(false)
                     }
                     RadioButton {
                         id: blockList
+                        autoExclusive: false
                         text: "Block list"
                         enabled: _hh.installed && _hh.gremlinControl
                         checked: _hh.inverseOn
-                        ButtonGroup.group: listMode
-                        onClicked: {
-                            _hh.setInverse(true)
-                            allowList.checked = Qt.binding(function() { return !_hh.inverseOn })
-                            blockList.checked = Qt.binding(function() { return _hh.inverseOn })
-                        }
+                        onClicked: _hh.setInverse(true)
                     }
                 }
 
