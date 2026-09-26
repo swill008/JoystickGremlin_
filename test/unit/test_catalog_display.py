@@ -12,7 +12,7 @@ _MM = Path(__file__).resolve().parents[2] / "gremlin/ui/module_model.py"
 
 def test_main_has_catalog_display_button() -> None:
     text = _MAIN.read_text(encoding="utf-8")
-    assert "property bool catalogPanel: false" in text
+    assert "property bool catalogPanel: true" in text
     assert "property bool outputViewPanel: true" in text
     assert "outputViewPanel = _windowPlacement.outputPanelOpen()" in text
     assert "onOutputViewPanelChanged: _windowPlacement.setOutputPanelOpen(outputViewPanel)" in text
