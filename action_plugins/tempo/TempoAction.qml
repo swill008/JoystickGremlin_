@@ -52,6 +52,7 @@ Item {
                 text: "Activate on"
             }
             RadioButton {
+                autoExclusive: false
                 text: "press"
                 checked: _root.action.activateOn == "press"
 
@@ -60,6 +61,7 @@ Item {
                 }
             }
             RadioButton {
+                autoExclusive: false
                 text: "release"
                 checked: _root.action.activateOn == "release"
 
