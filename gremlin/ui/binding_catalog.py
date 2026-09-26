@@ -465,6 +465,36 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             return int(self._rows[row]["deviceIndex"])
         return -1
 
+    @QtCore.Slot(int, result=str)
+    def rowKindAt(self, row: int) -> str:
+        if 0 <= row < len(self._rows):
+            return str(self._rows[row]["rowKind"])
+        return ""
+
+    def _parent_row(self, device_index: int) -> dict | None:
+        want = int(device_index)
+        for row in self._rows:
+            if int(row["deviceIndex"]) != want:
+                continue
+            if row["rowKind"] in ("group", "unmapped"):
+                return row
+        return None
+
+    @QtCore.Slot(int, result=str)
+    def controlLabel(self, device_index: int) -> str:
+        row = self._parent_row(device_index)
+        return str(row["name"]) if row else ""
+
+    @QtCore.Slot(int, result=str)
+    def controlSummary(self, device_index: int) -> str:
+        row = self._parent_row(device_index)
+        if row is None:
+            return ""
+        text = str(row.get("summary") or "")
+        if row["rowKind"] == "unmapped":
+            return "Not bound"
+        return text
+
     @QtCore.Slot(int, result=int)
     def leafRun(self, row: int) -> int:
         """How many child rows follow this parent."""
