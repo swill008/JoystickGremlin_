@@ -93,12 +93,20 @@ def _shadow_item(source: InputItem) -> InputItem:
 
 def _drop_shadow(shadow: InputItem | None) -> None:
     """Delete a draft tree that was never written onto the real control."""
-    if shadow is None or not shadow.action_sequences:
+    if shadow is None:
         return
-    root = shadow.action_sequences[0].root_action
+    roots = [
+        binding.root_action
+        for binding in shadow.action_sequences
+        if binding.root_action is not None
+    ]
     shadow.action_sequences.clear()
-    if root is not None:
+    for root in roots:
         shadow.library.remove_unused(root)
+
+
+def _fingerprint_item(item: InputItem) -> str:
+    return "\n--\n".join(_fingerprint(binding) for binding in item.action_sequences)
 
 
 def _fingerprint(binding: InputItemBinding) -> str:
@@ -356,6 +364,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._pane_seq = -1
         self._pane_hid = -1
         self._pane_base = ""
+        self._pane_whole = False
 
     def _get_guid(self) -> str:
         return self._claimed.guid
@@ -1013,14 +1022,17 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         if model is not None:
             model.deleteLater()
 
-    def _retarget_draft(self, real: InputItem, index: int) -> None:
-        """Keep editing a copy of the child that OK just wrote."""
+    def _retarget_draft(self, real: InputItem, only_index: int | None = None) -> None:
+        """Keep editing a copy of the actions OK just wrote."""
         draft = _shadow_item(real)
-        _clone_binding(real.action_sequences[index], draft)
+        bindings = real.action_sequences
+        if only_index is not None and 0 <= only_index < len(bindings):
+            bindings = [bindings[only_index]]
+        for binding in bindings:
+            _clone_binding(binding, draft)
         self._pane_shadow = draft
         self._pane_real = real
-        self._pane_seq = index
-        self._pane_base = _fingerprint(draft.action_sequences[0])
+        self._pane_base = _fingerprint_item(draft)
         from gremlin.ui.profile import InputItemModel
 
         old = self._pane_model
@@ -1029,23 +1041,40 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         if old is not None:
             old.deleteLater()
 
-    @QtCore.Slot(int, int)
-    def beginPane(self, device_index: int, sequence_index: int) -> None:
-        """Open a draft for one new child, or for the child at sequence_index."""
+    def _replace_sequences(self, real: InputItem, shadow: InputItem) -> None:
+        old = list(real.action_sequences)
+        moved = list(shadow.action_sequences)
+        real.action_sequences = []
+        for binding in moved:
+            binding.input_item = real
+            real.action_sequences.append(binding)
+        for binding in old:
+            if binding.root_action is None or binding in moved:
+                continue
+            real.library.remove_unused(binding.root_action)
+
+    @QtCore.Slot(int, int, result=int)
+    def beginPane(self, device_index: int, sequence_index: int) -> int:
+        """Open the parent's actions, or one child when sequence_index is set."""
         self.endPane()
         spec = self._control_spec(int(device_index))
         if spec is None:
-            return
+            return 0
         profile, guid, kind, hw, mode, real = spec
         seq = int(sequence_index)
         if seq >= 0 and (real is None or seq >= len(real.action_sequences)):
-            return
+            return 0
         shadow = InputItem(profile.library)
         shadow.device_id = guid
         shadow.input_type = kind
         shadow.input_id = hw
         shadow.mode = mode
-        if seq < 0:
+        whole = False
+        if seq < 0 and real is not None and real.action_sequences:
+            for binding in real.action_sequences:
+                _clone_binding(binding, shadow)
+            whole = True
+        elif seq < 0:
             shadow.add_item_binding()
         else:
             _clone_binding(real.action_sequences[seq], shadow)
@@ -1055,22 +1084,24 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._pane_shadow = shadow
         self._pane_seq = seq
         self._pane_hid = int(device_index)
-        self._pane_base = _fingerprint(shadow.action_sequences[0])
+        self._pane_whole = whole
+        self._pane_base = _fingerprint_item(shadow)
         self._pane_model = InputItemModel(shadow, int(device_index), self)
         self.paneModelChanged.emit()
+        return len(shadow.action_sequences) if whole else 0
 
     @QtCore.Slot(result=bool)
     def paneDirty(self) -> bool:
-        binding = self._binding()
-        if binding is None:
+        shadow = self._pane_shadow
+        if shadow is None or not shadow.action_sequences:
             return False
-        return _fingerprint(binding) != self._pane_base
+        return _fingerprint_item(shadow) != self._pane_base
 
     @QtCore.Slot(result=int)
     def commitPane(self) -> int:
         """Write the draft onto the real control. Returns the child index."""
-        binding = self._binding()
-        if binding is None or not self.paneDirty():
+        shadow = self._pane_shadow
+        if shadow is None or not shadow.action_sequences or not self.paneDirty():
             return self._pane_seq
         real = self._pane_real
         if real is None:
@@ -1082,8 +1113,17 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             self._pane_real = real
         if real is None:
             return -1
-        index = _attach_binding(real, self._pane_shadow, self._pane_seq)
-        self._retarget_draft(real, index)
+        if self._pane_whole or self._pane_seq < 0:
+            self._replace_sequences(real, shadow)
+            self._pane_seq = -1
+            self._pane_whole = True
+            self._retarget_draft(real, None)
+            index = 0
+        else:
+            index = _attach_binding(real, shadow, self._pane_seq)
+            self._pane_seq = index
+            self._pane_whole = False
+            self._retarget_draft(real, index)
         signal.inputItemChanged.emit(self._pane_hid)
         return index
 
@@ -1103,6 +1143,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._pane_seq = -1
         self._pane_hid = -1
         self._pane_base = ""
+        self._pane_whole = False
         self._clear_pane_model()
 
     @QtCore.Property(QtCore.QObject, notify=paneModelChanged)
