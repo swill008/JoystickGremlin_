@@ -282,6 +282,20 @@ ApplicationWindow {
         return cut >= 0 ? text.slice(cut + 1) : text
     }
 
+    function openActionEditor(hid) {
+        var name = _deviceInputList ? _deviceInputList.claimDeviceName : ""
+        var existing = Helpers.windowOf("DialogActionEditor.qml")
+        if (existing && existing.openFor) {
+            existing.openFor(name, _deviceModel, hid)
+            return
+        }
+        Helpers.createComponent("DialogActionEditor.qml", {
+            "deviceName": name,
+            "device": _deviceModel,
+            "startHid": hid
+        })
+    }
+
     function openBlankButtonMap() {
         var existing = buttonMapWindow()
         if (existing && existing.openBlank) {
@@ -580,6 +594,10 @@ ApplicationWindow {
                 onTriggered: () => {
                     Helpers.toggleComponent("DialogXboxViewer.qml")
                 }
+            }
+            MenuItem {
+                text: qsTr("Action Editor")
+                onTriggered: () => { openActionEditor(-1) }
             }
             MenuItem {
                 text: qsTr("Button Map")
@@ -1173,6 +1191,7 @@ ApplicationWindow {
                 claimDeviceName: configTitleName
                 isOutput: _root.configDirection === "dest"
                 showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel
+                onAdvancedRequested: (hid) => { openActionEditor(hid) }
                 onClosePanel: {
                     if (_root.configDirection === "dest")
                         _root.outputViewPanel = false
