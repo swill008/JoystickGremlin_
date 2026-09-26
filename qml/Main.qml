@@ -248,16 +248,6 @@ ApplicationWindow {
         return cut >= 0 ? text.slice(cut + 1) : text
     }
 
-    function openButtonMapForFocus() {
-        var card = _statusLastCard
-        if ((!card || !(card.rawName || card.name)) && _moduleModel)
-            card = _moduleModel.focusedCardMap()
-        if (card && (card.rawName || card.name))
-            openButtonMapForCard(card)
-        else
-            openBlankButtonMap()
-    }
-
     function openBlankButtonMap() {
         var existing = buttonMapWindow()
         if (existing && existing.openBlank) {
@@ -499,7 +489,7 @@ ApplicationWindow {
             MenuSeparator {}
             MenuItem {
                 text: qsTr("Button Map")
-                onTriggered: () => { openButtonMapForFocus() }
+                onTriggered: () => { openBlankButtonMap() }
             }
             MenuItem {
                 text: qsTr("Device Viewer")
@@ -559,7 +549,7 @@ ApplicationWindow {
             }
             MenuItem {
                 text: qsTr("Button Map")
-                onTriggered: () => { openButtonMapForFocus() }
+                onTriggered: () => { openBlankButtonMap() }
             }
             MenuItem {
                 text: qsTr("Calibration")
@@ -689,10 +679,10 @@ ApplicationWindow {
 
             JGToolButton {
                 text: "\uF5E7"
-                tooltip: qsTr("Open Button Map")
+                tooltip: qsTr("Open a blank Button Map")
                 caption: "Button Map"
 
-                onClicked: () => { openButtonMapForFocus() }
+                onClicked: () => { openBlankButtonMap() }
             }
 
             JGToolButton {
