@@ -25,6 +25,7 @@ KEY_MENU_W = "button-map-menu-width"
 KEY_MENU_H = "button-map-menu-height"
 KEY_DISPLAY_PANELS = "display-panels"
 KEY_CLOSE_PANE = "close-pane-after-ok"
+KEY_PANE_W = "action-pane-width"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
@@ -44,6 +45,7 @@ def _ensure() -> Configuration:
         (KEY_MENU_H, PropertyType.Int, DEFAULT_MENU_H),
         (KEY_DISPLAY_PANELS, PropertyType.String, "{}"),
         (KEY_CLOSE_PANE, PropertyType.Bool, False),
+        (KEY_PANE_W, PropertyType.Int, 560),
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
@@ -207,6 +209,16 @@ class WindowPlacement(QtCore.QObject):
     def setClosePaneAfterOk(self, close_after: bool) -> None:
         cfg = _ensure()
         cfg.set(SECTION, GROUP, KEY_CLOSE_PANE, bool(close_after))
+
+    @QtCore.Slot(result=int)
+    def actionPaneWidth(self) -> int:
+        cfg = _ensure()
+        return max(420, min(1600, int(cfg.value(SECTION, GROUP, KEY_PANE_W) or 560)))
+
+    @QtCore.Slot(int)
+    def setActionPaneWidth(self, width: int) -> None:
+        cfg = _ensure()
+        cfg.set(SECTION, GROUP, KEY_PANE_W, max(420, min(1600, int(width))))
 
     @QtCore.Slot(str, str, result=bool)
     def displayPanelOpen(self, kind: str, device_id: str) -> bool:
