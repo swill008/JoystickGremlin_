@@ -20,10 +20,10 @@ Item {
 
     implicitHeight: _layout.implicitHeight
 
-    function placeGhost(mouseX, mouseY) {
-        if (!_ghostImage.source || !Overlay.overlay)
+    function syncGhost() {
+        if (!_ghost.visible || !Overlay.overlay)
             return
-        var scene = _grip.mapToItem(Overlay.overlay, mouseX, mouseY)
+        var scene = _payload.mapToItem(Overlay.overlay, 0, 0)
         _ghost.x = scene.x - _ghost.hotX
         _ghost.y = scene.y - _ghost.hotY
     }
@@ -61,16 +61,11 @@ Item {
                     preventStealing: true
                     hoverEnabled: true
                     cursorShape: Qt.OpenHandCursor
-                    property real startY: 0
-                    property bool held: false
-                    property real lastX: 0
-                    property real lastY: 0
+                    drag.target: _payload
+                    drag.axis: Drag.XAndYAxis
+                    drag.threshold: 0
 
                     onPressed: (mouse) => {
-                        startY = mouse.y
-                        lastX = mouse.x
-                        lastY = mouse.y
-                        held = false
                         var pos = mapToItem(_root, mouse.x, mouse.y)
                         _payload.x = pos.x
                         _payload.y = pos.y
@@ -83,31 +78,11 @@ Item {
                             _ghost.height = _root.height
                             _ghostImage.source = result.url
                             _ghost.visible = true
-                            _root.placeGhost(_grip.lastX, _grip.lastY)
+                            _root.syncGhost()
                         })
                     }
-                    onPositionChanged: (mouse) => {
-                        if (!pressed)
-                            return
-                        lastX = mouse.x
-                        lastY = mouse.y
-                        var pos = mapToItem(_root, mouse.x, mouse.y)
-                        _payload.x = pos.x
-                        _payload.y = pos.y
-                        var ready = _root.inputBinding && _root.inputBinding.rootAction
-                        if (!held && ready && Math.abs(mouse.y - startY) >= 6)
-                            held = true
-                        if (_ghost.visible)
-                            _root.placeGhost(mouse.x, mouse.y)
-                    }
-                    onReleased: {
-                        held = false
-                        _root.hideGhost()
-                    }
-                    onCanceled: {
-                        held = false
-                        _root.hideGhost()
-                    }
+                    onReleased: _root.hideGhost()
+                    onCanceled: _root.hideGhost()
                 }
             }
 
@@ -281,7 +256,10 @@ Item {
         height: 1
         z: 20
 
-        Drag.active: _grip.held
+        onXChanged: _root.syncGhost()
+        onYChanged: _root.syncGhost()
+
+        Drag.active: _grip.drag.active && _root.inputBinding && _root.inputBinding.rootAction
         Drag.dragType: Drag.Automatic
         Drag.supportedActions: Qt.MoveAction
         Drag.proposedAction: Qt.MoveAction
