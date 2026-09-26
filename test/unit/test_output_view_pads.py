@@ -93,3 +93,15 @@ def test_button_grid_uses_columns_and_width() -> None:
     assert "GridView" not in text
     assert "columns: Math.max(1, _root.buttonColumns)" in text
     assert "Layout.preferredWidth: Math.max(40, _root.buttonWidth)" in text
+
+
+def test_vjoy_view_save_uses_that_devices_module_file() -> None:
+    text = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/module_model.py").read_text(encoding="utf-8")
+    save = text[text.find("def saveViewConfig"): text.find("def catalogConfigJson")]
+    load = text[text.find("def viewConfigJson"): text.find("def saveViewConfig")]
+    assert "module_json_path(name, guid)" in save
+    assert "module_json_path(device_name, guid)" in load
+    rule = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/hardware_profile.py").read_text(encoding="utf-8")
+    body = rule[rule.find("def module_json_path"): rule.find("def resolve_module_slug")]
+    assert "return own_path" in body
+    assert 'doc.get("device")' in body
