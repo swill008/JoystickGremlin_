@@ -462,7 +462,9 @@ class Library:
                 for i, child in enumerate(action.get_actions(selector)[0]):
                     if child.id in invalid_aids:
                         to_remove.append(i)
-                for i in to_remove:
+                # Delete from the end so earlier removals do not shift the
+                # positions still waiting to be removed.
+                for i in reversed(to_remove):
                     action.remove_action(i, selector)
 
         # Generate library subtree
