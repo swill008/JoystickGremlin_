@@ -202,3 +202,13 @@ def test_editor_geometry_defaults_match_old_indent() -> None:
     assert '"editorIndent": 12' in mm
     assert '"editorRight": 0' in mm
     assert '"colorEditorAccent": "#3B82F6"' in mm
+
+
+def test_photo_lookup_does_not_copy_another_device() -> None:
+    text = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/hardware_profile.py").read_text(encoding="utf-8")
+    start = text.find("def resolve_module_slug")
+    end = text.find("def module_file_choices")
+    body = text[start:end]
+    assert "_write_bindings" not in body
+    assert "for folder in _maps_dir().iterdir()" not in text
+    assert "def _guid_for_this_device" in text
