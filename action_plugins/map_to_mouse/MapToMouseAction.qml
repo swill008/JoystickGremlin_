@@ -51,7 +51,7 @@ Item {
                 id: _mode_button
 
                 text: "Button"
-                visible: inputBinding.behavior === "button"
+                visible: inputBinding && inputBinding.behavior === "button"
 
                 checked: _root.action.mode === "Button"
                 onClicked: () => { _root.action.mode = "Button" }
@@ -89,7 +89,7 @@ Item {
 
         // Motion configuration for button-like inputs.
         GridLayout {
-            visible: _mode_motion.checked && inputBinding.behavior === "button"
+            visible: _mode_motion.checked && inputBinding && inputBinding.behavior === "button"
 
             columns: 5
 
@@ -178,7 +178,7 @@ Item {
 
         // Motion configuration for axis inputs.
         ColumnLayout {
-            visible: _mode_motion.checked && inputBinding.behavior === "axis"
+            visible: _mode_motion.checked && inputBinding && inputBinding.behavior === "axis"
 
             RowLayout {
                 Label {
@@ -249,7 +249,7 @@ Item {
 
         // Motion configuration for hat inputs.
         GridLayout {
-            visible: _mode_motion.checked && inputBinding.behavior === "hat"
+            visible: _mode_motion.checked && inputBinding && inputBinding.behavior === "hat"
 
             columns: 4
 
