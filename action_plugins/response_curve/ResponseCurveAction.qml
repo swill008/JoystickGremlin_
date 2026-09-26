@@ -255,7 +255,10 @@ Item {
                     maxValue: 1.0
                     stepSize: 0.05
                     decimals: Style.decimalsPrecise
-                    value: _root.action.selectedPointCoord.x
+                    value: {
+                        const _selected = _root.action.selectedPoint
+                        return _root.action.selectedPointCoord.x
+                    }
 
                     onValueModified: (newValue) => {
                         _root.action.updateSelectedPoint(newValue, _coordY.value)
@@ -273,19 +276,13 @@ Item {
                     maxValue: 1.0
                     stepSize: 0.05
                     decimals: Style.decimalsPrecise
-                    value: _root.action.selectedPointCoord.y
+                    value: {
+                        const _selected = _root.action.selectedPoint
+                        return _root.action.selectedPointCoord.y
+                    }
 
                     onValueModified: (newValue) => {
                         _root.action.updateSelectedPoint(_coordX.value, newValue)
-                    }
-                }
-
-                Connections {
-                    target: _root.action
-
-                    function onSelectedPointChanged() {
-                        _coordX.value = _root.action.selectedPointCoord.x
-                        _coordY.value = _root.action.selectedPointCoord.y
                     }
                 }
             }
