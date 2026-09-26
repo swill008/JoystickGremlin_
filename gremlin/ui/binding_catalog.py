@@ -194,7 +194,6 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._dest_filter = "all"
         self._rows: list[dict] = []
         self._dest_choices: list[str] = ["All devices"]
-        self._hold_reload = False
         signal.profileChanged.connect(self.reload)
         signal.configChanged.connect(self.reload)
         self._claimed.countChanged.connect(self.reload)
@@ -262,14 +261,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot()
     def reload(self) -> None:
-        if self._hold_reload:
-            return
         self._rebuild()
-
-    @QtCore.Slot(bool)
-    def setHoldReload(self, hold: bool) -> None:
-        """While the action editor is open, do not tear the list down."""
-        self._hold_reload = bool(hold)
 
     def _rebuild(self) -> None:
         self.beginResetModel()
@@ -482,6 +474,35 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             self._rows[row + 1 : row + 1] = fresh
             self.endInsertRows()
         self.countChanged.emit()
+
+    def _apply_summary(self, row: int, shown) -> None:
+        text, summary = assignment_summary(shown)
+        current = self._rows[row]
+        if (
+            current.get("summary") == text
+            and int(current.get("bindingCount") or 0) == len(shown)
+        ):
+            return
+        current["summary"] = text
+        current["destLabel"] = summary
+        current["bindingCount"] = len(shown)
+        self._emit_row(row)
+
+    @QtCore.Slot(int, result=bool)
+    def noteOpenRow(self, device_index: int) -> bool:
+        """Update the open parent summary. Do not insert or remove rows."""
+        found = self._shown_for_device(device_index)
+        if found is None:
+            return False
+        _name, _kind, _hw, didx, shown = found
+        row = self.rowForDeviceIndex(didx)
+        if row < 0:
+            return False
+        current = self._rows[row]
+        if current["rowKind"] != "group" or not shown:
+            return False
+        self._apply_summary(row, shown)
+        return False
 
     @QtCore.Slot(int, result=bool)
     def refreshOpenRow(self, device_index: int) -> bool:
