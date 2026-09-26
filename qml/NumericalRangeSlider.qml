@@ -16,6 +16,9 @@ Item {
     property real stepSize
     property int decimals
 
+    signal firstEdited(real value)
+    signal secondEdited(real value)
+
     height: Math.max(_slider.height, _firstValue.height, _secondValue.height)
     width: _slider.width + _firstValue.width + _secondValue.width
 
@@ -30,6 +33,34 @@ Item {
 
     function valueFromText(text) {
             return Number.fromLocaleString(Qt.locale(), text)
+    }
+
+    function _showFirst() {
+        if (!_slider || !_firstValueInput)
+            return
+        if (!_firstValueInput.activeFocus)
+            _firstValueInput.text = textFromValue(firstValue)
+        if (Math.abs(_slider.first.value - firstValue) > 0.0000001)
+            _slider.first.value = firstValue
+    }
+
+    function _showSecond() {
+        if (!_slider || !_secondValueInput)
+            return
+        if (!_secondValueInput.activeFocus)
+            _secondValueInput.text = textFromValue(secondValue)
+        if (Math.abs(_slider.second.value - secondValue) > 0.0000001)
+            _slider.second.value = secondValue
+    }
+
+    onFirstValueChanged: _showFirst()
+    onSecondValueChanged: _showSecond()
+
+    Component.onCompleted: {
+        _slider.first.value = firstValue
+        _slider.second.value = secondValue
+        _firstValueInput.text = textFromValue(firstValue)
+        _secondValueInput.text = textFromValue(secondValue)
     }
 
 
@@ -47,7 +78,6 @@ Item {
             id: _firstValueInput
 
             padding: 10
-            text: _root.textFromValue(_root.firstValue)
 
             font: _slider.font
             horizontalAlignment: Qt.AlignHCenter
@@ -63,7 +93,7 @@ Item {
                 if(value >= _root.secondValue) {
                     value = _root.secondValue
                 }
-                _slider.first.value = value
+                _root.firstEdited(value)
             }
         }
     }
@@ -75,14 +105,10 @@ Item {
 
         from: _root.from
         to: _root.to
-        first.value: _root.firstValue
-        second.value: _root.secondValue
         stepSize: _root.stepSize
 
-        Component.onCompleted: () => {
-            _root.firstValue = Qt.binding(() => first.value)
-            _root.secondValue = Qt.binding(() => second.value)
-        }
+        first.onMoved: _root.firstEdited(first.value)
+        second.onMoved: _root.secondEdited(second.value)
     }
 
     Rectangle {
@@ -100,7 +126,6 @@ Item {
             id: _secondValueInput
 
             padding: 10
-            text: _root.textFromValue(_root.secondValue)
 
             font: _slider.font
             horizontalAlignment: Qt.AlignHCenter
@@ -116,7 +141,7 @@ Item {
                 if(value <= _root.firstValue) {
                     value = _root.firstValue
                 }
-                _root.secondValue = value
+                _root.secondEdited(value)
             }
         }
     }
