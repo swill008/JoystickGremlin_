@@ -894,16 +894,7 @@ Item {
                 property bool kidsOn: _root.showChildren
                 property int quickHid: _root.quickHid
                 property int quickSeq: _root.quickSeq
-                function closeQuick() {
-                    _root.quickHid = -1
-                    _root.quickSeq = -1
-                }
-                function openQuick(hid, seq) {
-                    _root.quickSeq = seq
-                    _root.quickHid = hid
-                }
                 function openAdvanced(hid) {
-                    closeQuick()
                     _root.openAdvancedPane(hid)
                 }
                 property bool barsOn: _root.showLiveBars
@@ -936,11 +927,6 @@ Item {
                 property color cEditorEdge: _root.colorEditorBorder
                 property color cEditorAccent: _root.colorEditorAccent
 
-                function addOnRow(hid, rowIndex) {
-                    currentIndex = rowIndex
-                    _root.selectHid(hid)
-                    openQuick(hid, -1)
-                }
                 function openRow(hid, seq, row) { _root.openSequence(hid, seq, row) }
 
                 delegate: Item {
@@ -997,8 +983,7 @@ Item {
                     readonly property bool expanded: isGroup && deviceIndex === lv.editingHid && deviceIndex >= 0
                     readonly property int bodyH: isLeaf ? lv.childH : lv.parentH
                     readonly property bool hideLeaf: isLeaf && !lv.kidsOn
-                    readonly property bool hostsQuick: deviceIndex === lv.quickHid && deviceIndex >= 0 && ((isLeaf && lv.quickSeq >= 0 && sequenceIndex === lv.quickSeq) || (lv.quickSeq < 0 && ((isLeaf && endOfCard) || (groupStart && shownKids === 0))))
-                    height: hideLeaf ? 0 : (topGap + bodyH + (hostsQuick ? _quick.implicitHeight + 8 : 0) + bottomGap)
+                    height: hideLeaf ? 0 : (topGap + bodyH + bottomGap)
                     visible: !hideLeaf
 
                     readonly property bool selected: index === lv.currentIndex || expanded
@@ -1014,7 +999,7 @@ Item {
                         x: _root.groupX(_row.width)
                         y: index > 0 ? _root.groupBetween : 0
                         width: Math.max(0, _root.groupW(_row.width))
-                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (shownKids * (_root.groupInside + lv.childH)) + (deviceIndex === lv.quickHid ? 56 : 0) + gPadB
+                        height: gPadT + (groupStart ? bodyH : lv.parentH) + (shownKids * (_root.groupInside + lv.childH)) + gPadB
                         radius: _root.groupRadius
                         color: _root.colorGroup
                     }
@@ -1062,12 +1047,6 @@ Item {
                             onClicked: {
                                 lv.currentIndex = index
                                 lv.syncSelection()
-                                if (rowKind === "leaf" && simple) {
-                                    if (lv.quickHid === deviceIndex && lv.quickSeq === sequenceIndex)
-                                        lv.closeQuick()
-                                    else
-                                        lv.openQuick(deviceIndex, sequenceIndex)
-                                }
                             }
                         }
 
@@ -1116,123 +1095,21 @@ Item {
                                 wrapMode: Text.NoWrap
                             }
                             Button {
-                                visible: (rowKind === "group" || rowKind === "unmapped") && !lv.catalogLocked
-                                text: "ADD"
-                                implicitWidth: 56
-                                implicitHeight: 28
-                                z: 2
-                                onClicked: lv.addOnRow(deviceIndex, index)
-                            }
-                            Button {
                                 visible: isLeaf && !lv.catalogLocked
                                 text: "Delete"
                                 implicitWidth: 70
                                 implicitHeight: 28
                                 z: 2
-                                onClicked: {
-                                    lv.closeQuick()
-                                    lv.catalogModel.removeSequence(deviceIndex, sequenceIndex)
-                                }
+                                onClicked: lv.catalogModel.removeSequence(deviceIndex, sequenceIndex)
                             }
                             Button {
-                                visible: (isLeaf && !simple || rowKind === "group") && !lv.catalogLocked
-                                text: "Advanced"
-                                implicitWidth: 88
+                                visible: (rowKind === "group" || rowKind === "unmapped") && !lv.catalogLocked
+                                text: "Add Action"
+                                implicitWidth: 100
                                 implicitHeight: 28
                                 z: 2
                                 onClicked: lv.openAdvanced(deviceIndex)
                             }
-                        }
-                    }
-
-                    RowLayout {
-                        id: _quick
-                        visible: hostsQuick
-                        x: boxX + (isLeaf ? _root.leafX(boxW) : _root.parentX(boxW))
-                        y: topGap + bodyH + 4
-                        width: isLeaf ? _root.leafW(boxW) : _root.parentW(boxW)
-                        height: visible ? implicitHeight : 0
-                        spacing: 8
-
-                        property int vjoyId: 1
-                        property int buttonId: 1
-                        property bool pressOn: true
-                        property bool releaseOn: true
-
-                        function loadChoices() {
-                            var rows = lv.catalogModel.vjoyDevices()
-                            _vjoy.model = rows
-                            if (rows.length)
-                                _vjoy.currentIndex = 0
-                        }
-
-                        function loadExisting() {
-                            loadChoices()
-                            if (lv.quickSeq < 0)
-                                return
-                            var packed = lv.catalogModel.simpleMap(deviceIndex, lv.quickSeq)
-                            if (!packed)
-                                return
-                            var parts = packed.split("|")
-                            vjoyId = parseInt(parts[0])
-                            buttonId = parseInt(parts[1])
-                            pressOn = parts[2] === "1"
-                            releaseOn = parts[3] === "1"
-                            _button.value = buttonId
-                            for (var i = 0; i < _vjoy.count; i++) {
-                                if (parseInt(String(_vjoy.textAt(i)).split("|")[0]) === vjoyId) {
-                                    _vjoy.currentIndex = i
-                                    break
-                                }
-                            }
-                        }
-
-                        Component.onCompleted: if (visible) loadExisting()
-                        onVisibleChanged: if (visible) loadExisting()
-
-                        ComboBox {
-                            id: _vjoy
-                            Layout.preferredWidth: 180
-                            font.pixelSize: lv.sFont
-                            displayText: currentText ? String(currentText).split("|").slice(1).join("|") : "vJoy"
-                        }
-                        Label { text: "Button"; color: lv.cMuted; font.pixelSize: lv.sFont }
-                        SpinBox {
-                            id: _button
-                            from: 1
-                            to: 128
-                            editable: true
-                        }
-                        CheckBox {
-                            text: "Press"
-                            font.pixelSize: lv.sFont
-                            checked: _quick.pressOn
-                            onToggled: _quick.pressOn = checked
-                        }
-                        CheckBox {
-                            text: "Release"
-                            font.pixelSize: lv.sFont
-                            checked: _quick.releaseOn
-                            onToggled: _quick.releaseOn = checked
-                        }
-                        Button {
-                            text: lv.quickSeq < 0 ? "Add" : "Done"
-                            implicitWidth: 64
-                            onClicked: {
-                                var hid = deviceIndex
-                                var seqIndex = lv.quickSeq
-                                var picked = _vjoy.currentText ? String(_vjoy.currentText).split("|")[0] : "1"
-                                var button = _button.value
-                                var press = _quick.pressOn
-                                var release = _quick.releaseOn
-                                lv.closeQuick()
-                                lv.catalogModel.writeSimpleMap(hid, seqIndex, parseInt(picked), button, press, release)
-                            }
-                        }
-                        Button {
-                            text: "Cancel"
-                            implicitWidth: 72
-                            onClicked: lv.closeQuick()
                         }
                     }
                 }
