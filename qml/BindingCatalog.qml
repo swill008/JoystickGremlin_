@@ -25,6 +25,10 @@ Item {
     property int quickHid: -1
     property int quickSeq: -1
     property bool advancedOpen: false
+    property bool editorWindowOpen: false
+    property int paneHid: -1
+    property string paneName: ""
+    property string paneSummary: ""
     property int revealOnceRow: -1
     property int revealTries: 0
     property bool showPanel: false
@@ -669,6 +673,23 @@ Item {
         return rowW(total, groupAlign, groupLeft, groupRight, groupWidthPct)
     }
 
+    function openAdvancedPane(hid) {
+        paneHid = hid
+        paneName = _catalog.controlLabel(hid)
+        paneSummary = _catalog.controlSummary(hid)
+        advancedOpen = true
+        selectHid(hid)
+    }
+
+    function closeAdvancedPane() {
+        paneHid = -1
+        paneName = ""
+        paneSummary = ""
+        advancedOpen = editorWindowOpen
+        if (!advancedOpen)
+            _catalog.reload()
+    }
+
     Connections {
         target: signal
         function onSetInputIndex(index) { showHid(index) }
@@ -682,8 +703,9 @@ Item {
             _catalog.reload()
         }
         function onAdvancedEditorChanged(open) {
-            _root.advancedOpen = open
-            if (!open)
+            _root.editorWindowOpen = open
+            _root.advancedOpen = open || _root.paneHid >= 0
+            if (!_root.advancedOpen)
                 _catalog.reload()
         }
     }
@@ -882,7 +904,7 @@ Item {
                 }
                 function openAdvanced(hid) {
                     closeQuick()
-                    _root.advancedRequested(hid)
+                    _root.openAdvancedPane(hid)
                 }
                 property bool barsOn: _root.showLiveBars
                 property bool ledsOn: _root.showLeds
@@ -1234,6 +1256,50 @@ Item {
                 color: colorMuted
                 horizontalAlignment: Text.AlignHCenter
                 text: "This window only shows what the input module passes.\nRight-click the card → Configure input module, press the controls to claim, then Save module."
+            }
+        }
+
+        Rectangle {
+            visible: _root.paneHid >= 0
+            Layout.preferredWidth: 560
+            Layout.minimumWidth: 420
+            Layout.fillHeight: true
+            color: "#18181B"
+            border.color: "#3F3F46"
+            border.width: 1
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 6
+
+                RowLayout {
+                    Label {
+                        text: _root.paneName.length ? _root.paneName : "Action Editor"
+                        color: "#E4E4E7"
+                        font.bold: true
+                        font.pixelSize: 16
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
+                    Button {
+                        text: "×"
+                        implicitWidth: 28
+                        onClicked: _root.closeAdvancedPane()
+                    }
+                }
+                Label {
+                    visible: _root.paneSummary.length > 0
+                    text: _root.paneSummary
+                    color: "#9AA4B2"
+                    font.pixelSize: 12
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+                InputConfiguration {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                }
             }
         }
 
