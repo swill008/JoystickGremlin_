@@ -1097,8 +1097,8 @@ Item {
                             anchors.bottomMargin: 8
                             spacing: 4
 
-                            property string behaviorText: kind
-                            property var controlVb: null
+                            property string behaviorText
+                            property var controlVb
 
                             function refreshControl() {
                                 if (!_row.controlOpen)
