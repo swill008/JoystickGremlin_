@@ -742,11 +742,11 @@ Item {
     }
 
     function startPane(hid, seq) {
-        _catalog.beginPane(hid, seq)
+        var count = _catalog.beginPane(hid, seq)
         paneHid = hid
         paneSeq = seq
         paneName = _catalog.controlLabel(hid)
-        paneSummary = seq < 0 ? "New action" : "Editing this action"
+        paneSummary = seq < 0 && count < 1 ? "New action" : "Editing this action"
         advancedOpen = true
         selectHid(hid)
     }
