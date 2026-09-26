@@ -245,7 +245,7 @@ Item {
         if (!moduleModel || !claimDeviceName.length)
             return
         try {
-            var v = JSON.parse(moduleModel.catalogConfigJson(claimDeviceName))
+            var v = JSON.parse(moduleModel.catalogConfigJson(claimDeviceName, device ? device.guid : ""))
         } catch (e) {
             return
         }
@@ -310,7 +310,7 @@ Item {
     function saveCatalog() {
         var ok = false
         if (moduleModel && claimDeviceName.length)
-            ok = moduleModel.saveCatalogConfig(claimDeviceName, JSON.stringify(catalogPayload()))
+            ok = moduleModel.saveCatalogConfig(claimDeviceName, device ? device.guid : "", JSON.stringify(catalogPayload()))
         if (ok) {
             rememberCatalog()
             _saveGate.announce(true, "Display options were written to the module file.")
