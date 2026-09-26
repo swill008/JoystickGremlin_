@@ -49,9 +49,11 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "def refreshOpenRow" in py
     assert "def noteOpenRow" in py
     assert "def sequences_for_item" in py
-    assert "function openSequence(hid, seq, row)" in qml
-    assert "onlySequence:" in qml
-    assert "catalogSequence: true" in qml
+    assert "def writeSimpleMap" in py
+    assert "function openQuick(hid, seq)" in qml
+    main = Path(__file__).resolve().parents[2].joinpath("qml/Main.qml").read_text(encoding="utf-8")
+    assert "DialogActionEditor.qml" in main
+    assert 'text: "Advanced"' in qml
     assert "_hold_reload" not in py
     assert "setHoldReload" not in qml
     assert "signal.inputItemChanged.connect(self.reload)" not in py
@@ -202,9 +204,8 @@ def test_inline_editor_colors_are_properties() -> None:
     assert "property color editorEdge" in text
     assert "color: editorFill" in text
     qml = _QML.read_text(encoding="utf-8")
-    assert "editorFill: lv.cChild" in qml
-    assert "editorEdge: lv.cBorder" in qml
-    assert "showAccent: false" in qml
+    assert "hostsQuick" in qml
+    assert "writeSimpleMap" in qml
     assert "editorPadTop:" in qml
     assert 'text: "Show accent bar"' in qml
 
