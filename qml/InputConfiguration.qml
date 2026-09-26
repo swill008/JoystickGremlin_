@@ -17,6 +17,7 @@ Item {
     property int inputIndex
     property bool isOutput: false
     property bool inlineMode: false
+    property bool hideControlSetup: false
     property color editorFill: "#0F2744"
     property color editorEdge: "#3B82F6"
     property color editorAccent: "#3B82F6"
@@ -116,6 +117,7 @@ Item {
                 enabled: !editorLocked
                 inputBinding: modelData
                 inputItemModel: _root.inputItemModel
+                hideControlSetup: _root.hideControlSetup
             }
         }
 
@@ -151,6 +153,7 @@ Item {
 
                     inputBinding: modelData
                     inputItemModel: _root.inputItemModel
+                    hideControlSetup: _root.hideControlSetup
                 }
             }
         }
