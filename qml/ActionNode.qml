@@ -18,6 +18,9 @@ Item {
     property ActionModel parentAction
     property string containerName
     property int itemSpacing : 10
+    property bool compactMode: false
+    property var inputItemModel
+    property var inputBinding
 
     implicitHeight: _content.height
 
@@ -209,11 +212,14 @@ Item {
 
             IconButton {
                 id: _removeButton
+                visible: !_root.compactMode
 
                 text: bsi.icons.remove
 
                 onClicked: {
-                    if (parentAction && _root.action) {
+                    if (_root.compactMode && _root.inputItemModel && _root.inputBinding) {
+                        _root.inputItemModel.deleteActionSequnce(_root.inputBinding)
+                    } else if (parentAction && _root.action) {
                         parentAction.removeAction(_root.action.sequenceIndex)
                     }
                 }
@@ -271,9 +277,11 @@ Item {
         }
         MenuItem {
             text: "Delete"
-            enabled: !!(_root.parentAction && _root.action)
+            enabled: !!(_root.parentAction && _root.action) || !!(_root.compactMode && _root.inputItemModel && _root.inputBinding)
             onTriggered: {
-                if (_root.parentAction && _root.action)
+                if (_root.compactMode && _root.inputItemModel && _root.inputBinding)
+                    _root.inputItemModel.deleteActionSequnce(_root.inputBinding)
+                else if (_root.parentAction && _root.action)
                     _root.parentAction.removeAction(_root.action.sequenceIndex)
             }
         }
