@@ -29,9 +29,8 @@ from gremlin.ui.hardware_profile import (
     maps_folder_url,
     module_file_choices,
     module_file_exists,
-    rename_module_file,
+    persist_log,
     resolve_module_slug,
-    save_module_file_as,
 )
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -252,7 +251,7 @@ def _set_sizes(sizes: dict[str, tuple[int, int]]) -> None:
 
 def _plog(action: str, **parts: object) -> None:
     detail = " ".join(f"{key}={value!r}" for key, value in parts.items())
-    print(f"Persist {action} {detail}", flush=True)
+    persist_log(f"Persist {action} {detail}")
 
 
 def _clamp_size(w: int, h: int) -> tuple[int, int]:
@@ -573,17 +572,17 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     viewChanged = QtCore.Signal()
 
-    @QtCore.Slot(str, result=str)
-    def viewConfigJson(self, device_name: str) -> str:
-        doc = _load_module_doc(device_name) if device_name else {}
+    @QtCore.Slot(str, str, result=str)
+    def viewConfigJson(self, device_name: str, guid: str) -> str:
+        doc = _load_module_doc(device_name, guid) if device_name else {}
         view = dict(_DEFAULT_VIEW)
         raw = (doc or {}).get("view")
         if isinstance(raw, dict):
             view.update(raw)
         return json.dumps(view)
 
-    @QtCore.Slot(str, str, result=bool)
-    def saveViewConfig(self, device_name: str, json_text: str) -> bool:
+    @QtCore.Slot(str, str, str, result=bool)
+    def saveViewConfig(self, device_name: str, guid: str, json_text: str) -> bool:
         name = str(device_name or "").strip()
         if not name:
             return False
@@ -593,7 +592,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = _maps_dir() / f"{resolve_module_slug(name)}.json"
+        path = _maps_dir() / f"{resolve_module_slug(name, guid)}.json"
         doc: dict = {}
         if path.is_file():
             try:
@@ -623,17 +622,17 @@ class ModuleListModel(QtCore.QAbstractListModel):
         _plog("save view ok", path=str(path))
         return True
 
-    @QtCore.Slot(str, result=str)
-    def catalogConfigJson(self, device_name: str) -> str:
-        doc = _load_module_doc(device_name) if device_name else {}
+    @QtCore.Slot(str, str, result=str)
+    def catalogConfigJson(self, device_name: str, guid: str) -> str:
+        doc = _load_module_doc(device_name, guid) if device_name else {}
         catalog = dict(_DEFAULT_CATALOG)
         raw = (doc or {}).get("catalog")
         if isinstance(raw, dict):
             catalog.update(raw)
         return json.dumps(catalog)
 
-    @QtCore.Slot(str, str, result=bool)
-    def saveCatalogConfig(self, device_name: str, json_text: str) -> bool:
+    @QtCore.Slot(str, str, str, result=bool)
+    def saveCatalogConfig(self, device_name: str, guid: str, json_text: str) -> bool:
         name = str(device_name or "").strip()
         if not name:
             return False
@@ -643,7 +642,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = _maps_dir() / f"{resolve_module_slug(name)}.json"
+        path = _maps_dir() / f"{resolve_module_slug(name, guid)}.json"
         doc: dict = {}
         if path.is_file():
             try:
@@ -1131,14 +1130,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         signal.configChanged.emit()
         self._refresh_inplace()
 
-    @QtCore.Slot(str, str, str, result=str)
-    def saveModuleFileAs(self, guid: str, device_name: str, file_name: str) -> str:
-        slug = save_module_file_as(device_name, guid, file_name)
-        if slug:
-            signal.configChanged.emit()
-            self._refresh_inplace()
-        return slug
-
     @QtCore.Slot(result=str)
     def mapsFolderUrl(self) -> str:
         return maps_folder_url()
@@ -1155,14 +1146,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         signal.configChanged.emit()
         self._refresh_inplace()
         return ""
-
-    @QtCore.Slot(str, str, str, result=str)
-    def renameModuleFile(self, guid: str, device_name: str, file_name: str) -> str:
-        message = rename_module_file(device_name, guid, file_name)
-        if not message:
-            signal.configChanged.emit()
-            self._refresh_inplace()
-        return message
 
     @QtCore.Slot(str, str, result=str)
     def deleteModuleFile(self, guid: str, device_name: str) -> str:
