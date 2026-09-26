@@ -34,12 +34,7 @@ ApplicationWindow {
             Style.isDarkMode = backend.useDarkMode
         }
         _windowPlacement.restore(_root)
-        catalogPanel = _windowPlacement.catalogPanelOpen()
-        outputViewPanel = _windowPlacement.outputPanelOpen()
     }
-
-    onCatalogPanelChanged: _windowPlacement.setCatalogPanelOpen(catalogPanel)
-    onOutputViewPanelChanged: _windowPlacement.setOutputPanelOpen(outputViewPanel)
 
     Universal.theme: Style.theme
     color: Style.background
@@ -49,6 +44,42 @@ ApplicationWindow {
     property string configDirection: ""
     property bool outputViewPanel: true
     property bool catalogPanel: true
+    property bool _panelReady: false
+    property string _panelDevice: ""
+
+    function panelKind() {
+        return configDirection === "dest" ? "output" : "configuration"
+    }
+
+    function panelDeviceId() {
+        var guid = uiState ? String(uiState.currentDevice || "") : ""
+        if (guid.length)
+            return guid
+        return configTitleName
+    }
+
+    function applyDisplayPanel() {
+        var id = panelDeviceId()
+        _panelDevice = id
+        var open = id.length ? _windowPlacement.displayPanelOpen(panelKind(), id) : true
+        _panelReady = false
+        if (configDirection === "dest")
+            outputViewPanel = open
+        else
+            catalogPanel = open
+        _panelReady = true
+    }
+
+    function rememberDisplayPanel() {
+        if (!_panelReady)
+            return
+        var id = _panelDevice.length ? _panelDevice : panelDeviceId()
+        if (!id.length)
+            return
+        var kind = panelKind()
+        var open = kind === "output" ? outputViewPanel : catalogPanel
+        _windowPlacement.setDisplayPanelOpen(kind, id, open)
+    }
 
     function refreshDestBound() {
         if (_destBound)
@@ -90,6 +121,7 @@ ApplicationWindow {
     function openConfigurationForCard(card) {
         if (!uiState || !card)
             return
+        _panelReady = false
         _moduleModel.setFocus(card.slug)
         configTitleName = moduleFileName(card)
         refreshDestBound()
@@ -97,6 +129,7 @@ ApplicationWindow {
         uiState.setCurrentDevice(card.guid)
         uiState.setCurrentTab(card.tab || "physical")
         uiState.setCurrentRoom("configuration")
+        applyDisplayPanel()
     }
 
     function openOutputViewForCard(card) {
@@ -185,6 +218,7 @@ ApplicationWindow {
     function closeWorkRoom() {
         if (!uiState)
             return
+        _panelReady = false
         configTitleName = ""
         configDirection = ""
         uiState.setCurrentRoom("status")
@@ -976,12 +1010,18 @@ ApplicationWindow {
             Button {
                 visible: configDirection === "dest"
                 text: outputViewPanel ? "Hide Display Options" : "Edit Display Options"
-                onClicked: outputViewPanel = !outputViewPanel
+                onClicked: {
+                    outputViewPanel = !outputViewPanel
+                    rememberDisplayPanel()
+                }
             }
             Button {
                 visible: configDirection !== "dest"
                 text: catalogPanel ? "Hide Display Options" : "Edit Display Options"
-                onClicked: catalogPanel = !catalogPanel
+                onClicked: {
+                    catalogPanel = !catalogPanel
+                    rememberDisplayPanel()
+                }
             }
             Button {
                 visible: configDirection !== "dest"
@@ -1103,7 +1143,10 @@ ApplicationWindow {
             deviceName: configTitleName
             moduleModel: _moduleModel
             showPanel: _root.outputViewPanel
-            onClosePanel: _root.outputViewPanel = false
+            onClosePanel: {
+                _root.outputViewPanel = false
+                _root.rememberDisplayPanel()
+            }
         }
 
         SplitView {
@@ -1135,6 +1178,7 @@ ApplicationWindow {
                         _root.outputViewPanel = false
                     else
                         _root.catalogPanel = false
+                    _root.rememberDisplayPanel()
                 }
             }
 
