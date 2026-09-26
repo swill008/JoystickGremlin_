@@ -26,6 +26,7 @@ Item {
         }
 
         RadioButton {
+            autoExclusive: false
             text: "Button"
 
             checked: _root.inputBinding.behavior == "button"
@@ -33,6 +34,7 @@ Item {
         }
 
         RadioButton {
+            autoExclusive: false
             text: "Axis"
 
             visible: _root.inputBinding.inputType == "axis"
@@ -42,6 +44,7 @@ Item {
         }
 
         RadioButton {
+            autoExclusive: false
             text: "Hat"
 
             visible: _root.inputBinding.inputType == "hat"
