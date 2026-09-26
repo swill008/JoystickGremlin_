@@ -12,6 +12,7 @@ import Gremlin.Config
 import Gremlin.Device
 import Gremlin.Profile
 import Gremlin.Style
+import Gremlin.UI
 
 Item {
     id: _root
@@ -27,8 +28,12 @@ Item {
     property bool advancedOpen: false
     property bool editorWindowOpen: false
     property int paneHid: -1
+    property int paneSeq: -1
     property string paneName: ""
     property string paneSummary: ""
+    property bool closeAfterOk: false
+    property bool paneChoiceReady: false
+    property var panePending: null
     property int revealOnceRow: -1
     property int revealTries: 0
     property bool showPanel: false
@@ -127,6 +132,45 @@ Item {
         id: _catalog
         guid: device ? device.guid : ""
         deviceName: _root.claimDeviceName
+    }
+
+    WindowPlacement {
+        id: _panePlacement
+    }
+
+    DismissibleDialog {
+        id: _paneLeave
+        onSaveChosen: {
+            var seq = _catalog.commitPane()
+            if (seq >= 0)
+                _root.paneSeq = seq
+            _catalog.reload()
+            var pending = _root.panePending
+            _root.panePending = null
+            if (!pending)
+                return
+            if (pending.close)
+                _root.closeAdvancedPane()
+            else
+                _root.startPane(pending.hid, pending.seq)
+        }
+        onDiscardChosen: {
+            _catalog.discardPane()
+            var pending = _root.panePending
+            _root.panePending = null
+            if (!pending)
+                return
+            if (pending.close)
+                _root.closeAdvancedPane()
+            else
+                _root.startPane(pending.hid, pending.seq)
+        }
+        onCancelled: _root.panePending = null
+    }
+
+    Component.onCompleted: {
+        closeAfterOk = _panePlacement.closePaneAfterOk()
+        paneChoiceReady = true
     }
 
     Connections {
@@ -674,20 +718,60 @@ Item {
     }
 
     function openAdvancedPane(hid) {
+        requestPane(hid, -1)
+    }
+
+    function requestPane(hid, seq) {
+        if (paneHid === hid && paneSeq === seq && paneHid >= 0)
+            return
+        if (paneHid >= 0 && _catalog.paneDirty()) {
+            panePending = { "hid": hid, "seq": seq, "close": false }
+            _paneLeave.ask("This control has changes that are not saved.")
+            return
+        }
+        startPane(hid, seq)
+    }
+
+    function startPane(hid, seq) {
+        _catalog.beginPane(hid, seq)
         paneHid = hid
+        paneSeq = seq
         paneName = _catalog.controlLabel(hid)
-        paneSummary = _catalog.controlSummary(hid)
+        paneSummary = seq < 0 ? "New action" : "Editing this action"
         advancedOpen = true
         selectHid(hid)
     }
 
+    function acceptPane() {
+        if (_catalog.paneDirty()) {
+            var seq = _catalog.commitPane()
+            if (seq >= 0)
+                paneSeq = seq
+            paneSummary = "Editing this action"
+            _catalog.reload()
+        }
+        if (closeAfterOk)
+            closeAdvancedPane()
+    }
+
     function closeAdvancedPane() {
+        _catalog.endPane()
         paneHid = -1
+        paneSeq = -1
         paneName = ""
         paneSummary = ""
         advancedOpen = editorWindowOpen
         if (!advancedOpen)
             _catalog.reload()
+    }
+
+    function requestClosePane() {
+        if (paneHid >= 0 && _catalog.paneDirty()) {
+            panePending = { "close": true }
+            _paneLeave.ask("This control has changes that are not saved.")
+            return
+        }
+        closeAdvancedPane()
     }
 
     Connections {
@@ -1047,6 +1131,8 @@ Item {
                             onClicked: {
                                 lv.currentIndex = index
                                 lv.syncSelection()
+                                if (rowKind === "leaf")
+                                    _root.requestPane(deviceIndex, sequenceIndex)
                             }
                         }
 
@@ -1162,7 +1248,7 @@ Item {
                     Button {
                         text: "×"
                         implicitWidth: 28
-                        onClicked: _root.closeAdvancedPane()
+                        onClicked: _root.requestClosePane()
                     }
                 }
                 Label {
@@ -1176,6 +1262,26 @@ Item {
                 InputConfiguration {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    holdModel: true
+                    inputItemModel: _catalog.paneModel
+                }
+                RowLayout {
+                    CheckBox {
+                        text: "Close pane after OK"
+                        checked: _root.closeAfterOk
+                        onCheckedChanged: {
+                            _root.closeAfterOk = checked
+                            if (_root.paneChoiceReady)
+                                _panePlacement.setClosePaneAfterOk(checked)
+                        }
+                    }
+                    Item { Layout.fillWidth: true }
+                    Button {
+                        text: "OK"
+                        implicitWidth: 72
+                        highlighted: true
+                        onClicked: _root.acceptPane()
+                    }
                 }
             }
         }
