@@ -142,6 +142,25 @@ def collect_leaves(action) -> list[tuple[str, str, str]]:
     return [(tag, label, dest)]
 
 
+def sequences_for_item(item) -> list[tuple[int, str, str]]:
+    """One catalog child per action sequence: (index, type label, destination)."""
+    out: list[tuple[int, str, str]] = []
+    sequences = getattr(item, "action_sequences", None) or []
+    for index, seq in enumerate(sequences):
+        root = getattr(seq, "root_action", None)
+        leaves = collect_leaves(root) if root is not None else []
+        if len(leaves) == 1:
+            _tag, lab, dest = leaves[0]
+            out.append((index, lab, dest))
+        elif len(leaves) > 1:
+            dest = ", ".join(item_dest for _tag, _lab, item_dest in leaves if item_dest)
+            out.append((index, f"{len(leaves)} actions", dest or "Sequence"))
+        else:
+            label = str(getattr(root, "action_label", "") or "") if root is not None else ""
+            out.append((index, "Sequence", label or "Empty"))
+    return out
+
+
 def assignment_summary(shown: list[tuple[str, str, str]]) -> tuple[str, str]:
     summary = ", ".join(dest for _t, _l, dest in shown)
     text = (
@@ -180,13 +199,13 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 8: QtCore.QByteArray(b"deviceIndex"),
         QtCore.Qt.ItemDataRole.UserRole + 9: QtCore.QByteArray(b"bindingCount"),
         QtCore.Qt.ItemDataRole.UserRole + 10: QtCore.QByteArray(b"indent"),
+        QtCore.Qt.ItemDataRole.UserRole + 11: QtCore.QByteArray(b"sequenceIndex"),
     }
 
     guidChanged = QtCore.Signal()
     deviceNameChanged = QtCore.Signal()
     countChanged = QtCore.Signal()
     filtersChanged = QtCore.Signal()
-    controlChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -195,8 +214,6 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         self._dest_filter = "all"
         self._rows: list[dict] = []
         self._dest_choices: list[str] = ["All devices"]
-        self._control_item = None
-        self._control_vb = None
         signal.profileChanged.connect(self.reload)
         signal.configChanged.connect(self.reload)
         self._claimed.countChanged.connect(self.reload)
@@ -262,6 +279,25 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 return False
         return True
 
+    def _sequence_ok(self, leaves: list) -> bool:
+        if not leaves:
+            return self._type_filter in ("all", "") and self._dest_filter in (
+                "all",
+                "All devices",
+                "",
+            )
+        return any(self._leaf_ok(tag, dest) for tag, _lab, dest in leaves)
+
+    def _shown_sequences(self, item) -> list[tuple[int, str, str]]:
+        shown: list[tuple[int, str, str]] = []
+        sequences = getattr(item, "action_sequences", None) or []
+        for index, lab, dest in sequences_for_item(item):
+            root = sequences[index].root_action if 0 <= index < len(sequences) else None
+            leaves = collect_leaves(root) if root is not None else []
+            if self._sequence_ok(leaves):
+                shown.append((index, lab, dest))
+        return shown
+
     @QtCore.Slot()
     def reload(self) -> None:
         self._rebuild()
@@ -281,13 +317,17 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             item = self._claimed._input_item(
                 {"kind": kind, "hwId": hw, "deviceIndex": didx, "name": name}
             )
-            leaves = leaves_for_item(item)
-            for tag, _lab, dest in leaves:
-                if dest and dest not in dests:
-                    dests.append(dest)
-            shown = [x for x in leaves if self._leaf_ok(x[0], x[2])]
+            seqs = sequences_for_item(item)
+            for seq in getattr(item, "action_sequences", None) or []:
+                root = getattr(seq, "root_action", None)
+                if root is None:
+                    continue
+                for _tag, _lab, dest in collect_leaves(root):
+                    if dest and dest not in dests:
+                        dests.append(dest)
+            shown = self._shown_sequences(item)
             if self._type_filter == "unmapped":
-                if leaves:
+                if seqs:
                     continue
                 unmapped.append(
                     {
@@ -301,10 +341,11 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                         "deviceIndex": didx,
                         "bindingCount": 0,
                         "indent": 0,
+                        "sequenceIndex": -1,
                     }
                 )
                 continue
-            if not leaves:
+            if not seqs:
                 if self._type_filter == "all" and self._dest_filter in (
                     "all",
                     "All devices",
@@ -322,6 +363,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                             "deviceIndex": didx,
                             "bindingCount": 0,
                             "indent": 0,
+                            "sequenceIndex": -1,
                         }
                     )
                 continue
@@ -340,10 +382,11 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                     "deviceIndex": didx,
                     "bindingCount": len(shown),
                     "indent": 0,
+                    "sequenceIndex": -1,
                 }
             )
             mapped += 1
-            for tag, lab, dest in shown:
+            for seq_index, lab, dest in shown:
                 self._rows.append(
                     {
                         "rowKind": "leaf",
@@ -356,6 +399,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                         "deviceIndex": didx,
                         "bindingCount": 1,
                         "indent": 1,
+                        "sequenceIndex": seq_index,
                     }
                 )
         if unmapped:
@@ -371,6 +415,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                     "deviceIndex": -1,
                     "bindingCount": len(unmapped),
                     "indent": 0,
+                    "sequenceIndex": -1,
                 }
             )
             self._rows.extend(unmapped)
@@ -433,9 +478,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             item = self._claimed._input_item(
                 {"kind": kind, "hwId": hw, "deviceIndex": want, "name": name}
             )
-            shown = [
-                leaf for leaf in leaves_for_item(item) if self._leaf_ok(leaf[0], leaf[2])
-            ]
+            shown = self._shown_sequences(item)
             return name, kind, hw, want, shown
         return None
 
@@ -443,7 +486,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
         idx = self.index(row, 0)
         self.dataChanged.emit(idx, idx, list(self.roles.keys()))
 
-    def _leaf_row(self, name, kind, hw, didx, lab, dest) -> dict:
+    def _leaf_row(self, name, kind, hw, didx, seq_index, lab, dest) -> dict:
         return {
             "rowKind": "leaf",
             "name": name,
@@ -455,11 +498,15 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             "deviceIndex": didx,
             "bindingCount": 1,
             "indent": 1,
+            "sequenceIndex": int(seq_index),
         }
 
     def _replace_leaves(self, row: int, name, kind, hw, didx, shown) -> None:
         existing = self.leafRun(row)
-        fresh = [self._leaf_row(name, kind, hw, didx, lab, dest) for _tag, lab, dest in shown]
+        fresh = [
+            self._leaf_row(name, kind, hw, didx, seq_index, lab, dest)
+            for seq_index, lab, dest in shown
+        ]
         if existing == len(fresh):
             for offset, leaf in enumerate(fresh):
                 self._rows[row + 1 + offset] = leaf
@@ -536,9 +583,13 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
             and self.leafRun(row) == len(shown)
         )
         if same:
-            for offset, (_tag, lab, dest) in enumerate(shown):
+            for offset, (seq_index, lab, dest) in enumerate(shown):
                 leaf = self._rows[row + 1 + offset]
-                if leaf.get("typeLabel") != lab or leaf.get("destLabel") != dest:
+                if (
+                    int(leaf.get("sequenceIndex") or -1) != int(seq_index)
+                    or leaf.get("typeLabel") != lab
+                    or leaf.get("destLabel") != dest
+                ):
                     same = False
                     break
         if same:
@@ -563,16 +614,16 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 fallback = i
         return fallback
 
-    @QtCore.Slot(int, result=bool)
-    def addSequence(self, device_index: int) -> bool:
+    @QtCore.Slot(int, result=int)
+    def addSequence(self, device_index: int) -> int:
         """ADD on a catalog row: new action sequence for that control."""
         want = int(device_index)
         if want < 0:
-            return False
+            return -1
         profile = shared_state.current_profile
         dev = getattr(self._claimed, "_device", None)
         if profile is None or dev is None:
-            return False
+            return -1
         mode = str(getattr(self._claimed, "_mode", None) or "Default")
         n = self._claimed.rowCount()
         for i in range(n):
@@ -588,136 +639,45 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 create_if_missing=True,
             )
             if item is None:
-                return False
+                return -1
             item.add_item_binding()
+            seq = len(item.action_sequences) - 1
             signal.inputItemChanged.emit(want)
-            # Same UI refresh as InputItemModel.newActionSequence()
             signal.reloadCurrentInputItem.emit()
-            return True
-        return False
+            return seq
+        return -1
 
-    def _lookup_control(self, device_index: int, create: bool):
+    @QtCore.Slot(int, int, result=bool)
+    def removeSequence(self, device_index: int, sequence_index: int) -> bool:
+        """Delete one action sequence from a control."""
         want = int(device_index)
+        seq = int(sequence_index)
+        if want < 0 or seq < 0:
+            return False
         profile = shared_state.current_profile
         dev = getattr(self._claimed, "_device", None)
-        if profile is None or dev is None or want < 0:
-            return None, ""
+        if profile is None or dev is None:
+            return False
         mode = str(getattr(self._claimed, "_mode", None) or "Default")
         n = self._claimed.rowCount()
         for i in range(n):
             if int(self._claimed.deviceIndexAt(i)) != want:
                 continue
-            kind = str(self._claimed.kindAt(i) or "")
-            hw = int(self._claimed.hwIdAt(i))
             item = profile.get_input_item(
                 dev.device_guid.uuid,
-                _kind_to_type(kind),
-                hw,
+                _kind_to_type(self._claimed.kindAt(i)),
+                int(self._claimed.hwIdAt(i)),
                 mode,
-                create_if_missing=create,
+                create_if_missing=False,
             )
-            return item, kind
-        return None, ""
-
-    def _remember_virtual(self, item) -> None:
-        from gremlin.ui.profile import VirtualButtonModel
-
-        old = self._control_vb
-        self._control_item = item
-        self._control_vb = None
-        if item is not None and getattr(item, "action_sequences", None):
-            button = item.action_sequences[0].virtual_button
-            if button is not None:
-                model = VirtualButtonModel(button, self)
-                model.lowerLimitChanged.connect(self._mirror_virtual)
-                model.upperLimitChanged.connect(self._mirror_virtual)
-                model.directionChanged.connect(self._mirror_virtual)
-                model.hatDirectionChanged.connect(self._mirror_virtual)
-                self._control_vb = model
-        if old is not None and old is not self._control_vb:
-            old.deleteLater()
-
-    def _mirror_virtual(self) -> None:
-        item = self._control_item
-        sequences = getattr(item, "action_sequences", None) or []
-        if len(sequences) < 2:
-            return
-        source = sequences[0].virtual_button
-        if source is None:
-            return
-        for binding in sequences[1:]:
-            other = binding.virtual_button
-            if other is None or type(other) is not type(source):
-                continue
-            if hasattr(source, "lower_limit"):
-                other.lower_limit = source.lower_limit
-                other.upper_limit = source.upper_limit
-                other.direction = source.direction
-            if hasattr(source, "directions"):
-                other.directions = list(source.directions)
-
-    @QtCore.Slot(int, result=str)
-    def controlBehavior(self, device_index: int) -> str:
-        """How this control is treated. One value for the whole parent row."""
-        from gremlin.types import InputType
-
-        item, kind = self._lookup_control(device_index, False)
-        if not kind:
-            return "button"
-        sequences = getattr(item, "action_sequences", None) or []
-        if not sequences:
-            return kind
-        behavior = sequences[0].behavior
-        if behavior == InputType.Keyboard:
-            return "button"
-        return InputType.to_string(behavior)
-
-    @QtCore.Slot(int)
-    def prepareControl(self, device_index: int) -> None:
-        item, _kind = self._lookup_control(device_index, False)
-        self._remember_virtual(item)
-        self.controlChanged.emit()
-
-    @QtCore.Slot(int, str)
-    def setControlBehavior(self, device_index: int, behavior: str) -> None:
-        """Set Treat as on every sequence of this control."""
-        from gremlin.ui.profile import InputItemModel
-
-        text = str(behavior or "").strip().lower()
-        if text not in ("button", "axis", "hat"):
-            return
-        item, kind = self._lookup_control(device_index, True)
-        if item is None:
-            return
-        if not item.action_sequences:
-            if text == kind:
-                self._remember_virtual(item)
-                self.controlChanged.emit()
-                return
-            item.add_item_binding()
-        want = int(device_index)
-        host = InputItemModel(item, want, self)
-        changed = False
-        try:
-            for row in range(host.rowCount()):
-                model = host.data(host.index(row, 0))
-                if model.behavior != text:
-                    model.behavior = text
-                    changed = True
-            if changed:
-                signal.inputItemChanged.emit(want)
-                signal.reloadCurrentInputItem.emit()
-        finally:
-            host.deleteLater()
-        self._remember_virtual(item)
-        self.controlChanged.emit()
-
-    @QtCore.Slot(int, result=QtCore.QObject)
-    def controlVirtualButton(self, device_index: int):
-        item, _kind = self._lookup_control(device_index, False)
-        if item is not self._control_item:
-            self._remember_virtual(item)
-        return self._control_vb
+            sequences = getattr(item, "action_sequences", None) or []
+            if seq >= len(sequences):
+                return False
+            item.remove_item_binding(sequences[seq])
+            signal.inputItemChanged.emit(want)
+            signal.reloadCurrentInputItem.emit()
+            return True
+        return False
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     deviceName = QtCore.Property(
