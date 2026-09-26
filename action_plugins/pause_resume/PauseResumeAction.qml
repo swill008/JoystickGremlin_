@@ -27,6 +27,7 @@ Item {
         anchors.right: parent.right
 
         RadioButton {
+            autoExclusive: false
             text: "Pause"
 
             checked: _root.action.operation === "Pause"
@@ -35,6 +36,7 @@ Item {
             }
         }
         RadioButton {
+            autoExclusive: false
             text: "Resume"
 
             checked: _root.action.operation === "Resume"
@@ -43,6 +45,7 @@ Item {
             }
         }
         RadioButton {
+            autoExclusive: false
             text: "Toggle"
 
             checked: _root.action.operation === "Toggle"
